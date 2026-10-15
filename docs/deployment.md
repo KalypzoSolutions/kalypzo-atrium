@@ -28,6 +28,33 @@ docker compose --profile proxy up -d
 
 `ORIGIN` muss exakt der öffentliche URL entsprechen (`https://…`); davon hängen Cookie-Flags (`Secure`), CSRF und Better-Auth-Redirects ab.
 
+## Dokploy (Git-Deployment mit App, PostgreSQL und S3)
+
+`docker-compose.dokploy.yml` startet den kompletten Stack: `db` (PostgreSQL 17), `storage` (MinIO, nur intern) und `app`
+(wird aus dem `Dockerfile` des Repositories gebaut). Variablen-Vorlage: `.env.dokploy.example`.
+
+1. In Dokploy: Projekt → *Create Service* → **Compose** → Provider **Git** (Repository, Branch `staging` oder `main`),
+   Compose-Pfad `./docker-compose.dokploy.yml`, Typ *Docker Compose*.
+2. Reiter **Environment**: Inhalt von `.env.dokploy.example` einfügen und ausfüllen
+   (Pflicht: `ORIGIN`, `APP_SECRET`, `POSTGRES_PASSWORD`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`,
+   für den ersten Administrator `INITIAL_ADMIN_EMAIL`/`INITIAL_ADMIN_PASSWORD`).
+3. Reiter **Domains**: Domain auf Service `app`, Port `3000`, HTTPS aktivieren. `ORIGIN` muss exakt diese URL sein.
+4. **Deploy**. Beim ersten Start laufen Migrationen, Modul-Sync und das Anlegen des Administrators automatisch;
+   Storage (`S3_*`) und E-Mail (`SMTP_*`) werden in die Einstellungen übernommen, **solange sie dort noch nicht
+   gesetzt sind** (spätere Änderungen in der Oberfläche bleiben erhalten).
+5. Anmelden, Passwort ändern, in „Module“ die Fachmodule aktivieren, `INITIAL_ADMIN_*` aus der Environment entfernen.
+
+Hinweise:
+- Der Server greift intern per `http://storage:9000` auf den Objektspeicher zu. Belege und Dokumente laufen über die
+  App; Browser benötigen keinen Zugriff auf den Speicher. Sollen Browser direkt per signierter URL hochladen
+  (`/storage/upload-url`), `storage` über eine eigene Domain veröffentlichen und `S3_ENDPOINT` darauf setzen.
+- Das MinIO-Image `bitnamilegacy/minio` ist eingefroren (keine Sicherheitsupdates). Für den dauerhaften Betrieb
+  einen externen S3-Dienst verwenden: Service `storage` entfernen, `S3_ENDPOINT`/`S3_REGION`/`S3_BUCKET`/Keys setzen.
+- Backups: Volumes `db-data` und `s3-data` sichern (Dokploy-Backups oder `pg_dump`), `APP_SECRET` getrennt aufbewahren.
+- Uploads/Importe sind auf 110 MB begrenzt (`BODY_SIZE_LIMIT` im `Dockerfile`; ein Proxy-Limit muss mindestens so hoch sein).
+- Geprüft: Stack lokal gebaut und gestartet (alle Dienste healthy), Anmeldung, PDF-Erzeugung mit Chromium im
+  `read_only`-Container, Beleg-Upload und -Download über MinIO.
+
 ## Umgebungsvariablen
 
 | Variable | Beschreibung |
@@ -37,6 +64,8 @@ docker compose --profile proxy up -d
 | `ORIGIN` | Pflicht, öffentliche URL |
 | `APP_PORT` | Host-Port (Bind 127.0.0.1) |
 | `INITIAL_ADMIN_EMAIL/PASSWORD` | Bootstrap; Passwort ≥ 12 Zeichen |
+| `S3_ENDPOINT/REGION/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY/FORCE_PATH_STYLE` | optional: Vorbelegung der Storage-Einstellungen beim ersten Start |
+| `SMTP_HOST/PORT/SECURE/USER/PASSWORD/FROM` | optional: Vorbelegung der E-Mail-Einstellungen beim ersten Start |
 | `ADDRESS_HEADER`, `XFF_DEPTH`, `PROTOCOL_HEADER`, `HOST_HEADER` | in `docker-compose.yml` gesetzt (adapter-node) |
 
 ### Proxy-Header

@@ -1,0 +1,103 @@
+# Dokploy / Produktivbetrieb: App + PostgreSQL + S3-Speicher (MinIO) in einem Compose-Stack.
+#
+# Dokploy: Projekt -> "Compose" -> Provider "Git" (Repository + Branch), Compose-Pfad
+#   ./docker-compose.dokploy.yml, Compose-Typ "Docker Compose". Variablen im Reiter "Environment"
+#   setzen (Vorlage: .env.dokploy.example). Unter "Domains" die Domain auf Service `app`, Port 3000,
+#   HTTPS (Let's Encrypt) legen. Die App-Daten liegen in den Volumes `db-data` und `s3-data`.
+#
+# Reihenfolge: db -> storage -> app. Migrationen und Modul-Sync laufen beim Start der App automatisch;
+# Storage/SMTP werden beim ersten Start aus S3_*/SMTP_* vorbelegt (spaeter in der Oberflaeche aenderbar).
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ep_intern}
+      POSTGRES_USER: ${POSTGRES_USER:-ep_intern}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+    security_opt: ['no-new-privileges:true']
+
+  # S3-kompatibler Objektspeicher fuer Belege/Dokumente. Nur im internen Netz erreichbar.
+  # Hinweis: `minio/minio` wird nicht mehr auf Docker Hub veroeffentlicht; dieses eingefrorene
+  # Image (Stand 2025-05) erhaelt keine Sicherheitsupdates. Alternativ extern (R2, Hetzner, S3):
+  # Service `storage` entfernen und S3_ENDPOINT/S3_REGION/S3_BUCKET/Keys setzen.
+  storage:
+    image: bitnamilegacy/minio:2025.5.24-debian-12-r5
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?S3_ACCESS_KEY_ID muss gesetzt sein}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?S3_SECRET_ACCESS_KEY muss gesetzt sein}
+      MINIO_DEFAULT_BUCKETS: ${S3_BUCKET:-ep-intern}
+      MINIO_API_PORT_NUMBER: '9000'
+      MINIO_CONSOLE_PORT_NUMBER: '9001'
+    volumes:
+      - s3-data:/bitnami/minio/data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:9000/minio/health/live || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-ep_intern}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-ep_intern}
+      APP_SECRET: ${APP_SECRET:?APP_SECRET muss gesetzt sein}
+      ORIGIN: ${ORIGIN:?ORIGIN muss gesetzt sein (https://deine-domain)}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+      # Traefik (Dokploy) setzt die Forwarded-Header
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: '1'
+      PROTOCOL_HEADER: X-Forwarded-Proto
+      HOST_HEADER: X-Forwarded-Host
+      # Storage (wird beim ersten Start in die Einstellungen uebernommen)
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://storage:9000}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-ep-intern}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      # E-Mail (optional; fuer Bestaetigungs-Mails und Passwort-Reset)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    expose: ['3000']
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    networks:
+      - internal
+      - dokploy-network
+
+volumes:
+  db-data:
+  s3-data:
+
+networks:
+  internal:
+  # von Dokploy bereitgestelltes Netz (Traefik); Domain wird in Dokploy auf `app:3000` gelegt
+  dokploy-network:
+    external: true

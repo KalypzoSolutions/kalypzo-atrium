@@ -26,7 +26,7 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
-    BODY_SIZE_LIMIT=55M
+    BODY_SIZE_LIMIT=110M
 WORKDIR /app
 COPY --from=prod-deps /app/node_modules ./node_modules
 # Chromium fuer den PDF-Service (inkl. Systembibliotheken)

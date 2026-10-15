@@ -5,6 +5,7 @@ import { getDb } from './database/client';
 import { env } from './env';
 import { loadBuiltInModules } from './modules/load';
 import { syncModules } from './modules/service';
+import { seedSettingsFromEnv } from './settings/env-seed';
 
 let started: Promise<void> | undefined;
 let apiRegistered = false;
@@ -24,6 +25,9 @@ export function initCore(opts: { migrate?: boolean } = {}): Promise<void> {
 			const created = await bootstrapAdmin(e.INITIAL_ADMIN_EMAIL, e.INITIAL_ADMIN_PASSWORD);
 			if (created) console.info('[core] Initialer Administrator wurde angelegt.');
 		}
+		const seeded = await seedSettingsFromEnv();
+		if (seeded.length)
+			console.info(`[core] Einstellungen aus Umgebung vorbelegt: ${seeded.join(', ')}`);
 	})().catch((err) => {
 		started = undefined;
 		throw err;
