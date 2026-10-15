@@ -1,0 +1,55 @@
+import type { Component } from 'svelte';
+import Box from '@lucide/svelte/icons/box';
+import Calendar from '@lucide/svelte/icons/calendar';
+import ChartBar from '@lucide/svelte/icons/chart-bar';
+import FileText from '@lucide/svelte/icons/file-text';
+import Folder from '@lucide/svelte/icons/folder';
+import HardDrive from '@lucide/svelte/icons/hard-drive';
+import House from '@lucide/svelte/icons/house';
+import KeyRound from '@lucide/svelte/icons/key-round';
+import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+import Mail from '@lucide/svelte/icons/mail';
+import Puzzle from '@lucide/svelte/icons/puzzle';
+import ScrollText from '@lucide/svelte/icons/scroll-text';
+import Settings from '@lucide/svelte/icons/settings';
+import Shield from '@lucide/svelte/icons/shield';
+import Sparkles from '@lucide/svelte/icons/sparkles';
+import Terminal from '@lucide/svelte/icons/terminal';
+import User from '@lucide/svelte/icons/user';
+import Users from '@lucide/svelte/icons/users';
+import Wrench from '@lucide/svelte/icons/wrench';
+import Wallet from '@lucide/svelte/icons/wallet';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Icon = Component<any>;
+
+const ICONS: Record<string, Icon> = {
+	box: Box,
+	calendar: Calendar,
+	chart: ChartBar,
+	'chart-bar': ChartBar,
+	'file-text': FileText,
+	file: FileText,
+	folder: Folder,
+	'hard-drive': HardDrive,
+	home: House,
+	house: House,
+	'key-round': KeyRound,
+	'layout-dashboard': LayoutDashboard,
+	mail: Mail,
+	puzzle: Puzzle,
+	'scroll-text': ScrollText,
+	settings: Settings,
+	shield: Shield,
+	sparkles: Sparkles,
+	terminal: Terminal,
+	user: User,
+	users: Users,
+	wallet: Wallet,
+	wrench: Wrench
+};
+
+/** Icon-Lookup per Manifest-Name; unbekannte Namen fallen auf `Box` zurueck. */
+export function iconFor(name: string | undefined): Icon {
+	return (name && ICONS[name]) || Box;
+}

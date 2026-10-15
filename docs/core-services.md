@@ -1,0 +1,162 @@
+# Core-Services
+
+Serverseitiger Zugriff erfolgt über das `core`-Objekt:
+
+```ts
+import { core } from '$lib/sdk/server';
+```
+
+Alle Operationen erhalten einen **RequestContext** und erzwingen Berechtigungen selbst.
+
+## RequestContext
+
+```ts
+interface RequestContext {
+  actor: { type: 'user' | 'api_key' | 'system'; id: string | null; name: string };
+  userId: string | null;                 // bei API-Keys: Besitzer
+  permissions: ReadonlySet<string>;      // wirksame Rechte
+  ip: string | null;
+  requestId: string;
+}
+```
+
+- In Seiten: `locals.ctx`. In API-Handlern: Argument `ctx`.
+- `core.auth.systemContext()` erzeugt einen Systemkontext (umgeht Berechtigungsprüfungen; nur für Hintergrundaufgaben).
+- Der Kontext ist ein Schnappschuss; Rechteänderungen wirken ab der nächsten Anfrage.
+
+## Fehler
+
+`CoreError` (`code`, `status`, `message`, `details`). Codes: `bad_request` 400, `validation_failed` 422, `unauthenticated` 401, `forbidden` 403, `not_found` 404, `method_not_allowed` 405, `conflict` 409, `rate_limited` 429, `module_disabled` 404, `payload_too_large` 413, `unavailable` 503, `internal_error` 500. Erzeugung über `errors.forbidden(...)` etc.; Prüfung mit `isCoreError`. Der API-Router bildet sie auf das [einheitliche Fehlerformat](api.md#fehlerformat) ab.
+
+## core.auth
+
+| Funktion | Beschreibung |
+|---|---|
+| `instance()` | Better-Auth-Instanz (`api.signInEmail`, `listSessions`, …) |
+| `resolveSession(headers, meta?)` | `{ ctx, user, sessionId } \| null`; deaktivierte Benutzer → `null` |
+| `resolveApiKey(rawKey, meta?)` | `{ ctx, keyId } \| null`; prüft Hash, Widerruf, Ablauf |
+| `contextForUser(userId, meta?)` | Kontext für einen aktiven Benutzer |
+| `systemContext(name?)`, `anonymousContext(ip?)` | Spezialkontexte |
+
+## core.permissions
+
+```ts
+await core.permissions.require(ctx, 'core.users.create'); // wirft unauthenticated/forbidden
+core.permissions.has(ctx, 'core.users.view');             // boolean, synchron
+await core.permissions.requireAny(ctx, ['a.b.c', 'd.e.f']);
+core.permissions.assertCanGrant(ctx, ['core.users.view']); // Schutz vor Rechteausweitung
+await core.permissions.forUser(userId);                    // Set<string>
+await core.permissions.list();                             // registrierte Berechtigungen
+```
+
+## core.modules
+
+`list()`, `isEnabled(id)`, `assertEnabled(id)`, `enable(ctx, id)`, `disable(ctx, id)`, `navigationFor(ctx)`, `registered()`. `enable` prüft Abhängigkeiten, führt Modulmigrationen aus und schreibt ein Audit-Event; `disable` scheitert, solange aktive Module abhängen.
+
+## core.settings
+
+```ts
+const name = await core.settings.get<string>('core.system.name');
+await core.settings.set(ctx, 'core.design.accentColor', '#2563eb'); // validiert (Zod), auditiert
+const view = await core.settings.listPublic({ group: 'smtp' });      // Secrets: value=null, isSet=true|false
+```
+
+- Globale Einstellungen erfordern `core.settings.manage`; benutzerspezifische (`scope: 'user'`) nur für den eigenen Benutzer.
+- Secrets (`secret: true`) werden mit AES-256-GCM verschlüsselt gespeichert; leerer Wert beim Setzen behält den alten, `null` löscht.
+- Module registrieren Einstellungen im Manifest-Umfeld (`ModuleDefinition.settings`); Schlüssel müssen mit `<id>.` beginnen.
+
+## core.api
+
+`defineEndpoint(...)` (typisierte Endpunktdefinition), `keys.create/list/revoke`. Siehe [API](api.md).
+
+## core.database
+
+```ts
+const mdb = core.database.forModule('members');
+await mdb.transaction(async (tx) => {
+  // search_path = "mod_members"; tx ist eine Drizzle-Transaktion
+});
+core.database.db();            // Core-intern: gesamte Datenbank
+core.database.transaction(fn); // Core-intern
+```
+
+Module verwenden ausschließlich `forModule(<eigene id>)`.
+
+## core.pdf
+
+```ts
+const pdf = await core.pdf.generate(ctx, {
+  title: 'Mitgliederliste',
+  content: [
+    { type: 'heading', text: 'Übersicht', level: 1 },
+    { type: 'table', columns: ['Name', 'Ort'], rows: [['A', 'B']] }
+  ],
+  format: 'A4', orientation: 'portrait',
+  module: 'members', store: { path: 'documents/liste.pdf' } // optional
+});
+// pdf.buffer, pdf.fileName, pdf.stored?
+```
+
+- Blocktypen: `heading`, `paragraph`, `list`, `table`, `pageBreak`. Alles wird HTML-escaped; es gibt keinen Roh-HTML-Block.
+- Templates: `default`, `compact`; eigene über `registerTemplate`. Header (Logo/Organisation/Kopfzeile) und Footer (Datum, Fußzeile, „Seite X von Y“) sind unabhängig vom Inhalt.
+- Defaults (Format, Ausrichtung, Ränder, Texte, Logo) aus `core.pdf.*`.
+- Chromium läuft ohne JavaScript, externe Requests werden blockiert.
+- `generate` verlangt nur eine Identität; die Berechtigung `core.pdf.generate` wird im API-Endpunkt geprüft.
+
+### Briefvorlagen
+
+Vorlagen mit festem Seitenlayout (Briefkopf, Falzmarken, Adressfeld, Fußzeile) liegen **im Code**, nicht in der DB:
+
+- `src/lib/server/core/pdf/templates/` – eine Datei je Vorlage, `export default` ein `PdfTemplate`; wird automatisch registriert.
+- `src/lib/server/core/pdf/parts/` – wiederverwendbare Bausteine (`briefkopf`, `falzmarken`, `adressfeld`, `fusszeile`).
+- `src/lib/server/core/pdf/assets/` – Schriften (Carlito, OFL, metrisch kompatibel zu Calibri) und Bilder; alles wird eingebettet, keine externen Requests.
+- Neue `PdfTemplate`-Felder: `description`, `source` (Anzeige), `page` (Format/Ränder, schaltet Chromium-Kopf/-Fuß ab), `overlay` (absolut positionierte Seitenelemente), `parts` (Bestandteile mit Position/Größe in mm).
+- `core.pdf.generate` nimmt zusätzlich `recipient: string[]` (Adresszeilen für das Adressfeld; werden escaped).
+- Mitgelieferte Vorlagen: `stamm-briefkopf` (Briefkopf für Abrechnungen) und `stamm-brief` (mit Adressfeld und Falzmarken).
+- Admin-Ansicht „PDF-Vorlagen“: Vorlagen mit Seitenvorschau (`GET /pdf/preview?template=<id>[&only=<teil>]`, Recht `core.pdf.manage`) – nur Ansicht.
+- Die Overlay-Elemente nutzen `position: fixed`; Chromium wiederholt sie im Druck auf jeder Seite.
+
+**Neue Vorlage hinzufügen**
+
+1. Referenz (Bild/Maße) nach `docs/reference/` legen.
+2. Bausteine aus `parts/` verwenden oder neu anlegen (Maße in mm).
+3. Datei `templates/<id>.ts` mit `export default` eines `PdfTemplate` (`id`, `label`, `description`, `source`, `page`, `overlay`, `parts`).
+4. Vorschau in der Admin-Ansicht prüfen und gegen das Referenzbild abgleichen (Screenshot, `pdftotext -bbox`).
+5. Test ergänzen und `npm run check`, `npx eslint .`, `npx vitest run` ausführen.
+
+## core.ai
+
+```ts
+const r = await core.ai.generate(ctx, { module: 'members', prompt: '…', model: 'configured-default' });
+// r.text, r.usage = { model, inputTokens, outputTokens, estimatedCostUsd }
+const obj = await core.ai.generateJson(ctx, { module, prompt, schema: zodSchema });
+for await (const chunk of core.ai.stream(ctx, { module, prompt })) { /* Text-Deltas */ }
+await core.ai.usage(ctx, { from, to }); // Verbrauch je Modul/Modell (core.ai.view)
+```
+
+- Berechtigung: `<module>.ai.use` oder `core.ai.manage`; zusätzlich Modul-/Modell-Allowlist, globales Rate Limit, monatliche Token-/Kostenlimits je Modul.
+- Es werden nur Zähler gespeichert (`ai_usage`), keine Prompts oder Antworten.
+- `files: [{ module, path }]` liest Dateien über den Storage-Service mit demselben Kontext; unterstützt Bilder, Text/CSV/JSON und PDFs.
+
+## core.storage
+
+| Funktion | Beschreibung |
+|---|---|
+| `upload(ctx, { module, path, file, contentType?, name? })` | Ablegen/Ersetzen; Multipart ab 8 MB |
+| `download(ctx, { module, path })` | `{ buffer, file }` |
+| `remove`, `stat`, `list(ctx, { module, prefix? })` | `list` liefert `{ files, folders }` (virtuelle Ordner) |
+| `signedUploadUrl` / `confirmUpload` | Direkter Upload zum Bucket, danach Bestätigung |
+| `signedDownloadUrl` | Zeitlich begrenzte URL |
+| `usage(ctx)` | Speicherverbrauch je Modul (`core.storage.manage`) |
+
+Zugriff: `<module>.storage.read|write|delete` oder `core.storage.manage`; für Modul `core` entsprechend `core.storage.*`. Grenzen: `core.storage.maxFileSizeMb`, Content-Type-Allowlist (HTML/SVG nur bei expliziter Freigabe). Metadaten liegen in `file`, Objekte unter einem nicht ableitbaren Schlüssel im Bucket.
+
+## core.audit
+
+```ts
+await core.audit.log({ action: 'members.user.created', actor: ctx.actor, metadata: { targetId } });
+await core.audit.logFromContext(ctx, 'members.user.created', { target: id, metadata: {} });
+await core.audit.list({ action: 'core.', search: 'x', limit: 50, offset: 0 });
+```
+
+Metadaten werden bereinigt: Schlüssel, die auf `password`, `secret`, `token`, `apiKey`, `authorization`, `cookie`, `credential`, `hash` passen, werden durch `[redacted]` ersetzt; Strings werden gekürzt, Tiefe begrenzt.

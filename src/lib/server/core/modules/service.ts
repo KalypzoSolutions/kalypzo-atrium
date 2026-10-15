@@ -1,0 +1,176 @@
+import { and, eq, sql } from 'drizzle-orm';
+import type { ModuleManifest, RequestContext } from '$lib/sdk/types';
+import { auditFromContext } from '../audit/service';
+import { getDb, schema, type DbOrTx } from '../database/client';
+import { sha256 } from '../crypto';
+import { errors } from '../errors';
+import { CORE_PERMISSIONS } from '../permissions/catalog';
+import { syncPermissions } from '../permissions/service';
+import {
+	allDefinitions,
+	assertDependenciesResolvable,
+	getDefinition,
+	requireDefinition
+} from './registry';
+import { enabledModuleIds, invalidateModuleStateCache } from './state';
+import { splitSqlStatements } from './split-sql';
+import { moduleSchemaName } from './types';
+
+export interface ModuleInfo {
+	manifest: ModuleManifest;
+	enabled: boolean;
+	installedVersion: string | null;
+	/** Aktive Module, die von diesem abhaengen */
+	dependents: string[];
+	missingDependencies: string[];
+}
+
+/** Gleicht Registry (Build-Zeit) mit Datenbank (Laufzeit) ab. Beim Start aufzurufen. */
+export async function syncModules(): Promise<void> {
+	assertDependenciesResolvable();
+	const db = getDb();
+	const defs = allDefinitions();
+	for (const d of defs) {
+		await db
+			.insert(schema.moduleState)
+			.values({ id: d.manifest.id, enabled: false, installedVersion: d.manifest.version })
+			.onConflictDoUpdate({
+				target: schema.moduleState.id,
+				set: { installedVersion: d.manifest.version, updatedAt: new Date() }
+			});
+	}
+	await syncPermissions([
+		...Object.entries(CORE_PERMISSIONS).map(([key, description]) => ({
+			key,
+			moduleId: 'core',
+			description
+		})),
+		...defs.flatMap((d) => d.manifest.permissions.map((key) => ({ key, moduleId: d.manifest.id })))
+	]);
+	invalidateModuleStateCache();
+	// Bereits aktive Module: ausstehende Migrationen anwenden (Update-Szenario)
+	const enabled = await enabledModuleIds(db);
+	for (const d of defs) if (enabled.has(d.manifest.id)) await runModuleMigrations(d.manifest.id);
+}
+
+export async function listModules(): Promise<ModuleInfo[]> {
+	const db = getDb();
+	const rows = await db.select().from(schema.moduleState);
+	const state = new Map(rows.map((r) => [r.id, r]));
+	const defs = allDefinitions();
+	return defs.map((d) => {
+		const id = d.manifest.id;
+		return {
+			manifest: d.manifest,
+			enabled: state.get(id)?.enabled ?? false,
+			installedVersion: state.get(id)?.installedVersion ?? null,
+			dependents: defs
+				.filter((o) => o.manifest.dependencies.includes(id) && state.get(o.manifest.id)?.enabled)
+				.map((o) => o.manifest.id),
+			missingDependencies: d.manifest.dependencies.filter((dep) => !getDefinition(dep))
+		};
+	});
+}
+
+export async function isModuleEnabled(id: string): Promise<boolean> {
+	if (id === 'core') return true;
+	return (await enabledModuleIds()).has(id) && !!getDefinition(id);
+}
+
+/** Wirft `module_disabled`; verhindert Zugriff ueber UI und API. */
+export async function assertModuleEnabled(id: string): Promise<void> {
+	if (!(await isModuleEnabled(id))) throw errors.moduleDisabled(id);
+}
+
+export async function runModuleMigrations(moduleId: string, tx?: DbOrTx): Promise<string[]> {
+	const def = requireDefinition(moduleId);
+	const migrations = def.migrations ?? [];
+	const schemaName = moduleSchemaName(moduleId);
+	const run = async (t: DbOrTx): Promise<string[]> => {
+		await t.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`));
+		const applied = await t
+			.select()
+			.from(schema.moduleMigration)
+			.where(eq(schema.moduleMigration.moduleId, moduleId));
+		const byName = new Map(applied.map((a) => [a.name, a]));
+		const newlyApplied: string[] = [];
+		for (const m of migrations) {
+			const checksum = sha256(m.sql);
+			const prev = byName.get(m.name);
+			if (prev) {
+				if (prev.checksum !== checksum) {
+					throw new Error(`Migration ${moduleId}/${m.name} wurde nach Anwendung veraendert`);
+				}
+				continue;
+			}
+			await t.execute(sql.raw(`SET LOCAL search_path TO "${schemaName}", public`));
+			// Einzeln ausfuehren: manche Treiber (PGlite) erlauben pro Aufruf nur ein Statement
+			for (const statement of splitSqlStatements(m.sql)) await t.execute(sql.raw(statement));
+			await t.insert(schema.moduleMigration).values({ moduleId, name: m.name, checksum });
+			newlyApplied.push(m.name);
+		}
+		return newlyApplied;
+	};
+	if (tx) return run(tx);
+	return getDb().transaction((t) => run(t));
+}
+
+export async function enableModule(ctx: RequestContext, id: string): Promise<void> {
+	const def = requireDefinition(id);
+	const db = getDb();
+	await db.transaction(async (tx) => {
+		const enabled = await enabledModuleIds(tx);
+		const missing = def.manifest.dependencies.filter((d) => !enabled.has(d));
+		if (missing.length) {
+			throw errors.conflict(`Abhaengigkeiten nicht aktiv: ${missing.join(', ')}`);
+		}
+		await runModuleMigrations(id, tx);
+		await tx
+			.update(schema.moduleState)
+			.set({ enabled: true, installedVersion: def.manifest.version, updatedAt: new Date() })
+			.where(eq(schema.moduleState.id, id));
+		await auditFromContext(ctx, 'core.module.enabled', { target: id }, tx);
+	});
+	invalidateModuleStateCache();
+	await def.onEnable?.(ctx);
+}
+
+export async function disableModule(ctx: RequestContext, id: string): Promise<void> {
+	const def = requireDefinition(id);
+	const db = getDb();
+	await db.transaction(async (tx) => {
+		const enabled = await enabledModuleIds(tx);
+		const dependents = allDefinitions()
+			.filter((d) => d.manifest.dependencies.includes(id) && enabled.has(d.manifest.id))
+			.map((d) => d.manifest.id);
+		if (dependents.length) {
+			throw errors.conflict(`Wird von aktiven Modulen benoetigt: ${dependents.join(', ')}`);
+		}
+		await tx
+			.update(schema.moduleState)
+			.set({ enabled: false, updatedAt: new Date() })
+			.where(and(eq(schema.moduleState.id, id)));
+		await auditFromContext(ctx, 'core.module.disabled', { target: id }, tx);
+	});
+	invalidateModuleStateCache();
+	await def.onDisable?.(ctx);
+}
+
+/** Navigation fuer aktive Module, gefiltert nach Berechtigungen des Kontexts. */
+export async function navigationFor(ctx: RequestContext) {
+	const enabled = await enabledModuleIds();
+	return allDefinitions()
+		.filter((d) => enabled.has(d.manifest.id))
+		.flatMap((d) =>
+			d.manifest.navigation
+				.filter((n) => !n.permission || ctx.permissions.has(n.permission))
+				// Ohne explizite Berechtigung: mindestens eine Modulberechtigung noetig
+				.filter(
+					(n) =>
+						n.permission ||
+						d.manifest.permissions.length === 0 ||
+						d.manifest.permissions.some((p) => ctx.permissions.has(p))
+				)
+				.map((n) => ({ ...n, moduleId: d.manifest.id }))
+		);
+}

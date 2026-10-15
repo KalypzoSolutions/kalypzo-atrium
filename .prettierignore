@@ -1,0 +1,7 @@
+build
+.svelte-kit
+node_modules
+drizzle
+package-lock.json
+docs/openapi.json
+*.md

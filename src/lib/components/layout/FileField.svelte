@@ -1,0 +1,142 @@
+<script lang="ts">
+	import FileUp from '@lucide/svelte/icons/file-up';
+	import X from '@lucide/svelte/icons/x';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+
+	/**
+	 * Einheitliches Datei-Feld: zeigt eine vorhandene Datei (Link + Entfernen), erlaubt Auswahl
+	 * einer neuen Datei mit Typ- und Groessenpruefung und meldet Fehler konsistent.
+	 */
+	let {
+		id,
+		name,
+		required = false,
+		file = $bindable(null),
+		accept,
+		maxBytes,
+		existingName = null,
+		existingHref = null,
+		canUpload = true,
+		canRemove = false,
+		onremove,
+		disabled = false,
+		error = null
+	}: {
+		id: string;
+		/** Feldname fuer native Formular-Submits (SvelteKit-Actions) */
+		name?: string;
+		required?: boolean;
+		file?: File | null;
+		/** Wie das HTML-Attribut, z. B. `application/pdf,image/*` */
+		accept?: string;
+		maxBytes?: number;
+		existingName?: string | null;
+		existingHref?: string | null;
+		canUpload?: boolean;
+		canRemove?: boolean;
+		onremove?: () => void;
+		disabled?: boolean;
+		error?: string | null;
+	} = $props();
+
+	let localError = $state('');
+	let input = $state<HTMLInputElement | null>(null);
+	const shownError = $derived(error ?? (localError || null));
+
+	const fmtSize = (n: number) =>
+		n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(n / 1024)} KB`;
+
+	function accepted(f: File): boolean {
+		if (!accept) return true;
+		return accept
+			.split(',')
+			.map((a) => a.trim().toLowerCase())
+			.some((a) =>
+				a.endsWith('/*')
+					? f.type.toLowerCase().startsWith(a.slice(0, -1))
+					: a.startsWith('.')
+						? f.name.toLowerCase().endsWith(a)
+						: f.type.toLowerCase() === a
+			);
+	}
+
+	function onpick(e: Event) {
+		const f = (e.currentTarget as HTMLInputElement).files?.[0] ?? null;
+		localError = '';
+		if (!f) {
+			file = null;
+			return;
+		}
+		if (!accepted(f)) {
+			localError = 'Dateityp nicht erlaubt';
+			file = null;
+		} else if (maxBytes && f.size > maxBytes) {
+			localError = `Datei ist zu groß (maximal ${fmtSize(maxBytes)})`;
+			file = null;
+		} else {
+			file = f;
+		}
+		if (!file && input) input.value = '';
+	}
+
+	function clear() {
+		file = null;
+		localError = '';
+		if (input) input.value = '';
+	}
+</script>
+
+<div class="grid gap-2">
+	{#if existingName}
+		<div class="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+			<span class="flex min-w-0 items-center gap-2 text-sm">
+				<FileUp class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+				{#if existingHref}
+					<a href={existingHref} target="_blank" rel="noopener" class="truncate underline">
+						{existingName}
+					</a>
+				{:else}
+					<span class="truncate">{existingName}</span>
+				{/if}
+			</span>
+			{#if canRemove && onremove}
+				<Button type="button" variant="ghost" size="sm" {disabled} onclick={onremove}>
+					Entfernen
+				</Button>
+			{/if}
+		</div>
+	{/if}
+
+	{#if canUpload}
+		<Input
+			bind:ref={input}
+			{id}
+			{name}
+			{required}
+			type="file"
+			{accept}
+			{disabled}
+			aria-invalid={shownError ? true : undefined}
+			aria-describedby={shownError ? `${id}-error` : undefined}
+			onchange={onpick}
+		/>
+		{#if file}
+			<p class="flex items-center gap-2 text-xs text-muted-foreground">
+				<span class="truncate">{file.name} ({fmtSize(file.size)})</span>
+				<button
+					type="button"
+					class="inline-flex items-center rounded p-0.5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+					aria-label="Auswahl entfernen"
+					onclick={clear}
+				>
+					<X class="size-3.5" />
+				</button>
+			</p>
+		{/if}
+	{/if}
+
+	{#if shownError}
+		<p id="{id}-error" role="alert" class="text-xs text-destructive">{shownError}</p>
+	{/if}
+</div>

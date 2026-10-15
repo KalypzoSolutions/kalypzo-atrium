@@ -1,0 +1,540 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
+import { useTestDatabase } from '../helpers/db';
+import { installFakeStorage, uninstallFakeStorage, fakeObjects } from '../helpers/fake-storage';
+import { contextForUser } from '$lib/server/core/auth/context';
+import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
+import { createRole } from '$lib/server/core/permissions/roles';
+import { registerModule } from '$lib/server/core/modules/registry';
+import { enableModule, syncModules } from '$lib/server/core/modules/service';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { handleApiRequest } from '$lib/server/core/api/router';
+import { createApiKey } from '$lib/server/core/api/keys';
+import { listAudit } from '$lib/server/core/audit/service';
+import { getDb, schema } from '$lib/server/core/database/client';
+import { core } from '$lib/sdk/server';
+import actionsModule from '$lib/modules/actions/module';
+import type { RequestContext } from '$lib/sdk/types';
+import type {
+	AccountingEntry,
+	AccountingState,
+	CalculationDto,
+	EntryFormInput
+} from '$lib/modules/actions/schemas';
+
+const BASE = '/modules/actions';
+
+let admin: RequestContext;
+const keys: Record<string, string> = {};
+const userIds: Record<string, string> = {};
+
+function api(path: string, init: RequestInit & { token?: string; json?: unknown } = {}) {
+	const { token, json, ...rest } = init;
+	const headers = new Headers(rest.headers);
+	if (token) headers.set('authorization', `Bearer ${token}`);
+	if (json !== undefined) {
+		rest.body = JSON.stringify(json);
+		headers.set('content-type', 'application/json');
+	}
+	const url = new URL(`http://localhost:5173/api/v1${path}`);
+	return handleApiRequest({
+		request: new Request(url, { ...rest, headers }),
+		url,
+		ip: '127.0.0.1'
+	});
+}
+
+const as = (who: string, path: string, init: Parameters<typeof api>[1] = {}) =>
+	api(`${BASE}${path}`, { token: keys[who], ...init });
+
+async function data<T>(res: Response, status = 200): Promise<T> {
+	const body = await res.json();
+	expect(res.status, JSON.stringify(body)).toBe(status);
+	return body.data as T;
+}
+
+const STORAGE = ['actions.storage.read', 'actions.storage.write', 'actions.storage.delete'];
+const BASE_PERMS = ['core.api.manage', 'actions.action.view'];
+const ROLES: Record<string, string[]> = {
+	creator: [...BASE_PERMS, 'actions.action.create', ...STORAGE],
+	finance: [...BASE_PERMS, 'actions.action.create', 'actions.payout.view', ...STORAGE],
+	viewer: [...BASE_PERMS, ...STORAGE]
+};
+const USERS: [string, string][] = [
+	['owner', 'creator'],
+	['finance', 'finance'],
+	['reader', 'viewer'],
+	['editor', 'viewer'],
+	['stranger', 'viewer']
+];
+
+async function ctxOf(userId: string) {
+	const r = await contextForUser(userId);
+	if (!r) throw new Error('Kontext nicht aufloesbar');
+	return r.ctx;
+}
+
+async function createAction(who = 'owner'): Promise<string> {
+	const a = await data<{ id: string }>(
+		await as(who, '/actions', {
+			method: 'POST',
+			json: {
+				name: 'Fahrt',
+				description: null,
+				location: null,
+				startsOn: '2026-07-10',
+				startsTime: null,
+				endsOn: '2026-07-17',
+				endsTime: null
+			}
+		}),
+		201
+	);
+	return a.id;
+}
+
+async function share(id: string, who: string, level: 'read' | 'edit', owner = 'owner') {
+	await data(
+		await as(owner, `/actions/${id}/shares/${userIds[who]}`, { method: 'PUT', json: { level } })
+	);
+}
+
+const mdb = () => core.database.forModule('actions');
+
+async function addPayee(actionId: string, name = 'Max Muster'): Promise<string> {
+	const id = crypto.randomUUID();
+	await mdb().transaction(async (tx) => {
+		await tx.execute(
+			sql`INSERT INTO accounting_payees (id, action_id, name, iban_enc, iban_last4, bic)
+				VALUES (${id}, ${actionId}, ${name}, 'enc', '345678', 'GENODEF1TST')`
+		);
+	});
+	return id;
+}
+
+async function closeSql(actionId: string, closed: boolean) {
+	await mdb().transaction(async (tx) => {
+		if (closed) {
+			await tx.execute(
+				sql`INSERT INTO action_accounting (action_id, closed_at, closed_by)
+					VALUES (${actionId}, now(), ${userIds.owner})
+					ON CONFLICT (action_id) DO UPDATE SET closed_at = now(), closed_by = ${userIds.owner}`
+			);
+		} else {
+			await tx.execute(sql`DELETE FROM action_accounting WHERE action_id = ${actionId}`);
+		}
+	});
+}
+
+const expense = (over: Partial<EntryFormInput> = {}): EntryFormInput => ({
+	type: 'expense',
+	category: 'food',
+	description: 'Einkauf',
+	amountCents: 5000,
+	entryDate: '2026-07-12',
+	paidBy: 'club',
+	payeeId: null,
+	...over
+});
+const income = (over: Partial<EntryFormInput> = {}): EntryFormInput => ({
+	type: 'income',
+	category: 'contributions',
+	description: 'Beitraege',
+	amountCents: 20000,
+	entryDate: '2026-07-01',
+	paidBy: 'club',
+	payeeId: null,
+	...over
+});
+
+const entriesPath = (id: string) => `/actions/${id}/accounting/entries`;
+const addEntry = async (id: string, body: EntryFormInput, who = 'owner') =>
+	data<AccountingEntry>(await as(who, entriesPath(id), { method: 'POST', json: body }), 201);
+const state = async (id: string, who = 'owner') =>
+	data<AccountingState>(await as(who, `/actions/${id}/accounting`));
+
+function uploadForm(content: BlobPart, name: string, type: string): FormData {
+	const fd = new FormData();
+	fd.set('file', new File([content], name, { type }));
+	return fd;
+}
+const uploadReceipt = (id: string, entryId: string, form: FormData, who = 'owner') =>
+	as(who, `${entriesPath(id)}/${entryId}/receipt`, { method: 'POST', body: form });
+
+beforeAll(async () => {
+	await useTestDatabase();
+	registerCoreApi();
+	registerModule(actionsModule);
+	await syncModules();
+	await bootstrapAdmin('admin@example.test', 'correct-horse-battery');
+	const [u] = await getDb()
+		.select()
+		.from(schema.user)
+		.where(eq(schema.user.email, 'admin@example.test'));
+	admin = await ctxOf(u!.id);
+	await enableModule(admin, 'actions');
+	admin = await ctxOf(u!.id);
+
+	const roleIds: Record<string, string> = {};
+	for (const [name, perms] of Object.entries(ROLES)) {
+		roleIds[name] = await createRole(admin, { name: `role-${name}`, permissions: perms });
+	}
+	for (const [name, role] of USERS) {
+		userIds[name] = await createUser(admin, {
+			name: `${name[0]!.toUpperCase()}${name.slice(1)} Test`,
+			email: `${name}@example.test`,
+			password: 'a-long-enough-pw',
+			roleIds: [roleIds[role]!]
+		});
+		const ctx = await ctxOf(userIds[name]!);
+		keys[name] = (await createApiKey(ctx, { name: `key-${name}`, scopes: [...ROLES[role]!] })).key;
+	}
+	await installFakeStorage(admin);
+});
+
+afterAll(() => uninstallFakeStorage());
+
+describe('Abrechnung: Zustand', () => {
+	it('ist ohne Buchungen leer und ohne Plan', async () => {
+		const id = await createAction();
+		const s = await state(id);
+		expect(s.closed).toBeNull();
+		expect(s.entries).toEqual([]);
+		expect(s.plan).toBeNull();
+		expect(s.summary.incomeCents).toBe(0);
+		expect(s.summary.expenseCents).toBe(0);
+		expect(s.summary.balanceCents).toBe(0);
+		expect(s.summary.missingReceipts).toBe(0);
+		expect(s.payees).toBeNull();
+		expect(s.canViewPayouts).toBe(false);
+	});
+
+	it('liefert 404 ohne Zugriff und bei unbekannter Aktion', async () => {
+		const id = await createAction();
+		expect((await as('stranger', `/actions/${id}/accounting`)).status).toBe(404);
+		expect((await as('owner', `/actions/${crypto.randomUUID()}/accounting`)).status).toBe(404);
+		expect(
+			(await as('stranger', entriesPath(id), { method: 'POST', json: expense() })).status
+		).toBe(404);
+	});
+
+	it('berechnet den Plan aus der gespeicherten Kalkulation', async () => {
+		const id = await createAction();
+		const calc = await data<CalculationDto>(
+			await as('owner', `/actions/${id}/calculation`, {
+				method: 'PUT',
+				json: {
+					participants: 12,
+					team: 2,
+					teamPercent: 0,
+					nights: 5,
+					bufferPercent: 0,
+					includeSubsidy: false,
+					lodgingType: 'external',
+					konfi: false,
+					freizeitType: 'kids',
+					bremenChildren: 0,
+					bremenYouth: 0,
+					teamWithJuleica: 0,
+					teamWithoutJuleica: 0,
+					teamYouth: 0,
+					checklist: {},
+					items: [
+						{ id: 'a', category: 'program', label: 'Programm', amountCents: 10000, basis: 'flat' },
+						{
+							id: 'b',
+							category: 'food',
+							label: 'Essen',
+							amountCents: 1000,
+							basis: 'per_person_night'
+						}
+					]
+				}
+			})
+		);
+		const s = await state(id);
+		expect(s.plan).not.toBeNull();
+		expect(s.plan!.totalExpenseCents).toBe(calc.result.totalCents);
+		expect(s.plan!.subsidyCents).toBe(0);
+		expect(s.plan!.expenseByCategory.program).toBe(calc.result.programTotalCents);
+		expect(s.plan!.contributionsCents).toBe(
+			calc.result.recommendedPerPersonCents * 12 + calc.result.recommendedTeamPerPersonCents * 2
+		);
+		// Soll/Ist
+		await addEntry(id, expense({ category: 'food', amountCents: 3000 }));
+		const s2 = await state(id);
+		const food = s2.summary.byCategory.find((c) => c.category === 'food');
+		expect(food?.actualCents).toBe(3000);
+		expect(food?.plannedCents).toBe(s2.plan!.expenseByCategory.food ?? null);
+
+		// uebernommener Beitrag ersetzt den Empfehlungswert
+		await data(await as('owner', `/actions/${id}/calculation/apply`, { method: 'POST' }), 201);
+		const s3 = await state(id);
+		expect(s3.plan!.contributionsCents).toBe(s.plan!.contributionsCents);
+	});
+});
+
+describe('Abrechnung: Buchungen', () => {
+	it('legt Einnahmen und Ausgaben an, summiert und zaehlt fehlende Belege', async () => {
+		const id = await createAction();
+		const inc = await addEntry(id, income());
+		const exp = await addEntry(id, expense({ amountCents: 4500 }));
+		expect(inc.type).toBe('income');
+		expect(exp.receipt).toBeNull();
+		expect(exp.entryDate).toBe('2026-07-12');
+		const s = await state(id);
+		expect(s.entries).toHaveLength(2);
+		expect(s.summary.incomeCents).toBe(20000);
+		expect(s.summary.expenseCents).toBe(4500);
+		expect(s.summary.balanceCents).toBe(15500);
+		expect(s.summary.missingReceipts).toBe(1);
+	});
+
+	it('aendert und loescht Buchungen', async () => {
+		const id = await createAction();
+		const e = await addEntry(id, expense());
+		const upd = await data<AccountingEntry>(
+			await as('owner', `${entriesPath(id)}/${e.id}`, {
+				method: 'PUT',
+				json: expense({ amountCents: 7777, description: 'Neu', category: 'materials' })
+			})
+		);
+		expect(upd.amountCents).toBe(7777);
+		expect(upd.category).toBe('materials');
+		const del = await data<{ id: string }>(
+			await as('owner', `${entriesPath(id)}/${e.id}`, { method: 'DELETE' })
+		);
+		expect(del.id).toBe(e.id);
+		expect((await state(id)).entries).toEqual([]);
+		expect((await as('owner', `${entriesPath(id)}/${e.id}`, { method: 'DELETE' })).status).toBe(
+			404
+		);
+	});
+
+	it('validiert die Regeln (422)', async () => {
+		const id = await createAction();
+		const other = await createAction();
+		const foreignPayee = await addPayee(other);
+		const post = async (json: unknown) =>
+			(await as('owner', entriesPath(id), { method: 'POST', json })).status;
+		expect(await post(expense({ amountCents: 0 }))).toBe(422);
+		expect(await post(expense({ category: 'contributions' }))).toBe(422);
+		expect(await post(income({ category: 'food' }))).toBe(422);
+		expect(await post(expense({ paidBy: 'person', payeeId: null }))).toBe(422);
+		expect(await post(expense({ paidBy: 'club', payeeId: crypto.randomUUID() }))).toBe(422);
+		expect(await post(income({ paidBy: 'person', payeeId: crypto.randomUUID() }))).toBe(422);
+		expect(await post(expense({ paidBy: 'person', payeeId: foreignPayee }))).toBe(422);
+		expect(await post(expense({ entryDate: '2099-01-01' }))).toBe(422);
+		expect(await post(expense({ entryDate: 'gestern' }))).toBe(422);
+	});
+
+	it('read-only Freigabe darf nicht aendern (403), lesen aber', async () => {
+		const id = await createAction();
+		await share(id, 'reader', 'read');
+		await share(id, 'editor', 'edit');
+		const e = await addEntry(id, expense());
+		expect((await as('reader', entriesPath(id), { method: 'POST', json: expense() })).status).toBe(
+			403
+		);
+		expect((await as('reader', `${entriesPath(id)}/${e.id}`, { method: 'DELETE' })).status).toBe(
+			403
+		);
+		expect((await state(id, 'reader')).entries).toHaveLength(1);
+		const byEditor = await addEntry(id, expense({ description: 'vom Editor' }), 'editor');
+		expect(byEditor.description).toBe('vom Editor');
+	});
+
+	it('schuetzt ausgezahlte Auslagen und setzt Person -> Stamm zurueck', async () => {
+		const id = await createAction();
+		const payee = await addPayee(id);
+		const e = await addEntry(id, expense({ paidBy: 'person', payeeId: payee }));
+		expect(e.payee?.name).toBe('Max Muster');
+
+		const toClub = await data<AccountingEntry>(
+			await as('owner', `${entriesPath(id)}/${e.id}`, { method: 'PUT', json: expense() })
+		);
+		expect(toClub.payee).toBeNull();
+		expect(toClub.reimbursedAt).toBeNull();
+
+		const e2 = await addEntry(id, expense({ paidBy: 'person', payeeId: payee }));
+		await mdb().transaction(async (tx) => {
+			await tx.execute(
+				sql`UPDATE accounting_entries SET reimbursed_at = now() WHERE id = ${e2.id}`
+			);
+		});
+		const put = await as('owner', `${entriesPath(id)}/${e2.id}`, {
+			method: 'PUT',
+			json: expense({ paidBy: 'person', payeeId: payee })
+		});
+		expect(put.status).toBe(409);
+		expect((await as('owner', `${entriesPath(id)}/${e2.id}`, { method: 'DELETE' })).status).toBe(
+			409
+		);
+	});
+});
+
+describe('Abrechnung: Empfaenger und Berechtigung', () => {
+	it('zeigt Empfaenger nur mit actions.payout.view, IBAN maskiert', async () => {
+		const id = await createAction('finance');
+		const payee = await addPayee(id);
+		await addEntry(id, expense({ paidBy: 'person', payeeId: payee, amountCents: 1234 }), 'finance');
+		await share(id, 'editor', 'edit', 'finance');
+
+		const withRight = await state(id, 'finance');
+		expect(withRight.canViewPayouts).toBe(true);
+		expect(withRight.payees).toHaveLength(1);
+		const p = withRight.payees![0]!;
+		expect(p.name).toBe('Max Muster');
+		expect(p.bic).toBe('GENODEF1TST');
+		expect(p.openCents).toBe(1234);
+		expect(p.openEntries).toBe(1);
+		expect(p.ibanMasked).toContain('••••');
+		expect(p.ibanMasked!.endsWith('3456 78')).toBe(true);
+		expect(withRight.summary.openReimbursementCents).toBe(1234);
+
+		const without = await state(id, 'editor');
+		expect(without.canViewPayouts).toBe(false);
+		expect(without.payees).toBeNull();
+		expect(JSON.stringify(without)).not.toContain('GENODEF1TST');
+	});
+});
+
+describe('Abrechnung: Belege', () => {
+	it('laedt hoch, ersetzt, laedt herunter und entfernt', async () => {
+		const id = await createAction();
+		const e = await addEntry(id, expense());
+		const before = fakeObjects.size;
+
+		const up = await data<{ name: string; contentType: string }>(
+			await uploadReceipt(id, e.id, uploadForm('%PDF-1', 'Rechnung Müller.pdf', 'application/pdf')),
+			201
+		);
+		expect(up).toEqual({ name: 'Rechnung Müller.pdf', contentType: 'application/pdf' });
+		expect(fakeObjects.size).toBe(before + 1);
+		expect((await state(id)).summary.missingReceipts).toBe(0);
+		expect((await state(id)).entries[0]!.receipt?.name).toBe('Rechnung Müller.pdf');
+
+		// ersetzen: altes Objekt wird entfernt
+		await data(await uploadReceipt(id, e.id, uploadForm('PNGDATA', 'foto.png', 'image/png')), 201);
+		expect(fakeObjects.size).toBe(before + 1);
+
+		const dl = await as('owner', `${entriesPath(id)}/${e.id}/receipt`);
+		expect(dl.status).toBe(200);
+		expect(dl.headers.get('content-type')).toBe('image/png');
+		expect(dl.headers.get('cache-control')).toBe('private, no-store');
+		expect(dl.headers.get('content-disposition')).toContain("filename*=UTF-8''foto.png");
+		expect(await dl.text()).toBe('PNGDATA');
+
+		const del = await data<{ id: string }>(
+			await as('owner', `${entriesPath(id)}/${e.id}/receipt`, { method: 'DELETE' })
+		);
+		expect(del.id).toBe(e.id);
+		expect(fakeObjects.size).toBe(before);
+		expect((await as('owner', `${entriesPath(id)}/${e.id}/receipt`)).status).toBe(404);
+		expect(
+			(await as('owner', `${entriesPath(id)}/${e.id}/receipt`, { method: 'DELETE' })).status
+		).toBe(404);
+	});
+
+	it('prueft Typ, Groesse, leere Dateien und Einnahmen', async () => {
+		const id = await createAction();
+		const e = await addEntry(id, expense());
+		const inc = await addEntry(id, income());
+		expect((await uploadReceipt(id, e.id, uploadForm('x', 'a.txt', 'text/plain'))).status).toBe(
+			400
+		);
+		expect((await uploadReceipt(id, e.id, uploadForm('', 'a.pdf', 'application/pdf'))).status).toBe(
+			400
+		);
+		const big = new Uint8Array(10 * 1024 * 1024 + 1);
+		expect(
+			(await uploadReceipt(id, e.id, uploadForm(big, 'big.pdf', 'application/pdf'))).status
+		).toBe(413);
+		expect(
+			(await uploadReceipt(id, inc.id, uploadForm('x', 'a.pdf', 'application/pdf'))).status
+		).toBe(400);
+		expect(
+			(
+				await as('owner', `${entriesPath(id)}/${e.id}/receipt`, {
+					method: 'POST',
+					body: new FormData()
+				})
+			).status
+		).toBe(400);
+	});
+
+	it('entfernt den Beleg beim Loeschen der Buchung', async () => {
+		const id = await createAction();
+		const e = await addEntry(id, expense());
+		const before = fakeObjects.size;
+		await data(await uploadReceipt(id, e.id, uploadForm('x', 'a.pdf', 'application/pdf')), 201);
+		expect(fakeObjects.size).toBe(before + 1);
+		await data(await as('owner', `${entriesPath(id)}/${e.id}`, { method: 'DELETE' }));
+		expect(fakeObjects.size).toBe(before);
+	});
+
+	it('verweigert Fremden und read-only den Upload', async () => {
+		const id = await createAction();
+		await share(id, 'reader', 'read');
+		const e = await addEntry(id, expense());
+		expect(
+			(await uploadReceipt(id, e.id, uploadForm('x', 'a.pdf', 'application/pdf'), 'stranger'))
+				.status
+		).toBe(404);
+		expect(
+			(await uploadReceipt(id, e.id, uploadForm('x', 'a.pdf', 'application/pdf'), 'reader')).status
+		).toBe(403);
+	});
+});
+
+describe('Abrechnung: Sperre nach Abschluss', () => {
+	it('liefert 409 auf alle Aenderungen und zeigt den Abschluss', async () => {
+		const id = await createAction();
+		const e = await addEntry(id, expense());
+		await data(await uploadReceipt(id, e.id, uploadForm('x', 'a.pdf', 'application/pdf')), 201);
+		await closeSql(id, true);
+
+		const s = await state(id);
+		expect(s.closed?.at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+		expect(s.closed?.by?.userId).toBe(userIds.owner);
+		expect(s.closed?.by?.name).toBe('Owner Test');
+
+		const p = `${entriesPath(id)}/${e.id}`;
+		expect((await as('owner', entriesPath(id), { method: 'POST', json: expense() })).status).toBe(
+			409
+		);
+		expect((await as('owner', p, { method: 'PUT', json: expense() })).status).toBe(409);
+		expect((await as('owner', p, { method: 'DELETE' })).status).toBe(409);
+		expect(
+			(await uploadReceipt(id, e.id, uploadForm('x', 'b.pdf', 'application/pdf'))).status
+		).toBe(409);
+		expect((await as('owner', `${p}/receipt`, { method: 'DELETE' })).status).toBe(409);
+		// Lesen und Download bleiben moeglich
+		expect((await as('owner', `${p}/receipt`)).status).toBe(200);
+
+		await closeSql(id, false);
+		await data(await as('owner', p, { method: 'PUT', json: expense({ amountCents: 1 }) }));
+	});
+});
+
+describe('Abrechnung: Audit', () => {
+	it('protokolliert ohne Beschreibung und Namen', async () => {
+		const { rows } = await listAudit({ action: 'actions.accounting.' });
+		const actions = rows.map((r) => r.action);
+		for (const a of [
+			'actions.accounting.entry_created',
+			'actions.accounting.entry_updated',
+			'actions.accounting.entry_deleted',
+			'actions.accounting.receipt_uploaded',
+			'actions.accounting.receipt_deleted'
+		]) {
+			expect(actions).toContain(a);
+		}
+		const serialized = JSON.stringify(rows.map((r) => r.metadata));
+		expect(serialized).not.toContain('Einkauf');
+		expect(serialized).not.toContain('Müller');
+		expect(serialized).not.toContain('Max Muster');
+		expect(serialized).not.toContain('example.test');
+	});
+});

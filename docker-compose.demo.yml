@@ -1,0 +1,21 @@
+# Demo-/Testumgebung: S3-kompatibler Storage (MinIO) fuer Belege und Dokumente.
+# Start:  docker compose -f docker-compose.demo.yml up -d
+# Danach: node scripts/setup-demo-storage.mjs   (hinterlegt die Verbindung im laufenden Demo-System)
+# Hinweis: Das offizielle Image `minio/minio` wird nicht mehr auf Docker Hub veroeffentlicht;
+# `bitnamilegacy/minio` ist ein eingefrorenes, funktionsfaehiges MinIO-Image fuer lokale Tests.
+services:
+  minio:
+    image: bitnamilegacy/minio:latest
+    environment:
+      MINIO_ROOT_USER: demo-access
+      MINIO_ROOT_PASSWORD: demo-secret-key-2026
+      MINIO_DEFAULT_BUCKETS: ep-intern-demo
+      MINIO_API_PORT_NUMBER: '9000'
+      MINIO_CONSOLE_PORT_NUMBER: '9001'
+    ports:
+      - '127.0.0.1:9100:9000'
+      - '127.0.0.1:9101:9001'
+    volumes:
+      - demo-minio:/bitnami/minio/data
+volumes:
+  demo-minio:

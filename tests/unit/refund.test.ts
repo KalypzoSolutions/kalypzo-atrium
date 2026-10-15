@@ -1,0 +1,113 @@
+import { describe, expect, it } from 'vitest';
+import {
+	MIN_REFUND_PER_HEAD_CENTS,
+	computeManualRefund,
+	computeRefund,
+	refundThresholdOk
+} from '$lib/modules/actions/refund';
+
+const payer = (id: string, feeCents: number) => ({ id, name: `P${id}`, feeCents });
+
+describe('computeRefund', () => {
+	it('gleiche Beitraege: gleicher Betrag, ganze Euro abgerundet', () => {
+		// 1000,00 EUR / 3 = 333,33 -> 333 EUR je Person, Rest 1,00 EUR
+		const r = computeRefund({
+			surplusCents: 100000,
+			payers: [payer('a', 20000), payer('b', 20000), payer('c', 20000)]
+		});
+		expect(r.items.map((i) => i.amountCents)).toEqual([33300, 33300, 33300]);
+		expect(r.totalCents).toBe(99900);
+		expect(r.remainderCents).toBe(100);
+		expect(r.perHeadCents).toBe(33300);
+		expect(r.payingCount).toBe(3);
+	});
+
+	it('unterschiedliche Beitraege (Team-Prozent): anteilig, abgerundet', () => {
+		// Beitraege 200 + 100 = 300; Ueberschuss 90 EUR -> 60 EUR und 30 EUR
+		const r = computeRefund({ surplusCents: 9000, payers: [payer('a', 20000), payer('t', 10000)] });
+		expect(r.items.map((i) => i.amountCents)).toEqual([6000, 3000]);
+		expect(r.perHeadCents).toBe(6000);
+		expect(r.remainderCents).toBe(0);
+		// Ueberschuss 100 EUR: 66,66 -> 66, 33,33 -> 33; Rest 1 EUR
+		const r2 = computeRefund({
+			surplusCents: 10000,
+			payers: [payer('a', 20000), payer('t', 10000)]
+		});
+		expect(r2.items.map((i) => i.amountCents)).toEqual([6600, 3300]);
+		expect(r2.remainderCents).toBe(100);
+	});
+
+	it('Betraege unter 1 EUR entfallen', () => {
+		const r = computeRefund({ surplusCents: 99, payers: [payer('a', 100)] });
+		expect(r.items).toEqual([]);
+		expect(r.totalCents).toBe(0);
+		expect(r.remainderCents).toBe(99);
+		expect(r.perHeadCents).toBe(0);
+	});
+
+	it('Ueberschuss 0/negativ/NaN, keine Zahlenden', () => {
+		for (const surplusCents of [0, -500, NaN, Infinity]) {
+			const r = computeRefund({ surplusCents, payers: [payer('a', 100)] });
+			expect(r.items).toEqual([]);
+			expect(r.totalCents).toBe(0);
+			expect(r.remainderCents).toBeGreaterThanOrEqual(0);
+			expect(Number.isFinite(r.remainderCents)).toBe(true);
+		}
+		const none = computeRefund({ surplusCents: 5000, payers: [payer('a', 0)] });
+		expect(none.payingCount).toBe(0);
+		expect(none.remainderCents).toBe(5000);
+	});
+
+	it('grosse Zahlen bleiben exakt', () => {
+		const r = computeRefund({
+			surplusCents: 100000000,
+			payers: Array.from({ length: 7 }, (_, i) => payer(String(i), 1234567))
+		});
+		// 1.000.000 EUR / 7 = 142857,14 -> 142857 EUR
+		expect(r.perHeadCents).toBe(14285700);
+		expect(r.totalCents).toBe(7 * 14285700);
+		expect(r.remainderCents).toBe(100000000 - 7 * 14285700);
+	});
+});
+
+describe('computeManualRefund', () => {
+	it('Ueberschuss / Anzahl, ganze Euro abgerundet, Rest', () => {
+		// 1000,00 EUR / 7 = 142,857 -> 142 EUR je Person; 7 x 142 = 994; Rest 6 EUR
+		const r = computeManualRefund({ surplusCents: 100000, count: 7 });
+		expect(r.perHeadCents).toBe(14200);
+		expect(r.totalCents).toBe(99400);
+		expect(r.remainderCents).toBe(600);
+		expect(r.count).toBe(7);
+	});
+
+	it('ungueltige Eingaben ergeben 0', () => {
+		for (const [surplusCents, count] of [
+			[0, 5],
+			[-100, 5],
+			[NaN, 5],
+			[5000, 0],
+			[5000, NaN],
+			[5000, -3]
+		] as const) {
+			const r = computeManualRefund({ surplusCents, count });
+			expect(r.perHeadCents).toBe(0);
+			expect(r.totalCents).toBe(0);
+			expect(Number.isFinite(r.remainderCents)).toBe(true);
+		}
+	});
+
+	it('Schwelle: genau 5 EUR nicht ok, 5,01 EUR ok', () => {
+		expect(MIN_REFUND_PER_HEAD_CENTS).toBe(500);
+		expect(refundThresholdOk(500)).toBe(false);
+		expect(refundThresholdOk(501)).toBe(true);
+		expect(refundThresholdOk(0)).toBe(false);
+		expect(refundThresholdOk(NaN)).toBe(false);
+		// 50 EUR / 10 = 5 EUR -> nicht ok; 60 EUR / 10 = 6 EUR -> ok
+		expect(
+			refundThresholdOk(computeManualRefund({ surplusCents: 5000, count: 10 }).perHeadCents)
+		).toBe(false);
+		expect(
+			refundThresholdOk(computeManualRefund({ surplusCents: 6000, count: 10 }).perHeadCents)
+		).toBe(true);
+	});
+});

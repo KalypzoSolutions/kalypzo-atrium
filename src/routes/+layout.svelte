@@ -1,0 +1,21 @@
+<script lang="ts">
+	import '../app.css';
+	import { onMount } from 'svelte';
+	import { Toaster } from '$lib/components/ui/sonner';
+	import { theme } from '$lib/theme.svelte';
+
+	let { data, children } = $props();
+
+	onMount(() => theme.init());
+
+	$effect(() => {
+		document.documentElement.style.setProperty('--accent-color', data.accentColor);
+	});
+</script>
+
+<svelte:head>
+	<title>{data.systemName}</title>
+</svelte:head>
+
+{@render children()}
+<Toaster richColors position="top-right" />
