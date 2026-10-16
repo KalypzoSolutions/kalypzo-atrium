@@ -74,6 +74,14 @@ return result;
 - Sensible Felder (IBAN …): `core.crypto.forModule(id).encrypt`, in Antworten maskieren, Zugriffe auditieren.
 - Mehrfachwerte (Telefone/E-Mails): eigene Tabelle mit `position`; Listen komplett ersetzen statt diffen.
 
+## Hintergrundjobs und optionale Abhängigkeiten
+- `defineModule({ jobs: [{ id, summary, schedule: 'hourly'|'daily', run(ctx) }] })`: Runner in `core/jobs` (Start in
+  `hooks.server.ts`, Tick 5 min, nicht bei `JOBS_DISABLED=1`), nur für aktive Module, Systemkontext, Sperre per atomarem
+  Upsert auf `job_run` (keine offene Transaktion). Rückgabe = Statusmeldung. Admin: `GET /api/v1/jobs`,
+  `POST /api/v1/jobs/<modul>.<job>/run` (`core.jobs.manage`). Tests: `runDueJobs`, `runJobNow`, `setJobClockForTests`.
+- `manifest.optionalDependencies` + `core.modules.useOptional(provider, caller)` → `null`, wenn der Anbieter nicht aktiv ist
+  (für Rückkanäle ohne Zyklus, z. B. `actions` liest Zahlungen aus `treasury`). Harte Abhängigkeiten bleiben `dependencies`.
+
 ## Migrationen
 - Nummeriert (`0001_init.sql`, `0002_…`), in `module.ts` per `import m from './migrations/…sql?raw'` und `{ name, sql }` registrieren.
 - Änderungen an bestehenden Tabellen: `ALTER TABLE … ADD COLUMN IF NOT EXISTS`; CHECK-Constraints ersetzen mit

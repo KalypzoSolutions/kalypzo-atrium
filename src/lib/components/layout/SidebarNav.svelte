@@ -38,6 +38,7 @@
 		const out: Entry[] = [];
 		const groups = new Map<string, Extract<Entry, { kind: 'group' }>>();
 		for (const n of navigation) {
+			if (n.admin) continue;
 			const link = { label: n.label, href: n.path, icon: n.icon };
 			if (!n.group) {
 				out.push({ kind: 'link', link });
@@ -58,11 +59,17 @@
 	});
 
 	const adminGroup = $derived.by((): Entry | null => {
-		const items = ADMIN_NAV.filter((i) => hasPermission(permissions, i.permission)).map((i) => ({
-			label: i.label,
-			href: i.href,
-			icon: i.icon
-		}));
+		const items = [
+			...ADMIN_NAV.filter((i) => hasPermission(permissions, i.permission)).map((i) => ({
+				label: i.label,
+				href: i.href,
+				icon: i.icon
+			})),
+			// Modul-Eintraege fuer die Verwaltung (z. B. Kassen-Einstellungen)
+			...navigation
+				.filter((n) => n.admin)
+				.map((n) => ({ label: n.label, href: n.path, icon: n.icon }))
+		];
 		return items.length
 			? { kind: 'group', id: 'core:admin', label: ADMIN_GROUP.label, icon: ADMIN_GROUP.icon, items }
 			: null;
@@ -74,10 +81,21 @@
 		...(adminGroup ? [adminGroup] : [])
 	]);
 
+	/** Nur der genaueste passende Eintrag ist aktiv (z. B. `/modules/treasury/settings` statt `/modules`). */
+	const activeHref = $derived.by(() => {
+		const hrefs = entries.flatMap((e) =>
+			e.kind === 'link' ? [e.link.href] : e.items.map((i) => i.href)
+		);
+		return (
+			hrefs.filter((h) => isActive(page.url.pathname, h)).sort((a, b) => b.length - a.length)[0] ??
+			null
+		);
+	});
+
 	// Manuell umgeschaltete Gruppen; ohne Eintrag ist eine Gruppe offen, wenn sie die aktive Seite enthaelt.
 	let toggled = $state<Record<string, boolean>>({});
 	const isOpen = (g: Extract<Entry, { kind: 'group' }>) =>
-		toggled[g.id] ?? g.items.some((i) => isActive(page.url.pathname, i.href));
+		toggled[g.id] ?? g.items.some((i) => i.href === activeHref);
 
 	const linkClass =
 		'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none';
@@ -85,7 +103,7 @@
 
 {#snippet linkItem(item: Link, nested = false)}
 	{@const Icon = iconFor(item.icon)}
-	{@const active = isActive(page.url.pathname, item.href)}
+	{@const active = item.href === activeHref}
 	<a
 		href={item.href}
 		onclick={onnavigate}

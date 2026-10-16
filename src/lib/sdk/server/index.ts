@@ -9,7 +9,7 @@ export { core } from '$lib/server/core';
 export type { Core } from '$lib/server/core';
 export { defineEndpoint } from '$lib/server/core/api/registry';
 export { CoreError, errors, isCoreError } from '$lib/server/core/errors';
-export type { ModuleDefinition, ModuleMigration } from '$lib/server/core/modules/types';
+export type { ModuleDefinition, ModuleJob, ModuleMigration } from '$lib/server/core/modules/types';
 export type { Db, Tx } from '$lib/server/core/database/client';
 export type { ApiEndpoint, ApiHandlerArgs } from '$lib/server/core/api/types';
 export type * from '$lib/sdk/types';

@@ -38,6 +38,8 @@ export interface ModuleNavEntry {
 	moduleId: string;
 	group?: string;
 	groupIcon?: string;
+	/** In der Gruppe „Administration“ anzeigen */
+	admin?: boolean;
 }
 
 export const ADMIN_GROUP = { label: 'Administration', icon: 'wrench' } as const;

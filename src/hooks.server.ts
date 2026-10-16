@@ -6,6 +6,7 @@ import { building } from '$app/environment';
 import { anonymousContext, resolveSession } from '$lib/server/core/auth/context';
 import { getAuth } from '$lib/server/core/auth';
 import { initCore } from '$lib/server/core/init';
+import { startJobRunner } from '$lib/server/core/jobs';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
 
 const PUBLIC_PAGES = ['/login', '/forgot-password', '/reset-password'];
@@ -14,10 +15,12 @@ const PUBLIC_PREFIXES = ['/p/'];
 
 if (!building) {
 	// Startsequenz (Migrationen, Registrierung, Synchronisation). Fehler beenden den Start laut.
-	initCore().catch((e) => {
-		console.error('[core] Initialisierung fehlgeschlagen:', e);
-		process.exit(1);
-	});
+	initCore()
+		.then(() => startJobRunner())
+		.catch((e) => {
+			console.error('[core] Initialisierung fehlgeschlagen:', e);
+			process.exit(1);
+		});
 }
 
 function clientIp(event: Parameters<Handle>[0]['event']): string | null {

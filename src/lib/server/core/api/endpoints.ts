@@ -14,6 +14,7 @@ import {
 	updateUser
 } from '../auth/users';
 import { disableModule, enableModule, listModules } from '../modules/service';
+import { listJobs, runJobNow } from '../jobs';
 import { createRole, deleteRole, listRoles, updateRole } from '../permissions/roles';
 import { listPermissions } from '../permissions/service';
 import { getPublicSettings, setSetting } from '../settings/service';
@@ -224,6 +225,25 @@ export function registerCoreApi(): void {
 				await disableModule(ctx, params.id);
 				return null;
 			}
+		}),
+
+		// Hintergrundjobs
+		defineEndpoint({
+			method: 'GET',
+			path: '/jobs',
+			summary: 'Hintergrundjobs mit letztem Lauf',
+			tags: ['Module'],
+			permission: 'core.jobs.manage',
+			handler: () => listJobs()
+		}),
+		defineEndpoint({
+			method: 'POST',
+			path: '/jobs/:key/run',
+			summary: 'Hintergrundjob sofort ausfuehren',
+			tags: ['Module'],
+			permission: 'core.jobs.manage',
+			params: z.object({ key: z.string().regex(/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/) }),
+			handler: ({ ctx, params }) => runJobNow(ctx, params.key)
 		}),
 
 		// Einstellungen (Secrets werden nie ausgeliefert)

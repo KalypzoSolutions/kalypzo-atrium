@@ -21,7 +21,7 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
 ## Das `core`-Objekt (für Module via `$lib/sdk/server`)
 `auth`, `users.directory(ctx,{search,ids,limit})` (aktive Benutzer: id/name/email, ab 2 Zeichen, max 30),
 `crypto.forModule(id)` (`encrypt/decrypt/isEncrypted`, AES-256-GCM), `permissions` (`require`, `has`, …),
-`modules`, `settings`, `api`, `database.forModule(id).transaction`, `pdf`, `ai`, `storage`
+`modules` (`use`, `useOptional` für `optionalDependencies`), `settings`, `api`, `database.forModule(id).transaction`, `pdf`, `ai`, `storage`
 (`upload/download/remove/stat/list/signed*`; braucht `<modul>.storage.read|write|delete`), `audit.logFromContext`.
 
 ## Datenbank

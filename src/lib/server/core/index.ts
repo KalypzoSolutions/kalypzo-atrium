@@ -15,7 +15,7 @@ import {
 	systemContext
 } from './auth/context';
 import { registerUserWithRole, searchUserDirectory } from './auth/users';
-import { decryptSecret, encryptSecret, isEncrypted } from './crypto';
+import { decryptSecret, encryptSecret, isEncrypted, keyedHash } from './crypto';
 import { getDb } from './database/client';
 import { forModule, transaction } from './database/module-db';
 import { allDefinitions } from './modules/registry';
@@ -23,6 +23,7 @@ import {
 	assertModuleEnabled,
 	disableModule,
 	useModuleService,
+	useOptionalModuleService,
 	enableModule,
 	isModuleEnabled,
 	listModules,
@@ -47,12 +48,17 @@ import * as storage from './storage';
 
 const EMAIL_RE = /^[^\s@,;<>()"]+@[^\s@,;<>()"]+\.[^\s@,;<>()"]+$/;
 
-/** Mailversand fuer Module mit Eingabevalidierung (Header-Injection, Laengen). */
+const MAX_MAIL_FILES = 3;
+const MAX_MAIL_FILE_BYTES = 5 * 1024 * 1024;
+
+/** Mailversand fuer Module mit Eingabevalidierung (Header-Injection, Laengen, nur PDF-Anhaenge). */
 async function sendModuleMail(msg: {
 	to: string;
 	subject: string;
 	text: string;
 	html?: string;
+	/** Nur PDF, hoechstens 3 Dateien und 5 MB gesamt */
+	attachments?: { filename: string; contentType: 'application/pdf'; data: Uint8Array }[];
 }): Promise<void> {
 	if (typeof msg.to !== 'string' || msg.to.length > 254 || !EMAIL_RE.test(msg.to)) {
 		throw errors.validation([{ path: ['to'], message: 'Ungueltige E-Mail-Adresse' }]);
@@ -73,7 +79,30 @@ async function sendModuleMail(msg: {
 	if (msg.html !== undefined && (typeof msg.html !== 'string' || msg.html.length > 100000)) {
 		throw errors.validation([{ path: ['html'], message: 'HTML zu lang (max. 100000 Zeichen)' }]);
 	}
-	await sendMail(msg);
+	const list = msg.attachments ?? [];
+	const total = list.reduce((s, a) => s + (a.data?.byteLength ?? 0), 0);
+	if (
+		list.length > MAX_MAIL_FILES ||
+		total > MAX_MAIL_FILE_BYTES ||
+		list.some((a) => a.contentType !== 'application/pdf' || !(a.data instanceof Uint8Array))
+	) {
+		throw errors.validation([
+			{ path: ['attachments'], message: 'Nur bis zu 3 PDF-Anhaenge mit zusammen max. 5 MB' }
+		]);
+	}
+	const files = list.map((a) => ({
+		filename:
+			a.filename
+				.normalize('NFKD')
+				.replace(/[^A-Za-z0-9._-]+/g, '_')
+				.replace(/^[._]+/, '')
+				.slice(-100) || 'dokument.pdf',
+		contentType: 'application/pdf',
+		content: Buffer.from(a.data)
+	}));
+	const { attachments: _a, ...rest } = msg;
+	void _a;
+	await sendMail({ ...rest, files });
 }
 
 export const core = {
@@ -103,7 +132,9 @@ export const core = {
 		forModule: (moduleId: string) => ({
 			encrypt: (plain: string) => encryptSecret(plain, `module:${moduleId}`),
 			decrypt: (value: string) => decryptSecret(value, `module:${moduleId}`),
-			isEncrypted
+			isEncrypted,
+			/** HMAC-SHA256 mit Modulschluessel (gleiche Eingabe → gleicher Wert, nicht umkehrbar) */
+			hash: (value: string) => keyedHash(value, `module:${moduleId}`)
 		})
 	},
 	permissions: {
@@ -124,6 +155,8 @@ export const core = {
 		disable: disableModule,
 		/** Dienste eines Moduls nutzen, von dem das aufrufende Modul abhaengt (siehe `ModuleDefinition.provides`) */
 		use: useModuleService,
+		/** Wie `use`, fuer `optionalDependencies`: `null`, wenn der Anbieter nicht aktiv ist */
+		useOptional: useOptionalModuleService,
 		navigationFor,
 		registered: () => allDefinitions().map((d) => d.manifest)
 	},

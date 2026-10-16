@@ -10,6 +10,18 @@ export interface ModuleMigration {
  * Serverseitige Moduldefinition. Wird in `src/lib/modules/<id>/module.ts` per
  * `defineModule(...)` exportiert und zur Build-Zeit registriert.
  */
+/**
+ * Hintergrundjob eines Moduls. Laeuft nur, wenn das Modul aktiv ist, mit Systemkontext und
+ * hoechstens einmal je Intervall (auch bei mehreren Instanzen). Rueckgabe = kurze Statusmeldung.
+ */
+export interface ModuleJob {
+	/** `[a-z][a-z0-9-]*`; vollstaendiger Schluessel ist `<modul>.<id>` */
+	id: string;
+	summary: string;
+	schedule: 'hourly' | 'daily';
+	run: (ctx: RequestContext) => Promise<string | void>;
+}
+
 export interface ModuleDefinition {
 	manifest: ModuleManifest;
 	settings?: ModuleSettingDefinition[];
@@ -23,6 +35,8 @@ export interface ModuleDefinition {
 	 * des Moduls). Abruf nur ueber `core.modules.use(providerId, callerId)`.
 	 */
 	provides?: Record<string, unknown>;
+	/** Hintergrundjobs (siehe `core/jobs`) */
+	jobs?: ModuleJob[];
 	onEnable?: (ctx: RequestContext) => Promise<void>;
 	onDisable?: (ctx: RequestContext) => Promise<void>;
 }

@@ -163,6 +163,15 @@ export const moduleMigration = pgTable(
 	(t) => [primaryKey({ columns: [t.moduleId, t.name] })]
 );
 
+/** Letzter Lauf je Hintergrundjob (`<modul>.<job>`); dient zugleich als Sperre gegen Doppel-Laeufe */
+export const jobRun = pgTable('job_run', {
+	key: text('key').primaryKey(),
+	lastStartedAt: timestamp('last_started_at', { withTimezone: true }).notNull(),
+	lastFinishedAt: timestamp('last_finished_at', { withTimezone: true }),
+	lastStatus: text('last_status'),
+	lastMessage: text('last_message')
+});
+
 // ---------------------------------------------------------------------------
 // Einstellungen
 // ---------------------------------------------------------------------------

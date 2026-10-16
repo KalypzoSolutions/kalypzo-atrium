@@ -95,6 +95,26 @@ export async function useModuleService<T>(providerId: string, callerId: string):
 	return provider.provides as T;
 }
 
+/**
+ * Wie `useModuleService`, aber fuer `manifest.optionalDependencies`: liefert `null`, wenn der Anbieter
+ * nicht registriert oder nicht aktiv ist. Ebenfalls nur AUSSERHALB offener Modul-Transaktionen aufrufen.
+ */
+export async function useOptionalModuleService<T>(
+	providerId: string,
+	callerId: string
+): Promise<T | null> {
+	const caller = getDefinition(callerId);
+	if (!caller?.manifest.optionalDependencies?.includes(providerId)) {
+		throw new Error(
+			`Modul ${callerId} deklariert keine optionale Abhaengigkeit von "${providerId}"`
+		);
+	}
+	const provider = getDefinition(providerId);
+	if (!provider?.provides) return null;
+	if (!(await isModuleEnabled(providerId))) return null;
+	return provider.provides as T;
+}
+
 /** Wirft `module_disabled`; verhindert Zugriff ueber UI und API. */
 export async function assertModuleEnabled(id: string): Promise<void> {
 	if (!(await isModuleEnabled(id))) throw errors.moduleDisabled(id);

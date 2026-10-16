@@ -33,6 +33,18 @@ export function validateDefinition(def: ModuleDefinition): void {
 			throw new Error(`Modul ${m.id}: Navigationspfad muss unter /modules/${m.id} liegen`);
 		}
 	}
+	const jobIds = new Set<string>();
+	for (const j of def.jobs ?? []) {
+		if (!/^[a-z][a-z0-9-]*$/.test(j.id) || jobIds.has(j.id)) {
+			throw new Error(`Modul ${m.id}: ungueltige oder doppelte Job-ID "${j.id}"`);
+		}
+		jobIds.add(j.id);
+	}
+	for (const dep of m.optionalDependencies ?? []) {
+		if (dep === m.id || m.dependencies.includes(dep)) {
+			throw new Error(`Modul ${m.id}: optionale Abhaengigkeit "${dep}" ist ungueltig`);
+		}
+	}
 }
 
 export function registerModule(def: ModuleDefinition): void {

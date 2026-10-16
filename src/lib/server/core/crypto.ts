@@ -2,6 +2,7 @@ import {
 	createCipheriv,
 	createDecipheriv,
 	createHash,
+	createHmac,
 	hkdfSync,
 	randomBytes,
 	timingSafeEqual
@@ -37,6 +38,13 @@ export function decryptSecret(value: string, purpose = 'settings'): string {
 
 export function isEncrypted(value: unknown): value is string {
 	return typeof value === 'string' && value.startsWith(PREFIX);
+}
+
+/** Deterministischer, schluesselgebundener Hash (HMAC-SHA256) – z. B. zum Wiederfinden einer IBAN ohne Klartext */
+export function keyedHash(input: string, purpose: string): string {
+	return createHmac('sha256', key(`hash:${purpose}`))
+		.update(input)
+		.digest('hex');
 }
 
 export function sha256(input: string): string {

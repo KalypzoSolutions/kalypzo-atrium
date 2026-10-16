@@ -11,6 +11,8 @@ export interface MailMessage {
 	html?: string;
 	/** `false`: ohne Stamm-Layout senden (Standard: Layout aus den Einstellungen) */
 	layout?: boolean;
+	/** Dateianhaenge (z. B. Rechnung als PDF) */
+	files?: { filename: string; contentType: string; content: Buffer }[];
 }
 
 export interface MailTransport {
@@ -20,7 +22,7 @@ export interface MailTransport {
 		subject: string;
 		text: string;
 		html?: string;
-		attachments?: MailAttachment[];
+		attachments?: (MailAttachment | { filename: string; content: Buffer; contentType: string })[];
 	}): Promise<unknown>;
 }
 
@@ -55,12 +57,18 @@ async function transport(): Promise<{ t: MailTransport; from: string }> {
 
 export async function sendMail(msg: MailMessage): Promise<void> {
 	const { t, from } = await transport();
-	const { layout, ...mail } = msg;
+	const { layout, files = [], ...mail } = msg;
 	const options = await loadMailLayoutOptions();
 	if (layout === false || !options.enabled) {
-		await t.sendMail({ from, ...mail });
+		await t.sendMail({ from, ...mail, ...(files.length ? { attachments: files } : {}) });
 		return;
 	}
 	const rendered = renderMailLayout(mail, options);
-	await t.sendMail({ from, to: mail.to, subject: mail.subject, ...rendered });
+	await t.sendMail({
+		from,
+		to: mail.to,
+		subject: mail.subject,
+		...rendered,
+		attachments: [...rendered.attachments, ...files]
+	});
 }

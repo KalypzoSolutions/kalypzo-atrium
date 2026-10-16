@@ -11,6 +11,7 @@ export const CORE_PERMISSIONS: Record<string, string> = {
 	'core.roles.assign': 'Rollen an Benutzer zuweisen',
 	'core.modules.view': 'Module ansehen',
 	'core.modules.manage': 'Module aktivieren und deaktivieren',
+	'core.jobs.manage': 'Hintergrundjobs ansehen und manuell ausloesen',
 	'core.settings.view': 'Systemeinstellungen ansehen',
 	'core.settings.manage': 'Systemeinstellungen verwalten',
 	'core.api.view': 'API-Keys ansehen',

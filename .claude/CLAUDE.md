@@ -22,6 +22,7 @@ bei Widerspruch gewinnt der Code, danach `docs/`.
 | `rules/workflow.md` | Demo-Server, Screenshots, Agents, Git, Kommunikation |
 | `rules/module-members.md` | Modul Mitglieder & Gruppen: Dateien, Datenmodell, Rechte, API, Regeln |
 | `rules/module-actions.md` | Modul Aktionen: Kalkulation, Zuschuss, Anmeldelink, Abrechnung, Rückzahlung, PDF-Bericht |
+| `rules/module-treasury.md` | Modul Kasse: Konten, Buchungen, Rechnungen aus Aktionen, Zuordnung/Geschwister, Import, Mails, Berichte |
 | `rules/project-state.md` | Stand, getroffene Entscheidungen, offene Punkte |
 
 ## Befehle

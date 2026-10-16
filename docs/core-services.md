@@ -132,6 +132,20 @@ Ein Modul kann abhängigen Modulen typisierte Funktionen anbieten: `defineModule
 Aufruf: `await core.modules.use<MembersService>('members', 'actions')` – prüft, dass das aufrufende Modul den Anbieter in `manifest.dependencies` führt und der Anbieter aktiv ist
 (sonst `module_disabled`). Aufruf **nie** innerhalb einer offenen Modul-Transaktion. Beispiel: `actions` → `members` (Anmeldung mit Mitglied).
 
+Optionale Abhängigkeit: `manifest.optionalDependencies: ['<anbieter>']` und `await core.modules.useOptional<T>('<anbieter>', '<aufrufer>')`
+liefern `null`, wenn der Anbieter nicht registriert oder nicht aktiv ist – ohne Aktivierungsreihenfolge und ohne Zyklus-Prüfung.
+Beispiel: `actions` liest über `TreasuryService` die tatsächlich eingegangenen Beiträge aus der Kasse (`treasury` hängt seinerseits hart von `actions` ab).
+
+## Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`)
+
+`defineModule({ …, jobs: [{ id: 'reminders', summary: '…', schedule: 'hourly' | 'daily', run: async (ctx) => 'Statusmeldung' }] })`.
+Der Runner startet nach der Initialisierung in `hooks.server.ts` (nicht beim Build, nicht mit `JOBS_DISABLED=1`), prüft alle 5 Minuten
+und führt fällige Jobs **aktiver** Module mit Systemkontext aus (`hourly` ≥ 55 min, `daily` ≥ 23 h seit dem letzten Start).
+Die Sperre ist ein atomares Upsert auf `job_run` – mehrere Instanzen laufen nicht doppelt, und es bleibt keine Transaktion offen
+(PGlite). Ein Lauf ohne Abschluss gilt nach 2 h als abgebrochen. Fehler werden in `job_run.last_status/last_message` protokolliert.
+API: `GET /api/v1/jobs` (Liste mit letztem Lauf), `POST /api/v1/jobs/<modul>.<job>/run` (sofort, Recht `core.jobs.manage`, auditiert
+als `core.job.triggered`). Tests: `runDueJobs()`, `runJobNow(ctx, key)`, `setJobClockForTests(fn)`.
+
 ## core.mail und E-Mail-Layout
 
 `core.mail.send({ to, subject, text, html? })` sendet über SMTP. Jede Mail (auch Passwort-Reset, Test-Mail) bekommt das

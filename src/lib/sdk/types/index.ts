@@ -33,6 +33,8 @@ export interface ModuleNavigationItem {
 	group?: string;
 	/** Optional: Icon der Gruppe (nimmt den ersten gesetzten Wert der Gruppe) */
 	groupIcon?: string;
+	/** Optional: Eintrag erscheint in der Gruppe „Administration“ (z. B. Modul-Einstellungen) */
+	admin?: boolean;
 }
 
 export interface ModuleSettingDefinition {
@@ -51,6 +53,11 @@ export interface ModuleManifest {
 	description?: string;
 	version: string;
 	dependencies: string[];
+	/**
+	 * Module, deren Dienste genutzt werden, WENN sie aktiv sind (`core.modules.useOptional`). Keine
+	 * Aktivierungs-Reihenfolge, kein Zyklus-Check – fuer Rueckkanaele (z. B. Kasse -> Aktionen).
+	 */
+	optionalDependencies?: string[];
 	permissions: string[];
 	navigation: ModuleNavigationItem[];
 }

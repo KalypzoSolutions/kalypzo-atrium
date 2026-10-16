@@ -302,7 +302,8 @@ describe('Automatische Einnahmen in der Abrechnung', () => {
 				payingCount: 4,
 				teamCount: 1,
 				feeCents: 10000,
-				teamFeeCents: 5000
+				teamFeeCents: 5000,
+				source: 'calculated'
 			},
 			subsidy: { cents: SUBSIDY, eligibleCount: 3 },
 			overridden: []

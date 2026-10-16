@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-15)
+# Projektstand (zuletzt aktualisiert: 2026-10-16)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -45,7 +45,19 @@
 - **Gruppen optional, Zusatzfelder, Anmeldung mit Mitglied**: Mitglieder brauchen keine Gruppe mehr; vordefinierte Zusatzfelder (Ernährung, Allergien, Medikamente …) pro Mitglied;
   Anmeldelink kann ein verknüpftes Mitglied wählen (Vorbelegung, Rückschreiben) oder per „Anmeldung erzwingen“ Login + Mitglied verlangen; `actions` hängt hart von `members` ab
   (Core: `ModuleDefinition.provides`, `core.modules.use`). Offen: Verschlüsselung der Gesundheitsfelder, mehrere Kinder in einem Durchgang.
-- Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`.
+- **Modul `treasury` – Kasse (2026-10-16)**: Konten (Giro/Bar) mit Buchungen, Umbuchungen und Belegen; Rechnungen je
+  Teilnehmende*r **automatisch aus Aktionen** (stündlicher Abgleich) oder manuell (`R-JJJJ-NNNN`, PDF); Zuordnung von
+  Zahlungen auf beliebige Posten (**Sammelzahlung für Geschwister**), Zahler/Familien inkl. Vorschlägen; CSV-Import
+  (Sparkasse CSV-CAMT u. a.) mit Duplikatschutz und Zuordnungsvorschlägen; Zahlungsbestätigung und zweistufige
+  Erinnerungen per Mail (täglicher Job); Offene Posten (CSV), Kontolage, Zeitraumbericht (PDF/CSV). `actions` zeigt in der
+  Abrechnung die **tatsächlich eingegangenen Beiträge** (Ist statt Soll). Details: `rules/module-treasury.md`.
+  **Ausbaustufe 2**: Standardkonto, Einstellungen unter Administration, Zahler-IBAN (Import-Abgleich), Auszahlungen
+  (Eingangsrechnungen, Auslagen mit Rückkanal in die Abrechnung, Rückzahlungen, Guthaben), Rechnungs-PDF an der Anmeldebestätigung
+  mit automatischer „Geänderte Rechnung“, Offene Posten als Tabelle. Core: Mail-Anhänge (PDF), `crypto.hash`, Modul-Nav `admin`.
+- **Core**: Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`, Tabelle `job_run`, `/api/v1/jobs`), optionale
+  Modul-Abhängigkeiten (`optionalDependencies`, `core.modules.useOptional`); `members` liefert `listMemberContacts`,
+  `actions` liefert `listReceivableSources`/`listActionRefs` (`actions/contract.ts`).
+- Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Programm: Pro-Kopf-Preis wird **aufgerundet** auf volle Euro. Puffer in **Prozent**. Team zahlt einen **Prozentsatz**,
@@ -61,8 +73,10 @@
    **Entschieden (2026-10-15):** nach dem Absenden Danke-Seite **und Bestätigungs-E-Mail** (braucht SMTP + E-Mail-Pflichtfeld);
    **doppelte Anmeldungen** (gleicher Name + Geburtsdatum) werden **abgelehnt** mit Hinweis; **Datenschutz** über einen
    **Link auf eine externe Datenschutzseite** + Pflicht-Checkbox (kein eigener Text im System).
-2. ~~**Phase 4 – Abrechnung**~~ (erledigt, siehe oben). Bewusst später: **Zahlungseingänge je Teilnehmende*r in eigenem
-   Modul** (Anbindung an die Abrechnung über eine Schnittstelle), endgültiges **Auszahlungs-Exportformat** (ggf. SEPA-XML).
+2. ~~**Phase 4 – Abrechnung**~~ (erledigt). ~~Zahlungseingänge je Teilnehmende*r in eigenem Modul~~ → Modul `treasury`.
+   Weiterhin offen: endgültiges **Auszahlungs-Exportformat** (ggf. SEPA-XML).
+4. Kasse – mögliche Folgeschritte: Guthaben verrechnen/zurückzahlen, Aktions-Ausgaben aus der Abrechnung übernehmen,
+   SEPA-Lastschrift/FinTS, Mitglieds-Jahresbeiträge als Serienrechnung, Abschluss-Sperre (bewusst nicht gewünscht).
 3. Aufräumen: Git-Initial-Commit, Schema-/Doku-Aktualisierung, ggf. `docs/` um das Modul `actions` ergänzen.
 
 ## Bekannte Eigenheiten

@@ -8,6 +8,8 @@ export default defineConfig({
 		include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts', 'src/**/*.test.ts'],
 		environment: 'node',
 		setupFiles: ['tests/setup.ts'],
-		testTimeout: 30000
+		testTimeout: 30000,
+		// PGlite-Setups (Migrationen, Module) brauchen unter paralleler Last mehr als 10 s
+		hookTimeout: 60000
 	}
 });

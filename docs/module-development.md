@@ -178,6 +178,13 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 - **Wichtig:** Core-Services (`core.users.directory`, `core.storage`, `core.audit` …) nicht innerhalb einer `forModule(...).transaction` aufrufen, sondern davor oder danach. Sie nutzen die Core-Verbindung; auf Einzelverbindungs-Treibern (PGlite in Tests/Demo) blockiert das die offene Transaktion.
 - `core.crypto.forModule('<id>')` liefert `encrypt`/`decrypt`/`isEncrypted` (AES-256-GCM, Schlüssel je Modul) für sensible Felder wie IBAN. Klartext nie in API-Antworten oder Audit-Metadaten ausgeben.
 
+### Hintergrundjobs und optionale Abhängigkeiten
+
+- Regelmäßige Aufgaben (Abgleich, Erinnerungs-Mails) als `jobs` im `defineModule` deklarieren (`schedule: 'hourly' | 'daily'`,
+  Systemkontext, Rückgabe = kurze Statusmeldung). Details: `docs/core-services.md` → „Hintergrundjobs“. Beispiel: `treasury/module.ts`.
+- Rückkanäle zwischen Modulen ohne Zyklus: `manifest.optionalDependencies` + `core.modules.useOptional` (liefert `null`, wenn der
+  Anbieter aus ist). Beispiel: `actions` → `treasury` (Ist-Beiträge in der Abrechnung).
+
 ## 7. Tests
 
 ```ts

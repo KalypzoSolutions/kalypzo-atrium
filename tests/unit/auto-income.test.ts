@@ -102,10 +102,32 @@ describe('computeAutoIncome', () => {
 			payingCount: 3,
 			teamCount: 2,
 			feeCents: 10000,
-			teamFeeCents: 5000
+			teamFeeCents: 5000,
+			source: 'calculated'
 		});
 		expect(a.subsidy).toBeNull();
 		expect(a.overridden).toEqual([]);
+	});
+	it('Kasse ersetzt das Soll durch eingegangene Zahlungen (Ist)', () => {
+		const treasury = { invoiceCount: 5, dueCents: 40000, paidCents: 25000, openCents: 15000 };
+		const a = computeAutoIncome({ ...base, treasury });
+		expect(a.contributions).toMatchObject({
+			cents: 25000,
+			source: 'treasury',
+			dueCents: 40000,
+			openCents: 15000,
+			invoiceCount: 5
+		});
+		// Ohne Rechnungen in der Kasse bleibt es beim berechneten Soll
+		const none = computeAutoIncome({ ...base, treasury: { ...treasury, invoiceCount: 0 } });
+		expect(none.contributions).toMatchObject({ cents: 40000, source: 'calculated' });
+		// Manuelle Beitragsbuchung ueberschreibt weiterhin
+		const manual = computeAutoIncome({
+			...base,
+			treasury,
+			entries: [{ type: 'income', category: 'contributions' }]
+		});
+		expect(manual.overridden).toEqual(['contributions']);
 	});
 	it('ohne Beitrag keine Beitragseinnahmen; NaN/negativ -> 0', () => {
 		expect(computeAutoIncome({ ...base, feeCents: null }).contributions).toBeNull();
