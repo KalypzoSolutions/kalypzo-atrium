@@ -106,6 +106,22 @@ export type PdfBlock =
 	  }
 	/** Bild als `data:`-URL (nur PNG/JPEG, z. B. QR-Code), Breite in mm */
 	| { type: 'image'; dataUrl: string; widthMm: number; alt?: string; align?: 'left' | 'center' }
+	/**
+	 * Zweispaltiger Block ohne Rahmen: optional Bild links (z. B. QR-Code), rechts Beschriftung, ein
+	 * hervorgehobener Wert (z. B. Code), Zusatzzeilen und ein im PDF anklickbarer Link (nur http/https;
+	 * das Bild wird mitverlinkt).
+	 */
+	| {
+			type: 'box';
+			image?: { dataUrl: string; widthMm: number; alt?: string };
+			label?: string;
+			value?: string;
+			lines?: string[];
+			/** Beschriftung ueber dem Link */
+			linkLabel?: string;
+			/** Anzeigetext (Standard: href); bricht bei langen Adressen ueberall um */
+			link?: { href: string; text?: string };
+	  }
 	| { type: 'pageBreak' };
 
 export type PdfContent = PdfBlock[];

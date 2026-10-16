@@ -105,7 +105,7 @@ async function mkParent(name: string) {
 function tokenAndCode() {
 	return {
 		token: /verknuepfen\/([0-9a-f]{32})/.exec(html)![1]!,
-		code: /Code: (\d{3}) (\d{3})/.exec(html)!.slice(1, 3).join('')
+		code: />(\d{3}) (\d{3})</.exec(html)!.slice(1, 3).join('')
 	};
 }
 
@@ -193,7 +193,8 @@ describe('Konto-Verknüpfung', () => {
 		expect(html).toContain('12345 Musterstadt');
 		expect(html).toContain('künftig online verwalten');
 		expect(html).toMatch(/<img src="data:image\/png;base64,/);
-		expect(html).toMatch(/http:\/\/localhost:5173\/p\/members\/verknuepfen\/[0-9a-f]{32}/);
+		// Sichtbar ohne Schema (der QR-Code enthält die volle URL)
+		expect(html).toMatch(/>localhost:5173\/p\/members\/verknuepfen\/[0-9a-f]{32}</);
 		({ token, code } = tokenAndCode());
 		expect(code).toMatch(/^\d{6}$/);
 	});

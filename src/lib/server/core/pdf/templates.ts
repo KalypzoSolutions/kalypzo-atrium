@@ -211,6 +211,83 @@ function isSummaryOnly(b: PdfBlock | undefined): boolean {
 const IMAGE_DATA_URL = /^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/;
 const MAX_IMAGE_DATA_URL = 2 * 1024 * 1024;
 
+/** Prueft eingebettete Bilder (nur PNG/JPEG-Data-URL, Breite 5–150 mm). */
+function assertImage(dataUrl: string, widthMm: number): void {
+	if (!IMAGE_DATA_URL.test(dataUrl) || dataUrl.length > MAX_IMAGE_DATA_URL) {
+		throw errors.badRequest('Ungueltiges Bild im Dokument');
+	}
+	if (!Number.isFinite(widthMm) || widthMm < 5 || widthMm > 150) {
+		throw errors.badRequest('Ungueltige Bildbreite');
+	}
+}
+
+type BoxBlock = Extract<PdfBlock, { type: 'box' }>;
+
+const SAFE_HREF = /^https?:\/\/[^\s"<>]+$/;
+
+/** Link fuer das PDF (in Chromium-PDFs anklickbar); nur http(s). */
+function linkHtml(href: string, text: string): string {
+	if (!SAFE_HREF.test(href)) throw errors.badRequest('Ungueltiger Link im Dokument');
+	return `<a href="${escapeHtml(href)}" style="color:inherit;text-decoration:underline;">${escapeHtml(text)}</a>`;
+}
+
+/**
+ * Macht http(s)-Adressen in bereits escaptem Text anklickbar. Endet an Leerraum oder escapten
+ * Zeichen (`&lt;` usw.); Satzzeichen am Ende bleiben ausserhalb des Links.
+ */
+const URL_IN_TEXT =
+	/https?:\/\/(?:(?!&lt;|&gt;|&quot;|&#39;)[^\s<])+?(?=[.,;:!?)]*(?:\s|<|&lt;|&gt;|&quot;|&#39;|$))/g;
+
+function linkify(escaped: string): string {
+	return escaped.replace(
+		URL_IN_TEXT,
+		(url) => `<a href="${url}" style="color:inherit;">${url}</a>`
+	);
+}
+
+/** Bild links, Text rechts (ohne Rahmen); zweispaltige Tabelle, nur Inline-Styles. */
+function renderBox(b: BoxBlock): string {
+	const parts: string[] = [];
+	if (b.label) {
+		parts.push(`<div style="font-size:10pt;color:#4b5563;">${escapeHtml(b.label)}</div>`);
+	}
+	if (b.value) {
+		parts.push(
+			`<div style="font-size:24pt;font-weight:700;letter-spacing:.05em;line-height:1.15;margin:.5mm 0 1mm;">${escapeHtml(b.value)}</div>`
+		);
+	}
+	for (const line of b.lines ?? []) {
+		parts.push(`<div style="font-size:10pt;color:#4b5563;">${escapeHtml(line)}</div>`);
+	}
+	if (b.linkLabel) {
+		parts.push(
+			`<div style="font-size:10pt;color:#4b5563;margin-top:4mm;">${escapeHtml(b.linkLabel)}</div>`
+		);
+	}
+	if (b.link) {
+		parts.push(
+			`<div style="font-size:10pt;overflow-wrap:anywhere;word-break:break-all;${b.linkLabel ? '' : 'margin-top:4mm;'}">${linkHtml(b.link.href, b.link.text ?? b.link.href)}</div>`
+		);
+	}
+	const cell = 'border:0;padding:0;vertical-align:middle;background:none;';
+	let image = '';
+	if (b.image) {
+		assertImage(b.image.dataUrl, b.image.widthMm);
+		const img = `<img src="${b.image.dataUrl}" alt="${escapeHtml(b.image.alt ?? '')}" style="display:block;width:${b.image.widthMm}mm;height:auto;" />`;
+		// Bild verlinkt, wenn ein Link angegeben ist (QR-Code im PDF anklickbar)
+		const inner =
+			b.link && SAFE_HREF.test(b.link.href)
+				? `<a href="${escapeHtml(b.link.href)}">${img}</a>`
+				: img;
+		image = `<td style="${cell}width:${b.image.widthMm}mm;padding-right:6mm;">${inner}</td>`;
+	}
+	return (
+		'<table class="pdf-box" style="width:100%;border-collapse:collapse;margin:5mm 0 6mm;table-layout:auto;break-inside:avoid;"><tr style="break-inside:avoid;">' +
+		image +
+		`<td style="${cell}">${parts.join('')}</td></tr></table>`
+	);
+}
+
 export function renderBlocks(blocks: PdfBlock[]): string {
 	const out: string[] = [];
 	// Harte Seitenumbrueche: nie am Anfang oder Ende, aufeinanderfolgende werden zu einem
@@ -238,27 +315,27 @@ export function renderBlocks(blocks: PdfBlock[]): string {
 			case 'paragraph': {
 				// Absatz direkt vor einer Tabelle bleibt mit ihr zusammen
 				const keep = next?.type === 'table' ? ' style="break-after:avoid;"' : '';
-				out.push(`<p${keep}>${escapeHtml(b.text).replace(/\n/g, '<br/>')}</p>`);
+				out.push(`<p${keep}>${linkify(escapeHtml(b.text)).replace(/\n/g, '<br/>')}</p>`);
 				break;
 			}
 			case 'list': {
 				const tag = b.ordered ? 'ol' : 'ul';
-				out.push(`<${tag}>${b.items.map((i) => `<li>${escapeHtml(i)}</li>`).join('')}</${tag}>`);
+				out.push(
+					`<${tag}>${b.items.map((i) => `<li>${linkify(escapeHtml(i))}</li>`).join('')}</${tag}>`
+				);
 				break;
 			}
 			case 'image': {
-				if (!IMAGE_DATA_URL.test(b.dataUrl) || b.dataUrl.length > MAX_IMAGE_DATA_URL) {
-					throw errors.badRequest('Ungueltiges Bild im Dokument');
-				}
-				if (!Number.isFinite(b.widthMm) || b.widthMm < 5 || b.widthMm > 150) {
-					throw errors.badRequest('Ungueltige Bildbreite');
-				}
+				assertImage(b.dataUrl, b.widthMm);
 				const align = b.align === 'center' ? 'margin:0 auto;' : '';
 				out.push(
 					`<img src="${b.dataUrl}" alt="${escapeHtml(b.alt ?? '')}" style="display:block;width:${b.widthMm}mm;height:auto;${align}break-inside:avoid;" />`
 				);
 				break;
 			}
+			case 'box':
+				out.push(renderBox(b));
+				break;
 			case 'table':
 				if (b.variant === 'grid') {
 					out.push(renderGridTable(b, flow));

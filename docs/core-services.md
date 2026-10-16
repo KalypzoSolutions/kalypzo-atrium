@@ -97,8 +97,10 @@ const pdf = await core.pdf.generate(ctx, {
 // pdf.buffer, pdf.fileName, pdf.stored?
 ```
 
-- Blocktypen: `heading`, `paragraph`, `list`, `table`, `image`, `pageBreak`. Alles wird HTML-escaped; es gibt keinen Roh-HTML-Block.
+- Blocktypen: `heading`, `paragraph`, `list`, `table`, `image`, `box`, `pageBreak`. Alles wird HTML-escaped; es gibt keinen Roh-HTML-Block.
 - `image`: nur `data:image/png|jpeg;base64,…` (≤ 2 MB), `widthMm` 5–150 – z. B. QR-Code aus `core.qr.dataUrl(text)`.
+- `box`: zweispaltig ohne Rahmen – optional `image` links (gleiche Prüfung wie `image`), rechts `label`, `value` (groß, z. B. Code), `lines`, `linkLabel` + `link` `{ href, text? }` (nur http/https, sonst 400; Bild wird mitverlinkt). Genutzt im Verknüpfungsbrief.
+- Links: `http(s)://…` in `paragraph`/`list` werden automatisch anklickbar (Chromium übernimmt `<a href>` als PDF-Link).
 - `core.pdf.generateMany(ctx, inputs[], title)` erzeugt mehrere Dokumente (je eigene Vorlage/Adresse) nacheinander und fügt sie zu **einem** PDF zusammen (max. 200); `core.pdf.merge(buffers[])` fügt fertige PDFs zusammen. `core.app.origin()` liefert die öffentliche Basis-URL (`ORIGIN`).
 - Templates: `default`, `compact`; eigene über `registerTemplate`. Header (Logo/Organisation/Kopfzeile) und Footer (Datum, Fußzeile, „Seite X von Y“) sind unabhängig vom Inhalt.
 - Defaults (Format, Ausrichtung, Ränder, Texte, Logo) aus `core.pdf.*`.
