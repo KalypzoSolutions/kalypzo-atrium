@@ -54,6 +54,10 @@
   **Ausbaustufe 2**: Standardkonto, Einstellungen unter Administration, Zahler-IBAN (Import-Abgleich), Auszahlungen
   (Eingangsrechnungen, Auslagen mit Rückkanal in die Abrechnung, Rückzahlungen, Guthaben), Rechnungs-PDF an der Anmeldebestätigung
   mit automatischer „Geänderte Rechnung“, Offene Posten als Tabelle. Core: Mail-Anhänge (PDF), `crypto.hash`, Modul-Nav `admin`.
+  **Ausbaustufe 3**: Mails und Rechnungs-PDF neu gestaltet (Zahlungskasten, GiroCode, Verwendungszweck), Bankdaten **nur**
+  aus den Kassen-Einstellungen (auch für die Anmeldebestätigung), Zahler lernen aus zugeordneten Buchungen (IBAN-Feld +
+  Autovervollständigung), Rückzahlung aufs Herkunftskonto, Sammelrechnung je Zahler, Belege bei Auszahlungen, Ablage
+  abgeschlossener Aktions-Abrechnungen im Tab Berichte.
 - **Core**: Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`, Tabelle `job_run`, `/api/v1/jobs`), optionale
   Modul-Abhängigkeiten (`optionalDependencies`, `core.modules.useOptional`); `members` liefert `listMemberContacts`,
   `actions` liefert `listReceivableSources`/`listActionRefs` (`actions/contract.ts`).
