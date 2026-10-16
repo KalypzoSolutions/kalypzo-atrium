@@ -97,6 +97,8 @@ export type PdfBlock =
 			/** Spaltenkopfzeile weglassen (z. B. wenn `caption` schon beschriftet) */
 			noHeader?: boolean;
 	  }
+	/** Bild als `data:`-URL (nur PNG/JPEG, z. B. QR-Code), Breite in mm */
+	| { type: 'image'; dataUrl: string; widthMm: number; alt?: string; align?: 'left' | 'center' }
 	| { type: 'pageBreak' };
 
 export type PdfContent = PdfBlock[];

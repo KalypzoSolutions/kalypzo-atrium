@@ -19,7 +19,11 @@ let cached: Env | undefined;
 
 export function env(): Env {
 	if (!cached) {
-		const parsed = schema.safeParse(process.env);
+		// Compose reicht nicht gesetzte Variablen als leeren String durch: leer == nicht gesetzt
+		const source = Object.fromEntries(
+			Object.entries(process.env).filter(([, v]) => v !== undefined && v.trim() !== '')
+		);
+		const parsed = schema.safeParse(source);
 		if (!parsed.success) {
 			throw new Error(
 				'Ungueltige Umgebungsvariablen: ' +

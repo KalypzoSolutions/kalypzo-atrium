@@ -97,7 +97,9 @@ const pdf = await core.pdf.generate(ctx, {
 // pdf.buffer, pdf.fileName, pdf.stored?
 ```
 
-- Blocktypen: `heading`, `paragraph`, `list`, `table`, `pageBreak`. Alles wird HTML-escaped; es gibt keinen Roh-HTML-Block.
+- Blocktypen: `heading`, `paragraph`, `list`, `table`, `image`, `pageBreak`. Alles wird HTML-escaped; es gibt keinen Roh-HTML-Block.
+- `image`: nur `data:image/png|jpeg;base64,…` (≤ 2 MB), `widthMm` 5–150 – z. B. QR-Code aus `core.qr.dataUrl(text)`.
+- `core.pdf.generateMany(ctx, inputs[], title)` erzeugt mehrere Dokumente (je eigene Vorlage/Adresse) nacheinander und fügt sie zu **einem** PDF zusammen (max. 200); `core.pdf.merge(buffers[])` fügt fertige PDFs zusammen. `core.app.origin()` liefert die öffentliche Basis-URL (`ORIGIN`).
 - Templates: `default`, `compact`; eigene über `registerTemplate`. Header (Logo/Organisation/Kopfzeile) und Footer (Datum, Fußzeile, „Seite X von Y“) sind unabhängig vom Inhalt.
 - Defaults (Format, Ausrichtung, Ränder, Texte, Logo) aus `core.pdf.*`.
 - Chromium läuft ohne JavaScript, externe Requests werden blockiert.
@@ -123,6 +125,32 @@ Vorlagen mit festem Seitenlayout (Briefkopf, Falzmarken, Adressfeld, Fußzeile) 
 3. Datei `templates/<id>.ts` mit `export default` eines `PdfTemplate` (`id`, `label`, `description`, `source`, `page`, `overlay`, `parts`).
 4. Vorschau in der Admin-Ansicht prüfen und gegen das Referenzbild abgleichen (Screenshot, `pdftotext -bbox`).
 5. Test ergänzen und `npm run check`, `npx eslint .`, `npx vitest run` ausführen.
+
+## Modul-Dienste (`ModuleDefinition.provides`, `core.modules.use`)
+
+Ein Modul kann abhängigen Modulen typisierte Funktionen anbieten: `defineModule({ …, provides: { … } })`, Vertrag als reine Typen in `src/lib/modules/<id>/contract.ts`.
+Aufruf: `await core.modules.use<MembersService>('members', 'actions')` – prüft, dass das aufrufende Modul den Anbieter in `manifest.dependencies` führt und der Anbieter aktiv ist
+(sonst `module_disabled`). Aufruf **nie** innerhalb einer offenen Modul-Transaktion. Beispiel: `actions` → `members` (Anmeldung mit Mitglied).
+
+## core.mail und E-Mail-Layout
+
+`core.mail.send({ to, subject, text, html? })` sendet über SMTP. Jede Mail (auch Passwort-Reset, Test-Mail) bekommt das
+**Stamm-Layout** (`src/lib/server/core/mail-layout.ts`, abgeleitet vom Stamm-Briefkopf der PDF-Vorlagen):
+Kopf mit Lilie, Vereinsname und Wappen, Inhalt, Signatur, Fußzeile mit Vereinsnachweis.
+
+- `text` wird escaped zu Absätzen/Links; `html` (optional) ist ein **Inhaltsfragment** und wird ins Layout gesetzt.
+  Die Textfassung enthält Signatur und Fußzeile ebenfalls.
+- Bilder (`mail-assets/`, verkleinert) gehen als CID-Anhänge mit, nicht als `data:`-URL.
+- Verwaltung unter **Systemeinstellungen → E-Mail-Layout** (`core.mail.layoutEnabled`, `core.mail.showEmblem`,
+  `core.mail.signature`, `core.mail.footerText`; Akzentfarbe aus `core.design.accentColor`) mit Live-Vorschau
+  (`GET /settings/mail-preview`, Recht `core.settings.view`).
+- Intern (`sendMail` in `core/mail.ts`) lässt sich das Layout per `layout: false` abschalten; Module nutzen es immer.
+
+## Konten per Code anlegen (`core.users.registerWithRole`)
+
+`core.users.registerWithRole({ name, email, password, roleName })` legt ein Konto **ohne Berechtigungsprüfung** an
+(Passwort 12–128 Zeichen, Rolle per Name, wird ohne Rechte angelegt, falls sie fehlt; `409` bei vorhandener E-Mail).
+Nur aus kontrollierten öffentlichen Pfaden aufrufen, die selbst einen Nachweis verlangen (z. B. Verknüpfungscode im Modul `members`).
 
 ## core.ai
 

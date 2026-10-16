@@ -83,7 +83,9 @@ const headers: Handle = async ({ event, resolve }) => {
 	});
 	response.headers.set('x-content-type-options', 'nosniff');
 	response.headers.set('referrer-policy', 'strict-origin-when-cross-origin');
-	response.headers.set('x-frame-options', 'DENY');
+	// Nur die E-Mail-Vorschau darf von der eigenen Seite eingebettet werden (iframe in den Einstellungen)
+	const embeddable = event.url.pathname === '/settings/mail-preview';
+	response.headers.set('x-frame-options', embeddable ? 'SAMEORIGIN' : 'DENY');
 	response.headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
 	if (event.url.protocol === 'https:') {
 		response.headers.set('strict-transport-security', 'max-age=31536000; includeSubDomains');

@@ -14,12 +14,15 @@ export interface FieldDescriptor {
 	/** Aktueller Wert; bei Secrets immer null */
 	value: unknown;
 	options?: string[];
+	multiline?: boolean;
 }
 
 const SELECT_OPTIONS: Record<string, string[]> = {
 	'core.pdf.defaultFormat': ['A3', 'A4', 'A5', 'Letter', 'Legal'],
 	'core.pdf.defaultOrientation': ['portrait', 'landscape']
 };
+
+const MULTILINE_KEYS = new Set(['core.mail.signature', 'core.mail.footerText']);
 
 function kindOf(key: string): FieldKind {
 	if (SELECT_OPTIONS[key]) return 'select';
@@ -48,7 +51,8 @@ export async function loadFields(
 				isSet: s.isSet,
 				kind: kindOf(s.key),
 				value: s.value,
-				options: SELECT_OPTIONS[s.key]
+				options: SELECT_OPTIONS[s.key],
+				multiline: MULTILINE_KEYS.has(s.key)
 			});
 		}
 	}

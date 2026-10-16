@@ -15,6 +15,7 @@ import { setPdfRendererForTests } from '$lib/server/core/pdf';
 import { core } from '$lib/sdk/server';
 import { eq, sql } from 'drizzle-orm';
 import actionsModule from '$lib/modules/actions/module';
+import membersModule from '$lib/modules/members/module';
 import type { RequestContext } from '$lib/sdk/types';
 import type { AccountingPayee } from '$lib/modules/actions/schemas';
 
@@ -151,6 +152,7 @@ const nextAction = () => createAction(`Lager ${++seq}`);
 beforeAll(async () => {
 	await useTestDatabase();
 	registerCoreApi();
+	registerModule(membersModule);
 	registerModule(actionsModule);
 	await syncModules();
 	await bootstrapAdmin('admin@example.test', 'correct-horse-battery');
@@ -159,6 +161,7 @@ beforeAll(async () => {
 		.from(schema.user)
 		.where(eq(schema.user.email, 'admin@example.test'));
 	admin = await ctxOf(u!.id);
+	await enableModule(admin, 'members');
 	await enableModule(admin, 'actions');
 	admin = await ctxOf(u!.id);
 

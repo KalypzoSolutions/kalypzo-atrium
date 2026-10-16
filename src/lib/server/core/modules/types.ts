@@ -18,6 +18,11 @@ export interface ModuleDefinition {
 	/* eslint-enable @typescript-eslint/no-explicit-any */
 	/** SQL-Migrationen, laufen im PostgreSQL-Schema `mod_<id>` */
 	migrations?: ModuleMigration[];
+	/**
+	 * Dienste, die dieses Modul abhaengigen Modulen anbietet (Funktionen; Typvertrag in `contract.ts`
+	 * des Moduls). Abruf nur ueber `core.modules.use(providerId, callerId)`.
+	 */
+	provides?: Record<string, unknown>;
 	onEnable?: (ctx: RequestContext) => Promise<void>;
 	onDisable?: (ctx: RequestContext) => Promise<void>;
 }

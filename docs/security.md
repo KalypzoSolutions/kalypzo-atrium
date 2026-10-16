@@ -40,6 +40,20 @@ Modul-Endpoints verlangen standardmäßig eine Berechtigung (`permission: null` 
 - **Datenschutz**: Öffentliche Formulare erheben personenbezogene Daten ohne Anmeldung. Nur erforderliche Felder abfragen, Zweck und Aufbewahrung festlegen, Hinweistext anzeigen und Daten nicht in Logs/Audit-Metadaten schreiben.
 - **Öffentliche Seiten** (`/p/<moduleId>/<pfad>`) brauchen keine Session, setzen `noindex,nofollow` und zeigen nur Routen aus `ui.publicRoutes`. Alle Sicherheits-Header und die CSP (`frame-ancestors 'none'`) gelten unverändert.
 
+## Konto-Verknüpfung per Code (Modul `members`)
+
+Die Selbstregistrierung ist weiterhin aus. Ausnahme: Wer **Link-Token und 6-stelligen Code** aus dem Brief hat, kann über
+`/p/members/verknuepfen/<token>` ein Konto (Rolle „Mitglied“, ohne Rechte) anlegen oder ein vorhandenes verknüpfen.
+Schutz: Token (128 Bit) identifiziert das Mitglied, Code (6 Ziffern, verschlüsselt gespeichert, zeitkonstanter Vergleich) belegt den Besitz;
+je Mitglied nach 10 Fehlversuchen 60 Minuten Sperre, dazu Rate-Limits je IP/Gesamt; Gültigkeit 90 Tage; „Code neu erzeugen“ macht Link und Code ungültig.
+Die E-Mail-Adresse neuer Konten wird nicht verifiziert (`emailVerified: true` wie bei Admin-Anlage).
+
+## Adress-Autovervollständigung (Modul `members`)
+
+Beim Tippen einer Adresse sendet **unser Server** (nicht der Browser) den Suchtext an den in `members.address.photonUrl` konfigurierten
+Photon-Dienst (Standard: `photon.komoot.io`, OpenStreetMap). Es werden nur Straße/Ort-Fragmente übertragen, keine Namen oder Kontodaten.
+Timeout 3 s, Fehler brechen das Formular nicht. Zum Abschalten oder für eine eigene Instanz die Einstellung leeren bzw. ändern.
+
 ## Secrets
 
 - Reversibel benötigte Secrets (SMTP-Passwort, S3-Zugangsdaten, OpenAI-Key) werden mit **AES-256-GCM** verschlüsselt (Schlüssel per HKDF-SHA-256 aus `APP_SECRET`, zufälliger 96-Bit-IV, Format `enc:v1:…`).

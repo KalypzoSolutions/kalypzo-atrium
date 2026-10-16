@@ -52,7 +52,10 @@ const memberBody = (over: Record<string, unknown> = {}) => ({
 	lastName: 'Muster',
 	scoutName: 'Fuchs',
 	birthDate: '2012-05-17',
-	address: 'Musterweg 1, 12345 Musterstadt',
+	street: 'Musterweg 1',
+	postalCode: '12345',
+	city: 'Musterstadt',
+	country: 'DE',
 	phones: [
 		{ name: 'Mutter', value: '0123 456' },
 		{ name: null, value: '0987 654' }
@@ -153,12 +156,18 @@ describe('Bootstrap: Mitglieder und Gruppen', () => {
 		expect(list.some((g) => g.id === group.id)).toBe(true);
 	});
 
-	it('verlangt danach mindestens eine Gruppe pro Mitglied (422)', async () => {
+	it('Gruppen sind optional (auch wenn bereits Gruppen existieren)', async () => {
 		const res = await call('/members', {
 			method: 'POST',
 			json: memberBody({ firstName: 'Ohne', groupIds: [] })
 		});
-		expect(res.status).toBe(422);
+		expect(res.status).toBe(201);
+		expect((await data<MemberDto>(res, 201)).groups).toEqual([]);
+		const unknown = await call('/members', {
+			method: 'POST',
+			json: memberBody({ firstName: 'X', groupIds: [crypto.randomUUID()] })
+		});
+		expect(unknown.status).toBe(422);
 	});
 });
 

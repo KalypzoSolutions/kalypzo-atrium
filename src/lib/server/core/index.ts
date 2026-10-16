@@ -14,7 +14,7 @@ import {
 	resolveSession,
 	systemContext
 } from './auth/context';
-import { searchUserDirectory } from './auth/users';
+import { registerUserWithRole, searchUserDirectory } from './auth/users';
 import { decryptSecret, encryptSecret, isEncrypted } from './crypto';
 import { getDb } from './database/client';
 import { forModule, transaction } from './database/module-db';
@@ -22,6 +22,7 @@ import { allDefinitions } from './modules/registry';
 import {
 	assertModuleEnabled,
 	disableModule,
+	useModuleService,
 	enableModule,
 	isModuleEnabled,
 	listModules,
@@ -39,6 +40,8 @@ import {
 import * as pdf from './pdf';
 import { sendMail } from './mail';
 import { errors } from './errors';
+import { env } from './env';
+import { qrDataUrl } from './qr';
 import { getPublicSettings, getSetting, getSettings, setSetting } from './settings/service';
 import * as storage from './storage';
 
@@ -88,7 +91,12 @@ export const core = {
 		 * Minimales Verzeichnis (id, name, email) aktiver Benutzer, z. B. fuer Freigaben.
 		 * Braucht nur Anmeldung; Suche ab 2 Zeichen, maximal 30 Treffer.
 		 */
-		directory: searchUserDirectory
+		directory: searchUserDirectory,
+		/**
+		 * Legt ein Konto OHNE Rechtepruefung an (Rolle per Name, wird ohne Rechte angelegt). Nur aus
+		 * kontrollierten oeffentlichen Pfaden (z. B. gueltiger Verknuepfungscode) aufrufen.
+		 */
+		registerWithRole: registerUserWithRole
 	},
 	crypto: {
 		/** Verschluesselung sensibler Modul-Daten (AES-256-GCM), Schluessel je Modul abgeleitet */
@@ -114,6 +122,8 @@ export const core = {
 		assertEnabled: assertModuleEnabled,
 		enable: enableModule,
 		disable: disableModule,
+		/** Dienste eines Moduls nutzen, von dem das aufrufende Modul abhaengt (siehe `ModuleDefinition.provides`) */
+		use: useModuleService,
 		navigationFor,
 		registered: () => allDefinitions().map((d) => d.manifest)
 	},
@@ -136,6 +146,9 @@ export const core = {
 	},
 	pdf: {
 		generate: pdf.generate,
+		/** Mehrere Dokumente (z. B. Serienbrief mit je eigener Adresse) zu einem PDF zusammenfuehren */
+		generateMany: pdf.generateMany,
+		merge: pdf.mergePdfs,
 		registerTemplate: pdf.registerTemplate,
 		listTemplates: pdf.listTemplates
 	},
@@ -159,6 +172,14 @@ export const core = {
 	mail: {
 		/** Sendet eine E-Mail an eine einzelne Adresse; SMTP-Fehler werden weitergereicht */
 		send: sendModuleMail
+	},
+	qr: {
+		/** QR-Code als PNG-`data:`-URL (z. B. fuer den PDF-Bildblock) */
+		dataUrl: qrDataUrl
+	},
+	app: {
+		/** Oeffentliche Basis-URL der Anwendung (`ORIGIN`, ohne abschliessenden Schraegstrich) */
+		origin: () => env().ORIGIN.replace(/\/+$/, '')
 	},
 	audit: { log: logAudit, logFromContext: auditFromContext, list: listAudit }
 } as const;

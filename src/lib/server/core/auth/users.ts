@@ -139,6 +139,45 @@ export async function createUserUnchecked(input: CreateUserInput): Promise<strin
 	return id;
 }
 
+/**
+ * Konto fuer die oeffentliche Selbstregistrierung (Aufrufer prueft vorher, dass das erlaubt ist):
+ * Rolle wird per Name gesucht, sonst ohne Rechte angelegt. Kein Audit-Kontext (Aufrufer auditiert).
+ */
+export async function registerUserWithRole(input: {
+	name: string;
+	email: string;
+	password: string;
+	roleName: string;
+}): Promise<string> {
+	const name = input.name.trim();
+	if (!name || name.length > 120) throw errors.badRequest('Ungueltiger Name');
+	if (input.password.length < 12 || input.password.length > 128) {
+		throw errors.badRequest('Passwort muss 12 bis 128 Zeichen lang sein');
+	}
+	const db = getDb();
+	let [r] = await db
+		.select({ id: schema.role.id })
+		.from(schema.role)
+		.where(eq(schema.role.name, input.roleName));
+	if (!r) {
+		const id = newId();
+		await db
+			.insert(schema.role)
+			.values({ id, name: input.roleName, description: 'Automatisch angelegt', isSystem: false })
+			.onConflictDoNothing();
+		[r] = await db
+			.select({ id: schema.role.id })
+			.from(schema.role)
+			.where(eq(schema.role.name, input.roleName));
+	}
+	return createUserUnchecked({
+		name,
+		email: input.email,
+		password: input.password,
+		roleIds: [r!.id]
+	});
+}
+
 export async function createUser(ctx: RequestContext, input: CreateUserInput): Promise<string> {
 	await requirePermission(ctx, 'core.users.create');
 	if (input.roleIds?.length) {

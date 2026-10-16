@@ -1,4 +1,4 @@
-# Demo-/Testumgebung: S3-kompatibler Storage (MinIO) fuer Belege und Dokumente.
+# Demo-/Testumgebung: S3-kompatibler Storage (MinIO) fuer Belege und Dokumente, Mailpit als Mail-Faenger.
 # Start:  docker compose -f docker-compose.demo.yml up -d
 # Danach: node scripts/setup-demo-storage.mjs   (hinterlegt die Verbindung im laufenden Demo-System)
 # Hinweis: Das offizielle Image `minio/minio` wird nicht mehr auf Docker Hub veroeffentlicht;
@@ -17,5 +17,11 @@ services:
       - '127.0.0.1:9101:9001'
     volumes:
       - demo-minio:/bitnami/minio/data
+  # Mail-Fänger: nimmt alle E-Mails an und zeigt sie unter http://localhost:8026 (nichts wird wirklich versendet)
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - '127.0.0.1:1026:1025'
+      - '127.0.0.1:8026:8025'
 volumes:
   demo-minio:

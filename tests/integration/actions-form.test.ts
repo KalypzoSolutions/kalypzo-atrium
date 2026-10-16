@@ -15,6 +15,7 @@ import { setMailTransportForTests } from '$lib/server/core/mail';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
 import { getDb, schema } from '$lib/server/core/database/client';
 import actionsModule from '$lib/modules/actions/module';
+import membersModule from '$lib/modules/members/module';
 import { STANDARD_FORM_KEYS } from '$lib/modules/actions/schemas';
 import type { RequestContext } from '$lib/sdk/types';
 import type { FormConfig, PublicForm, PublicSubmitResult } from '$lib/modules/actions/schemas';
@@ -114,6 +115,7 @@ beforeAll(async () => {
 	});
 	await useTestDatabase();
 	registerCoreApi();
+	registerModule(membersModule);
 	registerModule(actionsModule);
 	await syncModules();
 	await bootstrapAdmin('admin@example.test', 'correct-horse-battery');
@@ -122,6 +124,7 @@ beforeAll(async () => {
 		.from(schema.user)
 		.where(eq(schema.user.email, 'admin@example.test'));
 	admin = await ctxOf(u!.id);
+	await enableModule(admin, 'members');
 	await enableModule(admin, 'actions');
 	admin = await ctxOf(u!.id);
 

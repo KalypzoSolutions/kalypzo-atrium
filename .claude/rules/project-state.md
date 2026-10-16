@@ -39,6 +39,12 @@
   abgerundet, nur wenn je Person > 5 € bleiben, manuelle Personenzahl möglich; Hinweis „erst nach Eingang aller
   Zahlungen“ nur im PDF-Bericht; „Zahlung an Personen“ = nur „als ausgezahlt markieren“. **Backend (`count`/`mode` in
   `refund.endpoints.ts`) war bei Doku-Stand (2026-10-15) noch in Arbeit.** Details: `rules/module-actions.md`.
+- **Konto-Verknüpfung (members, Migration 0003)**: Benutzer ↔ Mitglieder (n:m) per Brief-PDF (QR, Link, 6-stelliger Code, 90 Tage), öffentliche
+  Seite zum Verknüpfen/Konto anlegen (Rolle „Mitglied“), Sammel-PDF per Bulk-Aktion; Core: PDF-Bildblock, `pdf.generateMany/merge`, `qr`, `app.origin`,
+  `users.registerWithRole`. Noch nicht genutzt: Anmeldung für Kinder in `actions` (Basis `GET /my/members`).
+- **Gruppen optional, Zusatzfelder, Anmeldung mit Mitglied**: Mitglieder brauchen keine Gruppe mehr; vordefinierte Zusatzfelder (Ernährung, Allergien, Medikamente …) pro Mitglied;
+  Anmeldelink kann ein verknüpftes Mitglied wählen (Vorbelegung, Rückschreiben) oder per „Anmeldung erzwingen“ Login + Mitglied verlangen; `actions` hängt hart von `members` ab
+  (Core: `ModuleDefinition.provides`, `core.modules.use`). Offen: Verschlüsselung der Gesundheitsfelder, mehrere Kinder in einem Durchgang.
 - Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)

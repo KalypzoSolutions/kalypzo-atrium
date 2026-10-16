@@ -1,4 +1,5 @@
 import type { PdfBlock, PdfFormat, PdfMargins } from '$lib/sdk/types';
+import { errors } from '../errors';
 
 export function escapeHtml(value: string): string {
 	return value
@@ -207,6 +208,9 @@ function isSummaryOnly(b: PdfBlock | undefined): boolean {
 	return !!b && b.type === 'table' && b.rows.length === 0 && !!b.totalRow && !b.caption;
 }
 
+const IMAGE_DATA_URL = /^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/;
+const MAX_IMAGE_DATA_URL = 2 * 1024 * 1024;
+
 export function renderBlocks(blocks: PdfBlock[]): string {
 	const out: string[] = [];
 	// Harte Seitenumbrueche: nie am Anfang oder Ende, aufeinanderfolgende werden zu einem
@@ -240,6 +244,19 @@ export function renderBlocks(blocks: PdfBlock[]): string {
 			case 'list': {
 				const tag = b.ordered ? 'ol' : 'ul';
 				out.push(`<${tag}>${b.items.map((i) => `<li>${escapeHtml(i)}</li>`).join('')}</${tag}>`);
+				break;
+			}
+			case 'image': {
+				if (!IMAGE_DATA_URL.test(b.dataUrl) || b.dataUrl.length > MAX_IMAGE_DATA_URL) {
+					throw errors.badRequest('Ungueltiges Bild im Dokument');
+				}
+				if (!Number.isFinite(b.widthMm) || b.widthMm < 5 || b.widthMm > 150) {
+					throw errors.badRequest('Ungueltige Bildbreite');
+				}
+				const align = b.align === 'center' ? 'margin:0 auto;' : '';
+				out.push(
+					`<img src="${b.dataUrl}" alt="${escapeHtml(b.alt ?? '')}" style="display:block;width:${b.widthMm}mm;height:auto;${align}break-inside:avoid;" />`
+				);
 				break;
 			}
 			case 'table':

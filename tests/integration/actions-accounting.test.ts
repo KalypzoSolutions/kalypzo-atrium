@@ -15,6 +15,7 @@ import { listAudit } from '$lib/server/core/audit/service';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
+import membersModule from '$lib/modules/members/module';
 import type { RequestContext } from '$lib/sdk/types';
 import type {
 	AccountingEntry,
@@ -165,6 +166,7 @@ const uploadReceipt = (id: string, entryId: string, form: FormData, who = 'owner
 beforeAll(async () => {
 	await useTestDatabase();
 	registerCoreApi();
+	registerModule(membersModule);
 	registerModule(actionsModule);
 	await syncModules();
 	await bootstrapAdmin('admin@example.test', 'correct-horse-battery');
@@ -173,6 +175,7 @@ beforeAll(async () => {
 		.from(schema.user)
 		.where(eq(schema.user.email, 'admin@example.test'));
 	admin = await ctxOf(u!.id);
+	await enableModule(admin, 'members');
 	await enableModule(admin, 'actions');
 	admin = await ctxOf(u!.id);
 

@@ -103,6 +103,13 @@
 						disabled={!canEdit}
 						spellcheck="false">{jsonText(f.value)}</textarea
 					>
+				{:else if f.multiline}
+					<textarea
+						{id}
+						name={`f:${f.key}`}
+						class={areaClass.replace('font-mono ', '')}
+						disabled={!canEdit}>{String(f.value ?? '')}</textarea
+					>
 				{:else}
 					<Input {id} name={`f:${f.key}`} value={String(f.value ?? '')} disabled={!canEdit} />
 				{/if}

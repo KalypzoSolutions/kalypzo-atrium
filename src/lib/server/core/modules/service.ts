@@ -77,6 +77,24 @@ export async function isModuleEnabled(id: string): Promise<boolean> {
 	return (await enabledModuleIds()).has(id) && !!getDefinition(id);
 }
 
+/**
+ * Dienste eines anderen Moduls abrufen (`ModuleDefinition.provides`). Der Aufrufer muss den Anbieter in
+ * `manifest.dependencies` fuehren, der Anbieter muss registriert und aktiv sein. Der Aufruf erfolgt
+ * AUSSERHALB offener Modul-Transaktionen (PGlite).
+ */
+export async function useModuleService<T>(providerId: string, callerId: string): Promise<T> {
+	const caller = getDefinition(callerId);
+	if (!caller?.manifest.dependencies.includes(providerId)) {
+		throw new Error(`Modul ${callerId} deklariert keine Abhaengigkeit von "${providerId}"`);
+	}
+	const provider = getDefinition(providerId);
+	if (!provider?.provides) {
+		throw new Error(`Modul ${providerId} stellt keine Dienste bereit`);
+	}
+	await assertModuleEnabled(providerId);
+	return provider.provides as T;
+}
+
 /** Wirft `module_disabled`; verhindert Zugriff ueber UI und API. */
 export async function assertModuleEnabled(id: string): Promise<void> {
 	if (!(await isModuleEnabled(id))) throw errors.moduleDisabled(id);

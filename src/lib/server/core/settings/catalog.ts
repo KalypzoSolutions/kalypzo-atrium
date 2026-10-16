@@ -18,6 +18,10 @@ const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const cssLength = z.string().regex(/^\d+(\.\d+)?(mm|cm|in|px)$/);
 const urlOrEmpty = z.union([z.literal(''), z.string().url()]);
 
+/** Vereinsnachweis wie in der PDF-Fußzeile */
+export const DEFAULT_MAIL_FOOTER =
+	'Die Christliche Pfadfinderschaft Deutschland ist Mitglied der AEJ (Arbeitsgemeinschaft der Evangelischen Jugend in Deutschland e.V.), anerkannt nach §75 SGB VIII und in das Vereinsregister Heilbad Heiligenstadt unter Nr. 400532 eingetragen.';
+
 type Def = Omit<SettingDefinition, 'scope'> & { scope?: SettingScope };
 const g = (d: Def): SettingDefinition => ({ scope: 'global', ...d });
 
@@ -110,6 +114,41 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		schema: str(255),
 		default: '',
 		group: 'smtp'
+	}),
+
+	// E-Mail-Layout
+	g({
+		key: 'core.mail.layoutEnabled',
+		label: 'Stamm-Layout für E-Mails verwenden',
+		description:
+			'Kopf mit Lilie und Vereinsname, Signatur und Fußzeile für alle ausgehenden E-Mails.',
+		schema: z.boolean(),
+		default: true,
+		group: 'mail'
+	}),
+	g({
+		key: 'core.mail.showEmblem',
+		label: 'Wappen im Kopf anzeigen',
+		schema: z.boolean(),
+		default: true,
+		group: 'mail'
+	}),
+	g({
+		key: 'core.mail.signature',
+		label: 'Signatur',
+		description:
+			'Wird unter jeden Nachrichtentext gesetzt, z. B. „Gut Pfad!“. Leer = keine Signatur.',
+		schema: str(400),
+		default: '',
+		group: 'mail'
+	}),
+	g({
+		key: 'core.mail.footerText',
+		label: 'Fußzeile',
+		description: 'Kleingedruckter Vereinsnachweis unter jeder E-Mail. Leer = keine Fußzeile.',
+		schema: str(800),
+		default: DEFAULT_MAIL_FOOTER,
+		group: 'mail'
 	}),
 
 	// Storage

@@ -8,8 +8,8 @@ import { loadFields, saveFields } from './group-form.server';
 import { requirePerm, toFail } from './server-utils';
 import type { PageServerLoad } from './$types';
 
-const GROUPS = ['system', 'design', 'smtp'] as const;
-const allowed = (key: string) => /^core\.(system|organization|design|smtp)\./.test(key);
+const GROUPS = ['system', 'design', 'smtp', 'mail'] as const;
+const allowed = (key: string) => /^core\.(system|organization|design|smtp|mail)\./.test(key);
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requirePerm(locals, 'core.settings.view');
@@ -45,7 +45,7 @@ export const actions: Actions = {
 			await sendMail({
 				to: parsed.data,
 				subject: 'Test-E-Mail',
-				text: 'Diese Nachricht bestätigt, dass der E-Mail-Versand korrekt konfiguriert ist.'
+				text: 'Hallo,\n\ndiese Nachricht bestätigt, dass der E-Mail-Versand korrekt konfiguriert ist. So sieht eine E-Mail mit dem Stamm-Layout aus.'
 			});
 			return { success: true, message: `Test-E-Mail an ${parsed.data} gesendet` };
 		} catch (e) {

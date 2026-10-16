@@ -342,6 +342,57 @@ async function appendAttachments(
 	return new Uint8Array(await out.save());
 }
 
+const MAX_MERGE_DOCUMENTS = 200;
+const MAX_MERGE_BYTES = 200 * 1024 * 1024;
+
+/** Haengt mehrere PDF-Dokumente (Seiten unveraendert) zu einem Dokument zusammen. */
+export async function mergePdfs(buffers: Uint8Array[]): Promise<Uint8Array> {
+	if (!buffers.length || buffers.length > MAX_MERGE_DOCUMENTS) {
+		throw errors.badRequest('Ungueltige Anzahl von Dokumenten');
+	}
+	if (buffers.reduce((a, b) => a + b.byteLength, 0) > MAX_MERGE_BYTES) {
+		throw errors.tooLarge('Dokumente sind zu gross zum Zusammenfuehren');
+	}
+	const out = await PDFDocument.create();
+	for (const buf of buffers) {
+		let doc: PDFDocument;
+		try {
+			doc = await PDFDocument.load(buf);
+		} catch {
+			throw errors.unavailable('PDF konnte nicht zusammengefuehrt werden');
+		}
+		for (const p of await out.copyPages(doc, doc.getPageIndices())) out.addPage(p);
+	}
+	return new Uint8Array(await out.save());
+}
+
+/**
+ * Erzeugt mehrere Dokumente nacheinander (jedes mit eigener Vorlage/Adresse) und fuegt sie zu einem
+ * PDF zusammen. `store`/`attachments` der Einzeleingaben werden ignoriert.
+ */
+export async function generateMany(
+	ctx: RequestContext,
+	inputs: PdfGenerateInput[],
+	title: string
+): Promise<PdfResult> {
+	assertIdentity(ctx);
+	if (!inputs.length || inputs.length > MAX_MERGE_DOCUMENTS) {
+		throw errors.badRequest('Ungueltige Anzahl von Dokumenten');
+	}
+	const buffers: Uint8Array[] = [];
+	for (const input of inputs) {
+		const { store: _s, attachments: _a, ...plain } = input;
+		void _s;
+		void _a;
+		buffers.push((await generate(ctx, plain)).buffer);
+	}
+	return {
+		buffer: buffers.length === 1 ? buffers[0]! : await mergePdfs(buffers),
+		contentType: 'application/pdf',
+		fileName: sanitizeFileName(title)
+	};
+}
+
 export async function generate(ctx: RequestContext, input: PdfGenerateInput): Promise<PdfResult> {
 	assertIdentity(ctx);
 	if (!input.title.trim() || input.title.length > MAX_TITLE) {
