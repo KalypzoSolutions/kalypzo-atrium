@@ -11,6 +11,7 @@ import { handleApiRequest } from '$lib/server/core/api/router';
 import { createApiKey } from '$lib/server/core/api/keys';
 import { listAudit } from '$lib/server/core/audit/service';
 import membersModule from '$lib/modules/members/module';
+import { membersService } from '$lib/modules/members/fields.service';
 import type { RequestContext } from '$lib/sdk/types';
 
 const ADMIN_EMAIL = 'admin@example.test';
@@ -402,6 +403,153 @@ describe('Dokumente (ohne Storage)', () => {
 		});
 		expect(res.ok).toBe(false);
 		expect(res.status).toBeLessThan(600);
+	});
+});
+
+describe('Mitgliedschaft: Eintritt, Austritt, Zweitmitglied', () => {
+	interface Membership extends MemberDto {
+		entryDate: string | null;
+		exitDate: string | null;
+		secondaryMember: boolean;
+		feeLevels: string[];
+	}
+	const today = new Date().toISOString().slice(0, 10);
+	let regular: Membership;
+	let secondary: Membership;
+	let left: Membership;
+
+	it('legt Mitglieder mit Eintritt/Austritt und Zweitmitgliedschaft an', async () => {
+		regular = await data<Membership>(
+			await call('/members', {
+				method: 'POST',
+				json: memberBody({
+					firstName: 'Regula',
+					emails: [],
+					phones: [],
+					entryDate: '2020-09-01',
+					// Nicht-Zweitmitglieder speichern immer alle Ebenen
+					feeLevels: ['stamm']
+				})
+			}),
+			201
+		);
+		expect(regular.entryDate).toBe('2020-09-01');
+		expect(regular.exitDate).toBeNull();
+		expect(regular.secondaryMember).toBe(false);
+		expect(regular.feeLevels).toEqual(['stamm', 'gau', 'landesmark', 'bund']);
+
+		secondary = await data<Membership>(
+			await call('/members', {
+				method: 'POST',
+				json: memberBody({
+					firstName: 'Zweita',
+					emails: [{ name: null, value: 'zweita@example.test' }],
+					phones: [],
+					secondaryMember: true,
+					feeLevels: ['bund', 'stamm']
+				})
+			}),
+			201
+		);
+		expect(secondary.secondaryMember).toBe(true);
+		expect(secondary.feeLevels).toEqual(['stamm', 'bund']);
+
+		left = await data<Membership>(
+			await call('/members', {
+				method: 'POST',
+				json: memberBody({
+					firstName: 'Ausgetreten',
+					emails: [],
+					phones: [],
+					entryDate: '2019-01-01',
+					exitDate: today
+				})
+			}),
+			201
+		);
+		expect(left.exitDate).toBe(today);
+	});
+
+	it('aktualisiert Austritt und Ebenen', async () => {
+		const updated = await data<Membership>(
+			await call(`/members/${secondary.id}`, {
+				method: 'PUT',
+				json: memberBody({
+					firstName: 'Zweita',
+					emails: [],
+					phones: [],
+					entryDate: '2021-03-01',
+					exitDate: '2099-12-31',
+					secondaryMember: true,
+					feeLevels: ['gau']
+				})
+			})
+		);
+		expect(updated.entryDate).toBe('2021-03-01');
+		expect(updated.exitDate).toBe('2099-12-31');
+		expect(updated.feeLevels).toEqual(['gau']);
+		const detail = await data<Membership>(await call(`/members/${secondary.id}`));
+		expect(detail.feeLevels).toEqual(['gau']);
+		expect(detail.secondaryMember).toBe(true);
+	});
+
+	it('lehnt Austritt vor Eintritt ab (422)', async () => {
+		const res = await call('/members', {
+			method: 'POST',
+			json: memberBody({ emails: [], phones: [], entryDate: '2020-05-01', exitDate: '2020-04-30' })
+		});
+		expect(res.status).toBe(422);
+		const body = await res.json();
+		expect(body.error.code).toBe('validation_failed');
+		expect(JSON.stringify(body.error.details)).toContain('exitDate');
+	});
+
+	it('lehnt Zweitmitglied ohne Ebene ab (422)', async () => {
+		const res = await call('/members', {
+			method: 'POST',
+			json: memberBody({ emails: [], phones: [], secondaryMember: true, feeLevels: [] })
+		});
+		expect(res.status).toBe(422);
+		const body = await res.json();
+		expect(body.error.code).toBe('validation_failed');
+		expect(JSON.stringify(body.error.details)).toContain('feeLevels');
+	});
+
+	it('filtert die Liste nach Status (Standard aktiv)', async () => {
+		const ids = async (q: string) =>
+			(await data<{ items: MemberDto[] }>(await call(`/members?limit=200${q}`))).items.map(
+				(m) => m.id
+			);
+		const active = await ids('');
+		expect(active).toContain(regular.id);
+		expect(active).toContain(secondary.id); // Austritt liegt in der Zukunft
+		expect(active).not.toContain(left.id);
+		expect(await ids('&status=left')).toEqual([left.id]);
+		expect(await ids('&status=all')).toEqual(
+			expect.arrayContaining([regular.id, secondary.id, left.id])
+		);
+		expect((await call('/members?status=weg')).status).toBe(422);
+	});
+
+	it('listMemberContacts liefert Mitgliedschaftsfelder fuer alle (auch Ausgetretene)', async () => {
+		const list = await membersService.listMemberContacts({
+			ids: [regular.id, secondary.id, left.id]
+		});
+		const byId = new Map(list.map((c) => [c.id, c]));
+		expect(byId.get(regular.id)).toMatchObject({
+			entryDate: '2020-09-01',
+			exitDate: null,
+			secondaryMember: false,
+			feeLevels: ['stamm', 'gau', 'landesmark', 'bund']
+		});
+		expect(byId.get(secondary.id)).toMatchObject({
+			entryDate: '2021-03-01',
+			exitDate: '2099-12-31',
+			secondaryMember: true,
+			feeLevels: ['gau'],
+			emails: []
+		});
+		expect(byId.get(left.id)?.exitDate).toBe(today);
 	});
 });
 

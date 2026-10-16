@@ -59,6 +59,14 @@
   Autovervollständigung), Rückzahlung aufs Herkunftskonto, Sammelrechnung je Zahler, Belege bei Auszahlungen, Ablage
   abgeschlossener Aktions-Abrechnungen im Tab Berichte. Danach: neue Buchung direkt zuordnen (Einnahme → offene Rechnungen,
   Ausgabe → offene Auszahlung) mit automatischen Vorschlägen; „Zahlung erfassen“ mit Zahler-Autovervollständigung und IBAN.
+  **Ausgaben aus Abrechnungen (2026-10-16)**: Stamm-Ausgaben sind offen (außer „Bereits bezahlt“), mit Empfänger/IBAN/Zweck,
+  und werden sofort Auszahlung in der Kasse; Auslagen erst mit Abschluss; Kassen-Tab „Abrechnungen“ mit Detailansicht.
+- **Mitgliedschaft & Jahresbeitrag (2026-10-16)**: `members` Migration 0006 (Eintritt/Austritt, Zweitmitglied mit
+  Beitragsebenen Stamm/Gau/Landesmark/Bund = hier gezahlte Ebenen), Statusfilter aktiv/ausgetreten/alle, Bearbeiten-Dialog
+  in Tabs, schreibgeschützte Ansicht (`Sheet`) per Zeilenklick. `treasury`: Tab „Jahresbeitrag“ (Läufe je Jahr, Stichtag =
+  Erstellungsdatum, Eintritt nach 28.02. → nur Stamm, Sammelrechnung je Zahler, PDF mit Aufschlüsselung, Mail mit PDF,
+  Versand zum Datum per stündlichem Job, Nachholen), Sätze 12/8/2/25 € in den Einstellungen. Core: Tabs `line` brechen um
+  (`tabs-list.svelte`), sr-Text „Schließen“, CSP `frame-src 'self' blob:` (PDF-Vorschau im iframe).
 - **Core**: Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`, Tabelle `job_run`, `/api/v1/jobs`), optionale
   Modul-Abhängigkeiten (`optionalDependencies`, `core.modules.useOptional`); `members` liefert `listMemberContacts`,
   `actions` liefert `listReceivableSources`/`listActionRefs` (`actions/contract.ts`).
@@ -81,7 +89,9 @@
 2. ~~**Phase 4 – Abrechnung**~~ (erledigt). ~~Zahlungseingänge je Teilnehmende*r in eigenem Modul~~ → Modul `treasury`.
    Weiterhin offen: endgültiges **Auszahlungs-Exportformat** (ggf. SEPA-XML).
 4. Kasse – mögliche Folgeschritte: Guthaben verrechnen/zurückzahlen, Aktions-Ausgaben aus der Abrechnung übernehmen,
-   SEPA-Lastschrift/FinTS, Mitglieds-Jahresbeiträge als Serienrechnung, Abschluss-Sperre (bewusst nicht gewünscht).
+   SEPA-Lastschrift/FinTS, Abschluss-Sperre (bewusst nicht gewünscht).
+5. Jahresbeitrag/Mitglieder: PDF-Vorschau im iframe (CSP `blob:`) in allen Browsern prüfen; Nachholen nur manuell
+   (kein automatisches Nachholen); `listMemberContacts` liefert höchstens 1000 Mitglieder (Grenze bei Wachstum anheben).
 3. Aufräumen: Git-Initial-Commit, Schema-/Doku-Aktualisierung, ggf. `docs/` um das Modul `actions` ergänzen.
 
 ## Bekannte Eigenheiten

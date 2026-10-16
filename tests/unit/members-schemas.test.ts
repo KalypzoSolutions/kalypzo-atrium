@@ -64,6 +64,56 @@ const validMember = {
 	groupIds: [UUID_A]
 };
 
+describe('memberInput: Mitgliedschaft', () => {
+	it('Standardwerte: keine Daten, kein Zweitmitglied, alle Ebenen', () => {
+		const r = memberInput.parse(validMember);
+		expect(r.entryDate).toBeNull();
+		expect(r.exitDate).toBeNull();
+		expect(r.secondaryMember).toBe(false);
+		expect(r.feeLevels).toEqual(['stamm', 'gau', 'landesmark', 'bund']);
+	});
+	it('leere Datumsfelder werden zu null', () => {
+		const r = memberInput.parse({ ...validMember, entryDate: '', exitDate: '' });
+		expect(r.entryDate).toBeNull();
+		expect(r.exitDate).toBeNull();
+	});
+	it('Austritt am Eintrittstag ist erlaubt, davor nicht', () => {
+		expect(
+			memberInput.safeParse({ ...validMember, entryDate: '2020-01-01', exitDate: '2020-01-01' })
+				.success
+		).toBe(true);
+		const r = memberInput.safeParse({
+			...validMember,
+			entryDate: '2020-01-02',
+			exitDate: '2020-01-01'
+		});
+		expect(r.success).toBe(false);
+		expect(r.error?.issues.some((i) => i.path[0] === 'exitDate')).toBe(true);
+	});
+	it('lehnt unechte Daten ab', () => {
+		expect(memberInput.safeParse({ ...validMember, entryDate: '2020-02-30' }).success).toBe(false);
+		expect(memberInput.safeParse({ ...validMember, exitDate: '01.01.2020' }).success).toBe(false);
+	});
+	it('Zweitmitglied braucht mindestens eine Ebene', () => {
+		const r = memberInput.safeParse({ ...validMember, secondaryMember: true, feeLevels: [] });
+		expect(r.success).toBe(false);
+		expect(r.error?.issues.some((i) => i.path[0] === 'feeLevels')).toBe(true);
+	});
+	it('ordnet Ebenen fest und entfernt Duplikate', () => {
+		const r = memberInput.parse({
+			...validMember,
+			secondaryMember: true,
+			feeLevels: ['bund', 'stamm', 'bund']
+		});
+		expect(r.feeLevels).toEqual(['stamm', 'bund']);
+	});
+	it('lehnt unbekannte Ebenen ab', () => {
+		expect(
+			memberInput.safeParse({ ...validMember, secondaryMember: true, feeLevels: ['kreis'] }).success
+		).toBe(false);
+	});
+});
+
 describe('memberInput', () => {
 	it('akzeptiert gueltige Eingaben und normalisiert', () => {
 		const r = memberInput.safeParse(validMember);

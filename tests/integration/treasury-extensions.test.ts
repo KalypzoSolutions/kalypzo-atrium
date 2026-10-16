@@ -371,6 +371,20 @@ describe('Ausstehende Ueberweisungen', () => {
 			}),
 			201
 		);
+		// Auslagen gehen erst mit dem Abschluss der Abrechnung an die Kasse
+		await data(await T('/sync', { method: 'POST' }), 201);
+		expect(
+			(await data<PayableList>(await T('/payables'))).items.some(
+				(x) => x.source === 'reimbursement'
+			)
+		).toBe(false);
+		await data(
+			await A(`/actions/${actionId}/accounting/close`, {
+				method: 'POST',
+				json: { acceptMissingReceipts: true }
+			}),
+			201
+		);
 		await data(await T('/sync', { method: 'POST' }), 201);
 		const list = await data<PayableList>(await T('/payables'));
 		const p = list.items.find((x) => x.source === 'reimbursement')!;

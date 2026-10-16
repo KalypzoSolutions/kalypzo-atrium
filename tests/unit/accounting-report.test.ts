@@ -16,6 +16,10 @@ const entry = (p: Partial<AccountingEntry>): AccountingEntry => ({
 	payee: null,
 	receipt: { name: 'a.pdf', contentType: 'application/pdf' },
 	reimbursedAt: null,
+	recipient: null,
+	purpose: null,
+	clubPaidAt: '2026-07-03T10:00:00.000Z',
+	clubPaidVia: 'manual',
 	createdAt: '2026-07-03T10:00:00.000Z',
 	updatedAt: '',
 	...p

@@ -3,6 +3,7 @@
 	import X from '@lucide/svelte/icons/x';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { openProtectedFile } from './open-file';
 
 	/**
 	 * Einheitliches Datei-Feld: zeigt eine vorhandene Datei (Link + Entfernen), erlaubt Auswahl
@@ -80,6 +81,19 @@
 		if (!file && input) input.value = '';
 	}
 
+	/** Vorhandene Datei per fetch oeffnen, damit Fehler (503 ohne S3, 404) als Toast erscheinen. */
+	let opening = $state(false);
+	async function openExisting(e: MouseEvent) {
+		e.preventDefault();
+		if (!existingHref || opening) return;
+		opening = true;
+		try {
+			await openProtectedFile(existingHref, { fallbackName: existingName ?? undefined });
+		} finally {
+			opening = false;
+		}
+	}
+
 	function clear() {
 		file = null;
 		localError = '';
@@ -93,7 +107,14 @@
 			<span class="flex min-w-0 items-center gap-2 text-sm">
 				<FileUp class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				{#if existingHref}
-					<a href={existingHref} target="_blank" rel="noopener" class="truncate underline">
+					<a
+						href={existingHref}
+						target="_blank"
+						rel="noopener"
+						class="truncate underline aria-busy:cursor-progress aria-busy:opacity-60"
+						aria-busy={opening || undefined}
+						onclick={openExisting}
+					>
 						{existingName}
 					</a>
 				{:else}

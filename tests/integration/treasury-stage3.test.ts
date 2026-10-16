@@ -307,6 +307,45 @@ describe('Rechnungs-PDF und Erinnerung mit Zahlungsdaten', () => {
 	});
 });
 
+describe('Zahlstand in der Teilnehmerliste', () => {
+	it('zeigt je Teilnehmende*r Rechnung, offen und bezahlt', async () => {
+		type P = { id: string; name: string; payment?: Record<string, unknown> | null };
+		const list = async () => data<P[]>(await A(`/actions/${actionId}/participants`));
+		const before = await list();
+		// Jonas ist ueber die Sammelzahlung bezahlt, Lenas Rechnung wurde storniert
+		expect(before.find((p) => p.name === 'Jonas Müller')!.payment).toMatchObject({
+			status: 'paid',
+			openCents: 0
+		});
+		expect(before.find((p) => p.name === 'Lena Müller')!.payment).toBeNull();
+
+		const mia = await data<P>(
+			await A(`/actions/${actionId}/participants`, {
+				method: 'POST',
+				json: { name: 'Mia Neu', birthDate: '2014-01-01' }
+			}),
+			201
+		);
+		await data(await T('/sync', { method: 'POST' }), 201);
+		const open = (await list()).find((p) => p.id === mia.id)!.payment!;
+		expect(open).toMatchObject({ status: 'open', dueCents: 18500, openCents: 18500 });
+		expect(String(open.invoiceNumber)).toMatch(/^R-2026-/);
+
+		await data(
+			await T(`/invoices/${String(open.invoiceId)}/mark-paid`, {
+				method: 'POST',
+				json: { accountId: giro, bookedOn: '2026-06-01', amountCents: 10000, notify: false }
+			}),
+			201
+		);
+		expect((await list()).find((p) => p.id === mia.id)!.payment).toMatchObject({
+			status: 'partial',
+			paidCents: 10000,
+			openCents: 8500
+		});
+	});
+});
+
 describe('Abgeschlossene Abrechnungen und Belege', () => {
 	it('Belegliste einer Auslage (ohne Speicher leer)', async () => {
 		const payee = await data<{ id: string }>(
@@ -331,6 +370,13 @@ describe('Abgeschlossene Abrechnungen und Belege', () => {
 			}),
 			201
 		);
+		await data(
+			await A(`/actions/${actionId}/accounting/close`, {
+				method: 'POST',
+				json: { acceptMissingReceipts: true }
+			}),
+			201
+		);
 		await data(await T('/sync', { method: 'POST' }), 201);
 		const p = (await data<PayableList>(await T('/payables'))).items.find(
 			(x) => x.source === 'reimbursement'
@@ -339,13 +385,6 @@ describe('Abgeschlossene Abrechnungen und Belege', () => {
 	});
 
 	it('zeigt abgeschlossene Abrechnungen, PDF und Ablage', async () => {
-		await data(
-			await A(`/actions/${actionId}/accounting/close`, {
-				method: 'POST',
-				json: { acceptMissingReceipts: true }
-			}),
-			201
-		);
 		const list = await data<{ actionId: string; filedAt: string | null; expenseCents: number }[]>(
 			await T('/closed-accountings')
 		);

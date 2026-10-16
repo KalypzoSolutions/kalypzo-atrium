@@ -22,3 +22,4 @@ export { default as MoneyInput } from './MoneyInput.svelte';
 export { default as SummaryList, type SummaryRow } from './SummaryList.svelte';
 export { default as CostBar, type CostSegment } from './CostBar.svelte';
 export { parseEuroToCents, formatCents, formatEuro, ceilToEuroCents } from './money';
+export { openProtectedFile } from './open-file';

@@ -6,7 +6,7 @@
 		variants: {
 			variant: {
 				default: 'bg-muted',
-				line: 'gap-1 bg-transparent'
+				line: 'gap-1 bg-transparent group-data-[orientation=horizontal]/tabs:h-auto group-data-[orientation=horizontal]/tabs:min-h-8'
 			}
 		},
 		defaultVariants: {

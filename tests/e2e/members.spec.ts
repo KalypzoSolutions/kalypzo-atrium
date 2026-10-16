@@ -1,0 +1,137 @@
+import { expect, test, type Page } from '@playwright/test';
+
+// Mitglieder: Ansicht im Sheet, Bearbeiten mit Tabs, Mitgliedschaft (Zweitmitglied, Eintritt/Austritt),
+// Fehlerfuehrung zum Tab „Mitgliedschaft“ und Statusfilter „Ausgetreten“.
+
+const ADMIN = { email: 'admin@example.test', password: 'e2e-admin-password-1' };
+const ORIGIN = 'http://localhost:4173';
+const run = Date.now().toString(36);
+
+async function login(page: Page) {
+	await page.goto('/login');
+	await page.getByLabel('E-Mail').fill(ADMIN.email);
+	await page.getByLabel('Passwort').fill(ADMIN.password);
+	await page.getByRole('button', { name: 'Anmelden' }).click();
+	await page.waitForURL(/\/dashboard/);
+}
+
+/** JSON-API mit der Session der Seite; liefert `data` der Antwort. */
+async function api<T>(page: Page, method: string, path: string, body?: unknown): Promise<T> {
+	const res = await page.request.fetch(`/api/v1${path}`, {
+		method,
+		headers: {
+			origin: ORIGIN,
+			...(body === undefined ? {} : { 'content-type': 'application/json' })
+		},
+		data: body === undefined ? undefined : JSON.stringify(body)
+	});
+	if (!res.ok()) throw new Error(`${method} ${path}: ${res.status()} ${await res.text()}`);
+	const text = await res.text();
+	return (text ? (JSON.parse(text) as { data: T }).data : null) as T;
+}
+
+/** Module in Reihenfolge aktivieren (Abhaengigkeiten zuerst), falls noch nicht aktiv. */
+async function ensureModules(page: Page, ids: string[]) {
+	const list = await api<{ manifest: { id: string }; enabled: boolean }[]>(page, 'GET', '/modules');
+	for (const id of ids) {
+		if (!list.find((m) => m.manifest.id === id)?.enabled) {
+			await api(page, 'POST', `/modules/${id}/enable`);
+		}
+	}
+}
+
+test.describe.configure({ mode: 'serial' });
+
+test('Mitglied: Ansicht, Bearbeiten mit Tabs, Austritt und Statusfilter', async ({ page }) => {
+	await login(page);
+	await ensureModules(page, ['members']);
+
+	const firstName = 'Wanda';
+	const lastName = `Wolf${run}`;
+	const fullName = `${firstName} ${lastName}`;
+	await api(page, 'POST', '/modules/members/members', {
+		firstName,
+		lastName,
+		birthDate: '2016-04-12',
+		street: 'Am Wall 1',
+		postalCode: '28195',
+		city: 'Bremen',
+		country: 'DE',
+		stage: 'woelfling',
+		emails: [{ name: 'Mutter', value: `wolf-${run}@example.test` }],
+		entryDate: '2020-09-01',
+		secondaryMember: true,
+		feeLevels: ['stamm']
+	});
+
+	// Liste auf das neue Mitglied eingrenzen (Suche ist ein URL-Parameter)
+	await page.goto(`/modules/members?search=${encodeURIComponent(lastName)}`);
+	const row = page.getByRole('row', { name: `${fullName} anzeigen` });
+	await expect(row).toBeVisible();
+	await expect(row).toContainText('Zweitmitglied');
+
+	// Klick auf die Zeile → schreibgeschuetzte Ansicht im Sheet
+	await row.getByText(lastName).click();
+	const sheet = page.getByRole('dialog', { name: fullName });
+	await expect(sheet).toBeVisible();
+	await expect(sheet.getByText('Zweitmitglied').first()).toBeVisible();
+	await expect(sheet).toContainText('Eintritt');
+	await expect(sheet).toContainText('01.09.2020');
+	await expect(sheet).toContainText('Stamm');
+
+	// Bearbeiten → Dialog mit Tabs
+	await sheet.getByRole('button', { name: 'Bearbeiten' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Mitglied bearbeiten' });
+	await expect(dialog).toBeVisible();
+	await expect(sheet).toBeHidden();
+	const personTab = dialog.getByRole('tab', { name: /^Person/ });
+	const membershipTab = dialog.getByRole('tab', { name: /^Mitgliedschaft/ });
+	await expect(personTab).toBeVisible();
+	await expect(dialog.getByRole('tab', { name: /^Kontakt/ })).toBeVisible();
+	await expect(membershipTab).toBeVisible();
+	await expect(personTab).toHaveAttribute('aria-selected', 'true');
+
+	await membershipTab.click();
+	await expect(membershipTab).toHaveAttribute('aria-selected', 'true');
+	await expect(dialog.getByRole('switch', { name: /Zweitmitglied/ })).toBeChecked();
+	await expect(dialog.getByRole('checkbox', { name: 'Stamm', exact: true })).toBeChecked();
+	await expect(dialog.getByRole('checkbox', { name: 'Bund', exact: true })).not.toBeChecked();
+	await expect(dialog.getByLabel('Eintritt', { exact: true })).toHaveValue('2020-09-01');
+
+	// Austritt vor dem Eintritt → Fehler; der Dialog springt zurueck auf „Mitgliedschaft“
+	const exitInput = dialog.getByLabel('Austritt', { exact: true });
+	await exitInput.fill('2019-12-31');
+	await personTab.click();
+	await expect(personTab).toHaveAttribute('aria-selected', 'true');
+	await dialog.getByRole('button', { name: 'Speichern' }).click();
+	await expect(dialog.getByText('Austritt darf nicht vor dem Eintritt liegen')).toBeVisible();
+	await expect(dialog.getByText('Bitte die markierten Felder prüfen.')).toBeVisible();
+	await expect(membershipTab).toHaveAttribute('aria-selected', 'true');
+	await expect(membershipTab).toContainText('enthält Fehler');
+	await expect(dialog).toBeVisible();
+
+	// Korrigieren: Austritt in der Vergangenheit, aber nach dem Eintritt
+	await exitInput.fill('2024-06-30');
+	await dialog.getByRole('button', { name: 'Speichern' }).click();
+	await expect(dialog).toBeHidden();
+	await expect(page.getByText('Mitglied gespeichert')).toBeVisible();
+
+	// Standardfilter „Aktiv“: ausgetretenes Mitglied ist weg
+	await expect(page.getByRole('row', { name: `${fullName} anzeigen` })).toHaveCount(0);
+
+	// Filter „Ausgetreten“ zeigt es wieder, mit Badge
+	await page.getByRole('button', { name: 'Nach Mitgliedschaft filtern' }).click();
+	await page.getByRole('option', { name: 'Ausgetreten' }).click();
+	await expect(page).toHaveURL(/status=left/);
+	const leftRow = page.getByRole('row', { name: `${fullName} anzeigen` });
+	await expect(leftRow).toBeVisible();
+	await expect(leftRow).toContainText('ausgetreten');
+
+	// Gespeicherte Werte per API gegenpruefen
+	const list = await api<{ items: { lastName: string; exitDate: string | null }[] }>(
+		page,
+		'GET',
+		`/modules/members/members?status=left&search=${encodeURIComponent(lastName)}`
+	);
+	expect(list.items.map((m) => m.exitDate)).toEqual(['2024-06-30']);
+});

@@ -24,6 +24,8 @@ paths:
 1. Rücklink (`← Alle Aktionen`), 2. `PageHeader` (Titel, Beschreibung, Aktionen rechts: primär → sekundär → destruktiv),
 3. optional `Tabs` mit `variant="line"`, 4. Inhalt in `Card`/`DataTable`. Details im Popover/Dialog, nicht auf neuer Seite,
 wenn es nur ein Formular ist. Listen: Suche + Filter in der Toolbar der `DataTable`, Pagination im Footer.
+`Tabs variant="line"` bricht selbst um (`tabs-list.svelte`), keine eigenen Scroll-/Wrap-Hacks. Klickbare Tabellenzeilen
+öffnen eine schreibgeschützte Ansicht im `ui/sheet` (Bearbeiten erst per Button → Dialog), Zeilen-Aktionen stoppen den Klick.
 
 ## Komponenten-Inventar (immer zuerst wiederverwenden)
 | Zweck | Import |
