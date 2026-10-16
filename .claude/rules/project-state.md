@@ -57,7 +57,8 @@
   **Ausbaustufe 3**: Mails und Rechnungs-PDF neu gestaltet (Zahlungskasten, GiroCode, Verwendungszweck), Bankdaten **nur**
   aus den Kassen-Einstellungen (auch für die Anmeldebestätigung), Zahler lernen aus zugeordneten Buchungen (IBAN-Feld +
   Autovervollständigung), Rückzahlung aufs Herkunftskonto, Sammelrechnung je Zahler, Belege bei Auszahlungen, Ablage
-  abgeschlossener Aktions-Abrechnungen im Tab Berichte.
+  abgeschlossener Aktions-Abrechnungen im Tab Berichte. Danach: neue Buchung direkt zuordnen (Einnahme → offene Rechnungen,
+  Ausgabe → offene Auszahlung) mit automatischen Vorschlägen; „Zahlung erfassen“ mit Zahler-Autovervollständigung und IBAN.
 - **Core**: Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`, Tabelle `job_run`, `/api/v1/jobs`), optionale
   Modul-Abhängigkeiten (`optionalDependencies`, `core.modules.useOptional`); `members` liefert `listMemberContacts`,
   `actions` liefert `listReceivableSources`/`listActionRefs` (`actions/contract.ts`).
