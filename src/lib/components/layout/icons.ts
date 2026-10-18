@@ -2,6 +2,7 @@ import type { Component } from 'svelte';
 import Backpack from '@lucide/svelte/icons/backpack';
 import Box from '@lucide/svelte/icons/box';
 import Calendar from '@lucide/svelte/icons/calendar';
+import Cloud from '@lucide/svelte/icons/cloud';
 import ChartBar from '@lucide/svelte/icons/chart-bar';
 import FileText from '@lucide/svelte/icons/file-text';
 import Folder from '@lucide/svelte/icons/folder';
@@ -13,6 +14,7 @@ import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 import Mail from '@lucide/svelte/icons/mail';
 import Puzzle from '@lucide/svelte/icons/puzzle';
 import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+import ShoppingBasket from '@lucide/svelte/icons/shopping-basket';
 import ScrollText from '@lucide/svelte/icons/scroll-text';
 import Settings from '@lucide/svelte/icons/settings';
 import Shield from '@lucide/svelte/icons/shield';
@@ -30,6 +32,7 @@ const ICONS: Record<string, Icon> = {
 	backpack: Backpack,
 	box: Box,
 	calendar: Calendar,
+	cloud: Cloud,
 	chart: ChartBar,
 	'chart-bar': ChartBar,
 	'file-text': FileText,
@@ -46,6 +49,7 @@ const ICONS: Record<string, Icon> = {
 	'rotate-ccw': RotateCcw,
 	'scroll-text': ScrollText,
 	settings: Settings,
+	'shopping-basket': ShoppingBasket,
 	shield: Shield,
 	sparkles: Sparkles,
 	terminal: Terminal,

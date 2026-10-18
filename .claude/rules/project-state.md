@@ -99,6 +99,9 @@
   Core: öffentliches Multipart (`ApiEndpoint.multipart`), Admin-Seite **Zurücksetzen** (`/system/reset`, Bereiche je Modul + Core, Vorschau, Passwort/TOTP,
   Pflicht-JSON-Export, Bestätigungswort, `ConfirmDialog`), `core.storage.purge`, Jobs pausierbar, Core-Migration 0005. Details: `architecture.md`,
   `module-actions.md`, `module-treasury.md`. Offen: Reset-Token nur bei einer Instanz; Buchungsbelege der Kasse bei Teil-Reset verwaist; ZA nicht im Export/Import.
+- **Platzhalter-Module (2026-10-18)**: `files` (Dateien, Cloud-Ablage) und `orders` (Bestellungen) – nur Manifest, Navigation und eine Seite „In Planung“, keine Endpoints/Migrationen.
+  **Geplant `files`**: Ablage (Ordner, Up-/Download, „Meine Dateien“ + Stammesordner), Freigabe an Benutzer (Lesen/Bearbeiten, `ShareMenu`-Muster), Link-Freigabe (Ablauf, Passwort, widerrufbar, rate-limitiert; **offen: auch für Personen ohne Konto?**), Quota, Papierkorb; kein Sync/Versionen/Mitbearbeiten.
+  **Geplant `orders`**: Mitglieder bestellen interne Artikel (Halstuch, Liederbuch …); Zuständige mit Lager- und Bestellverwaltung; Rechnung an das zugeordnete Mitglied (Konto-Verknüpfung, Mail) und an die Kasse (`treasury`-Rechnung/Zuordnung).
 - **Core**: Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`, Tabelle `job_run`, `/api/v1/jobs`), optionale
   Modul-Abhängigkeiten (`optionalDependencies`, `core.modules.useOptional`); `members` liefert `listMemberContacts`,
   `actions` liefert `listReceivableSources`/`listActionRefs` (`actions/contract.ts`).
