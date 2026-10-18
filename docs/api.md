@@ -69,7 +69,17 @@ Nur ausdrücklich freigegebene Core-Funktionen sind erreichbar (`registerCoreApi
 | DELETE | `/storage/files` | `<modul>.storage.delete` | Query `module`, `path` |
 | GET | `/audit-logs` | `core.audit.view` | `action`, `search`, Paging |
 
+Eigenes Profil (Name, E-Mail-Wechsel, Profilbild, Darstellung) läuft **nicht** über die REST-API, sondern über Server-Actions bzw. SvelteKit-Routen
+(`/profile`, `POST /profile/theme`, `GET /avatar/<userId>`, jeweils mit Session); der Better-Auth-HTTP-Weg `/api/auth/change-email` und
+`/update-user` ist gesperrt (403). Siehe [Sicherheit](security.md). Endpunkte der verknüpften Konten (`/my/members`, `/my/fields`,
+`/my/members/:id/contacts|fields|mail-prefs`, Rechte `members.own.view|edit`) sind Modul-Endpunkte des Moduls `members`.
+
 Modul-Endpunkte: `/api/v1/modules/<id>/…`. Deaktivierte Module liefern `404 module_disabled`.
+
+Abrechnung im Modul `actions`: `POST …/actions/:id/accounting/entries` akzeptiert bei Auslagen (Ausgabe, bezahlt von Person) `reimbursed: true`
+(„bereits erstattet“, nur beim Anlegen; `422` mit Pfad `reimbursed` bei Einnahmen/Stamm-Ausgaben). `PUT …/entries/:entryId` mit
+`reimbursed: true` liefert `422` („Die Erstattung kann nur beim Anlegen gesetzt werden“); `false`/fehlend ist wirkungslos.
+Erstattete Auslagen sind für `PUT`/`DELETE` gesperrt (`409`); die Erstattung einer Person nimmt `DELETE …/payees/:payeeId/reimburse` zurück.
 
 ## API-Key-Lebenszyklus
 

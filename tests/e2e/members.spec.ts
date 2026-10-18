@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// Mitglieder: Ansicht im Sheet, Bearbeiten mit Tabs, Mitgliedschaft (Zweitmitglied, Eintritt/Austritt),
+// Mitglieder: Ansicht (gesperrter Dialog), Bearbeiten mit Tabs, Mitgliedschaft (Zweitmitglied, Eintritt/Austritt),
 // Fehlerfuehrung zum Tab „Mitgliedschaft“ und Statusfilter „Ausgetreten“.
 
 const ADMIN = { email: 'admin@example.test', password: 'e2e-admin-password-1' };
@@ -70,26 +70,29 @@ test('Mitglied: Ansicht, Bearbeiten mit Tabs, Austritt und Statusfilter', async 
 	await expect(row).toBeVisible();
 	await expect(row).toContainText('Zweitmitglied');
 
-	// Klick auf die Zeile → schreibgeschuetzte Ansicht im Sheet
+	// Klick auf die Zeile → Bearbeiten-Dialog als Ansicht mit gesperrten Feldern
 	await row.getByText(lastName).click();
-	const sheet = page.getByRole('dialog', { name: fullName });
-	await expect(sheet).toBeVisible();
-	await expect(sheet.getByText('Zweitmitglied').first()).toBeVisible();
-	await expect(sheet).toContainText('Eintritt');
-	await expect(sheet).toContainText('01.09.2020');
-	await expect(sheet).toContainText('Stamm');
+	const view = page.getByRole('dialog', { name: fullName });
+	await expect(view).toBeVisible();
+	await expect(view).toContainText('Nur Ansicht');
+	await expect(view.getByText('Zweitmitglied').first()).toBeVisible();
+	await expect(view.getByLabel('Vorname *')).toBeDisabled();
+	await expect(view.getByLabel('Vorname *')).toHaveValue(firstName);
+	await expect(view.getByRole('button', { name: 'Speichern' })).toHaveCount(0);
+	await view.getByRole('tab', { name: /^Mitgliedschaft/ }).click();
+	await expect(view.getByLabel('Eintritt', { exact: true })).toBeDisabled();
+	await expect(view.getByLabel('Eintritt', { exact: true })).toHaveValue('2020-09-01');
 
-	// Bearbeiten → Dialog mit Tabs
-	await sheet.getByRole('button', { name: 'Bearbeiten' }).click();
+	// Bearbeiten → derselbe Dialog wird freigeschaltet, Tab bleibt
+	await view.getByRole('button', { name: 'Bearbeiten' }).click();
 	const dialog = page.getByRole('dialog', { name: 'Mitglied bearbeiten' });
 	await expect(dialog).toBeVisible();
-	await expect(sheet).toBeHidden();
 	const personTab = dialog.getByRole('tab', { name: /^Person/ });
 	const membershipTab = dialog.getByRole('tab', { name: /^Mitgliedschaft/ });
 	await expect(personTab).toBeVisible();
 	await expect(dialog.getByRole('tab', { name: /^Kontakt/ })).toBeVisible();
-	await expect(membershipTab).toBeVisible();
-	await expect(personTab).toHaveAttribute('aria-selected', 'true');
+	await expect(membershipTab).toHaveAttribute('aria-selected', 'true');
+	await expect(dialog.getByLabel('Eintritt', { exact: true })).toBeEnabled();
 
 	await membershipTab.click();
 	await expect(membershipTab).toHaveAttribute('aria-selected', 'true');

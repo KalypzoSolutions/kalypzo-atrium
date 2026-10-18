@@ -25,7 +25,9 @@
 		max = 10,
 		errors = {},
 		listError = null,
-		disabled = false
+		disabled = false,
+		readonly = false,
+		emptyText = 'Keine Einträge.'
 	}: {
 		id: string;
 		label: string;
@@ -39,21 +41,25 @@
 		errors?: Record<number, { name?: string; value?: string }>;
 		listError?: string | null;
 		disabled?: boolean;
+		/** Nur Ansicht: Felder gesperrt, ohne Hinzufügen/Entfernen */
+		readonly?: boolean;
+		/** Hinweis bei leerer Liste in der Ansicht */
+		emptyText?: string;
 	} = $props();
 
 	const inputmode = $derived(type === 'tel' ? 'tel' : type === 'email' ? 'email' : undefined);
 </script>
 
-<fieldset class="grid gap-2" {disabled}>
+<fieldset class="grid gap-2" disabled={disabled || readonly}>
 	<legend class="mb-1 text-sm font-medium">{label}</legend>
 
 	{#each items as _, i (i)}
 		{@const err = errors[i]}
 		<div class="grid gap-1">
-			<div class="flex items-start gap-2">
+			<div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-start">
 				<Input
 					id="{id}-{i}-name"
-					class="w-2/5"
+					class="sm:w-2/5"
 					placeholder={namePlaceholder}
 					aria-label="Bezeichnung für {valueLabel} {i + 1}"
 					aria-invalid={err?.name ? true : undefined}
@@ -62,7 +68,7 @@
 				/>
 				<Input
 					id="{id}-{i}-value"
-					class="flex-1"
+					class="sm:flex-1"
 					{type}
 					{inputmode}
 					placeholder={valuePlaceholder}
@@ -72,15 +78,18 @@
 					autocomplete="off"
 					bind:value={items[i]!.value}
 				/>
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					aria-label="{valueLabel} {i + 1} entfernen"
-					onclick={() => (items = items.filter((_, j) => j !== i))}
-				>
-					<Trash2 class="size-4" />
-				</Button>
+				{#if !readonly}
+					<Button
+						type="button"
+						variant="ghost"
+						class="self-end sm:self-auto"
+						size="icon"
+						aria-label="{valueLabel} {i + 1} entfernen"
+						onclick={() => (items = items.filter((_, j) => j !== i))}
+					>
+						<Trash2 class="size-4" />
+					</Button>
+				{/if}
 			</div>
 			{#if err?.name || err?.value}
 				<p id="{id}-{i}-error" role="alert" class="text-xs text-destructive">
@@ -88,9 +97,11 @@
 				</p>
 			{/if}
 		</div>
+	{:else}
+		{#if readonly}<p class="text-sm text-muted-foreground">{emptyText}</p>{/if}
 	{/each}
 
-	{#if items.length < max}
+	{#if !readonly && items.length < max}
 		<div>
 			<Button
 				type="button"

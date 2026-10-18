@@ -98,7 +98,12 @@ async function mkParent(name: string) {
 		roleIds: [apiRoleId]
 	});
 	const r = await contextForUser(id);
-	const key = (await createApiKey(r!.ctx, { name: 'p', scopes: ['core.api.manage'] })).key;
+	const key = (
+		await createApiKey(r!.ctx, {
+			name: 'p',
+			scopes: ['core.api.manage', 'members.own.view', 'members.own.edit']
+		})
+	).key;
 	parents[name] = { id, key };
 }
 
@@ -152,7 +157,10 @@ beforeAll(async () => {
 	viewKey = (
 		await createApiKey(admin, { name: 'v', scopes: ['members.member.view', 'members.link.view'] })
 	).key;
-	apiRoleId = await createRole(admin, { name: 'api-role', permissions: ['core.api.manage'] });
+	apiRoleId = await createRole(admin, {
+		name: 'api-role',
+		permissions: ['core.api.manage', 'members.own.view', 'members.own.edit']
+	});
 });
 afterAll(() => setPdfRendererForTests(undefined));
 

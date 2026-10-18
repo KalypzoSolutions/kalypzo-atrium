@@ -98,6 +98,8 @@ const pdf = await core.pdf.generate(ctx, {
 ```
 
 - Blocktypen: `heading`, `paragraph`, `list`, `table`, `image`, `box`, `pageBreak`. Alles wird HTML-escaped; es gibt keinen Roh-HTML-Block.
+- `table`: `columns`, `rows`, optional `variant: 'grid'` (Gitter für Formulare und Berichte), `caption` `{ left, right? }`, `align`, `widths`, `totalRow`, `noHeader`. **Zellen zusammenfassen:** Eine Zelle ist ein String oder `{ text, colspan?, rowspan?, align?, bold? }`, z. B. `totalRow: [{ text: 'Summe', colspan: 2 }, '15,00 €', '']`. Eine Zeile braucht nur so viele Einträge, wie Zellen entstehen; von oben (`rowspan`) belegte Spalten werden übersprungen, fehlende Zellen am Zeilenende leer aufgefüllt, ungültige Werte auf das Raster geklemmt (`placeRows` in `core/pdf/templates.ts`). `rowspan` endet an der letzten Zeile des Abschnitts (Datenzeilen bzw. Summenzeile). Die Zellen-Variante gilt für den SDK-Typ `PdfTableCell`; die öffentliche API (`/api/v1/pdf`) nimmt weiterhin nur Strings.
+- Linien im Gitter: je Zelle ein 0,5-px-Schatten statt Rahmen (Chromium rundet Rahmen unter 1 px auf 1 px auf, ein Schatten wird im PDF als echte Haarlinie gezeichnet). Der äußere Rahmen ist dadurch 0,5 px, Innenlinien 1 px; die Summenzeile hat eine einfache 1-px-Linie darüber (keine Doppellinie).
 - `image`: nur `data:image/png|jpeg;base64,…` (≤ 2 MB), `widthMm` 5–150 – z. B. QR-Code aus `core.qr.dataUrl(text)`.
 - `box`: zweispaltig ohne Rahmen – optional `image` links (gleiche Prüfung wie `image`), rechts `label`, `value` (groß, z. B. Code), `lines`, `linkLabel` + `link` `{ href, text? }` (nur http/https, sonst 400; Bild wird mitverlinkt). Genutzt im Verknüpfungsbrief.
 - Links: `http(s)://…` in `paragraph`/`list` werden automatisch anklickbar (Chromium übernimmt `<a href>` als PDF-Link).
@@ -116,8 +118,11 @@ Vorlagen mit festem Seitenlayout (Briefkopf, Falzmarken, Adressfeld, Fußzeile) 
 - `src/lib/server/core/pdf/assets/` – Schriften (Carlito, OFL, metrisch kompatibel zu Calibri) und Bilder; alles wird eingebettet, keine externen Requests.
 - Neue `PdfTemplate`-Felder: `description`, `source` (Anzeige), `page` (Format/Ränder, schaltet Chromium-Kopf/-Fuß ab), `overlay` (absolut positionierte Seitenelemente), `parts` (Bestandteile mit Position/Größe in mm).
 - `core.pdf.generate` nimmt zusätzlich `recipient: string[]` (Adresszeilen für das Adressfeld; werden escaped).
-- Mitgelieferte Vorlagen: `stamm-briefkopf` (Briefkopf für Abrechnungen) und `stamm-brief` (mit Adressfeld und Falzmarken).
-- Admin-Ansicht „PDF-Vorlagen“: Vorlagen mit Seitenvorschau (`GET /pdf/preview?template=<id>[&only=<teil>]`, Recht `core.pdf.manage`) – nur Ansicht.
+- Mitgelieferte Vorlagen: `stamm-briefkopf` (Briefkopf für Abrechnungen), `stamm-brief` (mit Adressfeld und Falzmarken) und `stamm-briefkopf-quer` (A4 quer, 297 × 210 mm, ohne Adressfeld/Falzmarken; für breite Tabellen und Listen).
+- Ausrichtung: `PdfTemplate.page.orientation?: 'portrait' | 'landscape'` (Standard hochkant). Bei Vorlagen mit festem Seitenlayout ignoriert `core.pdf.generate` die Ausrichtung des Aufrufers.
+- Stamm-Vorlagen entstehen über `createStammTemplate({ …, orientation })` in `parts/stamm.ts`; `landscape` mit `withAddress` wirft einen Fehler (Fensterumschlag nur hochkant). Exporte: `stammGeometry(orientation)`, `GEOMETRY_LANDSCAPE`, `PART_META_LANDSCAPE`, Typ `StammOrientation`.
+- Quer-Maße: Lilie und Vereinsname wie hochkant, Wappen bei x 263,7 mm (12,7 mm vom rechten Rand), Fußzeile mit Linie bei y 189,8 mm, x 25 mm, Breite 247 mm, Text als ein zentrierter Absatz; Textränder oben/rechts/unten/links 45/25/25/25 mm.
+- Admin-Ansicht „PDF-Vorlagen“: Vorlagen mit Seitenvorschau (`GET /pdf/preview?template=<id>[&only=<teil>]`, Recht `core.pdf.manage`) – nur Ansicht. `describeTemplates()` liefert `orientation`; Quer-Vorlagen werden mit 1123 × 794 px gerendert und als Karte mit Badge „Quer“ im Seitenverhältnis 297/210 gezeigt. `PreviewRenderer` hat die Signatur `(html, size)`.
 - Die Overlay-Elemente nutzen `position: fixed`; Chromium wiederholt sie im Druck auf jeder Seite.
 
 **Neue Vorlage hinzufügen**
@@ -147,6 +152,18 @@ Die Sperre ist ein atomares Upsert auf `job_run` – mehrere Instanzen laufen ni
 (PGlite). Ein Lauf ohne Abschluss gilt nach 2 h als abgebrochen. Fehler werden in `job_run.last_status/last_message` protokolliert.
 API: `GET /api/v1/jobs` (Liste mit letztem Lauf), `POST /api/v1/jobs/<modul>.<job>/run` (sofort, Recht `core.jobs.manage`, auditiert
 als `core.job.triggered`). Tests: `runDueJobs()`, `runJobNow(ctx, key)`, `setJobClockForTests(fn)`.
+
+## Profil-Helfer (nur Core-intern, nicht im `core`-Objekt)
+
+Für `/profile` gibt es Funktionen in `core/auth/profile.ts` und `core/settings/user-prefs.ts`; Module erreichen sie **nicht** (Modul-Beiträge laufen
+über `profileSections`, siehe [Modulentwicklung](module-development.md)):
+
+| Funktion | Beschreibung |
+|---|---|
+| `requestEmailChange(ctx, headers, { newEmail, password })` | Passwort prüfen, Rate-Limit (3/h), Bestätigungslink an die neue, Hinweis an die alte Adresse (siehe [Sicherheit](security.md)) |
+| `updateOwnName`, `setOwnAvatar`, `removeOwnAvatar`, `readAvatar` | Name; Profilbild im Storage-Bereich `core/avatars/<userId>` (PNG/JPEG/WebP ≤ 2 MB, braucht S3) |
+| `maskEmail(email)` | `a***@domain` für Audit und Hinweise |
+| `loadUserPrefs(userId)`, `resolvePageSize(locals, fallback)` | Benutzereinstellungen `core.user.*` (Theme, Akzent, Dichte, Startseite, Einträge pro Seite) |
 
 ## core.mail und E-Mail-Layout
 

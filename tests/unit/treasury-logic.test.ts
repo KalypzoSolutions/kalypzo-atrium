@@ -270,6 +270,73 @@ describe('Abgleich mit Aktionen', () => {
 		});
 		expect(plan.cancel).toEqual([{ invoiceId: 'i1' }]);
 	});
+
+	describe('vergangene Aktionen (eingefroren)', () => {
+		const past = { ...source, isPast: true };
+		const empty = { create: [], update: [], reactivate: [], cancel: [] };
+		it('legt ohne bestehende Posten nichts an', () => {
+			expect(planSync({ ...common, sources: [past], existing: [] })).toEqual(empty);
+		});
+		it('fasst offene und bezahlte Posten nicht an (kein Update, Storno, Reaktivieren)', () => {
+			const paid = { ...existing, lineId: 'l2', invoiceId: 'i2', sourceRef: 'action:a1:p2' };
+			const changed = { ...past, feeCents: 9999 };
+			expect(planSync({ ...common, sources: [changed], existing: [existing, paid] })).toEqual(
+				empty
+			);
+			// Teilnehmende*r entfaellt, Betrag/Text geaendert: weiterhin unveraendert
+			const gone = { ...past, participants: [] };
+			expect(planSync({ ...common, sources: [gone], existing: [existing, paid] })).toEqual(empty);
+			const cancelled = { ...existing, cancelled: true, autoCancelled: true };
+			expect(planSync({ ...common, sources: [past], existing: [cancelled] })).toEqual(empty);
+		});
+		it('ohne Flag laeuft alles normal weiter', () => {
+			const plan = planSync({
+				...common,
+				sources: [{ ...source, isPast: false, feeCents: 10000 }],
+				existing: [existing]
+			});
+			expect(plan.update).toHaveLength(1);
+			expect(plan.create.map((c) => c.participantId)).toEqual([]);
+			expect(
+				planSync({ ...common, sources: [{ ...source, isPast: false }], existing: [] }).create
+			).toHaveLength(1);
+		});
+		it('ausgeschlossene vergangene Aktion behaelt das Verhalten (Storno)', () => {
+			const plan = planSync({
+				...common,
+				excludedActionIds: new Set(['a1']),
+				sources: [past],
+				existing: [existing]
+			});
+			expect(plan.cancel).toEqual([{ invoiceId: 'i1' }]);
+		});
+		it('Mischung: nur die vergangene Aktion ist eingefroren', () => {
+			const other = {
+				...source,
+				id: 'a2',
+				name: 'Herbstfahrt',
+				participants: [source.participants[0]!]
+			};
+			const otherLine = {
+				...existing,
+				lineId: 'l9',
+				invoiceId: 'i9',
+				sourceRef: 'action:a2:p1',
+				description: 'alt',
+				amountCents: 1
+			};
+			const plan = planSync({
+				...common,
+				sources: [past, other],
+				existing: [existing, otherLine]
+			});
+			expect(plan.cancel).toEqual([]);
+			expect(plan.update).toEqual([expect.objectContaining({ lineId: 'l9', amountCents: 18500 })]);
+			expect(plan.create).toEqual([]);
+			const fresh = planSync({ ...common, sources: [past, other], existing: [] });
+			expect(fresh.create.map((c) => c.actionId)).toEqual(['a2']);
+		});
+	});
 });
 
 describe('Zahler-Vorschlaege', () => {

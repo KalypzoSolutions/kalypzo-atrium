@@ -34,6 +34,8 @@
 
 - **Briefvorlagen (fertig)**: Stamm-Briefkopf fest im Code (`core/pdf/templates/stamm-briefkopf.ts`, `stamm-brief.ts`, Bausteine `parts/stamm.ts`,
   Carlito eingebettet); Admin `/pdf` zeigt Vorlagen mit Vorschau/Bestandteilen (nur Ansicht); Abrechnungsbericht nutzt `stamm-briefkopf`.
+  Neu (2026-10-17): Quer-Variante `stamm-briefkopf-quer` (A4 quer, ohne Adressfeld/Falzmarken, für breite Tabellen/Listen;
+  `page.orientation`, `createStammTemplate({ orientation })`), Admin-Vorschau quer mit Badge „Quer“.
 
 - **Rückzahlung des Überschusses** (Migration 0006/0007): Überschuss an Teilnehmende zurück, je Person auf ganze Euro
   abgerundet, nur wenn je Person > 5 € bleiben, manuelle Personenzahl möglich; Hinweis „erst nach Eingang aller
@@ -61,12 +63,37 @@
   Ausgabe → offene Auszahlung) mit automatischen Vorschlägen; „Zahlung erfassen“ mit Zahler-Autovervollständigung und IBAN.
   **Ausgaben aus Abrechnungen (2026-10-16)**: Stamm-Ausgaben sind offen (außer „Bereits bezahlt“), mit Empfänger/IBAN/Zweck,
   und werden sofort Auszahlung in der Kasse; Auslagen erst mit Abschluss; Kassen-Tab „Abrechnungen“ mit Detailansicht.
+- **Mobil, Aufgabenliste, Verlauf, Mitglieds-PDFs (2026-10-17)**: `DataTable mobile="cards"` + `MobileActionBar`, Dialoge `max-h 100dvh`, Touch-Ziele (`pointer: coarse`);
+  Kasse-Übersicht mit Aufgabenliste (`Overview.tasks`), Jahresbeitrag als 4 Schritte (`AnnualSteps`, `AnnualChecklist`), Rückgängig-Toasts (`pages/undo.ts`),
+  Verlauf (`GET /history`, Audit-Filter `target`); Jahresbeitrag-Rechnung hat **einen** Posten „Stammesbeitrag“ (Aufschlüsselung in `annual_fee_items`, Migr. 0006);
+  Datenblatt-PDFs `POST /members/sheets.pdf`, `POST /groups/sheets.pdf`, `GET /actions/:id/participants.pdf` (Recht `members.data.export`, Gesundheitsdaten enthalten).
 - **Mitgliedschaft & Jahresbeitrag (2026-10-16)**: `members` Migration 0006 (Eintritt/Austritt, Zweitmitglied mit
   Beitragsebenen Stamm/Gau/Landesmark/Bund = hier gezahlte Ebenen), Statusfilter aktiv/ausgetreten/alle, Bearbeiten-Dialog
-  in Tabs, schreibgeschützte Ansicht (`Sheet`) per Zeilenklick. `treasury`: Tab „Jahresbeitrag“ (Läufe je Jahr, Stichtag =
+  in Tabs, schreibgeschützte Ansicht per Zeilenklick (Bearbeiten-Dialog mit gesperrten Feldern, seit 2026-10-17 statt Sheet). `treasury`: Tab „Jahresbeitrag“ (Läufe je Jahr, Stichtag =
   Erstellungsdatum, Eintritt nach 28.02. → nur Stamm, Sammelrechnung je Zahler, PDF mit Aufschlüsselung, Mail mit PDF,
   Versand zum Datum per stündlichem Job, Nachholen), Sätze 12/8/2/25 € in den Einstellungen. Core: Tabs `line` brechen um
   (`tabs-list.svelte`), sr-Text „Schließen“, CSP `frame-src 'self' blob:` (PDF-Vorschau im iframe).
+- **Vergangene Aktionen und vorab erstattete Auslagen (2026-10-18)**: Beim Anlegen/Bearbeiten einer Aktion gibt es die Checkbox
+  „liegt bereits in der Vergangenheit“ (`actions.is_past`, Migr. 0012; Vorschlag, wenn Ende bzw. Start < heute). Für solche Aktionen legt
+  die Kasse **keine Rechnungen/offenen Posten** an (`planSync` friert sie ein: bestehende Rechnungen bleiben unberührt, kein Storno/Guthaben/Mail),
+  `invoiceForRegistration` liefert `null` (Anmeldebestätigung ohne Rechnungs-PDF/Zahlungsblock). Ausgaben „bezahlt von Person“ lassen sich beim Erfassen
+  als **bereits erstattet** markieren (`entryInput.reimbursed` → `reimbursed_at = now()` + `reimbursed_upfront`, Migr. 0013): keine Kassen-Auszahlung;
+  bei vergangenen Aktionen sind das und „Bereits bezahlt“ (Stamm-Ausgabe) vorbelegt. Alle übrigen Auslagen/Stamm-Ausgaben/Rückzahlungen/Guthaben
+  erscheinen weiter als ausstehende Überweisungen der Kasse. Rücknahme der Kassen-Zahlung lässt vorab erstattete Auslagen erstattet
+  (sonst Doppelzahlung); Erstattung der Person zurücknehmen (`DELETE …/payees/:id/reimburse`) macht alle wieder offen/editierbar. Details: `module-actions.md`, `module-treasury.md`.
+  Gefixt nebenbei: `ImportActionDialog` löste mit `$effect` + `fieldKey++` eine Endlosschleife aus (Aktionsliste hing), E2E `tests/e2e/actions-list.spec.ts`.
+  Tabellen in PDFs: dünnere Linien (0,5-px-Schatten), Zellen zusammenfassen (`colspan`/`rowspan`, `PdfTableCell`).
+- **Profil-Ausbau (2026-10-17)**: `/profile` mit Tabs Konto / Darstellung / Sicherheit plus Karten aus Modulen.
+  **Konto**: Name, Profilbild (`/avatar/<id>`, PNG/JPEG/WebP ≤ 2 MB, Magic-Bytes, braucht S3), **E-Mail-Wechsel mit Passwort + Bestätigungslink**
+  an die neue Adresse (1 h), Info-Mail an die alte; der HTTP-Weg `/api/auth/change-email` und `/update-user` ist gesperrt (nur Server-Actions).
+  **Darstellung**: Theme-Sync (Cookie + `core.user.theme`), Akzentfarbe, Dichte, Einträge pro Seite (Audit, Benutzerliste), Startseite
+  (`core.user.*`, Scope `user`). **`profileSections`-Mechanismus** (Modul-`ui.ts`, Props `{ userId }`, Auswahl `selectProfileSections`):
+  `members` liefert **Meine Mitglieder** (Kontakte + Zusatzfelder der verknüpften Mitglieder, Entwurf + Speichern, **kein Autosave**) und
+  **Benachrichtigungen je Mitglied** (nur die **Zahlungsbestätigung** ist abschaltbar; Rechnungen, Jahresbeitrag, Erinnerungen und
+  Anmeldebestätigung sind verbindlich). Neue Rechte `members.own.view|edit`; Rolle „Mitglied“ bekommt sie über **`defaultRoleGrants`**
+  (einmalig je Modul/Rolle/Recht, Marker `role_grant_applied`, Core-Migration 0004). Änderung von Kontakten löst eine **Info-Mail an die alten
+  Adressen** aus. Sicherheitsfunde der Prüfung (Konto-Orakel, Session über Bestätigungslink/2FA, fremde Avatar-Pfade, Rate-Limits) behoben.
+  Core: `toastWithUndo` jetzt in `components/layout`, `EntityAvatar` mit Fehler-Action statt `onerror` (CSP). Details: `rules/module-members.md`, `docs/security.md`.
 - **Core**: Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`, Tabelle `job_run`, `/api/v1/jobs`), optionale
   Modul-Abhängigkeiten (`optionalDependencies`, `core.modules.useOptional`); `members` liefert `listMemberContacts`,
   `actions` liefert `listReceivableSources`/`listActionRefs` (`actions/contract.ts`).
@@ -86,12 +113,21 @@
    **Entschieden (2026-10-15):** nach dem Absenden Danke-Seite **und Bestätigungs-E-Mail** (braucht SMTP + E-Mail-Pflichtfeld);
    **doppelte Anmeldungen** (gleicher Name + Geburtsdatum) werden **abgelehnt** mit Hinweis; **Datenschutz** über einen
    **Link auf eine externe Datenschutzseite** + Pflicht-Checkbox (kein eigener Text im System).
+   **Entschieden (2026-10-17) Profil:** Mitglieder werden **direkt im Profil** bearbeitet (Kontakte, Zusatzfelder); Mail-Einstellungen **je Mitglied und
+   Kategorie**; E-Mail-Wechsel mit **Passwort + Bestätigungslink**. **Abweichung vom freigegebenen Plan:** Zahlungserinnerungen sind **verbindlich**
+   (Empfehlung des Konzeptteams), im Plan waren sie abschaltbar – **Nutzer soll entscheiden**, ob sie abschaltbar werden.
 2. ~~**Phase 4 – Abrechnung**~~ (erledigt). ~~Zahlungseingänge je Teilnehmende*r in eigenem Modul~~ → Modul `treasury`.
    Weiterhin offen: endgültiges **Auszahlungs-Exportformat** (ggf. SEPA-XML).
 4. Kasse – mögliche Folgeschritte: Guthaben verrechnen/zurückzahlen, Aktions-Ausgaben aus der Abrechnung übernehmen,
    SEPA-Lastschrift/FinTS, Abschluss-Sperre (bewusst nicht gewünscht).
 5. Jahresbeitrag/Mitglieder: PDF-Vorschau im iframe (CSP `blob:`) in allen Browsern prüfen; Nachholen nur manuell
    (kein automatisches Nachholen); `listMemberContacts` liefert höchstens 1000 Mitglieder (Grenze bei Wachstum anheben).
+6. Profil/Benachrichtigungen – offene Punkte: Die Kategorie `action-info` ist definiert und im Profil schaltbar, wird aber **nirgends ausgewertet**
+   (kein Versand). Rate-Limits (`core/rate-limit`) liegen im **Arbeitsspeicher** (Neustart setzt zurück, nicht instanzübergreifend).
+   Manipulierte **alte `user.image`-Werte** werden nicht migriert (`readAvatar` liefert für fremde Pfade nur kein Bild). Weitere Mitglieder lassen sich
+   nur per **Brieflink** verknüpfen (`/p/members/verknuepfen/<token>`; eine Seite `/claim` gibt es nicht). Die **Anmeldebestätigung** (`registration`) geht an
+   die Formular-Adresse und lässt sich nicht je Mitglied abschalten. Zeitstempel am Benutzer und ein laufender E-Mail-Wechsel (`pendingEmail`) sind in der UI
+   nicht ermittelbar. **Prettier-Warnungen** in der Windows-Arbeitskopie sind CRLF-Zeilenenden, kein Formatfehler.
 3. Aufräumen: Git-Initial-Commit, Schema-/Doku-Aktualisierung, ggf. `docs/` um das Modul `actions` ergänzen.
 
 ## Bekannte Eigenheiten

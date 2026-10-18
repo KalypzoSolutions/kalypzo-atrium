@@ -24,21 +24,25 @@ paths:
 1. Rücklink (`← Alle Aktionen`), 2. `PageHeader` (Titel, Beschreibung, Aktionen rechts: primär → sekundär → destruktiv),
 3. optional `Tabs` mit `variant="line"`, 4. Inhalt in `Card`/`DataTable`. Details im Popover/Dialog, nicht auf neuer Seite,
 wenn es nur ein Formular ist. Listen: Suche + Filter in der Toolbar der `DataTable`, Pagination im Footer.
-`Tabs variant="line"` bricht selbst um (`tabs-list.svelte`), keine eigenen Scroll-/Wrap-Hacks. Klickbare Tabellenzeilen
+`Tabs variant="line"` bricht um (`flex-wrap` in `tabs-list.svelte`), keine eigenen Scroll-/Wrap-Hacks. Klickbare Tabellenzeilen
 öffnen eine schreibgeschützte Ansicht im `ui/sheet` (Bearbeiten erst per Button → Dialog), Zeilen-Aktionen stoppen den Klick.
 
 ## Komponenten-Inventar (immer zuerst wiederverwenden)
 | Zweck | Import |
 |---|---|
-| Tabellen-Karte (Toolbar, Laden/Fehler/Leer, Footer) | `DataTable` aus `$lib/components/layout` |
+| Tabellen-Karte (Toolbar, Laden/Fehler/Leer, Footer; `mobile="cards"`) | `DataTable` aus `$lib/components/layout` |
+| Fixierte Aktionsleiste mobil (Bulk) | `MobileActionBar` (`show`, `label`) |
+| PDF-Listen mit wählbaren Spalten | `PdfExportDialog` (`catalog`, `count`, `storageKey`, `onexport`) + `$lib/pdf-lists` |
 | Seitenkopf, Formularfeld, Leerzustand, Bestätigung | `PageHeader`, `FormField`, `EmptyState`, `ConfirmDialog` |
 | Suche / Seitenwechsel (URL-basiert) | `SearchInput` (`param`, `resetParams`), `Pagination` (`pageParam`) |
 | Einfachauswahl / Mehrfachauswahl mit Suche | `SelectField` (`ui/select-field`, `emptyLabel`, `name`) / `MultiSelect` (`ui/multi-select`) |
 | Farbe | `ColorPicker` (`ui/color-picker`), `ColorBadge`, `EntityAvatar` |
 | Zahl mit −/+ , Regler, Geld | `NumberStepper`, `Slider` (`ui/slider`), `MoneyInput` (`money.ts`: `formatEuro`, `parseEuroToCents`) |
-| Datei-Upload, Kontaktliste | `FileField`, `ContactListField` |
+| Datei-Upload, Kontaktliste (stapelt unter 640 px) | `FileField`, `ContactListField` |
 | Zusammenfassung, Kostenbalken | `SummaryList`, `CostBar` |
 | Freigabe | `ShareMenu` (Popover im Seitenkopf), `ShareDialog`, `SharePanel` |
+| Erfolgs-Toast mit „Rückgängig“ (Rückweg = vorhandener API-Aufruf) | `toastWithUndo({ message, undo, undone?, onundone? })` aus `$lib/components/layout` (früher `treasury/pages/undo.ts`) |
+| Profil-Abschnitt eines Moduls | `ui.ts` `profileSections` (Props `{ userId }`, Daten per `apiFetch`); Muster: `members/pages/ProfileMemberCard.svelte` (Entwurf + Speichern je Tab, kein Autosave, `beforeNavigate`-Warnung) |
 | Overlay | `ui/dialog`, `ui/popover`, `ui/sheet`, `ui/dropdown-menu`, `ui/tooltip` |
 Neue wiederverwendbare Bausteine kommen nach `components/layout` (fachlich) bzw. `components/ui` (generisch) und
 werden in `docs/module-development.md` (Tabelle) und hier ergänzt.
@@ -54,8 +58,13 @@ werden in `docs/module-development.md` (Tabelle) und hier ergänzt.
   ausstehende Änderungen beim Verlassen flushen, Server-Antworten überschreiben keine laufende Eingabe.
 - Berechnungen live und lokal (gleiche reinen Funktionen wie der Server), nie `NaN`, Eingaben klemmen statt abweisen.
 - Rechte: Aktionen ohne Berechtigung **ausblenden** bzw. Felder `disabled` mit Hinweis „Nur Ansicht“.
-- Mobil (≥ 360 px): einspaltig, keine horizontale Seitenleiste-Scrolls außer Tabellen (`overflow-x-auto`); wichtige
-  Summen als fixierte Leiste unten; Touch-Ziele ≥ 36 px.
+- Mobil (≥ 360 px): einspaltig, Raster `grid-cols-1 sm:grid-cols-N` (nie festes `grid-cols-2/3` in Dialogen ohne `sm:`).
+  **Tabellen**: `DataTable mobile="cards"` macht unter 640 px jede Zeile zur Karte (Beschriftung automatisch aus den `<th>`,
+  Zellen ohne Kopftext = Checkbox/Aktionen). Für Listen mit vielen Spalten Standard; breite Summen-/Vergleichstabellen bleiben
+  `mobile="scroll"` (Default, horizontales Scrollen). `max-w-*`/`truncate` in Zellen wird in Karten umgebrochen.
+  **Bulk-Leisten** mit `MobileActionBar` (unten fixiert, Inhalt braucht `pb-20`). **Dialoge** haben Standard-`max-h-[calc(100dvh-2rem)]`
+  mit Scroll; kein eigenes `vh` setzen. **Touch-Ziele** ≥ 36 px werden auf Touch-Geräten (`pointer: coarse`) in `app.css`
+  erzwungen (Button, Input, Select, Tabs-Trigger, Checkbox) – Desktop bleibt kompakt. Wichtige Summen als fixierte Leiste unten.
 - Barrierefreiheit: Icon-Buttons mit `aria-label`, Gruppen mit `fieldset/legend`, Fokus sichtbar, Farbe nie alleiniger Träger.
 
 ## Fallen

@@ -155,12 +155,18 @@ describe('planAnnualInvoices', () => {
 		const fam = plan.invoices[0]!;
 		// 2 × (12 + 8 + 2 + 25) = 94 €
 		expect(fam.totalCents).toBe(9400);
-		expect(fam.lines).toHaveLength(8);
+		// EIN offener Posten (Summe), die Aufschlüsselung steht in `items`
+		expect(fam.lines).toEqual([
+			{ memberId: null, description: 'Jahresbeitrag 2027 – Stammesbeitrag', amountCents: 9400 }
+		]);
+		expect(fam.items).toHaveLength(8);
 		expect(fam.members.map((x) => x.name)).toEqual(['Lena Muster', 'Max Muster']);
 		expect(fam.emails.sort()).toEqual(['eltern@example.test', 'max@example.test']);
 		expect(fam.recipientEmail).toBe('eltern@example.test');
-		expect(fam.lines[0]!.sourceRef).toBe('annual:2027:lena:stamm');
-		expect(fam.lines[0]!.description).toBe('Jahresbeitrag 2027 Stamm – Lena Muster');
+		expect(fam.items[0]!.sourceRef).toBe('annual:2027:lena:stamm');
+		expect(fam.items[0]!.description).toBe('Jahresbeitrag 2027 Stamm – Lena Muster');
+		// Einzelmitglied: Posten trägt das Mitglied
+		expect(plan.invoices[1]!.lines[0]!.memberId).toBe('solo');
 		expect(plan.skipped).toEqual([{ memberId: 'zweit', name: 'Zoe Berg' }]);
 		expect(plan.withoutEmail).toEqual([{ memberId: 'solo', name: 'Solo Albers' }]);
 		expect(plan.totalCents).toBe(9400 + 4700);
@@ -186,7 +192,7 @@ describe('planAnnualInvoices', () => {
 
 	it('Lauf ist idempotent über existingRefs', () => {
 		const first = planAnnualInvoices({ ...base, mode: 'run' });
-		const refs = new Set(first.invoices.flatMap((i) => i.lines.map((l) => l.sourceRef)));
+		const refs = new Set(first.invoices.flatMap((i) => i.items.map((l) => l.sourceRef)));
 		expect(planAnnualInvoices({ ...base, mode: 'run', existingRefs: refs }).invoices).toEqual([]);
 	});
 

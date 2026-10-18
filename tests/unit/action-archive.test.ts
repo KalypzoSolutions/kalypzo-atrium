@@ -192,6 +192,29 @@ describe('Archiv lesen/schreiben', () => {
 describe('Dokument-Schema', () => {
 	const parse = (d: unknown) => archiveDocumentSchema.safeParse(d);
 
+	it('isPast ist optional (alte Archive) und muss ein Boolean sein', () => {
+		expect(parse(doc()).success).toBe(true);
+		const withPast = (isPast: unknown) =>
+			parse({ ...doc(), action: { ...doc().action, isPast } }).success;
+		expect(withPast(true)).toBe(true);
+		expect(withPast(false)).toBe(true);
+		expect(withPast('ja')).toBe(false);
+		const parsed = parseArchive(zipOf({ ...doc(), action: { ...doc().action, isPast: true } }));
+		expect(parsed.document.action.isPast).toBe(true);
+		expect(parseArchive(zipOf(doc())).document.action.isPast).toBeUndefined();
+	});
+
+	it('reimbursedUpfront ist optional und nur mit reimbursedAt gueltig', () => {
+		const base = { paidBy: 'person', payeeRef: 'y1', reimbursedAt: '2026-07-12T10:00:00.000Z' };
+		const ok = (e: unknown) => parse({ ...doc(), entries: [e] }).success;
+		expect(ok(entry(base))).toBe(true);
+		expect(ok(entry({ ...base, reimbursedUpfront: true }))).toBe(true);
+		expect(ok(entry({ ...base, reimbursedUpfront: false }))).toBe(true);
+		expect(ok(entry({ ...base, reimbursedUpfront: 'ja' }))).toBe(false);
+		expect(ok(entry({ ...base, reimbursedAt: null, reimbursedUpfront: true }))).toBe(false);
+		expect(ok(entry({ reimbursedUpfront: true }))).toBe(false);
+	});
+
 	it('ist strikt (unbekannte Schluessel)', () => {
 		expect(parse(doc()).success).toBe(true);
 		expect(parse({ ...doc(), owner: 'x' }).success).toBe(false);

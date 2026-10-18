@@ -143,13 +143,14 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 | Komponente | Import | Zweck |
 |---|---|---|
 | `DataTable` | `$lib/components/layout` | Karte mit Toolbar (Suche/Filter), Lade-/Fehler-/Leer-Zustand, scrollbarer Tabelle und Fußzeile (Pagination) |
+| `PdfExportDialog` | `$lib/components/layout` | Auswahl-Dialog für PDF-Listen: Voreinstellungen, Spalten je Gruppe, „Leere Spalten ausblenden“, Seitenschätzung, merkt die Auswahl je `storageKey`; Bibliothek `$lib/pdf-lists` (`normalizeSelection`, `buildListBlocks`, `estimatePages`) |
 | `SelectField` | `$lib/components/ui/select-field` | Einfachauswahl mit optionalem „Alle“-Eintrag (`emptyLabel`) |
 | `MultiSelect` | `$lib/components/ui/multi-select` | Mehrfachauswahl mit Suche, Checkboxen und Chips |
 | `ColorPicker` | `$lib/components/ui/color-picker` | Eigener Farbwähler (Fläche, Farbton, Hex, Presets); Helfer in `color.ts` |
 | `ColorBadge` | `$lib/components/layout` | Badge in frei wählbarer Farbe mit lesbarer Textfarbe |
 | `EntityAvatar` | `$lib/components/layout` | Rundes Bild mit Farbrand, Fallback Initialen |
 | `FileField` | `$lib/components/layout` | Datei-Feld mit Typ-/Größenprüfung, vorhandener Datei und Entfernen |
-| `ContactListField` | `$lib/components/layout` | Dynamische Liste benannter Kontakte (Telefon, E-Mail) |
+| `ContactListField` | `$lib/components/layout` | Dynamische Liste benannter Kontakte (Telefon, E-Mail); `readonly` + `emptyText` für Ansichten |
 | `ShareDialog` | `$lib/components/layout` | Freigabe an Benutzer: suchen, Stufe wählen, ändern, entfernen (Persistenz über Callbacks) |
 | `ShareMenu` | `$lib/components/layout` | Freigabe-Menü für Seitenköpfe: Button mit Avatar-Stapel, öffnet ein Popover mit `SharePanel` |
 | `SharePanel` | `$lib/components/layout` | Inhalt der Freigabe (Suche, Zugriffsliste, Stufe ändern, entfernen); von `ShareDialog` und `ShareMenu` genutzt |
@@ -184,6 +185,38 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
   Systemkontext, Rückgabe = kurze Statusmeldung). Details: `docs/core-services.md` → „Hintergrundjobs“. Beispiel: `treasury/module.ts`.
 - Rückkanäle zwischen Modulen ohne Zyklus: `manifest.optionalDependencies` + `core.modules.useOptional` (liefert `null`, wenn der
   Anbieter aus ist). Beispiel: `actions` → `treasury` (Ist-Beiträge in der Abrechnung).
+
+### Profil-Abschnitte und Standard-Rollenrechte
+
+**`profileSections`** (in `ui.ts`) fügen der Seite `/profile` eigene Karten hinzu (z. B. verknüpfte Mitglieder):
+
+```ts
+export default {
+	routes: { … },
+	profileSections: [
+		{
+			id: 'children', title: 'Meine Kinder', order: 10,       // order: aufsteigend, Standard 100
+			permission: 'members.own.view',                        // optional; ohne = alle Angemeldeten
+			component: () => import('./pages/ProfileMembers.svelte') // Props: { userId: string }
+		}
+	]
+} satisfies ModuleUi;
+```
+
+`profile/+page.server.ts` liefert `activeModules` und `permissions`; `profile/+page.ts` lädt die `ui.ts` aktiver Module,
+filtert und sortiert mit `selectProfileSections` (`$lib/sdk/client/profile-sections`) und gibt `sections`
+(`{ key: '<moduleId>:<id>', moduleId, id, title, order, component }`) zurück. Die Komponente lädt ihre Daten selbst per
+`apiFetch`; Rechte werden serverseitig an den Endpoints durchgesetzt.
+
+**`defaultRoleGrants`** (im Manifest oder auf `defineModule`): `{ 'Mitglied': ['members.own.view'] }`. Beim Start (`syncModules`)
+wird die Rolle per Name gesucht bzw. angelegt (kein System) und jedes Recht **einmalig je (Modul, Rolle, Recht)** vergeben
+(Tabelle `role_grant_applied`). Ein bewusst entzogenes Recht kommt daher nicht zurück; neue Rechte in einer späteren Version
+werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie übersprungen.
+
+**Benutzer-Einstellungen** (Katalog `core/settings/catalog.ts`, Gruppe `user`): `core.user.theme`, `core.user.accentColor`
+(`''` oder `#rrggbb`), `core.user.density` (`comfortable|compact`), `core.user.startPage` (nur erlaubte Seiten, sonst
+`/dashboard`), `core.user.pageSize` (10–200). Listen-Loads nutzen `resolvePageSize(locals, fallback)`
+(`core/settings/user-prefs`): ausdrücklich gespeicherter Wert, sonst die Standardgröße der Seite.
 
 ## 7. Tests
 

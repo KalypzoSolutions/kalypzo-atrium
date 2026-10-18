@@ -4,6 +4,7 @@ import { auditFromContext } from '../audit/service';
 import { getDb, schema, type DbOrTx } from '../database/client';
 import { sha256 } from '../crypto';
 import { errors } from '../errors';
+import { newId } from '../util';
 import { CORE_PERMISSIONS } from '../permissions/catalog';
 import { syncPermissions } from '../permissions/service';
 import {
@@ -47,10 +48,69 @@ export async function syncModules(): Promise<void> {
 		})),
 		...defs.flatMap((d) => d.manifest.permissions.map((key) => ({ key, moduleId: d.manifest.id })))
 	]);
+	await applyDefaultRoleGrants(defs);
 	invalidateModuleStateCache();
 	// Bereits aktive Module: ausstehende Migrationen anwenden (Update-Szenario)
 	const enabled = await enabledModuleIds(db);
 	for (const d of defs) if (enabled.has(d.manifest.id)) await runModuleMigrations(d.manifest.id);
+}
+
+/**
+ * Vergibt `defaultRoleGrants` einmalig je (Modul, Rolle, Recht). Rollen werden per Name gesucht oder
+ * angelegt (kein System). Unbekannte Rechte (nicht im Manifest) werden uebersprungen.
+ */
+async function applyDefaultRoleGrants(defs: ReturnType<typeof allDefinitions>): Promise<void> {
+	const db = getDb();
+	for (const d of defs) {
+		const moduleId = d.manifest.id;
+		for (const [roleName, perms] of Object.entries(
+			d.defaultRoleGrants ?? d.manifest.defaultRoleGrants ?? {}
+		)) {
+			const wanted = [...new Set(perms)].filter((p) => d.manifest.permissions.includes(p));
+			if (!wanted.length) continue;
+			const done = await db
+				.select({ key: schema.roleGrantApplied.permissionKey })
+				.from(schema.roleGrantApplied)
+				.where(
+					and(
+						eq(schema.roleGrantApplied.moduleId, moduleId),
+						eq(schema.roleGrantApplied.roleName, roleName)
+					)
+				);
+			const doneKeys = new Set(done.map((r) => r.key));
+			const todo = wanted.filter((p) => !doneKeys.has(p));
+			if (!todo.length) continue;
+			let [role] = await db
+				.select({ id: schema.role.id })
+				.from(schema.role)
+				.where(eq(schema.role.name, roleName));
+			if (!role) {
+				await db
+					.insert(schema.role)
+					.values({
+						id: newId(),
+						name: roleName,
+						description: 'Automatisch angelegt',
+						isSystem: false
+					})
+					.onConflictDoNothing();
+				[role] = await db
+					.select({ id: schema.role.id })
+					.from(schema.role)
+					.where(eq(schema.role.name, roleName));
+			}
+			if (!role) continue;
+			const roleId = role.id;
+			await db
+				.insert(schema.rolePermission)
+				.values(todo.map((permissionKey) => ({ roleId, permissionKey })))
+				.onConflictDoNothing();
+			await db
+				.insert(schema.roleGrantApplied)
+				.values(todo.map((permissionKey) => ({ moduleId, roleName, permissionKey })))
+				.onConflictDoNothing();
+		}
+	}
 }
 
 export async function listModules(): Promise<ModuleInfo[]> {

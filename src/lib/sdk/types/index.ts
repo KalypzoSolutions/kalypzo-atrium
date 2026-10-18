@@ -60,6 +60,13 @@ export interface ModuleManifest {
 	optionalDependencies?: string[];
 	permissions: string[];
 	navigation: ModuleNavigationItem[];
+	/**
+	 * Standard-Rechte fuer Rollen (Rollenname -> Rechte aus `permissions`). Die Rolle wird per Name gesucht
+	 * bzw. angelegt (kein System). Jedes (Modul, Rolle, Recht) wird **einmalig** vergeben (Marker
+	 * `role_grant_applied`): bewusst entzogene Rechte kommen nicht zurueck. Gleichwertig zu
+	 * `ModuleDefinition.defaultRoleGrants`.
+	 */
+	defaultRoleGrants?: Record<string, string[]>;
 }
 
 export type SettingScope = 'global' | 'user';
@@ -83,6 +90,24 @@ export interface PdfMargins {
 	left: string;
 }
 
+/**
+ * Tabellenzelle: einfacher Text oder Zelle mit Zusammenfassung ueber mehrere Spalten (`colspan`) bzw.
+ * Zeilen (`rowspan`). Eine Zeile braucht nur so viele Eintraege, wie Zellen entstehen – Spalten, die
+ * von einer Zelle darueber (`rowspan`) belegt sind, werden uebersprungen; fehlende Zellen am Zeilenende
+ * werden leer aufgefuellt. Werte werden auf das Raster geklemmt (mind. 1, hoechstens bis zum Rand).
+ */
+export type PdfTableCell =
+	| string
+	| {
+			text: string;
+			colspan?: number;
+			rowspan?: number;
+			/** Ausrichtung dieser Zelle (Standard: die der Spalte, in der die Zelle beginnt) */
+			align?: 'left' | 'right' | 'center';
+			/** Fett (die Summenzeile ist ohnehin fett) */
+			bold?: boolean;
+	  };
+
 export type PdfBlock =
 	| { type: 'heading'; text: string; level?: 1 | 2 | 3 }
 	| { type: 'paragraph'; text: string }
@@ -90,7 +115,7 @@ export type PdfBlock =
 	| {
 			type: 'table';
 			columns: string[];
-			rows: string[][];
+			rows: PdfTableCell[][];
 			/** `grid`: schwarzes Gitter wie in Formularen (Kopfzeile `caption`, optional Summenzeile) */
 			variant?: 'grid';
 			/** Kopfzeile ueber der Tabelle: breite Zelle links, schmale Zelle rechts (z. B. Summe) */
@@ -99,8 +124,8 @@ export type PdfBlock =
 			align?: ('left' | 'right' | 'center')[];
 			/** Relative Spaltenbreiten (gleiche Laenge wie `columns`) */
 			widths?: number[];
-			/** Fett hervorgehobene Abschlusszeile (gleiche Laenge wie `columns`) */
-			totalRow?: string[];
+			/** Fett hervorgehobene Abschlusszeile (deckt alle Spalten ab, ggf. mit `colspan`) */
+			totalRow?: PdfTableCell[];
 			/** Spaltenkopfzeile weglassen (z. B. wenn `caption` schon beschriftet) */
 			noHeader?: boolean;
 	  }
@@ -141,6 +166,10 @@ export interface PdfGenerateInput {
 	title: string;
 	content: PdfContent;
 	format?: PdfFormat;
+	/**
+	 * Seitenausrichtung. Bei Vorlagen mit festem Seitenlayout (Briefvorlagen wie `stamm-brief`,
+	 * `stamm-briefkopf`, `stamm-briefkopf-quer`) ignoriert; dort bestimmt die Vorlage die Ausrichtung.
+	 */
 	orientation?: PdfOrientation;
 	margins?: Partial<PdfMargins>;
 	showHeader?: boolean;

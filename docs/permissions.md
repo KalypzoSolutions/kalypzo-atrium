@@ -36,6 +36,14 @@
 | `core.ai.view` | KI-Nutzung ansehen |
 | `core.audit.view` | Audit-Logs ansehen |
 
+### Rolle „Mitglied“ und Standard-Rollenrechte
+
+Konten, die über den Verknüpfungslink des Moduls `members` entstehen (`core.users.registerWithRole`), bekommen die Rolle **„Mitglied“**. Sie wird
+über `defaultRoleGrants` des Moduls angelegt (kein System) und erhält `members.own.view` (eigene verknüpfte Mitglieder sehen) und `members.own.edit`
+(Kontakte, Zusatzfelder und Mail-Einstellungen dieser Mitglieder ändern; setzt `.view` voraus). Die Vergabe geschieht **einmalig** je
+(Modul, Rolle, Recht) (Tabelle `role_grant_applied`): ein bewusst entzogenes Recht kommt nicht zurück. Administrator*innen können die Rolle danach
+wie jede andere bearbeiten.
+
 Modulberechtigungen kommen aus den Manifesten (`<modul>.…`), siehe [Modulentwicklung](module-development.md).
 
 ## Systemrolle Administrator

@@ -19,7 +19,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			title: 'Test-Dokument',
 			module: 'core',
 			recipient: SAMPLE_RECIPIENT,
-			content: sampleContent('Test-Dokument')
+			content: sampleContent()
 		});
 		return new Response(Buffer.from(pdf.buffer), {
 			headers: {

@@ -37,6 +37,12 @@ export interface ModuleDefinition {
 	provides?: Record<string, unknown>;
 	/** Hintergrundjobs (siehe `core/jobs`) */
 	jobs?: ModuleJob[];
+	/**
+	 * Standard-Rechte fuer Rollen (auch in `manifest.defaultRoleGrants` angebbar; Rollenname -> Rechte, Rechte muessen im Manifest stehen). Die Rolle wird
+	 * per Name gesucht bzw. angelegt (kein System). Jedes (Modul, Rolle, Recht) wird **einmalig** vergeben
+	 * (Marker `role_grant_applied`): bewusst entzogene Rechte kommen nicht zurueck.
+	 */
+	defaultRoleGrants?: Record<string, string[]>;
 	onEnable?: (ctx: RequestContext) => Promise<void>;
 	onDisable?: (ctx: RequestContext) => Promise<void>;
 }

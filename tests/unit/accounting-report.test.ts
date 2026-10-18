@@ -163,7 +163,8 @@ describe('buildReportBlocks', () => {
 		expect(t.rows[0]![3]).toBe('offen');
 		expect(t.rows[1]![3]).toBe('ausgezahlt');
 		expect(t.rows[1]![1]).toBe('–');
-		expect(t.totalRow![2]).toContain('15,00');
+		expect(t.totalRow![0]).toEqual({ text: 'Summe', colspan: 2 });
+		expect(t.totalRow![1]).toContain('15,00');
 		const purpose = b
 			.filter((x) => x.type === 'paragraph')
 			.map((x) => (x as { text: string }).text)
@@ -235,7 +236,7 @@ describe('buildReportBlocks', () => {
 		expect(
 			tables(b)
 				.filter((t) => t.columns.includes('Beleg-Nr.'))
-				.every((t) => !t.rows.some((r) => r[1]!.startsWith('Rückzahlung')))
+				.every((t) => !t.rows.some((r) => String(r[1]).startsWith('Rückzahlung')))
 		).toBe(true);
 		// Reihenfolge: Ergebnis < Kategorien < Rückzahlung < Buchungsanweisung
 		const order = tables(b)

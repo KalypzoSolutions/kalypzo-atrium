@@ -10,6 +10,7 @@
 
 	$effect(() => {
 		document.documentElement.style.setProperty('--accent-color', data.accentColor);
+		document.documentElement.dataset.density = data.density;
 	});
 </script>
 

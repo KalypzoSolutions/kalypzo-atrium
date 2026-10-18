@@ -341,7 +341,12 @@ export function registerCoreApi(): void {
 					)
 					.max(2000),
 				format: z.enum(['A3', 'A4', 'A5', 'Letter', 'Legal']).optional(),
-				orientation: z.enum(['portrait', 'landscape']).optional()
+				orientation: z
+					.enum(['portrait', 'landscape'])
+					.optional()
+					.describe(
+						'Seitenausrichtung. Wird bei Vorlagen mit festem Seitenlayout (Briefvorlagen wie stamm-brief, stamm-briefkopf, stamm-briefkopf-quer) ignoriert; dort bestimmt die Vorlage die Ausrichtung.'
+					)
 			}),
 			rateLimit: { limit: 20, windowSec: 60 },
 			handler: async ({ ctx, body }) => {

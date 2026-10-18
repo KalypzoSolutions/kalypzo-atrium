@@ -29,7 +29,7 @@ test('falsches Passwort wird abgelehnt', async ({ page }) => {
 test('Login und Logout', async ({ page }) => {
 	await login(page);
 	await expect(page).toHaveURL(/\/dashboard/);
-	await page.getByRole('button', { name: 'Benutzermenue' }).click();
+	await page.getByRole('button', { name: 'Benutzermenü' }).click();
 	await page.getByRole('menuitem', { name: 'Abmelden' }).click();
 	await expect(page).toHaveURL(/\/login/);
 	await page.goto('/dashboard');

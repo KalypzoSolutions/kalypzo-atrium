@@ -200,18 +200,39 @@ export async function updateUser(
 	input: { name?: string; email?: string }
 ): Promise<void> {
 	await requirePermission(ctx, 'core.users.edit');
+	const db = getDb();
+	const [current] = await db
+		.select({ email: schema.user.email })
+		.from(schema.user)
+		.where(eq(schema.user.id, id));
+	if (!current) throw errors.notFound('Benutzer nicht gefunden');
 	const patch: Partial<typeof schema.user.$inferInsert> = { updatedAt: new Date() };
 	if (input.name !== undefined) patch.name = input.name.trim();
-	if (input.email !== undefined) patch.email = input.email.trim().toLowerCase();
-	const res = await getDb()
-		.update(schema.user)
-		.set(patch)
-		.where(eq(schema.user.id, id))
-		.returning({ id: schema.user.id });
-	if (!res.length) throw errors.notFound('Benutzer nicht gefunden');
-	await auditFromContext(ctx, 'core.user.updated', {
-		target: id,
-		metadata: { fields: Object.keys(input) }
+	let emailChanged = false;
+	if (input.email !== undefined) {
+		const email = input.email.trim().toLowerCase();
+		if (email !== current.email) {
+			const [dup] = await db
+				.select({ id: schema.user.id })
+				.from(schema.user)
+				.where(eq(schema.user.email, email));
+			if (dup) throw errors.conflict('E-Mail-Adresse wird bereits verwendet');
+			patch.email = email;
+			// Administrativ geaenderte Adresse gilt als verifiziert
+			patch.emailVerified = true;
+			emailChanged = true;
+		}
+	}
+	await db.transaction(async (tx) => {
+		await tx.update(schema.user).set(patch).where(eq(schema.user.id, id));
+		// Alte Sessions gehoeren zur alten Adresse
+		if (emailChanged) await tx.delete(schema.session).where(eq(schema.session.userId, id));
+		await auditFromContext(
+			ctx,
+			'core.user.updated',
+			{ target: id, metadata: { fields: Object.keys(input), sessionsRevoked: emailChanged } },
+			tx
+		);
 	});
 }
 

@@ -82,6 +82,14 @@ return result;
 - `manifest.optionalDependencies` + `core.modules.useOptional(provider, caller)` → `null`, wenn der Anbieter nicht aktiv ist
   (für Rückkanäle ohne Zyklus, z. B. `actions` liest Zahlungen aus `treasury`). Harte Abhängigkeiten bleiben `dependencies`.
 
+## Profil-Abschnitte und Standard-Rollenrechte
+- `ui.ts` `profileSections: [{ id, title, order?, permission?, component: () => import(…) }]` → Karte auf `/profile`
+  (Komponente bekommt `{ userId }`, lädt Daten per `apiFetch`; Auswahl/Sortierung: `selectProfileSections` in
+  `$lib/sdk/client/profile-sections`). Typ `ProfileSection` in `$lib/sdk/types/module-ui`.
+- `defaultRoleGrants: { Rollenname: [Rechte] }` (Manifest oder `defineModule`): Rolle per Name suchen/anlegen, Rechte
+  **einmalig** je (Modul, Rolle, Recht) vergeben (Marker `role_grant_applied`, Core-Migration 0004) – entzogene Rechte
+  kommen nicht zurück. Rechte müssen im Manifest stehen.
+
 ## Migrationen
 - Nummeriert (`0001_init.sql`, `0002_…`), in `module.ts` per `import m from './migrations/…sql?raw'` und `{ name, sql }` registrieren.
 - Änderungen an bestehenden Tabellen: `ALTER TABLE … ADD COLUMN IF NOT EXISTS`; CHECK-Constraints ersetzen mit

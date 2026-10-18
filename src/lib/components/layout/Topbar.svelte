@@ -59,7 +59,7 @@
 		variant="ghost"
 		size="icon"
 		class="lg:hidden"
-		aria-label="Navigation oeffnen"
+		aria-label="Navigation öffnen"
 		onclick={() => (menuOpen = true)}
 	>
 		<Menu />
@@ -78,7 +78,7 @@
 	<DropdownMenu>
 		<DropdownMenuTrigger>
 			{#snippet child({ props })}
-				<Button {...props} variant="ghost" size="icon" aria-label="Darstellung waehlen">
+				<Button {...props} variant="ghost" size="icon" aria-label="Darstellung wählen">
 					{#if theme.dark}<Moon />{:else}<Sun />{/if}
 				</Button>
 			{/snippet}
@@ -93,7 +93,7 @@
 	<DropdownMenu>
 		<DropdownMenuTrigger>
 			{#snippet child({ props })}
-				<Button {...props} variant="ghost" class="h-9 gap-2 px-2" aria-label="Benutzermenue">
+				<Button {...props} variant="ghost" class="h-9 gap-2 px-2" aria-label="Benutzermenü">
 					<Avatar class="size-7"><AvatarFallback>{initials}</AvatarFallback></Avatar>
 					<span class="hidden max-w-40 truncate text-sm sm:inline">{user.name}</span>
 				</Button>

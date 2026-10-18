@@ -9,7 +9,19 @@
 		size = 40
 	}: { name: string; src?: string | null; color?: string | null; size?: number } = $props();
 
-	let failed = $state(false);
+	/** Bildadresse, die nicht geladen werden konnte (neue Adresse = neuer Versuch) */
+	let failedSrc = $state<string | null>(null);
+
+	/**
+	 * Fehler-Listener per Action statt `onerror`-Attribut: Inline-Handler aus dem SSR blockiert die CSP
+	 * (script-src mit Nonce). Greift auch, wenn das Bild schon vor der Hydration fehlgeschlagen ist.
+	 */
+	function watchError(img: HTMLImageElement) {
+		const fail = () => (failedSrc = img.getAttribute('src'));
+		img.addEventListener('error', fail);
+		if (img.complete && img.naturalWidth === 0) fail();
+		return { destroy: () => img.removeEventListener('error', fail) };
+	}
 
 	const initials = $derived(
 		name
@@ -20,7 +32,7 @@
 			.join('')
 	);
 	const ring = $derived(color ?? 'var(--border)');
-	const showImage = $derived(!!src && !failed);
+	const showImage = $derived(!!src && failedSrc !== src);
 </script>
 
 <span
@@ -30,7 +42,7 @@
 		: ''}"
 >
 	{#if showImage}
-		<img {src} alt={name} class="size-full object-cover" onerror={() => (failed = true)} />
+		<img {src} alt={name} class="size-full object-cover" use:watchError />
 	{:else}
 		<span aria-hidden="true">{initials}</span>
 		<span class="sr-only">{name}</span>

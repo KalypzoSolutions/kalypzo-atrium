@@ -8,6 +8,8 @@ import { getAuth } from '$lib/server/core/auth';
 import { initCore } from '$lib/server/core/init';
 import { startJobRunner } from '$lib/server/core/jobs';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
+import { getSetting } from '$lib/server/core/settings/service';
+import { applyAppearance, loadUserPrefs } from '$lib/server/core/settings/user-prefs';
 
 const PUBLIC_PAGES = ['/login', '/forgot-password', '/reset-password'];
 /** Oeffentliche Modulseiten (`/p/<moduleId>/…`): keine Session noetig */
@@ -79,10 +81,31 @@ const guard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
+/** Akzentfarbe (Benutzer oder System) und Dichte fuer die Platzhalter in `app.html`; Fehler = Standard. */
+async function appearanceFor(event: Parameters<Handle>[0]['event']) {
+	try {
+		const prefs = event.locals.user ? await loadUserPrefs(event.locals.user.id) : null;
+		const accent = prefs?.accentColor || (await getSetting<string>('core.design.accentColor'));
+		return { accent, density: prefs?.density ?? 'comfortable' };
+	} catch {
+		return { accent: null, density: 'comfortable' };
+	}
+}
+
 const headers: Handle = async ({ event, resolve }) => {
-	const theme = event.cookies.get('theme');
+	let appearance: ReturnType<typeof appearanceFor> | undefined;
 	const response = await resolve(event, {
-		transformPageChunk: ({ html }) => html.replace('%app.theme%', theme === 'dark' ? 'dark' : '')
+		// Laeuft beim Rendern (nach Session und Layout-Load): der Theme-Cookie ist dann bereits abgeglichen
+		transformPageChunk: async ({ html }) => {
+			if (!html.includes('%app.')) return html;
+			appearance ??= appearanceFor(event);
+			const a = await appearance;
+			return applyAppearance(html, {
+				theme: event.cookies.get('theme'),
+				density: a.density,
+				accent: a.accent
+			});
+		}
 	});
 	response.headers.set('x-content-type-options', 'nosniff');
 	response.headers.set('referrer-policy', 'strict-origin-when-cross-origin');

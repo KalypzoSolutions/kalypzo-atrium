@@ -4,8 +4,14 @@ import { getAuth } from '$lib/server/core/auth';
 import { authErrorMessage, safeRedirect } from './auth-error';
 import type { Actions, PageServerLoad } from './$types';
 
+/** Ohne `redirectTo` geht es auf `/` (leitet auf die persoenliche Startseite). */
+function target(url: URL): string {
+	const r = url.searchParams.get('redirectTo');
+	return r ? safeRedirect(r) : '/';
+}
+
 export const load: PageServerLoad = ({ locals, url }) => {
-	if (locals.user) throw redirect(303, safeRedirect(url.searchParams.get('redirectTo')));
+	if (locals.user) throw redirect(303, target(url));
 	return { redirectTo: safeRedirect(url.searchParams.get('redirectTo')) };
 };
 
@@ -34,7 +40,7 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, { error: authErrorMessage(e, 'Anmeldung fehlgeschlagen.'), email });
 		}
-		throw redirect(303, safeRedirect(url.searchParams.get('redirectTo')));
+		throw redirect(303, target(url));
 	},
 
 	verify: async ({ request, url }) => {
@@ -48,6 +54,6 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, { twoFactor: true, error: authErrorMessage(e, 'Code ungueltig.') });
 		}
-		throw redirect(303, safeRedirect(url.searchParams.get('redirectTo')));
+		throw redirect(303, target(url));
 	}
 };

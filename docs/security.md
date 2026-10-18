@@ -48,6 +48,23 @@ Schutz: Token (128 Bit) identifiziert das Mitglied, Code (6 Ziffern, verschlüss
 je Mitglied nach 10 Fehlversuchen 60 Minuten Sperre, dazu Rate-Limits je IP/Gesamt; Gültigkeit 90 Tage; „Code neu erzeugen“ macht Link und Code ungültig.
 Die E-Mail-Adresse neuer Konten wird nicht verifiziert (`emailVerified: true` wie bei Admin-Anlage).
 
+## E-Mail-Wechsel, Profilbild und Kontaktänderung
+
+- **E-Mail-Wechsel**: Der Better-Auth-Endpoint `POST /api/auth/change-email` (und `/update-user`) ist für
+  HTTP-Aufrufe im `before`-Hook gesperrt (403). Erlaubt ist nur die Profil-Action (`requestEmailChange`, serverseitiger
+  `auth.api`-Aufruf ohne `request`): Passwortprüfung (5 Fehlversuche je 10 min), eigenes Rate-Limit (3 Anfragen je Stunde
+  und Benutzer), Bestätigungslink an die **neue** Adresse (Session im selben Browser nötig), Hinweismail an die **alte**
+  Adresse (erst nach erfolgreichem Aufruf, nur maskierte neue Adresse). Nach der Bestätigung werden alle **anderen**
+  Sessions beendet; Audit `core.auth.email_changed` (maskiert).
+- **Profilbild**: Upload prüft Typ, Größe und Magic-Bytes (PNG/JPEG/WebP). `GET /avatar/<id>` verlangt Login (alle
+  angemeldeten Benutzer dürfen Avatare sehen, gewollt), liefert nichts für deaktivierte Benutzer und nur, wenn
+  `user.image` auf den eigenen Pfad `/avatar/<id>` zeigt (keine Imitation per fremder ID). Antwort mit
+  `nosniff` und `sandbox`-CSP.
+- **Kontaktänderung durch verknüpfte Konten** (`PUT /my/members/:id/contacts`): Ändert sich die E-Mail-Liste, geht eine
+  Info-Mail an die **bisherigen** Adressen des Mitglieds (ohne die neuen zu nennen, höchstens eine Mail je Adresse,
+  Mailfehler brechen das Speichern nicht ab). Das Audit enthält nur Zähler.
+- Startseite (`core.user.startPage`): nur interne Pfade (`^/(?!/)[a-z0-9\-/]*$`, kein `//`).
+
 ## Adress-Autovervollständigung (Modul `members`)
 
 Beim Tippen einer Adresse sendet **unser Server** (nicht der Browser) den Suchtext an den in `members.address.photonUrl` konfigurierten

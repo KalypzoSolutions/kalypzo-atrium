@@ -25,7 +25,8 @@
 		head,
 		children,
 		footer,
-		emptyAction
+		emptyAction,
+		mobile = 'scroll'
 	}: {
 		/** Zugaengliche Beschreibung der Tabelle */
 		caption: string;
@@ -44,7 +45,41 @@
 		children: Snippet;
 		footer?: Snippet;
 		emptyAction?: Snippet;
+		/** Mobil (< 640 px): `scroll` = horizontal scrollen, `cards` = jede Zeile als Karte */
+		mobile?: 'scroll' | 'cards';
 	} = $props();
+
+	let wrapper = $state<HTMLElement>();
+
+	/**
+	 * Karten-Modus: Beschriftung jeder Zelle aus dem passenden `<th>` (`data-label`, im CSS als `::before`).
+	 * Zellen ohne Kopftext (Checkbox, Aktionen) bleiben ohne Label; `colspan` verschiebt die Spalte.
+	 */
+	function applyLabels() {
+		if (!wrapper || mobile !== 'cards') return;
+		const labels = [...wrapper.querySelectorAll('thead th')].map((th) =>
+			(th.textContent ?? '').replace(/\s+/g, ' ').trim()
+		);
+		for (const row of wrapper.querySelectorAll('tbody tr')) {
+			let col = 0;
+			for (const cell of row.children) {
+				const label = labels[col] ?? '';
+				if (label && !cell.hasAttribute('data-label-manual'))
+					cell.setAttribute('data-label', label);
+				else if (!cell.hasAttribute('data-label-manual')) cell.removeAttribute('data-label');
+				col += (cell as HTMLTableCellElement).colSpan || 1;
+			}
+		}
+	}
+
+	$effect(() => {
+		if (!wrapper || mobile !== 'cards') return;
+		applyLabels();
+		// Zeilen kommen/gehen (Laden, Filter, Paging): Beschriftung nachziehen
+		const observer = new MutationObserver(applyLabels);
+		observer.observe(wrapper, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	});
 </script>
 
 <Card.Root>
@@ -72,7 +107,12 @@
 				{#if emptyAction}{@render emptyAction()}{/if}
 			</EmptyState>
 		{:else}
-			<div class="overflow-x-auto transition-opacity" class:opacity-60={loading}>
+			<div
+				class="overflow-x-auto transition-opacity"
+				class:opacity-60={loading}
+				data-mobile={mobile}
+				bind:this={wrapper}
+			>
 				<Table.Root aria-label={caption}>
 					<Table.Header>{@render head()}</Table.Header>
 					<Table.Body>{@render children()}</Table.Body>

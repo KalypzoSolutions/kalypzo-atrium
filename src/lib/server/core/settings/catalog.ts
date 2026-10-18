@@ -352,6 +352,35 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		group: 'user'
 	}),
 	g({
+		key: 'core.user.accentColor',
+		label: 'Eigene Akzentfarbe',
+		description: 'Leer = Akzentfarbe des Systems.',
+		schema: z.union([z.literal(''), hexColor]),
+		default: '',
+		scope: 'user',
+		group: 'user'
+	}),
+	g({
+		key: 'core.user.density',
+		label: 'Dichte',
+		schema: z.enum(['comfortable', 'compact']),
+		default: 'comfortable',
+		scope: 'user',
+		group: 'user'
+	}),
+	g({
+		key: 'core.user.startPage',
+		label: 'Startseite',
+		description: 'Seite nach der Anmeldung (nur erlaubte Seiten werden verwendet).',
+		schema: z
+			.string()
+			.max(200)
+			.regex(/^\/(?!\/)[a-z0-9\-/]*$/),
+		default: '/dashboard',
+		scope: 'user',
+		group: 'user'
+	}),
+	g({
 		key: 'core.user.pageSize',
 		label: 'Eintraege pro Seite',
 		schema: z.coerce.number().int().min(10).max(200),

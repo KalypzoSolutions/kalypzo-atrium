@@ -9,10 +9,11 @@ import {
 	updateUser
 } from '$lib/server/core/auth/users';
 import { isCoreError } from '$lib/server/core/errors';
+import { resolvePageSize } from '$lib/server/core/settings/user-prefs';
 import { listRoles } from '$lib/server/core/permissions/roles';
 import type { PageServerLoad } from './$types';
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 20;
 
 function toFail(e: unknown) {
 	if (isCoreError(e)) return fail(e.status, { message: e.message });
@@ -25,6 +26,7 @@ function invalid(err: z.ZodError) {
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.ctx.permissions.has('core.users.view')) throw error(403, 'Keine Berechtigung');
+	const PAGE_SIZE = await resolvePageSize(locals, DEFAULT_PAGE_SIZE);
 	const search = url.searchParams.get('q')?.trim() ?? '';
 	const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1);
 	const { items, total } = await listUsers(locals.ctx, {

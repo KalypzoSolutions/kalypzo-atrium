@@ -41,6 +41,18 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
 - Audit **nach** der Transaktion: `core.audit.logFromContext(ctx, 'modul.ressource.aktion', { target, metadata })`.
   Keine personenbezogenen Details (Geburtsdatum, Allergien, E-Mail, IBAN) in `metadata`.
 
+## Konto, Darstellung, Startseite (Core)
+- E-Mail-Wechsel (`core/auth/profile.ts` `requestEmailChange`): Passwort selbst prüfen (Better Auth prüft es nicht;
+  5 Fehlversuche/10 min), Hinweis an die alte Adresse, Link (1 h) an die **neue** Adresse. Neutrale Antwort auch bei belegter
+  Adresse. `/verify-email` ohne Session → Redirect `/login` (keine Session über den Link, 2FA). Rate-Limit `/change-email`
+  5/300 s, `/update-user` 20/300 s. Audit `core.auth.email_change_requested|email_changed` mit maskierten Adressen (`a***@domain`).
+  Admin `updateUser` mit neuer Adresse: `emailVerified=true`, alle Sessions des Benutzers widerrufen, Duplikat 409.
+- Profilbild: `setOwnAvatar` → Storage `core/avatars/<userId>` (braucht S3, sonst 503), `user.image=/avatar/<id>?v=…`, Auslieferung `GET /avatar/<userId>`.
+- Theme: Cookie `theme` ist SSR-Quelle, `core.user.theme` (nur bei ausdrücklicher Wahl) gewinnt beim `(internal)`-Load;
+  `theme.set()` schreibt zusätzlich per `POST /profile/theme`. `hooks.server.ts` ersetzt `%app.theme%`, `%app.density%`,
+  `%app.style%` (`--accent-color`, nur validiertes `#rrggbb`) in `app.html`; Inline-Skript setzt `dark` bei „system“ (CSP-Nonce).
+- `/` und Login ohne `redirectTo` leiten auf `core.user.startPage` (erlaubt: Dashboard, Profil, Modul-Navigation).
+
 ## Sicherheit
 Security-Header und CSP aus `hooks.server.ts`/`svelte.config.js`; CSRF über SvelteKit-Origin-Check.
 Öffentliche Modul-Endpoints sind **verboten** (`permission` darf nicht `null` sein) – Phase 3 führt ein

@@ -20,6 +20,7 @@
 		description: string | null;
 		source: string | null;
 		letterhead: boolean;
+		orientation: 'portrait' | 'landscape';
 		parts: Part[];
 	}
 
@@ -34,12 +35,34 @@
 			(only ? `&only=${encodeURIComponent(only)}` : '')
 	);
 	const activePart = $derived(info.parts.find((p) => p.id === only));
+	const landscape = $derived(info.orientation === 'landscape');
 
 	function select(id: string | null) {
 		if (only === id) return;
 		only = id;
 		loaded = false;
 		failed = false;
+	}
+
+	/**
+	 * Lade-Listener per Action statt `onload`/`onerror`-Attribut: Inline-Handler aus dem SSR blockiert die
+	 * CSP (script-src mit Nonce). Berücksichtigt Bilder, die schon vor der Hydration fertig waren.
+	 */
+	function watchImage(img: HTMLImageElement) {
+		const ok = () => (loaded = true);
+		const fail = () => (failed = true);
+		img.addEventListener('load', ok);
+		img.addEventListener('error', fail);
+		if (img.complete) {
+			if (img.naturalWidth > 0) ok();
+			else if (img.getAttribute('src')) fail();
+		}
+		return {
+			destroy() {
+				img.removeEventListener('load', ok);
+				img.removeEventListener('error', fail);
+			}
+		};
 	}
 
 	const num = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
@@ -50,6 +73,7 @@
 		<Card.Title class="flex flex-wrap items-center gap-2">
 			{info.label}
 			{#if info.letterhead}<Badge variant="secondary">Brief</Badge>{/if}
+			{#if landscape}<Badge variant="outline">Quer</Badge>{/if}
 		</Card.Title>
 		<Card.Description>
 			<span class="font-mono text-xs">{info.id}</span>
@@ -63,7 +87,10 @@
 		{#if info.description}<p class="text-sm">{info.description}</p>{/if}
 
 		<div
-			class="relative aspect-[210/297] w-full max-w-[22rem] overflow-hidden rounded-md border bg-white shadow-sm"
+			class={[
+				'relative w-full overflow-hidden rounded-md border bg-white shadow-sm',
+				landscape ? 'aspect-[297/210] max-w-[31rem]' : 'aspect-[210/297] max-w-[22rem]'
+			]}
 		>
 			{#if !loaded && !failed}
 				<Skeleton class="absolute inset-0 rounded-none" />
@@ -83,8 +110,7 @@
 							: `Seitenvorschau der Vorlage „${info.label}“`}
 						loading="lazy"
 						class="h-full w-full object-contain"
-						onload={() => (loaded = true)}
-						onerror={() => (failed = true)}
+						use:watchImage
 					/>
 				{/key}
 			{/if}

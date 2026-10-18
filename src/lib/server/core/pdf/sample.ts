@@ -6,11 +6,15 @@ const LOREM =
 	'Dieser Beispieltext zeigt, wie der Inhalt eines Dokuments auf der Seite gesetzt wird. ' +
 	'Er prüft Schriftbild, Zeilenabstand und Seitenränder der Vorlage und enthält Umlaute wie äöüß.';
 
-export function sampleContent(title: string): PdfBlock[] {
+/**
+ * Beispielinhalt für Vorschau und Testdokument. Ohne eigene Hauptüberschrift: den Titel setzt
+ * der `titleBlock` der Vorlage. Bewusst so kurz, dass er auch auf A4 quer (Textbereich ca.
+ * 140 mm hoch) mit Abstand zur Fußzeile auf eine Seite passt.
+ */
+export function sampleContent(): PdfBlock[] {
 	return [
-		{ type: 'heading', text: title, level: 1 },
 		{ type: 'paragraph', text: `${LOREM}\n${LOREM}` },
-		{ type: 'paragraph', text: `${LOREM} ${LOREM}` },
+		{ type: 'paragraph', text: LOREM },
 		{ type: 'heading', text: 'Beispieltabelle', level: 2 },
 		{
 			type: 'table',
@@ -22,6 +26,6 @@ export function sampleContent(title: string): PdfBlock[] {
 			]
 		},
 		{ type: 'list', items: ['Umlaute: äöüß', 'Sonderzeichen: & < > "'], ordered: false },
-		{ type: 'paragraph', text: `${LOREM} ${LOREM}` }
+		{ type: 'paragraph', text: LOREM }
 	];
 }

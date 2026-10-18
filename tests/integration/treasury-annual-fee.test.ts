@@ -336,8 +336,10 @@ describe('Jahresbeitrag', () => {
 		expect(fam.dueOn).toBe('2027-03-15');
 		expect(fam.payer?.name).toBe('Familie Muster');
 		const detail = await data<InvoiceDetail>(await T(`/invoices/${fam.id}`));
-		expect(detail.lines).toHaveLength(8);
-		expect(detail.lines[0]!.description).toBe('Jahresbeitrag 2027 Stamm – Lena Muster');
+		// Ein offener Posten mit der Gesamtsumme (2 × 94 € = 94 € je Kind-Paar → 9400 ct)
+		expect(detail.lines).toHaveLength(1);
+		expect(detail.lines[0]!.description).toBe('Jahresbeitrag 2027 – Stammesbeitrag');
+		expect(detail.lines[0]!.amountCents).toBe(9400);
 		expect(detail.documents).toHaveLength(1);
 		expect(detail.documents[0]!.reason).toBe('annual');
 		// Rechnungs-PDF aus dem Snapshot enthält die Ebenen-Tabelle

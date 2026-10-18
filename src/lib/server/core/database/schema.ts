@@ -141,6 +141,21 @@ export const userRole = pgTable(
 	(t) => [primaryKey({ columns: [t.userId, t.roleId] })]
 );
 
+/**
+ * Marker fuer einmalig nachgezogene Standard-Rechte (`ModuleDefinition.defaultRoleGrants`):
+ * bewusst entzogene Rechte kommen dadurch nicht zurueck.
+ */
+export const roleGrantApplied = pgTable(
+	'role_grant_applied',
+	{
+		moduleId: text('module_id').notNull(),
+		roleName: text('role_name').notNull(),
+		permissionKey: text('permission_key').notNull(),
+		appliedAt: timestamp('applied_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [primaryKey({ columns: [t.moduleId, t.roleName, t.permissionKey] })]
+);
+
 // ---------------------------------------------------------------------------
 // Module
 // ---------------------------------------------------------------------------

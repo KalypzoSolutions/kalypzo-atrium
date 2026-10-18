@@ -84,7 +84,8 @@ describe('Gitter-Tabelle', () => {
 		expect(html).toContain('10,00 EUR');
 		expect(html).toContain('text-align:right');
 		expect(html).toContain('width:75.000%');
-		expect(html).toContain('border-top:3px double #000');
+		expect(html).toContain('border-top:1px solid #000');
+		expect(html).toContain('box-shadow:0 0 0 0.5px #000');
 		expect(html).toContain('break-inside:avoid');
 		expect(html).toContain('&lt;b&gt;Zelt&lt;/b&gt;');
 		expect(html).not.toContain('<b>Zelt');

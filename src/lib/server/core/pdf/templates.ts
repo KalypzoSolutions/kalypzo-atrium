@@ -1,4 +1,4 @@
-import type { PdfBlock, PdfFormat, PdfMargins } from '$lib/sdk/types';
+import type { PdfBlock, PdfFormat, PdfMargins, PdfOrientation, PdfTableCell } from '$lib/sdk/types';
 import { errors } from '../errors';
 
 export function escapeHtml(value: string): string {
@@ -44,10 +44,11 @@ export interface PdfTemplate {
 	/** Quelldatei (nur Anzeige in der Admin-Ansicht), z. B. `templates/stamm-brief.ts` */
 	source?: string;
 	/**
-	 * Festes Seitenlayout: ueberschreibt Format und Raender der Einstellungen und schaltet den
-	 * Chromium-Kopf/-Fuss ab (die Vorlage zeichnet alles selbst ueber `overlay`).
+	 * Festes Seitenlayout: ueberschreibt Format, Ausrichtung (Standard hochkant) und Raender der
+	 * Einstellungen und schaltet den Chromium-Kopf/-Fuss ab (die Vorlage zeichnet alles selbst ueber
+	 * `overlay`). Die Ausrichtung des Aufrufers wird bei festem Layout ignoriert.
 	 */
-	page?: { format?: PdfFormat; margins: PdfMargins };
+	page?: { format?: PdfFormat; orientation?: PdfOrientation; margins: PdfMargins };
 	/**
 	 * Absolut positionierte Seitenelemente (Kopf, Falzmarken, Adressfeld, Fusszeile). Werden vor dem
 	 * Inhalt ausgegeben; `position: fixed` wiederholt sich im Druck auf jeder Seite.
@@ -101,6 +102,7 @@ export function describeTemplates(): {
 	description: string | null;
 	source: string | null;
 	letterhead: boolean;
+	orientation: PdfOrientation;
 	parts: PdfTemplatePart[];
 }[] {
 	return [...registry.values()].map((t) => ({
@@ -109,6 +111,7 @@ export function describeTemplates(): {
 		description: t.description ?? null,
 		source: t.source ?? null,
 		letterhead: !!t.overlay,
+		orientation: t.page?.orientation ?? 'portrait',
 		parts: t.parts ?? []
 	}));
 }
@@ -130,11 +133,76 @@ interface BlockFlow {
 	attachedToPrevious: boolean;
 }
 
-/** Formular-Gitter: schwarze 1-px-Linien, nur feste Inline-Styles (CSP erlaubt keine Style-Tags im Block). */
+/** Eine auf dem Spaltenraster platzierte Zelle (nach Klemmen von `colspan`/`rowspan`). */
+interface PlacedCell {
+	col: number;
+	colspan: number;
+	rowspan: number;
+	text: string;
+	align?: 'left' | 'right' | 'center';
+	bold: boolean;
+}
+
+const clampSpan = (v: unknown, max: number): number => {
+	const n = typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : 1;
+	return Math.min(Math.max(n, 1), Math.max(max, 1));
+};
+
+/**
+ * Verteilt die Zellen jeder Zeile auf das Raster von `n` Spalten: `colspan`/`rowspan` werden auf gueltige
+ * Werte geklemmt (nie ueber den Rand oder in belegte Spalten, `rowspan` nicht ueber die letzte Zeile des
+ * Abschnitts hinaus), von oben belegte Spalten uebersprungen, ueberzaehlige Zellen verworfen und fehlende
+ * Zellen am Zeilenende leer aufgefuellt – so bleibt das Gitter geschlossen.
+ */
+export function placeRows(rows: PdfTableCell[][], n: number): PlacedCell[][] {
+	const busy = new Array<number>(n).fill(0);
+	return rows.map((row, ri) => {
+		const out: PlacedCell[] = [];
+		let col = 0;
+		const push = (cell: PlacedCell) => {
+			out.push(cell);
+			for (let k = 0; k < cell.colspan; k++) busy[cell.col + k] = cell.rowspan;
+			col = cell.col + cell.colspan;
+		};
+		for (const raw of row) {
+			while (col < n && busy[col]! > 0) col++;
+			if (col >= n) break;
+			const spec = typeof raw === 'string' ? { text: raw } : raw;
+			let colspan = clampSpan(spec.colspan, n - col);
+			for (let k = 1; k < colspan; k++) {
+				if (busy[col + k]! > 0) {
+					colspan = k;
+					break;
+				}
+			}
+			push({
+				col,
+				colspan,
+				rowspan: clampSpan(spec.rowspan, rows.length - ri),
+				text: String(spec.text ?? ''),
+				align: ALIGNS.has(String(spec.align)) ? spec.align : undefined,
+				bold: spec.bold === true
+			});
+		}
+		for (col = 0; col < n;) {
+			if (busy[col]! > 0) col++;
+			else push({ col, colspan: 1, rowspan: 1, text: '', bold: false });
+		}
+		for (let k = 0; k < n; k++) if (busy[k]! > 0) busy[k]!--;
+		return out;
+	});
+}
+
+/**
+ * Tabellen-Gitter fuer Formulare und Berichte: Linien als 0,5-px-Schatten je Zelle (Rahmen unter 1 px
+ * rundet Chromium auf 1 px auf, ein Schatten wird im PDF als echte Haarlinie gezeichnet). Zwei
+ * benachbarte Zellen ergeben 1 px Innenlinie, der aussere Rahmen bleibt 0,5 px duenn.
+ * Nur feste Inline-Styles (CSP erlaubt keine Style-Tags im Block).
+ */
 function renderGridTable(b: TableBlock, flow: BlockFlow): string {
 	const n = b.columns.length;
-	const line = '1px solid #000';
-	const cell = `border:${line};padding:6px 8px;vertical-align:top;line-height:1.4;overflow-wrap:anywhere;word-break:break-word;`;
+	const ring = 'box-shadow:0 0 0 0.5px #000;';
+	const cell = `border:0;${ring}padding:6px 8px;vertical-align:top;line-height:1.4;overflow-wrap:anywhere;word-break:break-word;`;
 	const align = (i: number): string => {
 		const a = b.align?.[i];
 		return a && ALIGNS.has(a) ? a : 'left';
@@ -148,8 +216,13 @@ function renderGridTable(b: TableBlock, flow: BlockFlow): string {
 			'</colgroup>'
 		: '';
 	const tr = (inner: string, extra = '') => `<tr style="break-inside:avoid;${extra}">${inner}</tr>`;
-	const td = (i: number, text: string, extra = '') =>
-		`<td style="${cell}text-align:${align(i)};${extra}">${escapeHtml(String(text)).replace(/\n/g, '<br/>')}</td>`;
+	const td = (c: PlacedCell, extra = '') => {
+		const span =
+			(c.colspan > 1 ? ` colspan="${c.colspan}"` : '') +
+			(c.rowspan > 1 ? ` rowspan="${c.rowspan}"` : '');
+		const bold = c.bold ? 'font-weight:bold;' : '';
+		return `<td${span} style="${cell}text-align:${c.align ?? align(c.col)};${bold}${extra}">${escapeHtml(c.text).replace(/\n/g, '<br/>')}</td>`;
+	};
 
 	// Reine Summentabelle (nur Summenzeile): keine leere Spaltenkopfzeile
 	const summaryOnly = isSummaryOnly(b);
@@ -176,17 +249,17 @@ function renderGridTable(b: TableBlock, flow: BlockFlow): string {
 	}
 	// Letzte Datenzeile haengt an der Summenzeile (Summe nie allein auf einer Seite)
 	const lastIdx = b.rows.length - 1;
-	const body = b.rows
+	const body = placeRows(b.rows, n)
 		.map((r, ri) =>
-			tr(
-				r.map((c, i) => td(i, c)).join(''),
-				ri === lastIdx && b.totalRow ? 'break-after:avoid;' : ''
-			)
+			tr(r.map((c) => td(c)).join(''), ri === lastIdx && b.totalRow ? 'break-after:avoid;' : '')
 		)
 		.join('');
+	// Summenzeile: fett, einfache Linie darueber (die fruehere 3-px-Doppellinie wirkte zu schwer)
 	const total = b.totalRow
 		? tr(
-				b.totalRow.map((c, i) => td(i, c, 'font-weight:bold;border-top:3px double #000;')).join(''),
+				placeRows([b.totalRow], n)[0]!
+					.map((c) => td(c, 'font-weight:bold;border-top:1px solid #000;'))
+					.join(''),
 				'break-before:avoid;'
 			)
 		: '';
@@ -195,7 +268,7 @@ function renderGridTable(b: TableBlock, flow: BlockFlow): string {
 	const after = flow.keepWithNext ? 'break-after:avoid;' : '';
 	return (
 		`<div class="grid-table" style="margin:${top} 0 ${TABLE_GAP};${keep}${after}">` +
-		`<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:${line};">` +
+		`<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:0;">` +
 		colHtml +
 		`<thead style="display:table-header-group;">${head}</thead><tbody>${body}${total}</tbody></table></div>`
 	);
@@ -345,8 +418,21 @@ export function renderBlocks(blocks: PdfBlock[]): string {
 					`<table${b.rows.length <= KEEP_TOGETHER_ROWS ? ' class="keep"' : ''}><thead><tr>` +
 						b.columns.map((c) => `<th>${escapeHtml(c)}</th>`).join('') +
 						'</tr></thead><tbody>' +
-						b.rows
-							.map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(String(c))}</td>`).join('')}</tr>`)
+						placeRows(b.rows, b.columns.length)
+							.map(
+								(r) =>
+									`<tr>${r
+										.map((c) => {
+											const span =
+												(c.colspan > 1 ? ` colspan="${c.colspan}"` : '') +
+												(c.rowspan > 1 ? ` rowspan="${c.rowspan}"` : '');
+											const style =
+												(c.align ? `text-align:${c.align};` : '') +
+												(c.bold ? 'font-weight:bold;' : '');
+											return `<td${span}${style ? ` style="${style}"` : ''}>${escapeHtml(c.text)}</td>`;
+										})
+										.join('')}</tr>`
+							)
 							.join('') +
 						'</tbody></table>'
 				);

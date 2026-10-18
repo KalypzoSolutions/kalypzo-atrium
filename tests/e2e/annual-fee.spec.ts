@@ -117,7 +117,14 @@ test('Jahresbeitrag: Lauf anlegen, Texte, Empfaenger, Vorschau, planen', async (
 	const yearSelect = page.getByRole('button', { name: 'Beitragsjahr' });
 	await expect(yearSelect).toContainText(`Beitragsjahr ${year} · Entwurf`);
 
+	// Der Lauf ist in Schritte gegliedert: Beitraege → Texte → Vorschau → Senden
+	const step = (name: string) =>
+		page
+			.getByRole('navigation', { name: 'Schritte des Beitragslaufs' })
+			.getByRole('button', { name });
+
 	// Betreff aendern → Autosave
+	await step('Texte').click();
 	const subject = `Beitrag {jahr} E2E ${run}`;
 	const subjectInput = page.getByRole('textbox', { name: /^Betreff/ });
 	await subjectInput.fill(subject);
@@ -128,6 +135,7 @@ test('Jahresbeitrag: Lauf anlegen, Texte, Empfaenger, Vorschau, planen', async (
 	expect(created?.mailSubject).toBe(subject);
 
 	// Empfaenger: eine Zeile fuer die Familie mit beiden Kindern und 94 €
+	await step('Vorschau').click();
 	const recipients = page.getByRole('table', { name: 'Empfänger des Jahresbeitrags' });
 	const familyRow = recipients.getByRole('row').filter({ hasText: payerName });
 	await expect(familyRow).toHaveCount(1);
@@ -162,6 +170,7 @@ test('Jahresbeitrag: Lauf anlegen, Texte, Empfaenger, Vorschau, planen', async (
 	);
 
 	// Versand planen (nicht senden)
+	await step('Senden').click();
 	const sendOn = dateIn(7);
 	await page.getByLabel('Oder Versand planen am').fill(sendOn.iso);
 	await page.getByRole('button', { name: 'Versand planen' }).click();
@@ -169,7 +178,9 @@ test('Jahresbeitrag: Lauf anlegen, Texte, Empfaenger, Vorschau, planen', async (
 	await expect(yearSelect).toContainText(`Beitragsjahr ${year} · Versand geplant`);
 	await expect(page.getByText(`Versand geplant am ${sendOn.de}.`)).toBeVisible();
 	// Betreff bleibt bis zum Versand editierbar
+	await step('Texte').click();
 	await expect(subjectInput).toBeEditable();
+	await step('Senden').click();
 
 	// Planung aufheben → wieder Entwurf
 	await page.getByRole('button', { name: 'Planung aufheben' }).click();
