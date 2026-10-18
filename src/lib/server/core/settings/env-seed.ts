@@ -4,10 +4,10 @@ import { getDb, schema } from '../database/client';
 import { setSetting } from './service';
 
 /**
- * Vorbelegung ausgewaehlter Einstellungen aus Umgebungsvariablen (Container-/Dokploy-Betrieb).
+ * Vorbelegung ausgewählter Einstellungen aus Umgebungsvariablen (Container-/Dokploy-Betrieb).
  *
- * Regel: Ein Wert wird nur gesetzt, wenn die Einstellung noch NICHT in der Datenbank steht. Spaetere
- * Aenderungen in der Oberflaeche bleiben also erhalten und werden beim Neustart nicht ueberschrieben.
+ * Regel: Ein Wert wird nur gesetzt, wenn die Einstellung noch NICHT in der Datenbank steht. Spätere
+ * Änderungen in der Oberfläche bleiben also erhalten und werden beim Neustart nicht überschrieben.
  */
 const MAPPING: { env: string; key: string; parse?: (v: string) => unknown }[] = [
 	{ env: 'S3_ENDPOINT', key: 'core.storage.endpoint' },
@@ -28,7 +28,7 @@ function bool(v: string): boolean {
 	return /^(1|true|yes|ja|on)$/i.test(v.trim());
 }
 
-/** Gibt die Schluessel zurueck, die gesetzt wurden (fuer Log/Tests; nie Werte). */
+/** Gibt die Schlüssel zurück, die gesetzt wurden (für Log/Tests; nie Werte). */
 export async function seedSettingsFromEnv(
 	source: Record<string, string | undefined> = process.env
 ): Promise<string[]> {
@@ -47,7 +47,7 @@ export async function seedSettingsFromEnv(
 			applied.push(m.key);
 		} catch (e) {
 			console.warn(
-				`[core] Umgebungsvariable ${m.env} ungueltig und ignoriert:`,
+				`[core] Umgebungsvariable ${m.env} ungültig und ignoriert:`,
 				(e as Error).message
 			);
 		}

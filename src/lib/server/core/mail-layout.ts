@@ -5,10 +5,10 @@ import { DEFAULT_MAIL_FOOTER } from './settings/catalog';
 import { getSettings } from './settings/service';
 
 /**
- * Einheitliches E-Mail-Layout (Kopf mit Lilie, Vereinsname und Wappen, Inhalt, Signatur, Fusszeile),
- * abgeleitet vom Stamm-Briefkopf der PDF-Vorlagen. Wird vom Core fuer jede ausgehende Mail angewendet
- * und ueber die Einstellungen `core.mail.*` und `core.design.accentColor` verwaltet.
- * Bilder werden als CID-Anhaenge eingebettet (data:-URLs blocken viele Mailprogramme).
+ * Einheitliches E-Mail-Layout (Kopf mit Lilie, Vereinsname und Wappen, Inhalt, Signatur, Fußzeile),
+ * abgeleitet vom Stamm-Briefkopf der PDF-Vorlagen. Wird vom Core für jede ausgehende Mail angewendet
+ * und über die Einstellungen `core.mail.*` und `core.design.accentColor` verwaltet.
+ * Bilder werden als CID-Anhänge eingebettet (data:-URLs blocken viele Mailprogramme).
  */
 
 export const ORGANIZATION_TITLE = 'Christliche Pfadfinderschaft Deutschlands e.V.';
@@ -70,7 +70,7 @@ export async function loadMailLayoutOptions(): Promise<MailLayoutOptions> {
 	return mailLayoutOptions(await getSettings([...MAIL_SETTING_KEYS]));
 }
 
-/** Text -> HTML: escaped, Absaetze, Zeilenumbrueche, http(s)-Links. */
+/** Text -> HTML: escaped, Absätze, Zeilenumbrüche, http(s)-Links. */
 export function textToHtml(text: string, accent: string): string {
 	const link = (s: string) =>
 		escapeHtml(s).replace(
@@ -157,6 +157,6 @@ ${footerHtml}
 	return { text: textParts.join('\n\n'), html, attachments };
 }
 
-/** Beispielinhalt fuer die Admin-Vorschau. */
+/** Beispielinhalt für die Admin-Vorschau. */
 export const SAMPLE_MAIL_TEXT =
 	'Hallo Max Mustermann,\n\nvielen Dank für deine Anmeldung zum Sommerlager. Alle Informationen findest du unter https://intern.example.org/p/actions/anmeldung/beispiel.\n\nBei Fragen antworte einfach auf diese E-Mail.';

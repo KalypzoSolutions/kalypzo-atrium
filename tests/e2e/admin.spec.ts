@@ -15,7 +15,7 @@ async function login(page: Page, email = ADMIN.email, password = ADMIN.password)
 
 test.describe.configure({ mode: 'serial' });
 
-test('geschuetzte Seiten leiten auf den Login um', async ({ page }) => {
+test('geschützte Seiten leiten auf den Login um', async ({ page }) => {
 	await page.goto('/users');
 	await expect(page).toHaveURL(/\/login/);
 });

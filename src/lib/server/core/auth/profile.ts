@@ -20,13 +20,13 @@ const EMAIL_CHANGE_MAX = 3;
 const EMAIL_CHANGE_WINDOW_SEC = 60 * 60;
 
 /**
- * Prueft das Passwort des eigenen Kontos (Better Auth prueft es bei `changeEmail` nicht). Fehlversuche
+ * Prüft das Passwort des eigenen Kontos (Better Auth prüft es bei `changeEmail` nicht). Fehlversuche
  * werden je Benutzer begrenzt (5 je 10 Minuten).
  */
 export async function verifyUserPassword(userId: string, password: string): Promise<boolean> {
 	const key = `pwcheck:${userId}`;
 	if (peek(key, PW_WINDOW_SEC) >= PW_MAX_FAILURES) {
-		throw errors.badRequest('Zu viele Versuche. Bitte spaeter erneut versuchen.');
+		throw errors.badRequest('Zu viele Versuche. Bitte später erneut versuchen.');
 	}
 	const [acc] = await getDb()
 		.select({ password: schema.account.password })
@@ -46,9 +46,9 @@ export async function verifyUserPassword(userId: string, password: string): Prom
 const emailSchema = z.string().trim().toLowerCase().max(255).pipe(z.email());
 
 /**
- * E-Mail-Wechsel des eigenen Kontos: Passwort pruefen, Hinweis an die alte Adresse, Bestaetigungslink an
- * die NEUE Adresse (Better Auth `changeEmail`). Die Adresse aendert sich erst nach Klick auf den Link.
- * Die Antwort ist unabhaengig davon, ob die neue Adresse bereits vergeben ist (kein Konto-Orakel).
+ * E-Mail-Wechsel des eigenen Kontos: Passwort prüfen, Hinweis an die alte Adresse, Bestätigungslink an
+ * die NEUE Adresse (Better Auth `changeEmail`). Die Adresse ändert sich erst nach Klick auf den Link.
+ * Die Antwort ist unabhängig davon, ob die neue Adresse bereits vergeben ist (kein Konto-Orakel).
  */
 export async function requestEmailChange(
 	ctx: RequestContext,
@@ -58,7 +58,7 @@ export async function requestEmailChange(
 	const userId = requireUser(ctx);
 	const parsed = emailSchema.safeParse(input.newEmail);
 	if (!parsed.success) {
-		throw errors.validation(parsed.error.issues, 'Ungueltige E-Mail-Adresse');
+		throw errors.validation(parsed.error.issues, 'Ungültige E-Mail-Adresse');
 	}
 	const newEmail = parsed.data;
 	const [u] = await getDb().select().from(schema.user).where(eq(schema.user.id, userId));
@@ -72,7 +72,7 @@ export async function requestEmailChange(
 	// Eigenes Limit (Better Auth begrenzt nur den HTTP-Weg): 3 je Stunde und Benutzer
 	if (!hit(`emailchange:${userId}`, EMAIL_CHANGE_MAX, EMAIL_CHANGE_WINDOW_SEC).allowed) {
 		throw errors.rateLimited(
-			'Zu viele Aenderungsanfragen fuer die E-Mail-Adresse. Bitte spaeter erneut versuchen.'
+			'Zu viele Änderungsanfragen für die E-Mail-Adresse. Bitte später erneut versuchen.'
 		);
 	}
 	const name = await getSetting<string>('core.system.name');
@@ -94,11 +94,11 @@ export async function requestEmailChange(
 	});
 }
 
-/** Eigenen Anzeigenamen aendern. */
+/** Eigenen Anzeigenamen ändern. */
 export async function updateOwnName(ctx: RequestContext, name: string): Promise<void> {
 	const userId = requireUser(ctx);
 	const parsed = z.string().trim().min(1, 'Name ist erforderlich').max(100).safeParse(name);
-	if (!parsed.success) throw errors.validation(parsed.error.issues, 'Ungueltiger Name');
+	if (!parsed.success) throw errors.validation(parsed.error.issues, 'Ungültiger Name');
 	await getDb()
 		.update(schema.user)
 		.set({ name: parsed.data, updatedAt: new Date() })
@@ -110,7 +110,7 @@ export const AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const avatarPath = (userId: string) => `avatars/${userId}`;
 
-/** Magic-Bytes-Pruefung (PNG, JPEG, WebP) – `file.type` kommt vom Client und ist nicht vertrauenswuerdig. */
+/** Magic-Bytes-Prüfung (PNG, JPEG, WebP) – `file.type` kommt vom Client und ist nicht vertrauenswürdig. */
 export function matchesImageSignature(data: Uint8Array, type: string): boolean {
 	const at = (off: number, bytes: number[]) => bytes.every((b, i) => data[off + i] === b);
 	if (type === 'image/png') return at(0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -135,10 +135,10 @@ export async function setOwnAvatar(
 		throw errors.badRequest('Nur PNG-, JPEG- oder WebP-Bilder sind erlaubt');
 	}
 	if (file.data.byteLength === 0 || file.data.byteLength > AVATAR_MAX_BYTES) {
-		throw errors.tooLarge('Das Bild darf hoechstens 2 MB gross sein');
+		throw errors.tooLarge('Das Bild darf höchstens 2 MB groß sein');
 	}
 	if (!matchesImageSignature(file.data, type)) {
-		throw errors.badRequest('Die Datei ist kein gueltiges PNG-, JPEG- oder WebP-Bild');
+		throw errors.badRequest('Die Datei ist kein gültiges PNG-, JPEG- oder WebP-Bild');
 	}
 	await storage.upload(systemContext('avatar'), {
 		module: 'core',
@@ -181,9 +181,9 @@ export function isOwnAvatarPath(image: string | null | undefined, userId: string
 }
 
 /**
- * Bild fuer `GET /avatar/<id>`. Nur wenn der Benutzer aktiv ist und `user.image` auf den EIGENEN Pfad
- * zeigt (verhindert Imitation ueber einen fremden `/avatar/<id>`-Wert). Die Groesse wird vor dem Lesen geprueft.
- * Hinweis: Alle angemeldeten Benutzer duerfen Profilbilder sehen (gewollt, wie in der Benutzerliste).
+ * Bild für `GET /avatar/<id>`. Nur wenn der Benutzer aktiv ist und `user.image` auf den EIGENEN Pfad
+ * zeigt (verhindert Imitation über einen fremden `/avatar/<id>`-Wert). Die Größe wird vor dem Lesen geprüft.
+ * Hinweis: Alle angemeldeten Benutzer dürfen Profilbilder sehen (gewollt, wie in der Benutzerliste).
  */
 export async function readAvatar(
 	userId: string

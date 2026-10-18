@@ -91,7 +91,7 @@ interface GroupDto {
 	memberCount: number;
 }
 
-// Gemeinsamer Zustand ueber die Tests hinweg (Bootstrap-Fluss)
+// Gemeinsamer Zustand über die Tests hinweg (Bootstrap-Fluss)
 let leader: MemberDto;
 let group: GroupDto;
 
@@ -105,7 +105,7 @@ beforeAll(async () => {
 	adminId = u!.id;
 	const ctxOf = async () => {
 		const r = await contextForUser(adminId);
-		if (!r) throw new Error('Kontext nicht aufloesbar');
+		if (!r) throw new Error('Kontext nicht auflösbar');
 		return r.ctx;
 	};
 	admin = await ctxOf();
@@ -222,7 +222,7 @@ describe('Mitglieder-CRUD', () => {
 			json: memberBody({ groupIds: [group.id], ...over })
 		});
 
-	it('lehnt ungueltige Telefonnummern ab (422)', async () => {
+	it('lehnt ungültige Telefonnummern ab (422)', async () => {
 		expect((await post({ phones: [{ name: null, value: 'abc' }] })).status).toBe(422);
 		expect((await post({ phones: [{ name: null, value: '12' }] })).status).toBe(422);
 	});
@@ -240,7 +240,7 @@ describe('Mitglieder-CRUD', () => {
 		expect((await post({ birthDate: '2012-02-30' })).status).toBe(422);
 	});
 
-	it('validiert Eingaben (ungueltige E-Mail, Stufe) mit 422', async () => {
+	it('validiert Eingaben (ungültige E-Mail, Stufe) mit 422', async () => {
 		const bad = await call('/members', {
 			method: 'POST',
 			json: memberBody({ emails: [{ name: null, value: 'kaputt' }], groupIds: [group.id] })
@@ -253,7 +253,7 @@ describe('Mitglieder-CRUD', () => {
 		expect(stage.status).toBe(422);
 	});
 
-	it('loescht ein Mitglied', async () => {
+	it('löscht ein Mitglied', async () => {
 		const res = await call(`/members/${memberId}`, { method: 'DELETE' });
 		expect([200, 204]).toContain(res.status);
 		expect((await call(`/members/${memberId}`)).status).toBe(404);
@@ -279,12 +279,12 @@ describe('Gruppen-Regeln', () => {
 		expect(g.name).toBe('Wolfsrudel Nord');
 	});
 
-	it('sperrt das Loeschen des einzigen Leiters (409)', async () => {
+	it('sperrt das Löschen des einzigen Leiters (409)', async () => {
 		const res = await call(`/members/${leader.id}`, { method: 'DELETE' });
 		expect(res.status).toBe(409);
 	});
 
-	it('sperrt das Loeschen einer Gruppe mit Mitgliedern (409)', async () => {
+	it('sperrt das Löschen einer Gruppe mit Mitgliedern (409)', async () => {
 		const m = await data<MemberDto>(
 			await call('/members', {
 				method: 'POST',
@@ -293,11 +293,11 @@ describe('Gruppen-Regeln', () => {
 			201
 		);
 		expect((await call(`/groups/${group.id}`, { method: 'DELETE' })).status).toBe(409);
-		// Mitglied entfernen, dann ist die Gruppe loeschbar sofern keine Mitglieder uebrig sind
+		// Mitglied entfernen, dann ist die Gruppe löschbar sofern keine Mitglieder übrig sind
 		await call(`/members/${m.id}`, { method: 'DELETE' });
 	});
 
-	it('loescht eine leere Gruppe', async () => {
+	it('löscht eine leere Gruppe', async () => {
 		const g = await data<GroupDto>(
 			await call('/groups', {
 				method: 'POST',
@@ -338,7 +338,7 @@ describe('Gruppen: Wochentag, Farbe, Bild', () => {
 		expect(listed!.color).toBe('#aabbcc');
 	});
 
-	it('lehnt ungueltige Farbe und Wochentag ab (422)', async () => {
+	it('lehnt ungültige Farbe und Wochentag ab (422)', async () => {
 		const base = { name: 'Farbe', type: 'sippe', leaderIds: [leader.id] };
 		expect(
 			(await call('/groups', { method: 'POST', json: { ...base, color: 'rot' } })).status
@@ -360,7 +360,7 @@ describe('Gruppen: Wochentag, Farbe, Bild', () => {
 		await call(`/members/${m.id}`, { method: 'DELETE' });
 	});
 
-	it('Bild-Upload ohne verfuegbaren Storage schlaegt kontrolliert fehl', async () => {
+	it('Bild-Upload ohne verfügbaren Storage schlägt kontrolliert fehl', async () => {
 		const form = new FormData();
 		form.set('file', new File([new Uint8Array([1, 2, 3])], 'a.png', { type: 'image/png' }));
 		const res = await call(`/groups/${g.id}/image`, { method: 'POST', body: form });
@@ -394,7 +394,7 @@ describe('Dokumente (ohne Storage)', () => {
 		expect(res.ok).toBe(false);
 	});
 
-	it('Upload ohne verfuegbaren Storage schlaegt kontrolliert fehl', async () => {
+	it('Upload ohne verfügbaren Storage schlägt kontrolliert fehl', async () => {
 		const form = new FormData();
 		form.set('file', new File(['%PDF-1.4'], 'a.pdf', { type: 'application/pdf' }));
 		const res = await call(`/members/${leader.id}/documents/privacy`, {
@@ -531,7 +531,7 @@ describe('Mitgliedschaft: Eintritt, Austritt, Zweitmitglied', () => {
 		expect((await call('/members?status=weg')).status).toBe(422);
 	});
 
-	it('listMemberContacts liefert Mitgliedschaftsfelder fuer alle (auch Ausgetretene)', async () => {
+	it('listMemberContacts liefert Mitgliedschaftsfelder für alle (auch Ausgetretene)', async () => {
 		const list = await membersService.listMemberContacts({
 			ids: [regular.id, secondary.id, left.id]
 		});
@@ -568,7 +568,7 @@ describe('Berechtigungen und Modulstatus', () => {
 		expect((await api(`${BASE}/groups`)).status).toBe(401);
 	});
 
-	it('schreibt Audit-Eintraege', async () => {
+	it('schreibt Audit-Einträge', async () => {
 		for (const action of [
 			'members.member.created',
 			'members.member.updated',

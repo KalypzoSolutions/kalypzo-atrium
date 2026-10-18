@@ -8,7 +8,7 @@ import {
 } from '$lib/server/core/settings/user-prefs';
 import { invoiceAddresses, type NameMaps, type RawInvoice } from '$lib/modules/treasury/db';
 
-describe('maskEmail: Randfaelle', () => {
+describe('maskEmail: Randfälle', () => {
 	it('leer, nur @, mehrere @, Domain ohne Punkt', () => {
 		expect(maskEmail('')).toBe('***');
 		expect(maskEmail('@')).toBe('***');
@@ -22,7 +22,7 @@ describe('maskEmail: Randfaelle', () => {
 	});
 });
 
-describe('Startseite/Farbe: Randfaelle', () => {
+describe('Startseite/Farbe: Randfälle', () => {
 	const nav = ['/modules/members'];
 	it('Pfad-Tricks werden abgewiesen', () => {
 		for (const bad of [
@@ -39,7 +39,7 @@ describe('Startseite/Farbe: Randfaelle', () => {
 			expect(resolveStartPage(bad, nav), bad).toBe('/dashboard');
 		}
 	});
-	it('allowedStartPages enthaelt immer Dashboard und Profil', () => {
+	it('allowedStartPages enthält immer Dashboard und Profil', () => {
 		expect([...allowedStartPages([])].sort()).toEqual(['/dashboard', '/profile']);
 	});
 	it('safeHexColor: kein Zeilenumbruch am Ende, kein Nicht-String', () => {
@@ -83,7 +83,7 @@ describe('invoiceAddresses: Mail-Abwahl', () => {
 		expect(invoiceAddresses(inv(['a']), n)).toEqual(['a@x.de']);
 	});
 
-	it('abgewaehltes Mitglied liefert keine Adresse; Rechnungs-/Zahleradresse entfallen bei Totalabwahl', () => {
+	it('abgewähltes Mitglied liefert keine Adresse; Rechnungs-/Zahleradresse entfallen bei Totalabwahl', () => {
 		const n = names(
 			{ a: ['a@x.de'] },
 			{ a: ['payment-confirmation'] },
@@ -96,13 +96,13 @@ describe('invoiceAddresses: Mail-Abwahl', () => {
 		);
 	});
 
-	it('Abwahl gilt nur fuer die jeweilige Kategorie', () => {
+	it('Abwahl gilt nur für die jeweilige Kategorie', () => {
 		const n = names({ a: ['a@x.de'] }, { a: ['action-info'] });
 		expect(invoiceAddresses(inv(['a']), n, 'payment-confirmation')).toEqual(['a@x.de']);
 		expect(invoiceAddresses(inv(['a']), n, 'action-info')).toEqual([]);
 	});
 
-	it('Geschwister: gemeinsame Adresse bleibt, solange ein Kind nicht abgewaehlt hat; Rechnungsadresse bleibt', () => {
+	it('Geschwister: gemeinsame Adresse bleibt, solange ein Kind nicht abgewählt hat; Rechnungsadresse bleibt', () => {
 		const n = names({ a: ['fam@x.de'], b: ['fam@x.de'] }, { a: ['payment-confirmation'] });
 		const i = inv(['a', 'b'], { recipient_email: 'Rechnung@x.de' });
 		expect(invoiceAddresses(i, n, 'payment-confirmation').sort()).toEqual([
@@ -111,7 +111,7 @@ describe('invoiceAddresses: Mail-Abwahl', () => {
 		]);
 	});
 
-	it('beide Geschwister abgewaehlt -> keine Adresse, auch nicht Rechnungsadresse', () => {
+	it('beide Geschwister abgewählt -> keine Adresse, auch nicht Rechnungsadresse', () => {
 		const n = names(
 			{ a: ['fam@x.de'], b: ['fam@x.de'] },
 			{ a: ['payment-confirmation'], b: ['payment-confirmation'] }

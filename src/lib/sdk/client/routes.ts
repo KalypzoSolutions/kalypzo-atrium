@@ -1,9 +1,9 @@
 /**
- * Routen-Abgleich fuer Modul-Oberflaechen: exakte Pfade und Muster mit `:param`-Segmenten.
- * Reine Funktion ohne Abhaengigkeiten (auch im Server-/Test-Kontext nutzbar).
+ * Routen-Abgleich für Modul-Oberflächen: exakte Pfade und Muster mit `:param`-Segmenten.
+ * Reine Funktion ohne Abhängigkeiten (auch im Server-/Test-Kontext nutzbar).
  */
 export interface RouteMatch {
-	/** Schluessel in `ui.routes`, der gepasst hat */
+	/** Schlüssel in `ui.routes`, der gepasst hat */
 	key: string;
 	params: Record<string, string>;
 }

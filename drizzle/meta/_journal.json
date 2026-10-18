@@ -36,6 +36,13 @@
       "when": 1792224000000,
       "tag": "0004_role_grant_applied",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792310400000,
+      "tag": "0005_audit_reset",
+      "breakpoints": true
     }
   ]
 }

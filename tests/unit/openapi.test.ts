@@ -4,7 +4,7 @@ import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { buildOpenApiDocument } from '$lib/server/core/api/openapi';
 
 describe('OpenAPI', () => {
-	it('erzeugt eine gueltige 3.1-Spezifikation (WRITE_OPENAPI=1 schreibt docs/openapi.json)', () => {
+	it('erzeugt eine gültige 3.1-Spezifikation (WRITE_OPENAPI=1 schreibt docs/openapi.json)', () => {
 		registerCoreApi();
 		const doc = buildOpenApiDocument();
 		expect(doc.openapi).toBe('3.1.0');

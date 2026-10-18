@@ -38,7 +38,7 @@ describe('effectiveSubsidyEligible', () => {
 		// ab 0 Jahre
 		expect(effectiveSubsidyEligible(person({ birthDate: '2026-06-01' }), START)).toBe(true);
 	});
-	it('Override true: Wohnort egal, aber Alter noetig', () => {
+	it('Override true: Wohnort egal, aber Alter nötig', () => {
 		const p = person({ subsidyEligible: true, bremenResident: false });
 		expect(effectiveSubsidyEligible(p, START)).toBe(true);
 		expect(effectiveSubsidyEligible({ ...p, birthDate: null }, START)).toBe(false);
@@ -50,7 +50,7 @@ describe('effectiveSubsidyEligible', () => {
 });
 
 describe('deriveSubsidyCounts', () => {
-	it('zaehlt Kinder, Jugend, Team und meldet Unvollstaendiges', () => {
+	it('zählt Kinder, Jugend, Team und meldet Unvollständiges', () => {
 		const c = deriveSubsidyCounts(
 			[
 				person({ birthDate: '2018-01-01' }), // Kind
@@ -59,7 +59,7 @@ describe('deriveSubsidyCounts', () => {
 				person({ bremenResident: false }), // nicht Bremen
 				person({ bremenResident: false, subsidyEligible: true }), // Override -> Kind
 				person({ subsidyEligible: false }), // ausgeschlossen
-				person({ bremenResident: null, birthDate: null }), // unvollstaendig
+				person({ bremenResident: null, birthDate: null }), // unvollständig
 				person({ role: 'team', birthDate: '2000-01-01', juleica: true }),
 				person({ role: 'team', birthDate: '2000-01-01', bremenResident: false }),
 				person({ role: 'team', birthDate: '2000-01-01', subsidyEligible: false }),
@@ -72,12 +72,12 @@ describe('deriveSubsidyCounts', () => {
 		expect(c.bremenYouth).toBe(1);
 		expect(c.teamYouth).toBe(2);
 		expect(c.teamWithJuleica).toBe(1);
-		// Teamer ohne Juleica: bremen false (zaehlt, Wohnort egal), 14-jaehrige; ausgeschlossene nicht
+		// Teamer ohne Juleica: bremen false (zählt, Wohnort egal), 14-jährige; ausgeschlossene nicht
 		expect(c.teamWithoutJuleica).toBe(2);
 		expect(c.incomplete).toHaveLength(1);
 		expect(c.incomplete[0]!.missing).toEqual(['birthDate', 'bremenResident']);
 	});
-	it('ausgeschlossene Person ist nie unvollstaendig', () => {
+	it('ausgeschlossene Person ist nie unvollständig', () => {
 		const c = deriveSubsidyCounts(
 			[person({ subsidyEligible: false, birthDate: null, bremenResident: null })],
 			START
@@ -95,7 +95,7 @@ describe('computeAutoIncome', () => {
 		subsidy: null,
 		entries: []
 	};
-	it('Beitraege: Teilnehmende x Beitrag + Team x Teambeitrag', () => {
+	it('Beiträge: Teilnehmende x Beitrag + Team x Teambeitrag', () => {
 		const a = computeAutoIncome(base);
 		expect(a.contributions).toEqual({
 			cents: 3 * 10000 + 2 * 5000,
@@ -121,7 +121,7 @@ describe('computeAutoIncome', () => {
 		// Ohne Rechnungen in der Kasse bleibt es beim berechneten Soll
 		const none = computeAutoIncome({ ...base, treasury: { ...treasury, invoiceCount: 0 } });
 		expect(none.contributions).toMatchObject({ cents: 40000, source: 'calculated' });
-		// Manuelle Beitragsbuchung ueberschreibt weiterhin
+		// Manuelle Beitragsbuchung überschreibt weiterhin
 		const manual = computeAutoIncome({
 			...base,
 			treasury,
@@ -135,7 +135,7 @@ describe('computeAutoIncome', () => {
 		expect(computeAutoIncome({ ...base, feeCents: Number.NaN }).contributions?.cents).toBe(10000);
 		expect(computeAutoIncome({ ...base, payingCount: -4 }).contributions?.cents).toBe(10000);
 	});
-	it('Zuschuss aus der Liste: 7 Naechte extern, 1 Kind, 1 Jugend, 1 Teamer 12-27', () => {
+	it('Zuschuss aus der Liste: 7 Nächte extern, 1 Kind, 1 Jugend, 1 Teamer 12-27', () => {
 		const a = computeAutoIncome({
 			...base,
 			subsidy: {
@@ -155,7 +155,7 @@ describe('computeAutoIncome', () => {
 		// 1 x 7 x 15,00 + 2 x 7 x 16,00
 		expect(a.subsidy).toEqual({ cents: 10500 + 22400, eligibleCount: 3 });
 	});
-	it('manuelle Einnahme der Kategorie ueberschreibt, Ausgaben/andere nicht', () => {
+	it('manuelle Einnahme der Kategorie überschreibt, Ausgaben/andere nicht', () => {
 		const sub = {
 			nights: 3,
 			lodgingType: 'external' as const,
@@ -216,7 +216,7 @@ describe('summarize und Bericht mit Automatik', () => {
 		expect(s.byCategory.find((c) => c.category === 'contributions')?.actualCents).toBe(40000);
 		expect(s.byCategory.find((c) => c.category === 'subsidy')?.actualCents).toBe(12000);
 	});
-	it('ueberschriebene Kategorie zaehlt nicht doppelt', () => {
+	it('überschriebene Kategorie zählt nicht doppelt', () => {
 		const s = summarize(
 			[{ ...expenseEntry, type: 'income', category: 'contributions', amountCents: 5000 }],
 			null,
@@ -224,10 +224,10 @@ describe('summarize und Bericht mit Automatik', () => {
 		);
 		expect(s.incomeCents).toBe(5000 + 12000);
 	});
-	it('ohne Automatik unveraendert', () => {
+	it('ohne Automatik unverändert', () => {
 		expect(summarize([expenseEntry], null).incomeCents).toBe(0);
 	});
-	it('Bericht: Automatik-Zeilen nur wenn nicht ueberschrieben', () => {
+	it('Bericht: Automatik-Zeilen nur wenn nicht überschrieben', () => {
 		const input = (overridden: ('contributions' | 'subsidy')[]): ReportInput => ({
 			actionName: 'Fahrt',
 			location: null,

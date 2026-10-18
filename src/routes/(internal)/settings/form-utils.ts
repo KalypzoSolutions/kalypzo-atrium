@@ -3,11 +3,11 @@ import type { SubmitFunction } from '@sveltejs/kit';
 import { toast } from 'svelte-sonner';
 
 export interface SubmitOptions {
-	/** Wird mit true/false aufgerufen, solange die Anfrage laeuft */
+	/** Wird mit true/false aufgerufen, solange die Anfrage läuft */
 	busy?: (busy: boolean) => void;
 	/** Fehlertext der Aktion (leer bei Start/Erfolg) */
 	error?: (message: string) => void;
-	/** Nach Erfolg, z. B. Dialog schliessen */
+	/** Nach Erfolg, z. B. Dialog schließen */
 	success?: (data: Record<string, unknown>) => void;
 	/** Daten nach Erfolg neu laden (Standard: true) */
 	reload?: boolean;

@@ -1,10 +1,10 @@
 import type { Component } from 'svelte';
 
-/** Props, die jede Modul-Seitenkomponente erhaelt (Deklaration optional). */
+/** Props, die jede Modul-Seitenkomponente erhält (Deklaration optional). */
 export interface ModulePageProps {
 	/** Werte der `:name`-Segmente des passenden Routenmusters */
 	params: Record<string, string>;
-	/** Unterpfad innerhalb des Moduls (ohne fuehrende/abschliessende Slashes) */
+	/** Unterpfad innerhalb des Moduls (ohne führende/abschließende Slashes) */
 	path: string;
 }
 
@@ -15,8 +15,8 @@ export interface ProfileSectionProps {
 }
 
 /**
- * Abschnitt, den ein Modul auf `/profile` beisteuert (nur fuer aktive Module, nur mit Recht
- * `permission`). Die Komponente laedt ihre Daten selbst; die Durchsetzung der Rechte bleibt serverseitig.
+ * Abschnitt, den ein Modul auf `/profile` beisteuert (nur für aktive Module, nur mit Recht
+ * `permission`). Die Komponente lädt ihre Daten selbst; die Durchsetzung der Rechte bleibt serverseitig.
  */
 export interface ProfileSection {
 	/** `[a-z][a-z0-9-]*`, eindeutig im Modul (global: `<moduleId>:<id>`) */
@@ -30,9 +30,9 @@ export interface ProfileSection {
 }
 
 /**
- * Vertrag fuer `src/lib/modules/<id>/ui.ts`: Zuordnung Unterpfad -> Seitenkomponente.
+ * Vertrag für `src/lib/modules/<id>/ui.ts`: Zuordnung Unterpfad -> Seitenkomponente.
  *
- * Schluessel sind exakte Unterpfade (`''`, `groups`) oder Muster mit Parametern
+ * Schlüssel sind exakte Unterpfade (`''`, `groups`) oder Muster mit Parametern
  * (`actions/:id`, `actions/:id/edit`). Exakte Treffer haben Vorrang.
  */
 export interface ModuleUi {

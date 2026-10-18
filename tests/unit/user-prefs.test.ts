@@ -76,14 +76,14 @@ describe('Benutzer-Einstellungen (Zod)', () => {
 		expect(s.safeParse('/a?b=1').success).toBe(false);
 		expect(s.safeParse('/x'.repeat(101)).success).toBe(false);
 	});
-	it('Eintraege pro Seite 10-200', () => {
+	it('Einträge pro Seite 10-200', () => {
 		const s = def('core.user.pageSize').schema;
 		expect(s.safeParse(10).success).toBe(true);
 		expect(s.safeParse('200').success).toBe(true);
 		expect(s.safeParse(9).success).toBe(false);
 		expect(s.safeParse(201).success).toBe(false);
 	});
-	it('alle Benutzer-Einstellungen gehoeren zur Gruppe user', () => {
+	it('alle Benutzer-Einstellungen gehören zur Gruppe user', () => {
 		for (const d of CORE_SETTINGS.filter((x) => x.scope === 'user')) expect(d.group).toBe('user');
 	});
 });

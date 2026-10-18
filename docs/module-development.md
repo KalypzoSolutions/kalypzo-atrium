@@ -151,7 +151,9 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 | `EntityAvatar` | `$lib/components/layout` | Rundes Bild mit Farbrand, Fallback Initialen |
 | `FileField` | `$lib/components/layout` | Datei-Feld mit Typ-/Größenprüfung, vorhandener Datei und Entfernen |
 | `ContactListField` | `$lib/components/layout` | Dynamische Liste benannter Kontakte (Telefon, E-Mail); `readonly` + `emptyText` für Ansichten |
-| `ShareDialog` | `$lib/components/layout` | Freigabe an Benutzer: suchen, Stufe wählen, ändern, entfernen (Persistenz über Callbacks) |
+| `TagInput` | `$lib/components/ui/tag-input` | Freie Tags als Chips (`bind:value`, `suggestions` oder `loadSuggestions(q)`, `max`, `maxLength`); Logik in `tags.ts` (`addTag`, `normalizeTag`) |
+| `MonthCalendar` | `$lib/components/layout` | Monatsraster Mo–So mit mehrtägigen Balken, mobil Agenda; `items: CalendarItem[]`, `bind:month`, `onselect`, `onday` |
+| `ShareDialog` | `$lib/components/layout` | Freigabe an Benutzer oder – mit `type` – an Principals (Stamm, Gruppe, Rolle, Mitglied): suchen, Stufe wählen, ändern, entfernen (Persistenz über Callbacks); `everyoneLabel` für „alle“ |
 | `ShareMenu` | `$lib/components/layout` | Freigabe-Menü für Seitenköpfe: Button mit Avatar-Stapel, öffnet ein Popover mit `SharePanel` |
 | `SharePanel` | `$lib/components/layout` | Inhalt der Freigabe (Suche, Zugriffsliste, Stufe ändern, entfernen); von `ShareDialog` und `ShareMenu` genutzt |
 | `Slider` | `$lib/components/ui/slider` | Schieberegler (einzelner Wert) mit Tastatur und Pflicht-`label` |
@@ -178,6 +180,27 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 - `core.users.directory(ctx, { search, ids, limit })`: aktive Benutzer (nur `id`, `name`, `email`), braucht nur Anmeldung, Suche ab 2 Zeichen, maximal 30 Treffer – etwa für Freigaben. Der Modul-Endpoint schützt den Zugriff mit einer eigenen Berechtigung.
 - **Wichtig:** Core-Services (`core.users.directory`, `core.storage`, `core.audit` …) nicht innerhalb einer `forModule(...).transaction` aufrufen, sondern davor oder danach. Sie nutzen die Core-Verbindung; auf Einzelverbindungs-Treibern (PGlite in Tests/Demo) blockiert das die offene Transaktion.
 - `core.crypto.forModule('<id>')` liefert `encrypt`/`decrypt`/`isEncrypted` (AES-256-GCM, Schlüssel je Modul) für sensible Felder wie IBAN. Klartext nie in API-Antworten oder Audit-Metadaten ausgeben.
+
+### Freigabe an Principals
+
+Objekte (z. B. Termine) können statt nur an Benutzer an **Principals** freigegeben werden: `everyone` (ID `*`, der ganze
+Stamm), `group` und `member` (aus dem Modul `members`), `role`, `user`. Typen: `$lib/sdk/types/sharing`, Logik: `$lib/sdk/server`.
+
+- Tabelle im Modulschema: `<obj>_shares(<obj>_id, principal_type, principal_id, level, created_by, created_at)` mit
+  Primärschlüssel `(<obj>_id, principal_type, principal_id)`.
+- Im Handler die Schlüssel des Aufrufers (`typ:id`) **vor** der Transaktion holen und in SQL vergleichen:
+
+```ts
+const keys = await principalKeysFor(ctx, 'events');
+await core.database.forModule('events').transaction(async (tx) =>
+  tx.execute(sql`SELECT 1 FROM event_shares s WHERE s.event_id = ${id} AND ${principalMatchSql('s', keys)}`)
+);
+```
+
+- Eingaben mit `validatePrincipals(ctx, modul, shares)` prüfen (422), Anzeige mit `describePrincipals`, Suche mit
+  `searchPrincipals(ctx, modul, q, { everyoneLabel })`. Für Rollen nutzt der Core `core.roles.directory`.
+- `members` in `optionalDependencies` aufnehmen; ohne aktives `members` entfallen Gruppen und Mitglieder.
+- UI: `SharePanel`/`ShareMenu`/`ShareDialog` mit `type` an Einträgen/Kandidaten. Vorlage: Modul `events`.
 
 ### Hintergrundjobs und optionale Abhängigkeiten
 

@@ -86,7 +86,7 @@ let actionId: string;
 
 async function ctxOf(userId: string) {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -124,7 +124,7 @@ beforeAll(async () => {
 });
 
 describe('Aktionen: Anlegen und Validierung', () => {
-	it('legt eine Aktion an; der Ersteller ist Eigentuemer', async () => {
+	it('legt eine Aktion an; der Ersteller ist Eigentümer', async () => {
 		const a = await data<ActionDto>(
 			await as('owner', '/actions', { method: 'POST', json: actionBody() }),
 			201
@@ -173,7 +173,7 @@ describe('Aktionen: Zugriffsmatrix', () => {
 		expect(own.items.map((a) => a.id)).toContain(actionId);
 	});
 
-	it('Freigabe "edit": Zugriff, Bearbeiten ja, Teilen/Loeschen nein', async () => {
+	it('Freigabe "edit": Zugriff, Bearbeiten ja, Teilen/Löschen nein', async () => {
 		const share = await data<{ userId: string; level: string }>(
 			await as('owner', `/actions/${actionId}/shares/${userIds.colleague}`, {
 				method: 'PUT',
@@ -202,7 +202,7 @@ describe('Aktionen: Zugriffsmatrix', () => {
 		expect((await as('colleague', `/actions/${actionId}`, { method: 'DELETE' })).status).toBe(403);
 	});
 
-	it('Freigabe "read": lesen ja, Aenderungen nein', async () => {
+	it('Freigabe "read": lesen ja, Änderungen nein', async () => {
 		await data(
 			await as('owner', `/actions/${actionId}/shares/${userIds.reader}`, {
 				method: 'PUT',
@@ -266,7 +266,7 @@ describe('Aktionen: Zugriffsmatrix', () => {
 		expect(asReader.canManage).toBe(false);
 	});
 
-	it('prueft Freigabe-Ziele (Eigentuemer, unbekannt, inaktiv)', async () => {
+	it('prüft Freigabe-Ziele (Eigentümer, unbekannt, inaktiv)', async () => {
 		const put = (userId: string) =>
 			as('owner', `/actions/${actionId}/shares/${userId}`, {
 				method: 'PUT',
@@ -298,13 +298,13 @@ describe('Aktionen: Zugriffsmatrix', () => {
 	});
 });
 
-describe('Benutzersuche fuer Freigaben', () => {
+describe('Benutzersuche für Freigaben', () => {
 	it('liefert aktive Benutzer ohne core.users.view und ab 2 Zeichen', async () => {
 		const found = await data<{ id: string; name: string; email: string }[]>(
 			await as('colleague', '/users?search=reader')
 		);
 		expect(found.map((f) => f.id)).toEqual([userIds.reader]);
-		expect(Object.keys(found[0]!).sort()).toEqual(['email', 'id', 'name']);
+		expect(Object.keys(found[0]!).sort()).toEqual(['email', 'id', 'image', 'name']);
 
 		const inactive = await data<unknown[]>(await as('colleague', '/users?search=inactive'));
 		expect(inactive).toEqual([]);
@@ -315,7 +315,7 @@ describe('Benutzersuche fuer Freigaben', () => {
 describe('Teilnehmende', () => {
 	let participantId: string;
 
-	it('legt Teilnehmende manuell an, listet, aendert und loescht sie', async () => {
+	it('legt Teilnehmende manuell an, listet, ändert und löscht sie', async () => {
 		const p = await data<{ id: string; source: string; birthDate: string | null }>(
 			await as('colleague', `/actions/${actionId}/participants`, {
 				method: 'POST',
@@ -387,8 +387,8 @@ describe('Teilnehmende', () => {
 	});
 });
 
-describe('Loeschen, Audit und Modulstatus', () => {
-	it('loescht nur mit Recht und als Eigentuemer/edit-all', async () => {
+describe('Löschen, Audit und Modulstatus', () => {
+	it('löscht nur mit Recht und als Eigentümer/edit-all', async () => {
 		// colleague hat Freigabe "edit", aber kein actions.action.delete
 		expect((await as('colleague', `/actions/${actionId}`, { method: 'DELETE' })).status).toBe(403);
 		await data(await as('owner', `/actions/${actionId}`, { method: 'DELETE' }));
@@ -396,7 +396,7 @@ describe('Loeschen, Audit und Modulstatus', () => {
 		expect((await as('colleague', `/actions/${actionId}`)).status).toBe(404);
 	});
 
-	it('protokolliert Aenderungen ohne personenbezogene Details', async () => {
+	it('protokolliert Änderungen ohne personenbezogene Details', async () => {
 		const { rows } = await listAudit({ action: 'actions.' });
 		const actions = new Set(rows.map((r) => r.action));
 		for (const a of [

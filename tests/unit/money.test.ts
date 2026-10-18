@@ -28,18 +28,18 @@ describe('parseEuroToCents', () => {
 		expect(parseEuroToCents(input)).toBe(expected);
 	});
 
-	it('liefert null bei ungueltiger oder leerer Eingabe', () => {
+	it('liefert null bei ungültiger oder leerer Eingabe', () => {
 		for (const s of ['abc', '', '  ', ',', '.', '1,2,3', '1,2.3']) {
 			expect(parseEuroToCents(s)).toBeNull();
 		}
 	});
 
-	it('lehnt negative Betraege ab (null)', () => {
+	it('lehnt negative Beträge ab (null)', () => {
 		expect(parseEuroToCents('-3')).toBeNull();
 		expect(parseEuroToCents('-0,50')).toBeNull();
 	});
 
-	it('lehnt absurd grosse Werte ab', () => {
+	it('lehnt absurd große Werte ab', () => {
 		expect(parseEuroToCents('1' + '0'.repeat(20))).toBeNull();
 	});
 });

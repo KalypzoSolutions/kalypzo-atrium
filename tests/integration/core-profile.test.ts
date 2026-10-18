@@ -30,7 +30,7 @@ let close: () => Promise<void>;
 
 async function ctxOf(userId: string): Promise<RequestContext> {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -63,7 +63,7 @@ async function auditOf(target: string, action: string) {
 
 function verifyUrl(mail: Mail): string {
 	const m = /https?:\/\/\S+\/verify-email\?\S+/.exec(mail.text);
-	if (!m) throw new Error('Kein Bestaetigungslink in der Mail');
+	if (!m) throw new Error('Kein Bestätigungslink in der Mail');
 	return m[0];
 }
 
@@ -119,7 +119,7 @@ describe('E-Mail-Wechsel', () => {
 		other = await createUser(admin, { name: 'Olga', email: 'olga@example.test', password: PW });
 	});
 
-	it('falsches Passwort: keine Mail, keine Aenderung', async () => {
+	it('falsches Passwort: keine Mail, keine Änderung', async () => {
 		const headers = await login('uwe@example.test');
 		mails.length = 0;
 		await expect(
@@ -134,14 +134,14 @@ describe('E-Mail-Wechsel', () => {
 		expect(await userByEmail('neu@example.test')).toBeUndefined();
 	});
 
-	it('ungueltige Adresse wird abgewiesen (422)', async () => {
+	it('ungültige Adresse wird abgewiesen (422)', async () => {
 		const headers = await login('uwe@example.test');
 		await expect(
 			requestEmailChange(await ctxOf(uid), headers, { newEmail: 'kein-mail', password: PW })
 		).rejects.toMatchObject({ code: 'validation_failed' });
 	});
 
-	it('gueltig: Link an die neue Adresse, Hinweis an die alte, Adresse bleibt bis zum Klick', async () => {
+	it('gültig: Link an die neue Adresse, Hinweis an die alte, Adresse bleibt bis zum Klick', async () => {
 		const headers = await login('uwe@example.test');
 		mails.length = 0;
 		await requestEmailChange(await ctxOf(uid), headers, {
@@ -153,7 +153,7 @@ describe('E-Mail-Wechsel', () => {
 		const toOld = mails.filter((m) => m.to === 'uwe@example.test');
 		expect(toNew).toHaveLength(1);
 		expect(toOld).toHaveLength(1);
-		// Hinweis an die alte Adresse enthaelt keinen Link und nur die maskierte neue Adresse
+		// Hinweis an die alte Adresse enthält keinen Link und nur die maskierte neue Adresse
 		expect(toOld[0]!.text).not.toContain('verify-email');
 		expect(toOld[0]!.text).not.toContain('neu@example.test');
 		expect(toNew[0]!.text).toContain('/verify-email?token=');
@@ -164,7 +164,7 @@ describe('E-Mail-Wechsel', () => {
 		expect(meta).toContain('u***@example.test');
 		expect(meta).not.toContain('uwe@');
 
-		// Ohne Session legt der Link keine Session an und aendert nichts
+		// Ohne Session legt der Link keine Session an und ändert nichts
 		const link = verifyUrl(toNew[0]!);
 		const anon = await getAuth().handler(new Request(link));
 		expect(anon.status).toBe(302);
@@ -203,7 +203,7 @@ describe('E-Mail-Wechsel', () => {
 		expect((await userByEmail('olga@example.test'))?.id).toBe(other);
 	});
 
-	it('Rate-Limit fuer /change-email (5 je 5 Minuten)', async () => {
+	it('Rate-Limit für /change-email (5 je 5 Minuten)', async () => {
 		resetAllForTests();
 		const statuses: number[] = [];
 		for (let i = 0; i < 6; i++) {
@@ -224,7 +224,7 @@ describe('E-Mail-Wechsel', () => {
 		expect(statuses[5]).toBe(429);
 	});
 
-	it('Passwortpruefung ist je Benutzer begrenzt', async () => {
+	it('Passwortprüfung ist je Benutzer begrenzt', async () => {
 		reset(`pwcheck:${uid}`);
 		const headers = await login('neu@example.test');
 		const ctx = await ctxOf(uid);
@@ -244,7 +244,7 @@ describe('E-Mail-Wechsel', () => {
 	});
 });
 
-describe('Admin: E-Mail aendern', () => {
+describe('Admin: E-Mail ändern', () => {
 	it('setzt emailVerified, widerruft Sessions, Duplikat -> 409', async () => {
 		const id = await createUser(admin, { name: 'Ada', email: 'ada@example.test', password: PW });
 		await createUser(admin, { name: 'Bob', email: 'bob@example.test', password: PW });
@@ -275,7 +275,7 @@ describe('Admin: E-Mail aendern', () => {
 });
 
 describe('Benutzer-Einstellungen', () => {
-	it('Zod-Pruefung beim Speichern und loadUserPrefs', async () => {
+	it('Zod-Prüfung beim Speichern und loadUserPrefs', async () => {
 		const id = await createUser(admin, { name: 'Pia', email: 'pia@example.test', password: PW });
 		const ctx = await ctxOf(id);
 		await expect(setSetting(ctx, 'core.user.accentColor', 'red')).rejects.toMatchObject({
@@ -349,7 +349,7 @@ describe('defaultRoleGrants (Rollen-Nachzug)', () => {
 		expect(r?.isSystem).toBe(false);
 	});
 
-	it('vergibt jedes Recht nur einmal: entzogene Rechte kommen nicht zurueck', async () => {
+	it('vergibt jedes Recht nur einmal: entzogene Rechte kommen nicht zurück', async () => {
 		const [r] = await getDb().select().from(schema.role).where(eq(schema.role.name, 'Testrolle'));
 		await getDb()
 			.delete(schema.rolePermission)

@@ -153,13 +153,13 @@ const CONTROL_CHARS = /\p{Cc}/u;
 export function validateRecipient(recipient: string[] | undefined): string[] | undefined {
 	if (recipient === undefined) return undefined;
 	if (!Array.isArray(recipient) || recipient.length > MAX_RECIPIENT_LINES) {
-		throw errors.badRequest('Ungueltige Empfaengeradresse');
+		throw errors.badRequest('Ungültige Empfängeradresse');
 	}
 	return recipient.map((line) => {
-		if (typeof line !== 'string') throw errors.badRequest('Ungueltige Empfaengeradresse');
+		if (typeof line !== 'string') throw errors.badRequest('Ungültige Empfängeradresse');
 		const t = line.trim();
 		if (!t || t.length > MAX_RECIPIENT_LINE || CONTROL_CHARS.test(t)) {
-			throw errors.badRequest('Ungueltige Empfaengeradresse');
+			throw errors.badRequest('Ungültige Empfängeradresse');
 		}
 		return t;
 	});
@@ -220,7 +220,7 @@ const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 function checkAttachmentLimits(list: PdfAttachment[]): void {
 	const total = list.reduce((a, x) => a + (x.data?.byteLength ?? 0), 0);
 	if (list.length > MAX_ATTACHMENTS || total > MAX_ATTACHMENT_BYTES) {
-		throw errors.badRequest('Zu viele oder zu grosse Anlagen');
+		throw errors.badRequest('Zu viele oder zu große Anlagen');
 	}
 }
 
@@ -229,11 +229,11 @@ function pdfSafeText(text: string): string {
 }
 
 /**
- * Maximale Bildhoehe einer Bild-Anlage. Seitenraender 15 mm; Titel (14pt x 1,3 ~ 6,4 mm),
+ * Maximale Bildhöhe einer Bild-Anlage. Seitenränder 15 mm; Titel (14pt x 1,3 ~ 6,4 mm),
  * einzeilige Beschriftung (1,5 mm + 10pt x 1,4 ~ 6,4 mm) und Trennlinie (5 mm + 0,5pt + 5 mm
  * ~ 10,2 mm) belegen zusammen ~ 23 mm.
- * - Hochkant A4: 297 - 30 - 23 = 244 mm frei -> 215 mm (unveraendert, Reserve fuer lange Texte).
- * - Quer A4: 210 - 30 - 23 = 157 mm frei -> 145 mm (Reserve fuer ~2 weitere Beschriftungszeilen).
+ * - Hochkant A4: 297 - 30 - 23 = 244 mm frei -> 215 mm (unverändert, Reserve für lange Texte).
+ * - Quer A4: 210 - 30 - 23 = 157 mm frei -> 145 mm (Reserve für ~2 weitere Beschriftungszeilen).
  */
 const ATTACHMENT_IMAGE_MAX_HEIGHT = { portrait: '215mm', landscape: '145mm' } as const;
 
@@ -312,8 +312,8 @@ async function appendAttachments(
 				p.pages = [i];
 			});
 		} else {
-			// Ueberlauf (z. B. sehr lange Beschriftung): Seiten waeren nicht mehr eindeutig zuzuordnen,
-			// daher jede Anlage einzeln rendern und alle ihre Seiten uebernehmen.
+			// Überlauf (z. B. sehr lange Beschriftung): Seiten wären nicht mehr eindeutig zuzuordnen,
+			// daher jede Anlage einzeln rendern und alle ihre Seiten übernehmen.
 			for (const p of htmlPlans) {
 				p.doc = await renderSections([attachmentPageHtml(p.att, p.body, true)]);
 				p.pages = p.doc.getPageIndices();
@@ -325,7 +325,7 @@ async function appendAttachments(
 	try {
 		mainDoc = await PDFDocument.load(main);
 	} catch {
-		throw errors.unavailable('PDF konnte nicht mit Anlagen zusammengefuehrt werden');
+		throw errors.unavailable('PDF konnte nicht mit Anlagen zusammengeführt werden');
 	}
 	const out = await PDFDocument.create();
 	const font = await out.embedStandardFont(StandardFonts.HelveticaBold);
@@ -363,13 +363,13 @@ async function appendAttachments(
 const MAX_MERGE_DOCUMENTS = 200;
 const MAX_MERGE_BYTES = 200 * 1024 * 1024;
 
-/** Haengt mehrere PDF-Dokumente (Seiten unveraendert) zu einem Dokument zusammen. */
+/** Hängt mehrere PDF-Dokumente (Seiten unverändert) zu einem Dokument zusammen. */
 export async function mergePdfs(buffers: Uint8Array[]): Promise<Uint8Array> {
 	if (!buffers.length || buffers.length > MAX_MERGE_DOCUMENTS) {
-		throw errors.badRequest('Ungueltige Anzahl von Dokumenten');
+		throw errors.badRequest('Ungültige Anzahl von Dokumenten');
 	}
 	if (buffers.reduce((a, b) => a + b.byteLength, 0) > MAX_MERGE_BYTES) {
-		throw errors.tooLarge('Dokumente sind zu gross zum Zusammenfuehren');
+		throw errors.tooLarge('Dokumente sind zu groß zum Zusammenführen');
 	}
 	const out = await PDFDocument.create();
 	for (const buf of buffers) {
@@ -377,7 +377,7 @@ export async function mergePdfs(buffers: Uint8Array[]): Promise<Uint8Array> {
 		try {
 			doc = await PDFDocument.load(buf);
 		} catch {
-			throw errors.unavailable('PDF konnte nicht zusammengefuehrt werden');
+			throw errors.unavailable('PDF konnte nicht zusammengeführt werden');
 		}
 		for (const p of await out.copyPages(doc, doc.getPageIndices())) out.addPage(p);
 	}
@@ -385,7 +385,7 @@ export async function mergePdfs(buffers: Uint8Array[]): Promise<Uint8Array> {
 }
 
 /**
- * Erzeugt mehrere Dokumente nacheinander (jedes mit eigener Vorlage/Adresse) und fuegt sie zu einem
+ * Erzeugt mehrere Dokumente nacheinander (jedes mit eigener Vorlage/Adresse) und fügt sie zu einem
  * PDF zusammen. `store`/`attachments` der Einzeleingaben werden ignoriert.
  */
 export async function generateMany(
@@ -395,7 +395,7 @@ export async function generateMany(
 ): Promise<PdfResult> {
 	assertIdentity(ctx);
 	if (!inputs.length || inputs.length > MAX_MERGE_DOCUMENTS) {
-		throw errors.badRequest('Ungueltige Anzahl von Dokumenten');
+		throw errors.badRequest('Ungültige Anzahl von Dokumenten');
 	}
 	const buffers: Uint8Array[] = [];
 	for (const input of inputs) {
@@ -414,11 +414,11 @@ export async function generateMany(
 export async function generate(ctx: RequestContext, input: PdfGenerateInput): Promise<PdfResult> {
 	assertIdentity(ctx);
 	if (!input.title.trim() || input.title.length > MAX_TITLE) {
-		throw errors.badRequest('Ungueltiger Dokumenttitel');
+		throw errors.badRequest('Ungültiger Dokumenttitel');
 	}
 	if (input.content.length > MAX_BLOCKS) throw errors.badRequest('Dokument ist zu umfangreich');
 	if (input.store && !input.module)
-		throw errors.badRequest('`module` ist fuer das Speichern erforderlich');
+		throw errors.badRequest('`module` ist für das Speichern erforderlich');
 
 	const template = getTemplate(input.template ?? 'default');
 	if (!template) throw errors.badRequest(`Unbekanntes PDF-Template: ${input.template}`);
@@ -430,7 +430,7 @@ export async function generate(ctx: RequestContext, input: PdfGenerateInput): Pr
 	const format = page
 		? (page.format ?? 'A4')
 		: (input.format ?? (s['core.pdf.defaultFormat'] as PdfFormat));
-	if (!FORMATS.includes(format)) throw errors.badRequest('Ungueltiges Seitenformat');
+	if (!FORMATS.includes(format)) throw errors.badRequest('Ungültiges Seitenformat');
 	// Festes Seitenlayout bestimmt die Ausrichtung selbst (sonst passt der Briefkopf nicht)
 	const orientation: PdfOrientation = page
 		? (page.orientation ?? 'portrait')
@@ -444,7 +444,7 @@ export async function generate(ctx: RequestContext, input: PdfGenerateInput): Pr
 				left: input.margins?.left ?? String(s['core.pdf.marginLeft'])
 			};
 	for (const m of Object.values(margins)) {
-		if (!CSS_LENGTH.test(m)) throw errors.badRequest('Ungueltiger Seitenrand');
+		if (!CSS_LENGTH.test(m)) throw errors.badRequest('Ungültiger Seitenrand');
 	}
 
 	const showHeader = input.showHeader ?? true;
@@ -499,7 +499,7 @@ export async function generate(ctx: RequestContext, input: PdfGenerateInput): Pr
 // Vorschau (PNG der ersten Seite)
 // ---------------------------------------------------------------------------
 
-/** A4 bei 96 dpi; quer werden Breite und Hoehe getauscht. */
+/** A4 bei 96 dpi; quer werden Breite und Höhe getauscht. */
 const PREVIEW_WIDTH = 794;
 const PREVIEW_HEIGHT = 1123;
 

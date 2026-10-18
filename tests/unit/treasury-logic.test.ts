@@ -48,7 +48,7 @@ const member = (
 });
 
 describe('Datum', () => {
-	it('rechnet Tage ueber Monats- und Jahresgrenzen', () => {
+	it('rechnet Tage über Monats- und Jahresgrenzen', () => {
 		expect(addDays('2026-12-25', 10)).toBe('2027-01-04');
 		expect(daysBetween('2026-02-27', '2026-03-01')).toBe(2);
 		expect(daysBetween('2026-03-01', '2026-02-27')).toBe(-3 + 1);
@@ -56,7 +56,7 @@ describe('Datum', () => {
 });
 
 describe('Rechnungsstatus', () => {
-	it('offen, teilweise, bezahlt, ermaessigt', () => {
+	it('offen, teilweise, bezahlt, ermäßigt', () => {
 		expect(lineOpen({ amountCents: 18500, waivedCents: 0, paidCents: 0 })).toBe(18500);
 		expect(lineOpen({ amountCents: 18500, waivedCents: 2000, paidCents: 16500 })).toBe(0);
 		expect(lineOpen({ amountCents: 100, waivedCents: 0, paidCents: 500 })).toBe(0);
@@ -66,7 +66,7 @@ describe('Rechnungsstatus', () => {
 		expect(invoiceTotals([{ amountCents: 1000, waivedCents: 0, paidCents: 1 }], false).status).toBe(
 			'partial'
 		);
-		// Vollstaendiger Erlass gilt als bezahlt
+		// Vollständiger Erlass gilt als bezahlt
 		expect(
 			invoiceTotals([{ amountCents: 1000, waivedCents: 1000, paidCents: 0 }], false)
 		).toMatchObject({
@@ -75,7 +75,7 @@ describe('Rechnungsstatus', () => {
 			openCents: 0
 		});
 	});
-	it('Ueberzahlung und Storno werden Guthaben', () => {
+	it('Überzahlung und Storno werden Guthaben', () => {
 		expect(
 			invoiceTotals([{ amountCents: 1000, waivedCents: 0, paidCents: 1200 }], false).creditCents
 		).toBe(200);
@@ -87,7 +87,7 @@ describe('Rechnungsstatus', () => {
 			creditCents: 600
 		});
 	});
-	it('NaN/Infinity zaehlen als 0', () => {
+	it('NaN/Infinity zählen als 0', () => {
 		expect(lineOpen({ amountCents: NaN, waivedCents: Infinity, paidCents: 0 })).toBe(0);
 	});
 });
@@ -98,7 +98,7 @@ describe('Verteilung', () => {
 		{ lineId: 'a', openCents: 9000, dueOn: '2026-06-01' },
 		{ lineId: 'c', openCents: 0, dueOn: '2026-01-01' }
 	];
-	it('aelteste Faelligkeit zuerst, Rest bleibt', () => {
+	it('älteste Fälligkeit zuerst, Rest bleibt', () => {
 		expect(distribute(10000, slots)).toEqual({
 			allocations: [
 				{ lineId: 'a', amountCents: 9000 },
@@ -114,11 +114,11 @@ describe('Verteilung', () => {
 	});
 });
 
-describe('Faelligkeit und Erinnerungen', () => {
+describe('Fälligkeit und Erinnerungen', () => {
 	it('14 Tage vor Beginn, aber mindestens 14 Tage nach heute', () => {
 		const p = { today: '2026-06-01', daysBeforeStart: 14, minDays: 14 };
 		expect(computeDueOn({ ...p, startsOn: '2026-08-01' })).toBe('2026-07-18');
-		// Aktion liegt in der Vergangenheit: keine sofortige Ueberfaelligkeit
+		// Aktion liegt in der Vergangenheit: keine sofortige Überfälligkeit
 		expect(computeDueOn({ ...p, startsOn: '2026-05-01' })).toBe('2026-06-15');
 		expect(computeDueOn({ ...p, startsOn: '2026-08-01', override: '2026-07-01' })).toBe(
 			'2026-07-01'
@@ -138,7 +138,7 @@ describe('Faelligkeit und Erinnerungen', () => {
 		expect(reminderLevelDue({ ...base, today: '2026-06-21' })).toBeNull();
 		expect(reminderLevelDue({ ...base, today: '2026-06-22' })).toBe(1);
 	});
-	it('Stufe 2 fruehestens 14 Tage nach Stufe 1, danach keine', () => {
+	it('Stufe 2 frühestens 14 Tage nach Stufe 1, danach keine', () => {
 		const after = { ...base, sentLevel: 1, lastReminderOn: '2026-06-25' };
 		expect(reminderLevelDue({ ...after, today: '2026-07-08' })).toBeNull();
 		expect(reminderLevelDue({ ...after, today: '2026-07-09' })).toBe(2);
@@ -171,7 +171,7 @@ describe('Mitglieder zuordnen', () => {
 			matchMember({ memberId: null, name: 'Lena Müller', birthDate: null }, members)
 		).toBeNull();
 	});
-	it('vorhandene Verknuepfung gewinnt', () => {
+	it('vorhandene Verknüpfung gewinnt', () => {
 		expect(matchMember({ memberId: '2', name: 'X', birthDate: null }, members)).toBe('2');
 	});
 	it('normalizeName', () => {
@@ -233,7 +233,7 @@ describe('Abgleich mit Aktionen', () => {
 		cancelled: false,
 		autoCancelled: false
 	};
-	it('aendert Betrag und begrenzt die Ermaessigung', () => {
+	it('ändert Betrag und begrenzt die Ermäßigung', () => {
 		const plan = planSync({
 			...common,
 			sources: [{ ...source, feeCents: 10000 }],
@@ -283,13 +283,13 @@ describe('Abgleich mit Aktionen', () => {
 			expect(planSync({ ...common, sources: [changed], existing: [existing, paid] })).toEqual(
 				empty
 			);
-			// Teilnehmende*r entfaellt, Betrag/Text geaendert: weiterhin unveraendert
+			// Teilnehmende*r entfällt, Betrag/Text geändert: weiterhin unverändert
 			const gone = { ...past, participants: [] };
 			expect(planSync({ ...common, sources: [gone], existing: [existing, paid] })).toEqual(empty);
 			const cancelled = { ...existing, cancelled: true, autoCancelled: true };
 			expect(planSync({ ...common, sources: [past], existing: [cancelled] })).toEqual(empty);
 		});
-		it('ohne Flag laeuft alles normal weiter', () => {
+		it('ohne Flag läuft alles normal weiter', () => {
 			const plan = planSync({
 				...common,
 				sources: [{ ...source, isPast: false, feeCents: 10000 }],
@@ -301,7 +301,7 @@ describe('Abgleich mit Aktionen', () => {
 				planSync({ ...common, sources: [{ ...source, isPast: false }], existing: [] }).create
 			).toHaveLength(1);
 		});
-		it('ausgeschlossene vergangene Aktion behaelt das Verhalten (Storno)', () => {
+		it('ausgeschlossene vergangene Aktion behält das Verhalten (Storno)', () => {
 			const plan = planSync({
 				...common,
 				excludedActionIds: new Set(['a1']),
@@ -339,8 +339,8 @@ describe('Abgleich mit Aktionen', () => {
 	});
 });
 
-describe('Zahler-Vorschlaege', () => {
-	it('gruppiert Geschwister ueber E-Mail und Anschrift', () => {
+describe('Zahler-Vorschläge', () => {
+	it('gruppiert Geschwister über E-Mail und Anschrift', () => {
 		const members = [
 			member('1', 'Lena', 'Müller', { emails: ['fam@x.de'] }),
 			member('2', 'Jonas', 'Müller', { emails: ['FAM@x.de'] }),
@@ -360,7 +360,7 @@ describe('Zahler-Vorschlaege', () => {
 	});
 });
 
-describe('Zuordnungsvorschlaege', () => {
+describe('Zuordnungsvorschläge', () => {
 	const line = (id: string, nr: string, name: string, open: number, group: string): MatchLine => ({
 		lineId: id,
 		invoiceId: `inv-${nr}`,
@@ -386,7 +386,7 @@ describe('Zuordnungsvorschlaege', () => {
 		);
 		expect(m).toMatchObject({ confidence: 'high', invoiceNumbers: ['R-2026-0003'] });
 	});
-	it('Sammelzahlung fuer Geschwister ueber einen Namen', () => {
+	it('Sammelzahlung für Geschwister über einen Namen', () => {
 		const m = suggestMatch(
 			{ amountCents: 37000, purpose: 'Lager Lena Mueller', counterparty: null },
 			lines
@@ -395,7 +395,7 @@ describe('Zuordnungsvorschlaege', () => {
 		expect(m?.allocations.map((a) => a.lineId).sort()).toEqual(['l1', 'l2']);
 	});
 	it('Aktion im Verwendungszweck grenzt Geschwister-Posten ein', () => {
-		// Jonas hat zusaetzlich eine offene Rechnung einer anderen Aktion
+		// Jonas hat zusätzlich eine offene Rechnung einer anderen Aktion
 		const withTopics: MatchLine[] = [
 			{ ...line('h1', 'R-2026-0010', 'Lena Müller', 3700, 'payer:m'), topic: 'Herbstfahrt 2026' },
 			{ ...line('h2', 'R-2026-0011', 'Jonas Müller', 3700, 'payer:m'), topic: 'Herbstfahrt 2026' },
@@ -409,7 +409,7 @@ describe('Zuordnungsvorschlaege', () => {
 		expect(m?.confidence).toBe('high');
 		expect(m?.invoiceNumbers).toEqual(['R-2026-0010', 'R-2026-0011', 'R-2026-0012']);
 	});
-	it('Teilbetrag → mittlere Sicherheit, verteilt aelteste zuerst', () => {
+	it('Teilbetrag → mittlere Sicherheit, verteilt älteste zuerst', () => {
 		const m = suggestMatch(
 			{ amountCents: 10000, purpose: 'Jonas Müller Anzahlung', counterparty: null },
 			lines
@@ -431,7 +431,7 @@ describe('Zuordnungsvorschlaege', () => {
 });
 
 describe('Mails', () => {
-	it('ersetzt Platzhalter, laesst unbekannte stehen', () => {
+	it('ersetzt Platzhalter, lässt unbekannte stehen', () => {
 		const vars = mailVars({
 			invoices: [
 				{
@@ -458,7 +458,7 @@ describe('Mails', () => {
 			'Lena, Jonas: 370,00 € {unbekannt}'
 		);
 	});
-	it('eine Mail je Adresse, ungueltige Adressen fallen weg', () => {
+	it('eine Mail je Adresse, ungültige Adressen fallen weg', () => {
 		const g = groupByAddress([
 			{ id: 1, addresses: ['A@x.de', 'b@x.de'] },
 			{ id: 2, addresses: ['a@x.de', 'kaputt'] }
@@ -469,12 +469,12 @@ describe('Mails', () => {
 });
 
 describe('CSV', () => {
-	it('Export schuetzt vor Formeln, laesst Zahlen in Ruhe', () => {
+	it('Export schützt vor Formeln, lässt Zahlen in Ruhe', () => {
 		expect(csvCell('=SUMME(A1)')).toBe("'=SUMME(A1)");
 		expect(csvCell('-12,50')).toBe('-12,50');
 		expect(csvCell('a;b')).toBe('"a;b"');
 	});
-	it('Parser: Anfuehrungszeichen, Umbrueche, BOM', () => {
+	it('Parser: Anführungszeichen, Umbrüche, BOM', () => {
 		const rows = parseCsv('\ufeff"a";"b ""x"""\r\n"1";"zwei\nZeilen"\n', ';');
 		expect(rows).toEqual([
 			['a', 'b "x"'],
@@ -482,7 +482,7 @@ describe('CSV', () => {
 		]);
 		expect(detectDelimiter('a,b,c\n1,2,3')).toBe(',');
 	});
-	it('Betraege und Daten', () => {
+	it('Beträge und Daten', () => {
 		expect(parseAmount('-1.234,56', ',')).toBe(-123456);
 		expect(parseAmount('12,5', ',')).toBe(1250);
 		expect(parseAmount('1,234.56', '.')).toBe(123456);
@@ -492,7 +492,7 @@ describe('CSV', () => {
 		expect(parseDate('31.02.2026', 'DD.MM.YYYY')).toBeNull();
 		expect(parseDate('2026-06-10', 'YYYY-MM-DD')).toBe('2026-06-10');
 	});
-	it('erkennt Spalten und vergibt fortlaufende Schluessel fuer gleiche Zeilen', () => {
+	it('erkennt Spalten und vergibt fortlaufende Schlüssel für gleiche Zeilen', () => {
 		const headers = [
 			'Buchungstag',
 			'Verwendungszweck',
@@ -522,7 +522,7 @@ describe('CSV', () => {
 });
 
 describe('IBAN (Kasse)', () => {
-	it('prueft, normalisiert und maskiert', async () => {
+	it('prüft, normalisiert und maskiert', async () => {
 		const { isValidIban, normalizeIban, maskIban, formatIban } =
 			await import('$lib/modules/treasury/iban');
 		expect(isValidIban('DE89 3704 0044 0532 0130 00')).toBe(true);
@@ -568,7 +568,7 @@ describe('Auszahlungen planen', () => {
 		expect(planPayables([], [e('r1', 500, 0)]).cancel).toEqual(['id-r1']);
 		expect(planPayables([], [e('r1', 500, 500)]).cancel).toEqual([]);
 	});
-	it('Betrag faellt nie unter das Gezahlte, manuell storniert bleibt', () => {
+	it('Betrag fällt nie unter das Gezahlte, manuell storniert bleibt', () => {
 		const p = planPayables([d('r1', 300)], [e('r1', 500, 400)]);
 		expect(p.update[0]).toMatchObject({ id: 'id-r1', amountCents: 400 });
 		const manual = planPayables([d('r1', 500)], [e('r1', 500, 0, { cancelled: true })]);
@@ -581,7 +581,7 @@ describe('Auszahlungen planen', () => {
 	});
 });
 
-describe('Vorschlag ueber die IBAN des Zahlers', () => {
+describe('Vorschlag über die IBAN des Zahlers', () => {
 	const lines: MatchLine[] = [
 		{
 			lineId: 'a',
@@ -614,7 +614,7 @@ describe('Vorschlag ueber die IBAN des Zahlers', () => {
 			topic: 'Kopenhagen 2026'
 		}
 	];
-	it('Familie ueber IBAN, Thema grenzt ein', () => {
+	it('Familie über IBAN, Thema grenzt ein', () => {
 		const m = suggestMatch(
 			{ amountCents: 7400, purpose: 'Herbstfahrt', counterparty: 'X', payerId: 'p1' },
 			lines

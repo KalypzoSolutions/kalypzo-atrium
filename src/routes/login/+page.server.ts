@@ -4,7 +4,7 @@ import { getAuth } from '$lib/server/core/auth';
 import { authErrorMessage, safeRedirect } from './auth-error';
 import type { Actions, PageServerLoad } from './$types';
 
-/** Ohne `redirectTo` geht es auf `/` (leitet auf die persoenliche Startseite). */
+/** Ohne `redirectTo` geht es auf `/` (leitet auf die persönliche Startseite). */
 function target(url: URL): string {
 	const r = url.searchParams.get('redirectTo');
 	return r ? safeRedirect(r) : '/';
@@ -52,7 +52,7 @@ export const actions: Actions = {
 		try {
 			await getAuth().api.verifyTOTP({ body: { code }, headers: request.headers });
 		} catch (e) {
-			return fail(400, { twoFactor: true, error: authErrorMessage(e, 'Code ungueltig.') });
+			return fail(400, { twoFactor: true, error: authErrorMessage(e, 'Code ungültig.') });
 		}
 		throw redirect(303, target(url));
 	}

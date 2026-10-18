@@ -31,7 +31,7 @@ async function makePdf(pages: number, size: [number, number] = [300, 400]): Prom
 const img = (label: string): PdfAttachment => ({ label, contentType: 'image/png', data: PNG_1X1 });
 
 let calls: { html: string; options: RenderOptions }[] = [];
-/** Seiten je Abschnitt, die der Test-Renderer fuer Anlagen-Durchgaenge erzeugt. */
+/** Seiten je Abschnitt, die der Test-Renderer für Anlagen-Durchgänge erzeugt. */
 let pagesPerSection = 1;
 
 beforeEach(() => {
@@ -96,7 +96,7 @@ describe('Bild-Anlagen und Ausrichtung', () => {
 		expect(att.html).not.toContain('max-height:145mm');
 	});
 
-	it('Ueberlauf: jede Anlage einzeln gerendert, alle Seiten in richtiger Reihenfolge', async () => {
+	it('Überlauf: jede Anlage einzeln gerendert, alle Seiten in richtiger Reihenfolge', async () => {
 		pagesPerSection = 2;
 		const res = await pdf.generate(ctxWith(), {
 			title: 'Quer',
@@ -121,7 +121,7 @@ describe('Bild-Anlagen und Ausrichtung', () => {
 		expect(widths).toEqual([100, 300, 300, 200, 300, 300]);
 	});
 
-	it('kein Ueberlauf: ein einziger Anlagen-Durchgang', async () => {
+	it('kein Überlauf: ein einziger Anlagen-Durchgang', async () => {
 		const res = await pdf.generate(ctxWith(), {
 			title: 'Quer',
 			content: [],

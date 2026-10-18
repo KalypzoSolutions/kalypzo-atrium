@@ -5,7 +5,7 @@
 		color?: string;
 	}
 
-	/** Kategoriale Palette (8 Farben, in Hell und Dunkel unterscheidbar; Wert zusaetzlich als Prozent) */
+	/** Kategoriale Palette (8 Farben, in Hell und Dunkel unterscheidbar; Wert zusätzlich als Prozent) */
 	const PALETTE = [
 		'#2563eb',
 		'#e8710a',

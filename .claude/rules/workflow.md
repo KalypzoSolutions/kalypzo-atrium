@@ -22,7 +22,8 @@ touch .data/stop                    # SAUBER beenden (Server räumt auf und been
 - Demo-Daten nach frischer DB: `node scripts/seed-demo.mjs` (Core) → `node scripts/seed-demo-modules.mjs` (Mitglieder mit
   Geschwistern, Aktionen „Kopenhagen 2026“/„Herbstfahrt 2026“, Module aktivieren) → `setup-demo-storage.mjs`, `setup-demo-mail.mjs`
   → `seed-demo-receipts.mjs` → `node scripts/seed-demo-treasury.mjs` (Konten, Zahler, Buchungen, Sammelzahlung, überfällige
-  Rechnung, Beispiel-Kontoauszug `.data/demo-kontoauszug.csv`). `npx playwright install chromium` ist für PDFs nötig.
+  Rechnung, Beispiel-Kontoauszug `.data/demo-kontoauszug.csv`) → `node scripts/seed-demo-galleries.mjs` (Galerien mit
+  Beispielbildern, braucht MinIO). `npx playwright install chromium` ist für PDFs nötig.
 - Demo-Daten: Admin `admin@demo.test`; weitere Beispielbenutzer/Aktionen lege per API an (Login `POST /api/auth/sign-in/email`
   mit Header `Origin: http://localhost:4300`, danach Cookie-Jar für `/api/v1/…`).
 

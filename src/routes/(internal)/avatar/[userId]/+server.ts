@@ -3,7 +3,7 @@ import { readAvatar } from '$lib/server/core/auth/profile';
 import type { RequestHandler } from './$types';
 
 /**
- * Profilbild eines Benutzers (Quelle: Storage `core/avatars/<id>`). Alle angemeldeten Benutzer duerfen
+ * Profilbild eines Benutzers (Quelle: Storage `core/avatars/<id>`). Alle angemeldeten Benutzer dürfen
  * Avatare sehen (gewollt, analog zum Benutzerverzeichnis). Deaktivierte Benutzer und fremde
  * `user.image`-Werte liefern kein Bild (siehe `readAvatar`).
  */

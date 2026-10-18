@@ -174,7 +174,7 @@ beforeAll(async () => {
 		).key;
 	}
 
-	// Mitglieder: Leiter + Gruppe, Kind (verknuepft mit „parent“), fremdes Kind
+	// Mitglieder: Leiter + Gruppe, Kind (verknüpft mit „parent“), fremdes Kind
 	const leader = (
 		await data<{ id: string }>(
 			await members('admin', '/members', {
@@ -414,7 +414,7 @@ describe('Anmeldung optional (Gäste anderer Stämme)', () => {
 			}),
 			201
 		);
-		// Ernaehrung unveraendert, Allergien-Feld inaktiv → nichts zu speichern
+		// Ernährung unverändert, Allergien-Feld inaktiv → nichts zu speichern
 		expect(r.memberUpdated).toBe(false);
 	});
 });
@@ -431,7 +431,7 @@ describe('Abhängigkeit zwischen den Modulen', () => {
 		await expect(core.modules.use('members', 'actions')).rejects.toMatchObject({
 			code: 'module_disabled'
 		});
-		await expect(core.modules.use('actions', 'members')).rejects.toThrow(/Abhaengigkeit/);
+		await expect(core.modules.use('actions', 'members')).rejects.toThrow(/Abhängigkeit/);
 		await enableModule(admin, 'members');
 		await enableModule(admin, 'actions');
 		expect(await core.modules.use('members', 'actions')).toBeTruthy();

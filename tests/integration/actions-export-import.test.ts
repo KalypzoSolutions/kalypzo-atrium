@@ -26,7 +26,7 @@ import type { RequestContext } from '$lib/sdk/types';
 const BASE = '/modules/actions';
 const IBAN = 'DE89 3704 0044 0532 0130 00';
 const IBAN_PLAIN = 'DE89370400440532013000';
-const PDF = strToU8('%PDF-1.4\n% Testbeleg fuer den Export\n');
+const PDF = strToU8('%PDF-1.4\n% Testbeleg für den Export\n');
 
 let admin: RequestContext;
 const keys: Record<string, string> = {};
@@ -75,7 +75,7 @@ const USERS: [string, string][] = [
 
 const ctxOf = async (userId: string) => {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 };
 
@@ -188,7 +188,7 @@ async function buildFullAction(opts: { refund?: boolean; close?: boolean } = {})
 		})
 	);
 
-	// Empfaenger und Buchungen
+	// Empfänger und Buchungen
 	const payee = await data<{ id: string }>(
 		await post('/accounting/payees', {
 			name: 'Anna Auslage',
@@ -352,7 +352,7 @@ describe('Export', () => {
 
 	it('ohne payout.view/storage.read: keine IBAN, keine Belege, Hinweis im Manifest', async () => {
 		const id = full.id;
-		// Freigabe (read) fuer den schwach berechtigten Benutzer
+		// Freigabe (read) für den schwach berechtigten Benutzer
 		await data(
 			await as('owner', `/actions/${id}/shares/${userIds.lite}`, {
 				method: 'PUT',
@@ -399,7 +399,7 @@ describe('Import und Round-Trip', () => {
 		expect(b.document).toEqual(a.document);
 		expect([...b.files.keys()].sort()).toEqual([...a.files.keys()].sort());
 		for (const [name, bytes] of a.files) {
-			if (name === 'manifest.json') continue; // enthaelt exportedAt
+			if (name === 'manifest.json') continue; // enthält exportedAt
 			expect(b.files.get(name)).toEqual(bytes);
 		}
 	});
@@ -411,7 +411,7 @@ describe('Import und Round-Trip', () => {
 		);
 		expect(detail.owner.userId).toBe(userIds.importer);
 		expect(detail.participantCount).toBe(2);
-		// Original unberuehrt und fuer Importierende nicht sichtbar
+		// Original unberührt und für Importierende nicht sichtbar
 		expect((await as('importer', `/actions/${full.id}`)).status).toBe(404);
 
 		const oldForm = await dbRows(sql`SELECT token FROM action_forms WHERE action_id = ${full.id}`);
@@ -449,7 +449,7 @@ describe('Import und Round-Trip', () => {
 		});
 		expect(upd.status).toBe(409);
 
-		// Rueckzahlung konsistent: Snapshot zeigt auf die neue Buchung und neue Teilnehmenden-IDs
+		// Rückzahlung konsistent: Snapshot zeigt auf die neue Buchung und neue Teilnehmenden-IDs
 		const snap = await dbRows(
 			sql`SELECT b.entry_id, e.category FROM action_refund_booking b
 				JOIN accounting_entries e ON e.id = b.entry_id WHERE b.action_id = ${imp.id}`
@@ -505,7 +505,7 @@ describe('Import und Round-Trip', () => {
 		expect(rows[0]!.iban_enc).toBeNull();
 	});
 
-	it('IBAN wird verschluesselt abgelegt, ungueltige IBAN gibt Warnung', async () => {
+	it('IBAN wird verschlüsselt abgelegt, ungültige IBAN gibt Warnung', async () => {
 		const imp = await data<ImportData>(await importZip('importer', fullBytes), 201);
 		const [row] = await dbRows(
 			sql`SELECT iban_enc, iban_last4 FROM accounting_payees WHERE action_id = ${imp.id}`
@@ -545,7 +545,7 @@ describe('Import und Round-Trip', () => {
 	});
 });
 
-describe('Ungueltige Archive', () => {
+describe('Ungültige Archive', () => {
 	it('kaputtes ZIP, Klartext, leere Datei -> 422', async () => {
 		expect((await importZip('importer', strToU8('das ist kein zip, wirklich nicht'))).status).toBe(
 			422
@@ -617,7 +617,7 @@ describe('Ungueltige Archive', () => {
 			422
 		);
 		// Beleg mit falschem Inhalt (kein PDF/Bild)
-		const notPdf = { [receiptFile]: strToU8('MZ ausfuehrbare Datei') };
+		const notPdf = { [receiptFile]: strToU8('MZ ausführbare Datei') };
 		expect((await importZip('importer', mk(doc, parsed.manifest, notPdf))).status).toBe(422);
 		// fehlende Belegdatei
 		expect((await importZip('importer', mk(doc, parsed.manifest))).status).toBe(422);

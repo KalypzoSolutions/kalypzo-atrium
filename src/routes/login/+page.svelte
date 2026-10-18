@@ -67,7 +67,7 @@
 						/>
 					</FormField>
 					<Button type="submit" disabled={loading}>
-						{#if loading}<LoaderCircle class="animate-spin" />{/if} Bestaetigen
+						{#if loading}<LoaderCircle class="animate-spin" />{/if} Bestätigen
 					</Button>
 				</form>
 			{:else}

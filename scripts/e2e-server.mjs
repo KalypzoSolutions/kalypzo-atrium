@@ -1,5 +1,5 @@
-// Startet fuer E2E-Tests eine In-Memory-PostgreSQL-Instanz (PGlite ueber TCP-Socket)
-// und die gebaute App dagegen. Es ist kein Docker noetig.
+// Startet für E2E-Tests eine In-Memory-PostgreSQL-Instanz (PGlite über TCP-Socket)
+// und die gebaute App dagegen. Es ist kein Docker nötig.
 // Mit E2E_DATABASE_URL kann stattdessen eine echte PostgreSQL-Datenbank verwendet werden.
 import { spawn } from 'node:child_process';
 
@@ -26,7 +26,7 @@ const env = {
 	ORIGIN: 'http://localhost:4173',
 	INITIAL_ADMIN_EMAIL: 'admin@example.test',
 	INITIAL_ADMIN_PASSWORD: 'e2e-admin-password-1',
-	// PGlite hat nur eine Sitzung (nur bei echter PostgreSQL ueber E2E_DATABASE_URL mehrere)
+	// PGlite hat nur eine Sitzung (nur bei echter PostgreSQL über E2E_DATABASE_URL mehrere)
 	...(process.env.E2E_DATABASE_URL ? {} : { DATABASE_POOL_MAX: '1' }),
 	PORT: '4173',
 	HOST: '127.0.0.1'

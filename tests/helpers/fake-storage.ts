@@ -1,6 +1,6 @@
 /**
- * Fake-S3 und Fake-FileRepo fuer Integrationstests (Muster aus tests/unit/storage.test.ts).
- * `installFakeStorage(admin)` setzt die Storage-Einstellungen und haengt die Fakes ein.
+ * Fake-S3 und Fake-FileRepo für Integrationstests (Muster aus tests/unit/storage.test.ts).
+ * `installFakeStorage(admin)` setzt die Storage-Einstellungen und hängt die Fakes ein.
  */
 import {
 	DeleteObjectCommand,
@@ -87,7 +87,7 @@ const repo: FileRepo = {
 	}
 };
 
-/** Gespeicherte Objekte (Schluessel = Objekt-Key); fuer Assertions. */
+/** Gespeicherte Objekte (Schlüssel = Objekt-Key); für Assertions. */
 export const fakeObjects = objects;
 export const fakeFileRows = rows;
 

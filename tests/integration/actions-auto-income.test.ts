@@ -66,7 +66,7 @@ const USERS: [string, string][] = [
 
 async function ctxOf(userId: string) {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -104,7 +104,7 @@ const expense = (over: Partial<EntryFormInput> = {}): EntryFormInput => ({
 const income = (over: Partial<EntryFormInput> = {}): EntryFormInput => ({
 	type: 'income',
 	category: 'contributions',
-	description: 'Beitraege',
+	description: 'Beiträge',
 	amountCents: 20000,
 	entryDate: '2026-07-01',
 	paidBy: 'club',
@@ -187,7 +187,7 @@ const calc = {
 	items: [{ id: 'a', category: 'food', label: 'Essen', amountCents: 1000, basis: 'flat' }]
 };
 
-/** Aktion 10.-17.07.2026 (7 Naechte), Liste, Beitrag 100 EUR / Team 50 EUR, Kalkulation inkl. Zuschuss. */
+/** Aktion 10.-17.07.2026 (7 Nächte), Liste, Beitrag 100 EUR / Team 50 EUR, Kalkulation inkl. Zuschuss. */
 async function setup(opts: { subsidy?: boolean } = {}) {
 	const id = await createAction();
 	await addPerson(id, { name: 'Anna', birthDate: '2018-05-01', bremenResident: true });
@@ -227,11 +227,11 @@ async function setup(opts: { subsidy?: boolean } = {}) {
 
 // Zuschuss: Kind 1 (Anna) x 7 x 15,00 + Jugend inkl. Team 2 (Ben, Teo) x 7 x 16,00 = 105,00 + 224,00
 const SUBSIDY = 32900;
-// Beitraege: 4 Teilnehmende x 100,00 + 1 Team x 50,00
+// Beiträge: 4 Teilnehmende x 100,00 + 1 Team x 50,00
 const CONTRIB = 45000;
 
 describe('Zuschussberechtigung je Person', () => {
-	it('liefert Override und effektiven Wert; fehlendes Feld laesst den Override unveraendert', async () => {
+	it('liefert Override und effektiven Wert; fehlendes Feld lässt den Override unverändert', async () => {
 		const id = await setup();
 		const list = await data<Participant[]>(await as('owner', `/actions/${id}/participants`));
 		const by = Object.fromEntries(list.map((p) => [p.name, p]));
@@ -256,7 +256,7 @@ describe('Zuschussberechtigung je Person', () => {
 		expect(p.subsidyEffective).toBe(false);
 	});
 
-	it('validiert und prueft Zugriff', async () => {
+	it('validiert und prüft Zugriff', async () => {
 		const id = await setup();
 		const [first] = await data<Participant[]>(await as('owner', `/actions/${id}/participants`));
 		const url = `/actions/${id}/participants/${first!.id}`;
@@ -274,7 +274,7 @@ describe('Zuschussberechtigung je Person', () => {
 		expect((await put('reader', true)).status).toBe(403);
 	});
 
-	it('Vorschlaege nutzen den Override', async () => {
+	it('Vorschläge nutzen den Override', async () => {
 		const id = await setup();
 		const s = await data<CalculationSuggestions>(
 			await as('owner', `/actions/${id}/calculation/suggestions`)
@@ -293,7 +293,7 @@ describe('Zuschussberechtigung je Person', () => {
 });
 
 describe('Automatische Einnahmen in der Abrechnung', () => {
-	it('liefert Beitraege und Zuschuss aus der Teilnehmerliste und zaehlt sie als Einnahme', async () => {
+	it('liefert Beiträge und Zuschuss aus der Teilnehmerliste und zählt sie als Einnahme', async () => {
 		const id = await setup();
 		const st = await state(id);
 		expect(st.autoIncome).toEqual({
@@ -334,7 +334,7 @@ describe('Automatische Einnahmen in der Abrechnung', () => {
 		expect(st.summary.incomeCents).toBe(0);
 	});
 
-	it('manuelle Buchung der Kategorie ueberschreibt die Automatik', async () => {
+	it('manuelle Buchung der Kategorie überschreibt die Automatik', async () => {
 		const id = await setup();
 		await addEntry(id, income({ amountCents: 1000 }));
 		let st = await state(id);
@@ -349,7 +349,7 @@ describe('Automatische Einnahmen in der Abrechnung', () => {
 		expect((await state(id)).summary.incomeCents).toBe(1600);
 	});
 
-	it('Rueckzahlung rechnet den Ueberschuss inklusive Automatik', async () => {
+	it('Rückzahlung rechnet den Überschuss inklusive Automatik', async () => {
 		const id = await setup();
 		await addEntry(id, expense({ amountCents: 10000 }));
 		const r = await data<{ surplusCents: number }>(
@@ -371,7 +371,7 @@ describe('Automatische Einnahmen in der Abrechnung', () => {
 		expect(html).toContain('1 ×');
 		expect(html).toContain('Zuschuss laut Kalkulation (3 berechtigte Personen)');
 		expect(html.replace(/\s+/g, ' ')).toContain('779,00 €');
-		// ueberschrieben: keine Automatik-Zeile fuer Beitraege mehr
+		// überschrieben: keine Automatik-Zeile für Beiträge mehr
 		await addEntry(id, income({ amountCents: 1000 }));
 		await as('owner', `/actions/${id}/accounting/report.pdf`);
 		expect(html).not.toContain('Automatisch aus Anmeldungen');

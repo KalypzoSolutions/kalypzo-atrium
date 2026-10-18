@@ -1,6 +1,6 @@
 /**
  * Einfacher Sliding-Window-Limiter im Arbeitsspeicher (eine Instanz pro Prozess).
- * Fuer Mehr-Instanz-Betrieb muss der Store durch einen gemeinsamen Speicher ersetzt werden
+ * Für Mehr-Instanz-Betrieb muss der Store durch einen gemeinsamen Speicher ersetzt werden
  * (siehe docs/security.md).
  */
 const buckets = new Map<string, number[]>();
@@ -19,7 +19,7 @@ function sweep(now: number, windowMs: number): void {
 export interface RateLimitResult {
 	allowed: boolean;
 	remaining: number;
-	/** Sekunden bis zum naechsten freien Slot */
+	/** Sekunden bis zum nächsten freien Slot */
 	retryAfterSec: number;
 	limit: number;
 }
@@ -44,7 +44,7 @@ export function hit(key: string, limit: number, windowSec: number): RateLimitRes
 	return { allowed: true, remaining: limit - hits.length, retryAfterSec: 0, limit };
 }
 
-/** Nur zaehlen, ohne zu blockieren (z. B. fehlgeschlagene Logins). */
+/** Nur zählen, ohne zu blockieren (z. B. fehlgeschlagene Logins). */
 export function peek(key: string, windowSec: number): number {
 	const now = Date.now();
 	return (buckets.get(key) ?? []).filter((t) => now - t < windowSec * 1000).length;

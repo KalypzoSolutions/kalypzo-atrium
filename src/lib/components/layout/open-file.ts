@@ -24,17 +24,17 @@ function fileNameFrom(res: Response, fallback: string): string {
 }
 
 /**
- * Laedt eine geschuetzte Datei per fetch (Session-Cookie) und oeffnet sie in einem neuen Tab bzw.
- * laedt sie herunter. Fehler (z. B. 503 ohne S3, 404) erscheinen als Toast statt als JSON-Seite.
+ * Lädt eine geschützte Datei per fetch (Session-Cookie) und öffnet sie in einem neuen Tab bzw.
+ * lädt sie herunter. Fehler (z. B. 503 ohne S3, 404) erscheinen als Toast statt als JSON-Seite.
  * Muss direkt aus einem Klick aufgerufen werden, damit das neue Fenster nicht blockiert wird.
- * Gibt `true` bei Erfolg zurueck.
+ * Gibt `true` bei Erfolg zurück.
  */
 export async function openProtectedFile(
 	href: string,
 	options: { fallbackName?: string; download?: boolean } = {}
 ): Promise<boolean> {
 	const fallbackName = options.fallbackName ?? 'datei';
-	// Fenster synchron im Klick oeffnen (Popup-Blocker); wird spaeter auf die Blob-URL gesetzt.
+	// Fenster synchron im Klick öffnen (Popup-Blocker); wird später auf die Blob-URL gesetzt.
 	const win = options.download ? null : window.open('', '_blank');
 	try {
 		const res = await fetch(href, { credentials: 'same-origin' });

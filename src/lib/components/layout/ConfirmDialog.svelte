@@ -14,7 +14,7 @@
 		open = $bindable(false),
 		title,
 		description,
-		confirmLabel = 'Bestaetigen',
+		confirmLabel = 'Bestätigen',
 		cancelLabel = 'Abbrechen',
 		destructive = false,
 		onconfirm

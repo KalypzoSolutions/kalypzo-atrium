@@ -34,7 +34,7 @@ function kindOf(key: string): FieldKind {
 	return 'text';
 }
 
-/** Felder einer oder mehrerer Einstellungsgruppen fuer die Oberflaeche (Secrets ohne Wert). */
+/** Felder einer oder mehrerer Einstellungsgruppen für die Oberfläche (Secrets ohne Wert). */
 export async function loadFields(
 	groups: string[],
 	only?: (key: string) => boolean
@@ -61,7 +61,7 @@ export async function loadFields(
 
 /**
  * Liest ein Formular im Format `f:<key>` / `clear:<key>`, validiert alle Werte vorab und
- * speichert sie anschliessend. Leere Secrets behalten den bisherigen Wert.
+ * speichert sie anschließend. Leere Secrets behalten den bisherigen Wert.
  */
 export async function saveFields(
 	locals: App.Locals,
@@ -72,7 +72,7 @@ export async function saveFields(
 	const keys = [...fd.keys()]
 		.filter((k) => k.startsWith('f:') || k.startsWith('clear:'))
 		.map((k) => k.slice(k.indexOf(':') + 1));
-	// Checkboxen sind nur bei "an" im Formular -> ueber Marker `has:<key>` erkennen
+	// Checkboxen sind nur bei "an" im Formular -> über Marker `has:<key>` erkennen
 	for (const k of [...fd.keys()].filter((k) => k.startsWith('has:'))) keys.push(k.slice(4));
 
 	for (const key of new Set(keys)) {

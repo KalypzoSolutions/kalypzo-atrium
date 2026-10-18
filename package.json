@@ -70,6 +70,7 @@
 		"pg": "^8.23.1",
 		"playwright": "^1.64.0",
 		"qrcode": "^1.5.4",
+		"sharp": "^0.34.5",
 		"svelte-sonner": "^1.2.1",
 		"tailwind-merge": "^3.7.0",
 		"tailwind-variants": "^3.3.1",

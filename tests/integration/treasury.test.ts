@@ -63,7 +63,7 @@ async function data<T>(res: Response, status = 200): Promise<T> {
 
 async function ctxOf(userId: string) {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -188,7 +188,7 @@ afterAll(async () => {
 });
 
 describe('Abgleich mit Aktionen', () => {
-	it('legt je Teilnehmende*r eine Rechnung an und verknuepft Mitglieder', async () => {
+	it('legt je Teilnehmende*r eine Rechnung an und verknüpft Mitglieder', async () => {
 		const r = await data<{ created: number }>(await T('/sync', { method: 'POST' }), 201);
 		expect(r.created).toBe(3);
 		const list = await data<InvoiceList>(await T('/invoices'));
@@ -208,7 +208,7 @@ describe('Abgleich mit Aktionen', () => {
 		expect(again).toMatchObject({ created: 0, updated: 0 });
 	});
 
-	it('uebernimmt Beitragsaenderungen', async () => {
+	it('übernimmt Beitragsänderungen', async () => {
 		await core.database
 			.forModule('actions')
 			.transaction((tx) =>
@@ -221,10 +221,10 @@ describe('Abgleich mit Aktionen', () => {
 	});
 });
 
-describe('Sammelzahlung fuer Geschwister', () => {
+describe('Sammelzahlung für Geschwister', () => {
 	let txId = '';
 
-	it('schlaegt beide Geschwister vor und verschickt EINE Bestaetigung', async () => {
+	it('schlägt beide Geschwister vor und verschickt EINE Bestätigung', async () => {
 		const t = await data<Transaction>(
 			await T('/transactions', {
 				method: 'POST',
@@ -263,9 +263,9 @@ describe('Sammelzahlung fuer Geschwister', () => {
 		expect(mails[0]!.text).toContain('Jonas Müller');
 	});
 
-	it('sendet die Bestaetigung nur einmal', async () => {
+	it('sendet die Bestätigung nur einmal', async () => {
 		const t = await data<Transaction>(await T(`/transactions/${txId}`));
-		// Zuordnung ergaenzt fehlende Kategorie und Aktion
+		// Zuordnung ergänzt fehlende Kategorie und Aktion
 		expect(t.category?.id).toBe('cat-beitraege');
 		expect(t.action?.id).toBe(actionId);
 		expect(t.needsAllocation).toBe(false);
@@ -281,7 +281,7 @@ describe('Sammelzahlung fuer Geschwister', () => {
 		expect(mails).toHaveLength(0);
 	});
 
-	it('verhindert Ueberzahlung eines Postens', async () => {
+	it('verhindert Überzahlung eines Postens', async () => {
 		const t2 = await data<Transaction>(
 			await T('/transactions', {
 				method: 'POST',
@@ -298,7 +298,7 @@ describe('Sammelzahlung fuer Geschwister', () => {
 		await data(await T(`/transactions/${t2.id}`, { method: 'DELETE' }));
 	});
 
-	it('Aktions-Abrechnung zeigt die tatsaechlichen Beitraege', async () => {
+	it('Aktions-Abrechnung zeigt die tatsächlichen Beiträge', async () => {
 		const state = await data<AccountingState>(
 			await api(`/modules/actions/actions/${actionId}/accounting`, { token: keys.kasse })
 		);
@@ -312,7 +312,7 @@ describe('Sammelzahlung fuer Geschwister', () => {
 });
 
 describe('Stornierung durch Abgleich', () => {
-	it('storniert bei entfernter Teilnahme und fuehrt Bezahltes als Guthaben', async () => {
+	it('storniert bei entfernter Teilnahme und führt Bezahltes als Guthaben', async () => {
 		await data(
 			await api(
 				`/modules/actions/actions/${actionId}/participants/${participants['Lena Müller']}`,
@@ -368,7 +368,7 @@ describe('Erinnerungen', () => {
 		setTreasuryTodayForTests('2026-07-06');
 		expect((await run()).invoices).toBe(1);
 		setTreasuryTodayForTests('2026-09-01');
-		// Team-Rechnung (ohne Adresse) faellig, Schmidt bereits Stufe 2
+		// Team-Rechnung (ohne Adresse) fällig, Schmidt bereits Stufe 2
 		const last = await data<{ invoices: number; withoutAddress: number }>(
 			await T('/reminders/run', { method: 'POST' }),
 			201
@@ -397,7 +397,7 @@ describe('Erinnerungen', () => {
 
 describe('Import und Bericht', () => {
 	const csv = [
-		'"Auftragskonto";"Buchungstag";"Valutadatum";"Buchungstext";"Verwendungszweck";"Beguenstigter/Zahlungspflichtiger";"Kontonummer/IBAN";"Betrag";"Waehrung"',
+		'"Auftragskonto";"Buchungstag";"Valutadatum";"Buchungstext";"Verwendungszweck";"Beguenstigter/Zahlungspflichtiger";"Kontonummer/IBAN";"Betrag";"Währung"',
 		'"DE001";"10.06.26";"10.06.26";"GUTSCHR.";"Spende Sommerfest";"Max Muster";"DE02";"50,00";"EUR"',
 		'"DE001";"11.06.26";"11.06.26";"LASTSCHRIFT";"Kontofuehrung";"Sparkasse";"";"-4,90";"EUR"'
 	].join('\r\n');
@@ -432,7 +432,7 @@ describe('Import und Bericht', () => {
 });
 
 describe('Rechte und Audit', () => {
-	it('Lesende duerfen nichts aendern', async () => {
+	it('Lesende dürfen nichts ändern', async () => {
 		expect((await T('/accounts', {}, 'lesend')).status).toBe(200);
 		const res = await T(
 			'/transactions',
@@ -442,7 +442,7 @@ describe('Rechte und Audit', () => {
 		expect(res.status).toBe(403);
 	});
 
-	it('Audit enthaelt keine E-Mail-Adressen', async () => {
+	it('Audit enthält keine E-Mail-Adressen', async () => {
 		const rows = await getDb().select().from(schema.auditLog);
 		const treasury = rows.filter((r) => r.action.startsWith('treasury.'));
 		expect(treasury.length).toBeGreaterThan(5);

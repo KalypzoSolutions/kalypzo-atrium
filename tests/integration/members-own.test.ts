@@ -155,7 +155,7 @@ describe('Eigene Mitglieder: Zugriff', () => {
 		await link(kid, 'nurlesen');
 	});
 
-	it('Rolle Mitglied erhaelt die Rechte automatisch ist Sache des Core; Recht ist deklariert', () => {
+	it('Rolle Mitglied erhält die Rechte automatisch ist Sache des Core; Recht ist deklariert', () => {
 		expect(membersModule.manifest.permissions).toContain('members.own.view');
 		expect(membersModule.manifest.permissions).toContain('members.own.edit');
 	});
@@ -302,7 +302,7 @@ describe('Eigene Mitglieder: Zugriff', () => {
 		expect(
 			(await put(fremd, { phones: [], emails: [{ name: null, value: 'a@example.test' }] })).status
 		).toBe(404);
-		// Zustand unveraendert
+		// Zustand unverändert
 		const list = await data<{ emails: unknown[] }[]>(await M('/my/members', 'mutter'));
 		expect(list[0]!.emails).toHaveLength(1);
 	});
@@ -397,7 +397,7 @@ describe('Mail-Einstellungen', () => {
 		}
 	});
 
-	it('Standard: alles an; Opt-out wird gespeichert und ausgeliefert, an loescht die Zeile', async () => {
+	it('Standard: alles an; Opt-out wird gespeichert und ausgeliefert, an löscht die Zeile', async () => {
 		const off = await data<{ mailOptOut: string[] }>(
 			await M(`/my/members/${lena}/mail-prefs`, 'mutter', {
 				method: 'PUT',
@@ -467,7 +467,7 @@ describe('Mail-Einstellungen', () => {
 		);
 	});
 
-	it('Zahlungsbestaetigung: Lena abgewaehlt -> nur Jonas (gemeinsame Adresse bleibt)', async () => {
+	it('Zahlungsbestätigung: Lena abgewählt -> nur Jonas (gemeinsame Adresse bleibt)', async () => {
 		await data(
 			await M(`/my/members/${lena}/mail-prefs`, 'mutter', {
 				method: 'PUT',
@@ -526,7 +526,7 @@ describe('Mail-Einstellungen', () => {
 		).not.toBeNull();
 	});
 
-	it('Zahlungsbestaetigung unterdrueckt, Erinnerung bleibt verbindlich', async () => {
+	it('Zahlungsbestätigung unterdrückt, Erinnerung bleibt verbindlich', async () => {
 		await data(
 			await M(`/members/${anna}/mail-prefs`, 'admin', {
 				method: 'PUT',
@@ -569,13 +569,13 @@ describe('Mail-Einstellungen', () => {
 			(await data<InvoiceDetail>(await T(`/invoices/${inv.Anna}`))).paidNotifiedAt
 		).not.toBeNull();
 
-		// Erinnerung an Ben (hat die Zahlungsbestaetigung abgewaehlt) geht trotzdem raus
+		// Erinnerung an Ben (hat die Zahlungsbestätigung abgewählt) geht trotzdem raus
 		mails.length = 0;
 		await data(await T(`/invoices/${inv.Ben}/remind`, { method: 'POST' }), 201);
 		expect(mails.map((m) => m.to)).toEqual(['ben@example.test']);
 	});
 
-	it('Cascade: Mitglied loeschen entfernt die Abwahlen', async () => {
+	it('Cascade: Mitglied löschen entfernt die Abwahlen', async () => {
 		expect(
 			(await rawRows(sql`SELECT 1 FROM member_mail_prefs WHERE member_id = ${anna}`)).length
 		).toBe(1);

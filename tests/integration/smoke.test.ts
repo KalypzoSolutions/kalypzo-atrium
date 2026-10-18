@@ -6,7 +6,7 @@ describe('smoke', () => {
 	beforeAll(async () => {
 		await useTestDatabase();
 	});
-	it('migrations laufen und audit_log ist unveraenderlich', async () => {
+	it('migrations laufen und audit_log ist unveränderlich', async () => {
 		const db = getDb();
 		await db.insert(schema.auditLog).values({ id: 'a1', action: 'x.y.z', actorType: 'system' });
 		await expect(db.update(schema.auditLog).set({ action: 'changed' })).rejects.toThrow();

@@ -25,9 +25,9 @@ export function encryptSecret(plain: string, purpose = 'settings'): string {
 }
 
 export function decryptSecret(value: string, purpose = 'settings'): string {
-	if (!value.startsWith(PREFIX)) throw new Error('Kein verschluesselter Wert');
+	if (!value.startsWith(PREFIX)) throw new Error('Kein verschlüsselter Wert');
 	const [iv, tag, data] = value.slice(PREFIX.length).split('.');
-	if (!iv || !tag || !data) throw new Error('Beschaedigter Wert');
+	if (!iv || !tag || !data) throw new Error('Beschädigter Wert');
 	const decipher = createDecipheriv('aes-256-gcm', key(purpose), Buffer.from(iv, 'base64url'));
 	decipher.setAuthTag(Buffer.from(tag, 'base64url'));
 	return Buffer.concat([
@@ -40,7 +40,7 @@ export function isEncrypted(value: unknown): value is string {
 	return typeof value === 'string' && value.startsWith(PREFIX);
 }
 
-/** Deterministischer, schluesselgebundener Hash (HMAC-SHA256) – z. B. zum Wiederfinden einer IBAN ohne Klartext */
+/** Deterministischer, schlüsselgebundener Hash (HMAC-SHA256) – z. B. zum Wiederfinden einer IBAN ohne Klartext */
 export function keyedHash(input: string, purpose: string): string {
 	return createHmac('sha256', key(`hash:${purpose}`))
 		.update(input)

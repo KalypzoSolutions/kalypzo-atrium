@@ -11,7 +11,7 @@
 
 	/**
 	 * Einheitliche, dynamische Liste benannter Kontakte (Bezeichnung + Wert), z. B. Telefonnummern
-	 * oder E-Mail-Adressen. Fehler je Zeile ueber `errors[index].name|value`.
+	 * oder E-Mail-Adressen. Fehler je Zeile über `errors[index].name|value`.
 	 */
 	let {
 		id,

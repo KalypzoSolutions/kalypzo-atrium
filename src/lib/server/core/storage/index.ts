@@ -29,7 +29,7 @@ export interface S3Handle {
 	bucket: string;
 	send(command: S3Command): Promise<unknown>;
 	presign(command: GetObjectCommand | PutObjectCommand, expiresInSec: number): Promise<string>;
-	/** Mehrteiliger Upload fuer grosse Dateien (optional, sonst PutObject) */
+	/** Mehrteiliger Upload für große Dateien (optional, sonst PutObject) */
 	putLarge?(key: string, body: Uint8Array, contentType: string): Promise<void>;
 }
 
@@ -47,7 +47,7 @@ export interface FileRow {
 	createdAt: Date;
 }
 
-/** Persistenz der Dateimetadaten (PostgreSQL); austauschbar fuer Tests. */
+/** Persistenz der Dateimetadaten (PostgreSQL); austauschbar für Tests. */
 export interface FileRepo {
 	findByPath(moduleId: string, path: string): Promise<FileRow | undefined>;
 	findById(id: string): Promise<FileRow | undefined>;
@@ -55,6 +55,8 @@ export interface FileRepo {
 	update(id: string, patch: Partial<Omit<FileRow, 'id'>>): Promise<void>;
 	delete(id: string): Promise<void>;
 	listByPrefix(moduleId: string, prefix: string): Promise<FileRow[]>;
+	/** Wie `listByPrefix`, aber inkl. `pending` (für `purge`); fehlt es, gilt `listByPrefix` */
+	listAllByPrefix?(moduleId: string, prefix: string): Promise<FileRow[]>;
 	usage(): Promise<{ moduleId: string; files: number; bytes: number }[]>;
 }
 
@@ -97,25 +99,25 @@ export const DEFAULT_ALLOWED_CONTENT_TYPES = [
 	'application/vnd.ms-powerpoint'
 ];
 
-// Aktive Inhalte: nur zulaessig, wenn ausdruecklich in der Allowlist genannt
+// Aktive Inhalte: nur zulässig, wenn ausdrücklich in der Allowlist genannt
 const ACTIVE_CONTENT_TYPES = new Set(['text/html', 'image/svg+xml', 'application/xhtml+xml']);
 
 export function validateModuleId(module: string): void {
 	if (!MODULE_PATTERN.test(module) && module !== 'core') {
-		throw errors.badRequest('Ungueltige Modul-ID');
+		throw errors.badRequest('Ungültige Modul-ID');
 	}
 }
 
 export function validatePath(path: string): void {
 	if (typeof path !== 'string' || !path.length || path.length > 512) {
-		throw errors.badRequest('Ungueltiger Dateipfad');
+		throw errors.badRequest('Ungültiger Dateipfad');
 	}
 	// eslint-disable-next-line no-control-regex
 	if (/[\u0000-\u001f\u007f\\]/.test(path) || path.startsWith('/') || path.endsWith('/')) {
-		throw errors.badRequest('Ungueltiger Dateipfad');
+		throw errors.badRequest('Ungültiger Dateipfad');
 	}
 	for (const seg of path.split('/')) {
-		if (!seg || seg === '.' || seg === '..') throw errors.badRequest('Ungueltiger Dateipfad');
+		if (!seg || seg === '.' || seg === '..') throw errors.badRequest('Ungültiger Dateipfad');
 	}
 }
 
@@ -277,6 +279,13 @@ function dbRepo(): FileRepo {
 				.from(t)
 				.where(and(eq(t.moduleId, moduleId), like(t.path, `${escaped}%`), eq(t.status, 'ready')));
 		},
+		async listAllByPrefix(moduleId, prefix) {
+			const escaped = prefix.replace(/[\\%_]/g, (c) => `\\${c}`);
+			return getDb()
+				.select()
+				.from(t)
+				.where(and(eq(t.moduleId, moduleId), like(t.path, `${escaped}%`)));
+		},
 		async usage() {
 			const rows = await getDb()
 				.select({
@@ -326,7 +335,7 @@ function checkType(contentType: string, config: StorageConfig): void {
 }
 
 // ---------------------------------------------------------------------------
-// Oeffentliche API
+// Öffentliche API
 // ---------------------------------------------------------------------------
 
 export interface UploadInput {
@@ -344,7 +353,7 @@ export async function upload(ctx: RequestContext, input: UploadInput): Promise<S
 	const { s3, config } = await connect();
 	const size = input.file.byteLength;
 	if (size > maxBytes(config))
-		throw errors.tooLarge(`Datei ueberschreitet das Limit von ${config.maxFileSizeMb} MB`);
+		throw errors.tooLarge(`Datei überschreitet das Limit von ${config.maxFileSizeMb} MB`);
 	const contentType = normalizeContentType(input.contentType);
 	checkType(contentType, config);
 
@@ -478,7 +487,7 @@ export interface ListResult {
 	folders: string[];
 }
 
-/** Virtuelle Ordner: ein Ordner ist jedes gemeinsame Pfadpraefix. */
+/** Virtuelle Ordner: ein Ordner ist jedes gemeinsame Pfadpräfix. */
 export async function list(
 	ctx: RequestContext,
 	input: { module: string; prefix?: string }
@@ -514,18 +523,18 @@ export async function createSignedUploadUrl(
 	validatePath(input.path);
 	const { s3, config } = await connect();
 	if (!Number.isInteger(input.size) || input.size <= 0)
-		throw errors.badRequest('Ungueltige Dateigroesse');
+		throw errors.badRequest('Ungültige Dateigröße');
 	if (input.size > maxBytes(config))
-		throw errors.tooLarge(`Datei ueberschreitet das Limit von ${config.maxFileSizeMb} MB`);
+		throw errors.tooLarge(`Datei überschreitet das Limit von ${config.maxFileSizeMb} MB`);
 	const contentType = normalizeContentType(input.contentType);
 	checkType(contentType, config);
 	const expiresInSec = Math.min(input.expiresInSec ?? DEFAULT_SIGNED_TTL, MAX_SIGNED_TTL);
 
 	const objectKey = `${input.module}/${newId()}`;
 	const existing = await files().findByPath(input.module, input.path);
-	// Der Inhalt einer bestehenden Datei bleibt bis zum Loeschen unveraendert.
+	// Der Inhalt einer bestehenden Datei bleibt bis zum Löschen unverändert.
 	if (existing)
-		throw errors.conflict('Pfad existiert bereits; zuerst loeschen oder direkt hochladen');
+		throw errors.conflict('Pfad existiert bereits; zuerst löschen oder direkt hochladen');
 	const fileId = newId();
 	await files().insert({
 		id: fileId,
@@ -554,7 +563,7 @@ export async function createSignedUploadUrl(
 	return { url, fileId, headers: { 'Content-Type': contentType }, expiresInSec };
 }
 
-/** Bestaetigt einen per signierter URL hochgeladenen Upload (prueft Existenz und Groesse). */
+/** Bestätigt einen per signierter URL hochgeladenen Upload (prüft Existenz und Größe). */
 export async function confirmUpload(ctx: RequestContext, fileId: string): Promise<StoredFile> {
 	const row = await files().findById(fileId);
 	if (!row) throw errors.notFound('Datei nicht gefunden');
@@ -577,7 +586,7 @@ export async function confirmUpload(ctx: RequestContext, fileId: string): Promis
 			.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key: row.objectKey }))
 			.catch(() => undefined);
 		await files().delete(row.id);
-		throw errors.badRequest('Hochgeladene Datei entspricht nicht der angekuendigten Groesse');
+		throw errors.badRequest('Hochgeladene Datei entspricht nicht der angekündigten Größe');
 	}
 	await files().update(row.id, { status: 'ready' });
 	return toStored({ ...row, status: 'ready' });
@@ -608,7 +617,7 @@ export async function usageByModule(
 	return files().usage();
 }
 
-/** Prueft Erreichbarkeit und Zugangsdaten des Buckets. */
+/** Prüft Erreichbarkeit und Zugangsdaten des Buckets. */
 export async function testConnection(ctx?: RequestContext): Promise<{ ok: true }> {
 	if (ctx && ctx.actor.type !== 'system') {
 		if (!has(ctx, 'core.storage.manage'))
@@ -623,7 +632,7 @@ export async function testConnection(ctx?: RequestContext): Promise<{ ok: true }
 	return { ok: true };
 }
 
-/** Interner Zugriff per Datei-ID ohne Rechtepruefung (z. B. Logo fuer PDFs). Nie direkt an Clients durchreichen. */
+/** Interner Zugriff per Datei-ID ohne Rechteprüfung (z. B. Logo für PDFs). Nie direkt an Clients durchreichen. */
 export async function readFileByIdUnchecked(
 	fileId: string
 ): Promise<{ buffer: Uint8Array; contentType: string } | null> {
@@ -641,4 +650,105 @@ export async function readFileByIdUnchecked(
 	} catch {
 		return null;
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Bereinigung (Purge)
+// ---------------------------------------------------------------------------
+
+export interface PurgeInput {
+	module: string;
+	/** Pfadpräfix (ohne führenden Schrägstrich); leer/weggelassen = alle Dateien des Moduls */
+	prefix?: string;
+	/** Exakte Pfade, die erhalten bleiben (z. B. Profilbild des ausführenden Admins) */
+	exceptPaths?: string[];
+}
+
+export interface PurgeResult {
+	count: number;
+	bytes: number;
+	warnings: string[];
+}
+
+const PURGE_BATCH = 10;
+
+/** Dateien (inkl. `pending`), die `purge` löschen würde. Ohne Rechteprüfung – nur Core-intern. */
+export async function listPurgeCandidates(input: PurgeInput): Promise<FileRow[]> {
+	validateModuleId(input.module);
+	const prefix = input.prefix ?? '';
+	const repoNow = files();
+	const rows = repoNow.listAllByPrefix
+		? await repoNow.listAllByPrefix(input.module, prefix)
+		: await repoNow.listByPrefix(input.module, prefix);
+	const except = new Set(input.exceptPaths ?? []);
+	return rows.filter((r) => r.path.startsWith(prefix) && !except.has(r.path));
+}
+
+/**
+ * Löscht Dateien eines Moduls ohne Rechteprüfung (Core-intern, z. B. Admin-Reset). S3-Objekte
+ * werden best-effort entfernt; ohne konfiguriertes S3 nur die Metadaten (mit Warnung).
+ */
+export async function purgeUnchecked(
+	ctx: RequestContext,
+	input: PurgeInput,
+	opts: { audit?: boolean } = {}
+): Promise<PurgeResult> {
+	const rows = await listPurgeCandidates(input);
+	const warnings: string[] = [];
+	const bytes = rows.reduce((s, r) => s + Number(r.size || 0), 0);
+	if (rows.length) {
+		let s3: S3Handle | null = null;
+		try {
+			s3 = (await connect()).s3;
+		} catch {
+			warnings.push(
+				`Speicher für ${input.module} nicht erreichbar/konfiguriert: nur Metadaten gelöscht (${rows.length} Dateien)`
+			);
+		}
+		if (s3) {
+			let failed = 0;
+			for (let i = 0; i < rows.length; i += PURGE_BATCH) {
+				const batch = rows.slice(i, i + PURGE_BATCH);
+				const results = await Promise.allSettled(
+					batch.map((r) =>
+						s3!.send(new DeleteObjectCommand({ Bucket: s3!.bucket, Key: r.objectKey }))
+					)
+				);
+				failed += results.filter((x) => x.status === 'rejected').length;
+			}
+			if (failed) {
+				warnings.push(
+					`${failed} Objekte von ${input.module} konnten nicht aus dem Speicher gelöscht werden`
+				);
+			}
+		}
+		for (const r of rows) await files().delete(r.id);
+	}
+	if (opts.audit !== false) {
+		await auditFromContext(ctx, 'core.storage.purged', {
+			target: input.module,
+			metadata: {
+				prefix: input.prefix ?? '',
+				count: rows.length,
+				bytes,
+				warnings: warnings.length
+			}
+		});
+	}
+	return { count: rows.length, bytes, warnings };
+}
+
+/** Löscht alle Dateien eines Moduls (optional unter einem Präfix). Nur System oder `core.storage.manage`. */
+export async function purge(ctx: RequestContext, input: PurgeInput): Promise<PurgeResult> {
+	validateModuleId(input.module);
+	if (ctx.actor.type !== 'system') {
+		if (!ctx.userId) throw errors.unauthenticated();
+		if (!has(ctx, 'core.storage.manage'))
+			throw errors.forbidden('Berechtigung fehlt: core.storage.manage');
+	}
+	if (input.prefix) {
+		const p = input.prefix.replace(/\/+$/, '');
+		validatePath(p);
+	}
+	return purgeUnchecked(ctx, input);
 }

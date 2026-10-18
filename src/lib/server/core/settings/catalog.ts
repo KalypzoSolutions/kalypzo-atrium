@@ -7,7 +7,7 @@ export interface SettingDefinition {
 	description?: string;
 	schema: z.ZodType;
 	default?: unknown;
-	/** Wird verschluesselt gespeichert und niemals an Clients uebertragen */
+	/** Wird verschlüsselt gespeichert und niemals an Clients übertragen */
 	secret?: boolean;
 	scope: SettingScope;
 	group: string;
@@ -198,7 +198,7 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 	}),
 	g({
 		key: 'core.storage.maxFileSizeMb',
-		label: 'Max. Dateigroesse (MB)',
+		label: 'Max. Dateigröße (MB)',
 		schema: z.coerce.number().int().min(1).max(5000),
 		default: 50,
 		group: 'storage'
@@ -329,7 +329,7 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 	}),
 	g({
 		key: 'core.pdf.footerText',
-		label: 'Fusszeile (Mitte)',
+		label: 'Fußzeile (Mitte)',
 		schema: str(200),
 		default: '',
 		group: 'pdf'
@@ -382,7 +382,7 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 	}),
 	g({
 		key: 'core.user.pageSize',
-		label: 'Eintraege pro Seite',
+		label: 'Einträge pro Seite',
 		schema: z.coerce.number().int().min(10).max(200),
 		default: 25,
 		scope: 'user',

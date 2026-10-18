@@ -57,7 +57,7 @@ let failMail = false;
 
 async function ctxOf(userId: string) {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -156,7 +156,7 @@ beforeAll(async () => {
 	await setSetting(admin, 'actions.bank.bic', 'GENODEF1TST');
 	await setSetting(admin, 'actions.bank.name', 'Testbank');
 	actionId = await newAction('Sommerlager "Süd"');
-	// Beitrag uebernehmen
+	// Beitrag übernehmen
 	const calc = await data<{
 		settings: { items: { amountCents: number }[]; includeSubsidy: boolean };
 	}>(await as('owner', `/actions/${actionId}/calculation`));
@@ -184,7 +184,7 @@ describe('Anmeldeformular: Konfiguration', () => {
 		expect(cfg.disclaimerPreview).not.toContain('{{');
 	});
 
-	it('speichert (Roundtrip), ergaenzt fehlende Standardfelder und sperrt Typaenderungen', async () => {
+	it('speichert (Roundtrip), ergänzt fehlende Standardfelder und sperrt Typänderungen', async () => {
 		const cfg = await data<FormConfig>(await as('owner', `/actions/${actionId}/form`));
 		const fields = cfg.definition.fields
 			.filter((f) => f.key !== STANDARD_FORM_KEYS.notes)
@@ -239,7 +239,7 @@ describe('Anmeldeformular: Konfiguration', () => {
 		expect((await api(`${BASE}/actions/${actionId}/form`)).status).toBe(401);
 	});
 
-	it('Token-Rotation macht den alten Link ungueltig', async () => {
+	it('Token-Rotation macht den alten Link ungültig', async () => {
 		expect((await pub(`/${token}`)).status).toBe(200);
 		const rotated = await data<FormConfig>(
 			await as('owner', `/actions/${actionId}/form/rotate-token`, { method: 'POST' }),
@@ -258,7 +258,7 @@ describe('Anmeldeformular: Konfiguration', () => {
 		expect(actions).toContain('actions.form.token_rotated');
 	});
 
-	describe('oeffentlich', () => {
+	describe('öffentlich', () => {
 		it('GET ohne Auth liefert Formular ohne interne Daten', async () => {
 			const form = await data<PublicForm>(await pub(`/${token}`));
 			expect(form.actionName).toBe('Sommerlager "Süd"');
@@ -292,7 +292,7 @@ describe('Anmeldeformular: Konfiguration', () => {
 			const closed = await data<FormConfig>(await saveForm(closedId, { closesAt: past }));
 			expect((await submit(closed.token!, person())).status).toBe(409);
 			const notOpen = await data<FormConfig>(
-				await saveForm(await newAction('Spaeter'), { opensAt: future })
+				await saveForm(await newAction('Später'), { opensAt: future })
 			);
 			expect((await data<PublicForm>(await pub(`/${notOpen.token}`))).status).toBe('not_open');
 			expect((await submit(notOpen.token!, person())).status).toBe(409);
@@ -372,7 +372,7 @@ describe('Anmeldeformular: Konfiguration', () => {
 			expect(JSON.stringify((await res.json()).error.details)).toContain('birthDate');
 		});
 
-		it('unbekannte Schluessel und fehlender JSON-Content-Type werden abgelehnt', async () => {
+		it('unbekannte Schlüssel und fehlender JSON-Content-Type werden abgelehnt', async () => {
 			expect((await submit(token, person({ evil: 'x' }))).status).toBe(422);
 			const res = await pub(`/${token}/submit`, {
 				method: 'POST',

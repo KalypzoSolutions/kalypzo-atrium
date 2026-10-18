@@ -69,7 +69,7 @@ const USERS: [string, string][] = [
 
 const ctxOf = async (userId: string) => {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 };
 
@@ -213,12 +213,12 @@ const getRefund = async (who: string, id: string, count?: number) =>
 		await as(who, `/actions/${id}/accounting/refund${count == null ? '' : `?count=${count}`}`)
 	);
 
-describe('Rueckzahlung', () => {
+describe('Rückzahlung', () => {
 	it('berechnet: gleicher Betrag, abgerundet; Team ohne Beitrag zahlt nicht', async () => {
 		const id = await setup();
 		await addEntry(id, { type: 'income', cents: 60000 });
 		await addEntry(id, { cents: 10001, receipt: true });
-		// Ueberschuss 499,99 EUR / 3 = 166,66 -> 166 EUR
+		// Überschuss 499,99 EUR / 3 = 166,66 -> 166 EUR
 		const r = await getRefund('owner', id);
 		expect(r.surplusCents).toBe(49999);
 		expect(r.payingCount).toBe(3);
@@ -237,7 +237,7 @@ describe('Rueckzahlung', () => {
 		expect((await getRefund('reader', id)).canBook).toBe(false);
 	});
 
-	it('Zugriff: Fremde 404, Leser 403 beim Buchen/Zuruecknehmen', async () => {
+	it('Zugriff: Fremde 404, Leser 403 beim Buchen/Zurücknehmen', async () => {
 		const id = await setup();
 		await addEntry(id, { type: 'income', cents: 60000 });
 		const url = `/actions/${id}/accounting/refund`;
@@ -322,9 +322,9 @@ describe('Rueckzahlung', () => {
 		expect(res.status).toBe(422);
 	});
 
-	it('Blocker: kein Ueberschuss, kein Beitrag, abgeschlossen -> 409', async () => {
+	it('Blocker: kein Überschuss, kein Beitrag, abgeschlossen -> 409', async () => {
 		const none = await setup();
-		// Automatik: 3 x 200 EUR Beitraege = 600 EUR Einnahmen, gleich hohe Ausgabe -> kein Ueberschuss
+		// Automatik: 3 x 200 EUR Beiträge = 600 EUR Einnahmen, gleich hohe Ausgabe -> kein Überschuss
 		await addEntry(none, { cents: 60000, receipt: true });
 		let r = await getRefund('owner', none);
 		expect(r.canBook).toBe(false);
@@ -351,7 +351,7 @@ describe('Rueckzahlung', () => {
 		).toBe(409);
 	});
 
-	it('Abschluss nach Rueckzahlung ohne acceptMissingReceipts; Bericht ohne Refund-Posten', async () => {
+	it('Abschluss nach Rückzahlung ohne acceptMissingReceipts; Bericht ohne Refund-Posten', async () => {
 		const id = await setup();
 		await addEntry(id, { type: 'income', cents: 60000 });
 		await addEntry(id, { cents: 10000, receipt: true });
@@ -459,7 +459,7 @@ describe('Rueckzahlung', () => {
 		expect(back.mode).toBe('auto');
 	});
 
-	it('Schwelle: hoechstens 5 EUR je Person -> Blocker und 409', async () => {
+	it('Schwelle: höchstens 5 EUR je Person -> Blocker und 409', async () => {
 		const id = await setup();
 		await addEntry(id, { type: 'income', cents: 5000 });
 		const url = `/actions/${id}/accounting/refund`;
@@ -482,7 +482,7 @@ describe('Rueckzahlung', () => {
 		// 50 EUR / 9 = 5 EUR (abgerundet) -> nicht ok; 50 / 8 = 6 EUR -> ok
 		expect((await getRefund('owner', id, 9)).thresholdOk).toBe(false);
 		expect((await getRefund('owner', id, 8)).thresholdOk).toBe(true);
-		// Standardmodus: 10 EUR Ueberschuss / 3 = 3 EUR -> Blocker
+		// Standardmodus: 10 EUR Überschuss / 3 = 3 EUR -> Blocker
 		const low = await setup();
 		await addEntry(low, { type: 'income', cents: 1000 });
 		const r = await getRefund('owner', low);

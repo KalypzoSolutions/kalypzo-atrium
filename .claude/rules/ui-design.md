@@ -36,14 +36,17 @@ wenn es nur ein Formular ist. Listen: Suche + Filter in der Toolbar der `DataTab
 | Seitenkopf, Formularfeld, Leerzustand, Bestätigung | `PageHeader`, `FormField`, `EmptyState`, `ConfirmDialog` |
 | Suche / Seitenwechsel (URL-basiert) | `SearchInput` (`param`, `resetParams`), `Pagination` (`pageParam`) |
 | Einfachauswahl / Mehrfachauswahl mit Suche | `SelectField` (`ui/select-field`, `emptyLabel`, `name`) / `MultiSelect` (`ui/multi-select`) |
+| Freie Tags/Schlagwörter (Chips, Vorschläge, „„x“ anlegen“) | `TagInput` (`ui/tag-input`; `bind:value: string[]`, `suggestions` oder `loadSuggestions(q)` (200 ms Debounce), `max` 20, `maxLength` 40, `label`, `invalid`, `describedby`, `onchange`; Enter/Komma legt an, Blur übernimmt, Backspace entfernt letzten; Logik `addTag()` in `tags.ts`) |
 | Farbe | `ColorPicker` (`ui/color-picker`), `ColorBadge`, `EntityAvatar` |
 | Zahl mit −/+ , Regler, Geld | `NumberStepper`, `Slider` (`ui/slider`), `MoneyInput` (`money.ts`: `formatEuro`, `parseEuroToCents`) |
 | Datei-Upload, Kontaktliste (stapelt unter 640 px) | `FileField`, `ContactListField` |
 | Zusammenfassung, Kostenbalken | `SummaryList`, `CostBar` |
-| Freigabe | `ShareMenu` (Popover im Seitenkopf), `ShareDialog`, `SharePanel` |
+| Freigabe | `ShareMenu` (Popover im Seitenkopf), `ShareDialog`, `SharePanel`; Einträge/Kandidaten optional mit `type` (`everyone`/`group`/`role`/`user`/`member` → Icon + Badge), `detail` (Unterzeile statt E-Mail), `color` (Gruppenpunkt); Schlüssel `shareKey` (ohne `type` = Benutzer-ID, sonst `typ:id`, auch für `onchange`/`onremove`). Props `everyoneLabel` (Schnellknopf „… (alle)“ → `onadd({ id: '*', type: 'everyone' })`), `placeholder`, `searchLabel`, `emptyResultText` |
 | Erfolgs-Toast mit „Rückgängig“ (Rückweg = vorhandener API-Aufruf) | `toastWithUndo({ message, undo, undone?, onundone? })` aus `$lib/components/layout` (früher `treasury/pages/undo.ts`) |
 | Profil-Abschnitt eines Moduls | `ui.ts` `profileSections` (Props `{ userId }`, Daten per `apiFetch`); Muster: `members/pages/ProfileMemberCard.svelte` (Entwurf + Speichern je Tab, kein Autosave, `beforeNavigate`-Warnung) |
 | Overlay | `ui/dialog`, `ui/popover`, `ui/sheet`, `ui/dropdown-menu`, `ui/tooltip` |
+| Monatskalender (Raster Mo–So, 6 Wochen; mobil Agenda-Liste) | `MonthCalendar` (`items: CalendarItem[]` mit `startsOn`/`endsOn`/`startsTime`/`endsTime`/`color`, optional `recurring` (Wiederhol-Symbol, Titel „(Serie)“ im Label) und `key` (eindeutiger Schlüssel je Vorkommen, sonst `id`), `bind:month` `YYYY-MM`, `today?`, `onselect(item)`, `onday?(date)` → „+“-Knopf je Tag, `loading`); mehrtägige Termine als durchgehende Balken (Spuren je Woche, max. 3, sonst „+n weitere“-Popover), Schriftfarbe per `contrastTextColor`; Logik in `layout/month-calendar.ts` |
+| Bestätigung per Eingabe eines Wortes (unumkehrbare Aktionen, z. B. `ZURÜCKSETZEN`) | `TypedConfirmField` (`$lib/components/layout/TypedConfirmField.svelte`; `word`, `bind:value`, `bind:confirmed` – true nur bei exakter, NFC-normalisierter Eingabe; `label?`, `hint?`, `id?`, `disabled?`). Danach destruktiver Button → `ConfirmDialog`; Muster: `/system/reset` |
 Neue wiederverwendbare Bausteine kommen nach `components/layout` (fachlich) bzw. `components/ui` (generisch) und
 werden in `docs/module-development.md` (Tabelle) und hier ergänzt.
 

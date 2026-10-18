@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			lastUsedAt: k.lastUsedAt,
 			createdAt: k.createdAt
 		})),
-		// Nur Scopes, die der Benutzer selbst besitzt, koennen vergeben werden
+		// Nur Scopes, die der Benutzer selbst besitzt, können vergeben werden
 		scopes: permissions
 			.filter((p) => locals.ctx.permissions.has(p.key))
 			.map((p) => ({ key: p.key, moduleId: p.moduleId, description: p.description })),

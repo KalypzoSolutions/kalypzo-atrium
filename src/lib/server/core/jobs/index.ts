@@ -1,7 +1,7 @@
 /**
- * Hintergrundjobs der Module (`ModuleDefinition.jobs`). Ein Zeitgeber prueft regelmaessig, welche
- * Jobs faellig sind; die Sperre ist ein atomares Upsert auf `job_run` (keine offene Transaktion
- * waehrend des Laufs – wichtig fuer PGlite mit nur einer Sitzung). Mehrere Instanzen laufen
+ * Hintergrundjobs der Module (`ModuleDefinition.jobs`). Ein Zeitgeber prüft regelmäßig, welche
+ * Jobs fällig sind; die Sperre ist ein atomares Upsert auf `job_run` (keine offene Transaktion
+ * während des Laufs – wichtig für PGlite mit nur einer Sitzung). Mehrere Instanzen laufen
  * dadurch nicht doppelt.
  */
 import { sql } from 'drizzle-orm';
@@ -26,7 +26,7 @@ const TICK_MS = 5 * 60_000;
 const FIRST_TICK_MS = 30_000;
 
 let clock: () => Date = () => new Date();
-/** Nur fuer Tests: feste oder verschobene Uhr */
+/** Nur für Tests: feste oder verschobene Uhr */
 export function setJobClockForTests(fn: (() => Date) | undefined): void {
 	clock = fn ?? (() => new Date());
 }
@@ -108,10 +108,27 @@ async function execute(entry: RegisteredJob, ctx: RequestContext): Promise<JobIn
 	}
 }
 
-/** Fuehrt alle faelligen Jobs aktiver Module nacheinander aus. Gibt die gelaufenen Schluessel zurueck. */
+let pauseDepth = 0;
+
+/** Pausiert den Job-Runner (z. B. während eines Admin-Resets); verschachtelbar. */
+export function pauseJobs(): void {
+	pauseDepth++;
+}
+
+/** Hebt eine `pauseJobs()`-Pause wieder auf. */
+export function resumeJobs(): void {
+	pauseDepth = Math.max(0, pauseDepth - 1);
+}
+
+export function jobsPaused(): boolean {
+	return pauseDepth > 0;
+}
+
+/** Führt alle fälligen Jobs aktiver Module nacheinander aus. Gibt die gelaufenen Schlüssel zurück. */
 export async function runDueJobs(): Promise<string[]> {
 	const ran: string[] = [];
 	for (const entry of registeredJobs()) {
+		if (jobsPaused()) break;
 		if (!(await isModuleEnabled(entry.moduleId))) continue;
 		if (!(await claim(entry.key, entry.job.schedule, false))) continue;
 		await execute(entry, systemContext(`job:${entry.key}`));
@@ -142,14 +159,15 @@ export async function listJobs(): Promise<JobInfo[]> {
 	return out;
 }
 
-/** Manuell ausloesen (Admin/Tests). 404 unbekannt oder Modul aus, 409 laeuft bereits. */
+/** Manuell auslösen (Admin/Tests). 404 unbekannt oder Modul aus, 409 läuft bereits. */
 export async function runJobNow(ctx: RequestContext, key: string): Promise<JobInfo> {
 	const entry = registeredJobs().find((j) => j.key === key);
 	if (!entry || !(await isModuleEnabled(entry.moduleId))) {
 		throw errors.notFound('Job nicht gefunden');
 	}
+	if (jobsPaused()) throw errors.conflict('Jobs sind pausiert (Zurücksetzen läuft)');
 	if (!(await claim(entry.key, entry.job.schedule, true))) {
-		throw errors.conflict('Job laeuft bereits');
+		throw errors.conflict('Job läuft bereits');
 	}
 	await execute(entry, systemContext(`job:${entry.key}`));
 	await auditFromContext(ctx, 'core.job.triggered', { target: key });

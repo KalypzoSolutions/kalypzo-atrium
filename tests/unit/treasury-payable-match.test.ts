@@ -34,7 +34,7 @@ describe('suggestPayable', () => {
 		).toMatchObject({ payableId: 'anna', confidence: 'medium' });
 	});
 
-	it('Name (zwei Woerter, Umlaute/Gross-Klein egal) + Betrag → sicher', () => {
+	it('Name (zwei Wörter, Umlaute/Groß-Klein egal) + Betrag → sicher', () => {
 		expect(
 			suggestPayable(
 				{ amountCents: -12000, counterparty: 'ZELTPLATZ WALDBLICK', purpose: 'RE 4711' },

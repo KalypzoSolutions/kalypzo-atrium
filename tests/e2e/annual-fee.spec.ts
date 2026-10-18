@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// Kasse → Jahresbeitrag: Lauf anlegen, Betreff per Autosave, Empfaenger/Summen, Mail-Vorschau,
+// Kasse → Jahresbeitrag: Lauf anlegen, Betreff per Autosave, Empfänger/Summen, Mail-Vorschau,
 // Versand planen und Planung aufheben. Es wird bewusst NICHT versendet (der E2E-Server hat kein SMTP).
 
 const ADMIN = { email: 'admin@example.test', password: 'e2e-admin-password-1' };
@@ -39,7 +39,7 @@ async function api<T>(page: Page, method: string, path: string, body?: unknown):
 	return (text ? (JSON.parse(text) as { data: T }).data : null) as T;
 }
 
-/** Module in Reihenfolge aktivieren (Abhaengigkeiten zuerst), falls noch nicht aktiv. */
+/** Module in Reihenfolge aktivieren (Abhängigkeiten zuerst), falls noch nicht aktiv. */
 async function ensureModules(page: Page, ids: string[]) {
 	const list = await api<{ manifest: { id: string }; enabled: boolean }[]>(page, 'GET', '/modules');
 	for (const id of ids) {
@@ -61,19 +61,19 @@ function dateIn(days: number) {
 
 test.describe.configure({ mode: 'serial' });
 
-test('Jahresbeitrag: Lauf anlegen, Texte, Empfaenger, Vorschau, planen', async ({ page }) => {
+test('Jahresbeitrag: Lauf anlegen, Texte, Empfänger, Vorschau, planen', async ({ page }) => {
 	await login(page);
 	await ensureModules(page, ['members', 'actions', 'treasury']);
 
 	const year = new Date().getFullYear() + 1;
 	const base = '/modules/treasury/annual-fees';
 
-	// Wiederholbarkeit (reuseExistingServer): vorhandenen Entwurf fuer das Jahr entfernen
+	// Wiederholbarkeit (reuseExistingServer): vorhandenen Entwurf für das Jahr entfernen
 	const existing = (await api<AnnualRun[]>(page, 'GET', base)).find((r) => r.year === year);
 	test.skip(existing?.status === 'sent', `Beitragslauf ${year} ist in dieser DB schon versendet`);
 	if (existing) await api(page, 'DELETE', `${base}/${existing.id}`);
 
-	// Zwei Geschwister + Zahler (Familie) → eine Sammelrechnung ueber 2 × 47 €
+	// Zwei Geschwister + Zahler (Familie) → eine Sammelrechnung über 2 × 47 €
 	const lastName = `Biber${run}`;
 	const member = (firstName: string, birthDate: string) => ({
 		firstName,
@@ -117,13 +117,13 @@ test('Jahresbeitrag: Lauf anlegen, Texte, Empfaenger, Vorschau, planen', async (
 	const yearSelect = page.getByRole('button', { name: 'Beitragsjahr' });
 	await expect(yearSelect).toContainText(`Beitragsjahr ${year} · Entwurf`);
 
-	// Der Lauf ist in Schritte gegliedert: Beitraege → Texte → Vorschau → Senden
+	// Der Lauf ist in Schritte gegliedert: Beiträge → Texte → Vorschau → Senden
 	const step = (name: string) =>
 		page
 			.getByRole('navigation', { name: 'Schritte des Beitragslaufs' })
 			.getByRole('button', { name });
 
-	// Betreff aendern → Autosave
+	// Betreff ändern → Autosave
 	await step('Texte').click();
 	const subject = `Beitrag {jahr} E2E ${run}`;
 	const subjectInput = page.getByRole('textbox', { name: /^Betreff/ });
@@ -134,7 +134,7 @@ test('Jahresbeitrag: Lauf anlegen, Texte, Empfaenger, Vorschau, planen', async (
 	const created = runs.find((r) => r.year === year);
 	expect(created?.mailSubject).toBe(subject);
 
-	// Empfaenger: eine Zeile fuer die Familie mit beiden Kindern und 94 €
+	// Empfänger: eine Zeile für die Familie mit beiden Kindern und 94 €
 	await step('Vorschau').click();
 	const recipients = page.getByRole('table', { name: 'Empfänger des Jahresbeitrags' });
 	const familyRow = recipients.getByRole('row').filter({ hasText: payerName });
@@ -145,7 +145,7 @@ test('Jahresbeitrag: Lauf anlegen, Texte, Empfaenger, Vorschau, planen', async (
 	await expect(familyRow).toContainText(fmtEuro(9400));
 	await expect(familyRow).toContainText(`biber-${run}@example.test`);
 
-	// Kennzahlen = Vorschau der API (in der DB koennen weitere Mitglieder anderer Tests liegen)
+	// Kennzahlen = Vorschau der API (in der DB können weitere Mitglieder anderer Tests liegen)
 	const preview = await api<AnnualPreview>(page, 'GET', `${base}/${created!.id}/preview?mode=run`);
 	expect(preview.memberCount).toBeGreaterThanOrEqual(2);
 	expect(preview.invoices.find((i) => i.recipientName === payerName)?.totalCents).toBe(9400);
@@ -159,7 +159,7 @@ test('Jahresbeitrag: Lauf anlegen, Texte, Empfaenger, Vorschau, planen', async (
 	await expect(stat('Mitglieder')).toHaveText(String(preview.memberCount));
 	await expect(stat('Summe')).toHaveText(fmtEuro(preview.totalCents));
 
-	// Mail-Vorschau fuer die Familie
+	// Mail-Vorschau für die Familie
 	await page.getByRole('button', { name: 'Familie für die Vorschau' }).click();
 	await page.getByRole('option', { name: new RegExp(`^${payerName}`) }).click();
 	const mailPreview = page.getByRole('region', { name: 'Mail-Vorschau' });
@@ -191,6 +191,6 @@ test('Jahresbeitrag: Lauf anlegen, Texte, Empfaenger, Vorschau, planen', async (
 	const after = (await api<AnnualRun[]>(page, 'GET', base)).find((r) => r.year === year);
 	expect(after?.status).toBe('draft');
 
-	// Aufraeumen: Entwurf loeschen, damit spaetere Laeufe sauber starten
+	// Aufräumen: Entwurf löschen, damit spätere Läufe sauber starten
 	await api(page, 'DELETE', `${base}/${created!.id}`);
 });

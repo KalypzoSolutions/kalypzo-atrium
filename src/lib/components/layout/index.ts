@@ -26,3 +26,5 @@ export { default as CostBar, type CostSegment } from './CostBar.svelte';
 export { parseEuroToCents, formatCents, formatEuro, ceilToEuroCents } from './money';
 export { openProtectedFile } from './open-file';
 export { toastWithUndo, type UndoOptions } from './undo';
+export { default as MonthCalendar } from './MonthCalendar.svelte';
+export type { CalendarItem } from './month-calendar';

@@ -19,7 +19,7 @@ import type { AccountingEntry, AccountingState } from '$lib/modules/actions/sche
 import type { Account, Payable, PayableList } from '$lib/modules/treasury/schemas';
 import type { ClosedAccountingDetailItem } from '$lib/modules/treasury/closed-accountings';
 
-// Gueltige Test-IBANs (Pruefsumme korrekt)
+// Gültige Test-IBANs (Prüfsumme korrekt)
 const IBAN_HOSTEL = 'DE89370400440532013000';
 const IBAN_PAYEE = 'DE02120300000000202051';
 
@@ -140,7 +140,7 @@ afterAll(async () => {
 describe('Ausgaben bezahlt vom Stamm', () => {
 	let entryId = '';
 
-	it('verlangt Empfaenger, IBAN und Verwendungszweck, solange nicht bezahlt', async () => {
+	it('verlangt Empfänger, IBAN und Verwendungszweck, solange nicht bezahlt', async () => {
 		const res = await A(`/actions/${actionId}/accounting/entries`, {
 			method: 'POST',
 			json: expense({ clubPaid: false })
@@ -223,7 +223,7 @@ describe('Ausgaben bezahlt vom Stamm', () => {
 		expect(csv).toContain('Rechnung 4711 Pfingstlager');
 	});
 
-	it('Aendern ohne IBAN behaelt die gespeicherte IBAN, Betrag folgt in der Kasse', async () => {
+	it('Ändern ohne IBAN behält die gespeicherte IBAN, Betrag folgt in der Kasse', async () => {
 		await data(
 			await A(`/actions/${actionId}/accounting/entries/${entryId}`, {
 				method: 'PUT',
@@ -240,7 +240,7 @@ describe('Ausgaben bezahlt vom Stamm', () => {
 		expect(p.hasIban).toBe(true);
 	});
 
-	it('Ueberweisung in der Kasse markiert die Ausgabe als bezahlt und sperrt sie', async () => {
+	it('Überweisung in der Kasse markiert die Ausgabe als bezahlt und sperrt sie', async () => {
 		const p = (await payables('open')).find((x) => x.source === 'expense')!;
 		const paid = await data<Payable>(
 			await T(`/payables/${p.id}/pay`, {
@@ -268,14 +268,14 @@ describe('Ausgaben bezahlt vom Stamm', () => {
 		const again = (await payables()).find((x) => x.id === p.id)!;
 		expect(again.cancelledAt).toBeNull();
 
-		// Zahlung loeschen → in der Abrechnung wieder offen
+		// Zahlung löschen → in der Abrechnung wieder offen
 		await data(await T(`/transactions/${paid.payments[0]!.transactionId}`, { method: 'DELETE' }));
 		const reopened = await entryOf(entryId);
 		expect(reopened.clubPaidAt).toBeNull();
 		expect(reopened.clubPaidVia).toBeNull();
 	});
 
-	it('nachtraeglich „bereits bezahlt“ storniert die offene Auszahlung', async () => {
+	it('nachträglich „bereits bezahlt“ storniert die offene Auszahlung', async () => {
 		await data(
 			await A(`/actions/${actionId}/accounting/entries/${entryId}`, {
 				method: 'PUT',
@@ -316,7 +316,7 @@ describe('Ausgaben bezahlt vom Stamm', () => {
 describe('Auslagen erst mit Abschluss, Abrechnungen in der Kasse', () => {
 	let payeeId = '';
 
-	it('Auslage erscheint erst nach dem Abschluss, Wiederoeffnen storniert sie', async () => {
+	it('Auslage erscheint erst nach dem Abschluss, Wiederöffnen storniert sie', async () => {
 		payeeId = (
 			await data<{ id: string }>(
 				await A(`/actions/${actionId}/accounting/payees`, {
@@ -388,7 +388,7 @@ describe('Auslagen erst mit Abschluss, Abrechnungen in der Kasse', () => {
 		expect((await T(`/closed-accountings/${actionId}/receipts/${entry.id}`)).status).toBe(404);
 		expect((await T(`/closed-accountings/${crypto.randomUUID()}`)).status).toBe(404);
 		expect((await T(`/closed-accountings/${actionId}`, {}, keyNoReport)).status).toBe(403);
-		// lastUsedAt/Zugriffslog laufen ohne await: eine weitere Anfrage abwarten, sonst haengt close()
+		// lastUsedAt/Zugriffslog laufen ohne await: eine weitere Anfrage abwarten, sonst hängt close()
 		await data(await T('/closed-accountings'));
 	});
 });

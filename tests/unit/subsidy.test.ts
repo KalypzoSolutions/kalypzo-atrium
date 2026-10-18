@@ -16,7 +16,7 @@ const base = (over: Partial<SubsidyInput> = {}): SubsidyInput => ({
 });
 
 describe('computeSubsidy extern', () => {
-	it('3 Naechte: 13/14 Euro', () => {
+	it('3 Nächte: 13/14 Euro', () => {
 		const r = computeSubsidy(base());
 		expect(r.lines[0]).toMatchObject({
 			key: 'children',
@@ -33,7 +33,7 @@ describe('computeSubsidy extern', () => {
 		});
 		expect(r.subsidyCents).toBe(60000);
 	});
-	it('4 und 14 Naechte: 15/16 Euro', () => {
+	it('4 und 14 Nächte: 15/16 Euro', () => {
 		const a = computeSubsidy(base({ nights: 4 }));
 		expect(a.lines[0]!.rateCents).toBe(1500);
 		expect(a.lines[1]!.rateCents).toBe(1600);
@@ -43,7 +43,7 @@ describe('computeSubsidy extern', () => {
 		expect(b.subsidyCents).toBe(14 * (10 * 1500 + 5 * 1600));
 		expect(b.warnings).toEqual([]);
 	});
-	it('15 Naechte werden bei 14 gedeckelt', () => {
+	it('15 Nächte werden bei 14 gedeckelt', () => {
 		const r = computeSubsidy(base({ nights: 15 }));
 		expect(r.cappedNights).toBe(14);
 		expect(r.lines[0]!.nights).toBe(14);
@@ -56,30 +56,30 @@ describe('computeSubsidy extern', () => {
 		expect(r.lines[1]!.rateCents).toBe(1400);
 		expect(r.warnings).toContain('Konfi-Fahrten erhalten nicht den erhöhten Satz für 4–14 Nächte.');
 	});
-	it('Konfi mit 3 Naechten ohne Warnung', () => {
+	it('Konfi mit 3 Nächten ohne Warnung', () => {
 		expect(computeSubsidy(base({ konfi: true })).warnings).toEqual([]);
 	});
 });
 
-describe('computeSubsidy Gemeinderaeume', () => {
-	it('2 Naechte: kein Zuschuss, Warnung', () => {
+describe('computeSubsidy Gemeinderäume', () => {
+	it('2 Nächte: kein Zuschuss, Warnung', () => {
 		const r = computeSubsidy(base({ nights: 2, lodgingType: 'parish_rooms' }));
 		expect(r.subsidyCents).toBe(0);
 		expect(r.warnings).toContain(
 			'Übernachtungen in Gemeinderäumen werden erst ab drei Nächten bezuschusst.'
 		);
 	});
-	it('3 Naechte: 3/4 Euro', () => {
+	it('3 Nächte: 3/4 Euro', () => {
 		const r = computeSubsidy(base({ nights: 3, lodgingType: 'parish_rooms' }));
 		expect(r.subsidyCents).toBe(3 * (10 * 300 + 5 * 400));
 	});
-	it('5 Naechte: kein Langzeit-Satz', () => {
+	it('5 Nächte: kein Langzeit-Satz', () => {
 		const r = computeSubsidy(base({ nights: 5, lodgingType: 'parish_rooms' }));
 		expect(r.lines[0]!.rateCents).toBe(300);
 		expect(r.lines[1]!.rateCents).toBe(400);
 		expect(r.subsidyCents).toBe(5 * (10 * 300 + 5 * 400));
 	});
-	it('Taschengeld auch bei 2 Naechten', () => {
+	it('Taschengeld auch bei 2 Nächten', () => {
 		const r = computeSubsidy(base({ nights: 2, lodgingType: 'parish_rooms', teamWithJuleica: 2 }));
 		expect(r.subsidyCents).toBe(0);
 		expect(r.allowance.totalCents).toBe(2 * 1500 * 2);
@@ -110,7 +110,7 @@ describe('Taschengeld', () => {
 		expect(r.allowance.withJuleica).toBe(2);
 		expect(r.allowance.withoutJuleica).toBe(0);
 	});
-	it('Taschengeld nutzt maximal 14 Naechte', () => {
+	it('Taschengeld nutzt maximal 14 Nächte', () => {
 		const r = computeSubsidy(base({ nights: 20, children: 5, teamWithJuleica: 1 }));
 		expect(r.allowance.nights).toBe(14);
 		expect(r.allowance.totalCents).toBe(1500 * 14);
@@ -118,7 +118,7 @@ describe('Taschengeld', () => {
 });
 
 describe('Teamer*innen aus Bremen', () => {
-	it('zaehlen in der Jugendlichen-Zeile mit', () => {
+	it('zählen in der Jugendlichen-Zeile mit', () => {
 		const r = computeSubsidy(base({ teamYouth: 3 }));
 		expect(r.lines[1]).toMatchObject({
 			count: 8,
@@ -127,7 +127,7 @@ describe('Teamer*innen aus Bremen', () => {
 		});
 		expect(computeSubsidy(base()).lines[1]!.label).toBe('Jugendliche (12–27 Jahre)');
 	});
-	it('zaehlen fuer die Taschengeld-Grenze der Jugendfreizeit', () => {
+	it('zählen für die Taschengeld-Grenze der Jugendfreizeit', () => {
 		const r = computeSubsidy(
 			base({ freizeitType: 'youth', youth: 10, teamYouth: 4, teamWithoutJuleica: 5 })
 		);
@@ -142,8 +142,8 @@ describe('Teamer*innen aus Bremen', () => {
 	});
 });
 
-describe('Sonderfaelle', () => {
-	it('0 Naechte: nichts', () => {
+describe('Sonderfälle', () => {
+	it('0 Nächte: nichts', () => {
 		const r = computeSubsidy(base({ nights: 0, teamWithJuleica: 1 }));
 		expect(r.subsidyCents).toBe(0);
 		expect(r.allowance.totalCents).toBe(0);

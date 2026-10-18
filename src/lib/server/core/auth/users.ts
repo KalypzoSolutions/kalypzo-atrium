@@ -106,7 +106,7 @@ export interface CreateUserInput {
 	roleIds?: string[];
 }
 
-/** Interner Helfer ohne Rechtepruefung (Bootstrap, Tests). */
+/** Interner Helfer ohne Rechteprüfung (Bootstrap, Tests). */
 export async function createUserUnchecked(input: CreateUserInput): Promise<string> {
 	const auth = getAuth();
 	const authCtx = await auth.$context;
@@ -140,7 +140,7 @@ export async function createUserUnchecked(input: CreateUserInput): Promise<strin
 }
 
 /**
- * Konto fuer die oeffentliche Selbstregistrierung (Aufrufer prueft vorher, dass das erlaubt ist):
+ * Konto für die öffentliche Selbstregistrierung (Aufrufer prüft vorher, dass das erlaubt ist):
  * Rolle wird per Name gesucht, sonst ohne Rechte angelegt. Kein Audit-Kontext (Aufrufer auditiert).
  */
 export async function registerUserWithRole(input: {
@@ -150,7 +150,7 @@ export async function registerUserWithRole(input: {
 	roleName: string;
 }): Promise<string> {
 	const name = input.name.trim();
-	if (!name || name.length > 120) throw errors.badRequest('Ungueltiger Name');
+	if (!name || name.length > 120) throw errors.badRequest('Ungültiger Name');
 	if (input.password.length < 12 || input.password.length > 128) {
 		throw errors.badRequest('Passwort muss 12 bis 128 Zeichen lang sein');
 	}
@@ -218,14 +218,14 @@ export async function updateUser(
 				.where(eq(schema.user.email, email));
 			if (dup) throw errors.conflict('E-Mail-Adresse wird bereits verwendet');
 			patch.email = email;
-			// Administrativ geaenderte Adresse gilt als verifiziert
+			// Administrativ geänderte Adresse gilt als verifiziert
 			patch.emailVerified = true;
 			emailChanged = true;
 		}
 	}
 	await db.transaction(async (tx) => {
 		await tx.update(schema.user).set(patch).where(eq(schema.user.id, id));
-		// Alte Sessions gehoeren zur alten Adresse
+		// Alte Sessions gehören zur alten Adresse
 		if (emailChanged) await tx.delete(schema.session).where(eq(schema.session.userId, id));
 		await auditFromContext(
 			ctx,
@@ -243,7 +243,7 @@ export async function setUserActive(
 ): Promise<void> {
 	await requirePermission(ctx, 'core.users.edit');
 	if (!active) {
-		if (id === ctx.userId) throw errors.conflict('Sie koennen sich nicht selbst deaktivieren');
+		if (id === ctx.userId) throw errors.conflict('Sie können sich nicht selbst deaktivieren');
 		if ((await activeAdminCount(id)) === 0) {
 			const roles = await rolesByUser([id]);
 			if (roles.get(id)?.some((r) => r.id === ADMIN_ROLE_ID)) {
@@ -271,10 +271,10 @@ export async function setUserActive(
 
 export async function deleteUser(ctx: RequestContext, id: string): Promise<void> {
 	await requirePermission(ctx, 'core.users.delete');
-	if (id === ctx.userId) throw errors.conflict('Sie koennen sich nicht selbst loeschen');
+	if (id === ctx.userId) throw errors.conflict('Sie können sich nicht selbst löschen');
 	const roles = await rolesByUser([id]);
 	if (roles.get(id)?.some((r) => r.id === ADMIN_ROLE_ID) && (await activeAdminCount(id)) === 0) {
-		throw errors.conflict('Der letzte Administrator kann nicht geloescht werden');
+		throw errors.conflict('Der letzte Administrator kann nicht gelöscht werden');
 	}
 	const res = await getDb()
 		.delete(schema.user)
@@ -310,7 +310,7 @@ export async function setUserRoles(
 		);
 	}
 	if (id === ctx.userId && removed.length) {
-		throw errors.conflict('Sie koennen sich eigene Rollen nicht entziehen');
+		throw errors.conflict('Sie können sich eigene Rollen nicht entziehen');
 	}
 	await db.transaction(async (tx) => {
 		await tx.delete(schema.userRole).where(eq(schema.userRole.userId, id));
@@ -358,16 +358,18 @@ export interface DirectoryUser {
 	id: string;
 	name: string;
 	email: string;
+	/** Profilbild-Adresse (`/avatar/<id>?v=…`) oder `null` */
+	image: string | null;
 }
 
 const DIRECTORY_MAX = 30;
 const DIRECTORY_MIN_SEARCH = 2;
 
 /**
- * Minimales Benutzerverzeichnis fuer Module (z. B. Freigaben): nur aktive Benutzer, nur
- * `id`, `name`, `email`. Erfordert eine angemeldete Identitaet, aber nicht `core.users.view`.
- * Eine Suche braucht mindestens 2 Zeichen; ohne Suche sind nur explizite `ids` aufloesbar,
- * damit sich nicht die komplette Benutzerliste auslesen laesst.
+ * Minimales Benutzerverzeichnis für Module (z. B. Freigaben): nur aktive Benutzer, nur
+ * `id`, `name`, `email`. Erfordert eine angemeldete Identität, aber nicht `core.users.view`.
+ * Eine Suche braucht mindestens 2 Zeichen; ohne Suche sind nur explizite `ids` auflösbar,
+ * damit sich nicht die komplette Benutzerliste auslesen lässt.
  */
 export async function searchUserDirectory(
 	ctx: RequestContext,
@@ -385,10 +387,26 @@ export async function searchUserDirectory(
 		const match = or(ilike(schema.user.name, `%${s}%`), ilike(schema.user.email, `%${s}%`));
 		if (match) conditions.push(match);
 	}
-	return getDb()
-		.select({ id: schema.user.id, name: schema.user.name, email: schema.user.email })
+	const rows = await getDb()
+		.select({
+			id: schema.user.id,
+			name: schema.user.name,
+			email: schema.user.email,
+			image: schema.user.image
+		})
 		.from(schema.user)
 		.where(and(...conditions))
 		.orderBy(asc(schema.user.name))
 		.limit(limit);
+	return rows.map((r) => ({ ...r, image: directoryAvatar(r.id, r.image) }));
+}
+
+/**
+ * Nur eigene Profilbild-Adressen (`/avatar/<id>` bzw. `/avatar/<id>?v=…`) weitergeben – alte oder
+ * manipulierte `user.image`-Werte (fremde URLs) sollen nicht als Bild eingebettet werden.
+ */
+function directoryAvatar(id: string, image: string | null): string | null {
+	if (!image) return null;
+	const base = `/avatar/${encodeURIComponent(id)}`;
+	return image === base || image.startsWith(`${base}?`) ? image : null;
 }

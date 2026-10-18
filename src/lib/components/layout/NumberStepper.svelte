@@ -20,7 +20,7 @@
 		min?: number;
 		max?: number;
 		step?: number;
-		/** Zugaengliche Bezeichnung (aria-label) */
+		/** Zugängliche Bezeichnung (aria-label) */
 		label: string;
 		/** Einheit als Suffix, z. B. „Nächte“ */
 		unit?: string;

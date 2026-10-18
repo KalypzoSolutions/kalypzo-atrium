@@ -88,6 +88,10 @@ Anschließend in der Oberfläche konfigurieren: Einstellungen (Systemname, SMTP)
 
 Der PDF-Service startet Chromium mit `--no-sandbox` (im Container ohne User-Namespaces üblich). Seiten werden ohne JavaScript gerendert, externe Requests blockiert. Das Image enthält Chromium (~400 MB). Für lokale Läufe: `npx playwright install chromium`.
 
+## Bildverarbeitung (sharp)
+
+`core.images` nutzt die native Bibliothek `sharp` (libvips). Sie kommt als **vorgebaute** Optionalpakete `@img/sharp-<plattform>` und `@img/sharp-libvips-<plattform>` und braucht deshalb kein Install-Skript: `npm ci --ignore-scripts` im `bookworm-slim`-Image funktioniert ohne Compiler oder Systempakete. Voraussetzung: `package-lock.json` enthält die Pakete für `linux-x64` (`@img/sharp-linux-x64`, `@img/sharp-libvips-linux-x64`) – bei einem Lockfile, das nur unter Windows/macOS erzeugt wurde, prüfen (`grep sharp-linux-x64 package-lock.json`); für ARM-Server entsprechend `linux-arm64`. `sharp` steht in `dependencies` (wird mit `--omit=dev` installiert). HEIC/HEIF unterstützt der Prebuild nicht.
+
 ## Healthchecks
 
 - App: `GET /api/v1/health` (Docker-Healthcheck).

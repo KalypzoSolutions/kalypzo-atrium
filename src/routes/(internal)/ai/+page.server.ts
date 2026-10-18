@@ -34,7 +34,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			costUsd: usage.reduce((s, r) => s + r.costUsd, 0)
 		},
 		limits: { tokens: tokenLimit, costUsd: costLimit },
-		// Konfiguration nur mit core.ai.manage (enthaelt Secret-Status)
+		// Konfiguration nur mit core.ai.manage (enthält Secret-Status)
 		fields: canManage ? await loadFields(['ai']) : [],
 		canManage
 	};

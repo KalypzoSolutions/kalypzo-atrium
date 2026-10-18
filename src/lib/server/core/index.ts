@@ -1,5 +1,5 @@
 /**
- * Zentrales Core-SDK (nur Server). Module importieren ausschliesslich `$lib/sdk/server`.
+ * Zentrales Core-SDK (nur Server). Module importieren ausschließlich `$lib/sdk/server`.
  * Jede Operation arbeitet mit einem RequestContext; Berechtigungen werden hier erzwungen.
  */
 import * as ai from './ai';
@@ -38,6 +38,7 @@ import {
 	requireAny,
 	requirePermission
 } from './permissions/service';
+import { roleDirectory, roleIdsForUser } from './permissions/roles';
 import * as pdf from './pdf';
 import { sendMail } from './mail';
 import { errors } from './errors';
@@ -45,23 +46,31 @@ import { env } from './env';
 import { qrDataUrl } from './qr';
 import { getPublicSettings, getSetting, getSettings, setSetting } from './settings/service';
 import * as storage from './storage';
+import { processImage } from './images';
+import {
+	RESET_CONFIRM_WORD,
+	executeReset,
+	exportResetData,
+	listResetAreas,
+	previewReset
+} from './system/reset';
 
 const EMAIL_RE = /^[^\s@,;<>()"]+@[^\s@,;<>()"]+\.[^\s@,;<>()"]+$/;
 
 const MAX_MAIL_FILES = 3;
 const MAX_MAIL_FILE_BYTES = 5 * 1024 * 1024;
 
-/** Mailversand fuer Module mit Eingabevalidierung (Header-Injection, Laengen, nur PDF-Anhaenge). */
+/** Mailversand für Module mit Eingabevalidierung (Header-Injection, Längen, nur PDF-Anhänge). */
 async function sendModuleMail(msg: {
 	to: string;
 	subject: string;
 	text: string;
 	html?: string;
-	/** Nur PDF, hoechstens 3 Dateien und 5 MB gesamt */
+	/** Nur PDF, höchstens 3 Dateien und 5 MB gesamt */
 	attachments?: { filename: string; contentType: 'application/pdf'; data: Uint8Array }[];
 }): Promise<void> {
 	if (typeof msg.to !== 'string' || msg.to.length > 254 || !EMAIL_RE.test(msg.to)) {
-		throw errors.validation([{ path: ['to'], message: 'Ungueltige E-Mail-Adresse' }]);
+		throw errors.validation([{ path: ['to'], message: 'Ungültige E-Mail-Adresse' }]);
 	}
 	if (
 		typeof msg.subject !== 'string' ||
@@ -70,7 +79,7 @@ async function sendModuleMail(msg: {
 		/[\r\n]/.test(msg.subject)
 	) {
 		throw errors.validation([
-			{ path: ['subject'], message: 'Betreff ungueltig (max. 200 Zeichen, keine Zeilenumbrueche)' }
+			{ path: ['subject'], message: 'Betreff ungültig (max. 200 Zeichen, keine Zeilenumbrüche)' }
 		]);
 	}
 	if (typeof msg.text !== 'string' || msg.text.length > 20000) {
@@ -87,7 +96,7 @@ async function sendModuleMail(msg: {
 		list.some((a) => a.contentType !== 'application/pdf' || !(a.data instanceof Uint8Array))
 	) {
 		throw errors.validation([
-			{ path: ['attachments'], message: 'Nur bis zu 3 PDF-Anhaenge mit zusammen max. 5 MB' }
+			{ path: ['attachments'], message: 'Nur bis zu 3 PDF-Anhänge mit zusammen max. 5 MB' }
 		]);
 	}
 	const files = list.map((a) => ({
@@ -117,23 +126,32 @@ export const core = {
 	},
 	users: {
 		/**
-		 * Minimales Verzeichnis (id, name, email) aktiver Benutzer, z. B. fuer Freigaben.
+		 * Minimales Verzeichnis (id, name, email) aktiver Benutzer, z. B. für Freigaben.
 		 * Braucht nur Anmeldung; Suche ab 2 Zeichen, maximal 30 Treffer.
 		 */
 		directory: searchUserDirectory,
 		/**
-		 * Legt ein Konto OHNE Rechtepruefung an (Rolle per Name, wird ohne Rechte angelegt). Nur aus
-		 * kontrollierten oeffentlichen Pfaden (z. B. gueltiger Verknuepfungscode) aufrufen.
+		 * Legt ein Konto OHNE Rechteprüfung an (Rolle per Name, wird ohne Rechte angelegt). Nur aus
+		 * kontrollierten öffentlichen Pfaden (z. B. gültiger Verknüpfungscode) aufrufen.
 		 */
-		registerWithRole: registerUserWithRole
+		registerWithRole: registerUserWithRole,
+		/** Rollen-IDs eines Benutzers (z. B. für Freigaben an Rollen) */
+		roleIds: roleIdsForUser
+	},
+	roles: {
+		/**
+		 * Minimales Rollenverzeichnis (id, name), z. B. für Freigaben an Rollen.
+		 * Braucht nur Anmeldung (kein `core.roles.view`); Suche ab 2 Zeichen oder IDs, maximal 30 Treffer.
+		 */
+		directory: roleDirectory
 	},
 	crypto: {
-		/** Verschluesselung sensibler Modul-Daten (AES-256-GCM), Schluessel je Modul abgeleitet */
+		/** Verschlüsselung sensibler Modul-Daten (AES-256-GCM), Schlüssel je Modul abgeleitet */
 		forModule: (moduleId: string) => ({
 			encrypt: (plain: string) => encryptSecret(plain, `module:${moduleId}`),
 			decrypt: (value: string) => decryptSecret(value, `module:${moduleId}`),
 			isEncrypted,
-			/** HMAC-SHA256 mit Modulschluessel (gleiche Eingabe → gleicher Wert, nicht umkehrbar) */
+			/** HMAC-SHA256 mit Modulschlüssel (gleiche Eingabe → gleicher Wert, nicht umkehrbar) */
 			hash: (value: string) => keyedHash(value, `module:${moduleId}`)
 		})
 	},
@@ -153,9 +171,9 @@ export const core = {
 		assertEnabled: assertModuleEnabled,
 		enable: enableModule,
 		disable: disableModule,
-		/** Dienste eines Moduls nutzen, von dem das aufrufende Modul abhaengt (siehe `ModuleDefinition.provides`) */
+		/** Dienste eines Moduls nutzen, von dem das aufrufende Modul abhängt (siehe `ModuleDefinition.provides`) */
 		use: useModuleService,
-		/** Wie `use`, fuer `optionalDependencies`: `null`, wenn der Anbieter nicht aktiv ist */
+		/** Wie `use`, für `optionalDependencies`: `null`, wenn der Anbieter nicht aktiv ist */
 		useOptional: useOptionalModuleService,
 		navigationFor,
 		registered: () => allDefinitions().map((d) => d.manifest)
@@ -164,7 +182,7 @@ export const core = {
 		get: getSetting,
 		getMany: getSettings,
 		set: setSetting,
-		/** Fuer Clients: Secrets werden nie ausgeliefert */
+		/** Für Clients: Secrets werden nie ausgeliefert */
 		listPublic: getPublicSettings
 	},
 	api: {
@@ -179,7 +197,7 @@ export const core = {
 	},
 	pdf: {
 		generate: pdf.generate,
-		/** Mehrere Dokumente (z. B. Serienbrief mit je eigener Adresse) zu einem PDF zusammenfuehren */
+		/** Mehrere Dokumente (z. B. Serienbrief mit je eigener Adresse) zu einem PDF zusammenführen */
 		generateMany: pdf.generateMany,
 		merge: pdf.mergePdfs,
 		registerTemplate: pdf.registerTemplate,
@@ -200,21 +218,37 @@ export const core = {
 		signedUploadUrl: storage.createSignedUploadUrl,
 		confirmUpload: storage.confirmUpload,
 		signedDownloadUrl: storage.createSignedDownloadUrl,
-		usage: storage.usageByModule
+		usage: storage.usageByModule,
+		/** Alle Dateien eines Moduls (optional Präfix) löschen; System oder `core.storage.manage` */
+		purge: storage.purge
+	},
+	images: {
+		/** Bild prüfen, nach EXIF drehen, Metadaten entfernen, Varianten erzeugen (sharp) */
+		process: processImage
 	},
 	mail: {
 		/** Sendet eine E-Mail an eine einzelne Adresse; SMTP-Fehler werden weitergereicht */
 		send: sendModuleMail
 	},
 	qr: {
-		/** QR-Code als PNG-`data:`-URL (z. B. fuer den PDF-Bildblock) */
+		/** QR-Code als PNG-`data:`-URL (z. B. für den PDF-Bildblock) */
 		dataUrl: qrDataUrl
 	},
 	app: {
-		/** Oeffentliche Basis-URL der Anwendung (`ORIGIN`, ohne abschliessenden Schraegstrich) */
+		/** Öffentliche Basis-URL der Anwendung (`ORIGIN`, ohne abschließenden Schrägstrich) */
 		origin: () => env().ORIGIN.replace(/\/+$/, '')
 	},
-	audit: { log: logAudit, logFromContext: auditFromContext, list: listAudit }
+	audit: { log: logAudit, logFromContext: auditFromContext, list: listAudit },
+	system: {
+		/** Admin-Reset (Recht `core.system.reset`, nur Session-Benutzer); siehe `system/reset.ts` */
+		reset: {
+			listAreas: listResetAreas,
+			preview: previewReset,
+			export: exportResetData,
+			execute: executeReset,
+			confirmWord: RESET_CONFIRM_WORD
+		}
+	}
 } as const;
 
 export type Core = typeof core;

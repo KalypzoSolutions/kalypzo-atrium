@@ -1,4 +1,4 @@
-/** `anna@example.org` -> `a***@example.org` (fuer Audit-Eintraege und Hinweise). */
+/** `anna@example.org` -> `a***@example.org` (für Audit-Einträge und Hinweise). */
 export function maskEmail(email: string): string {
 	const at = email.lastIndexOf('@');
 	if (at < 1) return '***';

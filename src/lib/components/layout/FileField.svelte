@@ -7,7 +7,7 @@
 
 	/**
 	 * Einheitliches Datei-Feld: zeigt eine vorhandene Datei (Link + Entfernen), erlaubt Auswahl
-	 * einer neuen Datei mit Typ- und Groessenpruefung und meldet Fehler konsistent.
+	 * einer neuen Datei mit Typ- und Größenprüfung und meldet Fehler konsistent.
 	 */
 	let {
 		id,
@@ -25,7 +25,7 @@
 		error = null
 	}: {
 		id: string;
-		/** Feldname fuer native Formular-Submits (SvelteKit-Actions) */
+		/** Feldname für native Formular-Submits (SvelteKit-Actions) */
 		name?: string;
 		required?: boolean;
 		file?: File | null;
@@ -81,7 +81,7 @@
 		if (!file && input) input.value = '';
 	}
 
-	/** Vorhandene Datei per fetch oeffnen, damit Fehler (503 ohne S3, 404) als Toast erscheinen. */
+	/** Vorhandene Datei per fetch öffnen, damit Fehler (503 ohne S3, 404) als Toast erscheinen. */
 	let opening = $state(false);
 	async function openExisting(e: MouseEvent) {
 		e.preventDefault();

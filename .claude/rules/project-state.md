@@ -94,10 +94,34 @@
   (einmalig je Modul/Rolle/Recht, Marker `role_grant_applied`, Core-Migration 0004). Änderung von Kontakten löst eine **Info-Mail an die alten
   Adressen** aus. Sicherheitsfunde der Prüfung (Konto-Orakel, Session über Bestätigungslink/2FA, fremde Avatar-Pfade, Rate-Limits) behoben.
   Core: `toastWithUndo` jetzt in `components/layout`, `EntityAvatar` mit Fehler-Action statt `onerror` (CSP). Details: `rules/module-members.md`, `docs/security.md`.
+- **Zwischenabrechnungen, Kosten-Link, Admin-Reset (2026-10-18)**: Aktionen: „Zwischenabrechnung Nr. N“ als eingefrorenes Abbild des Gesamtstands (Migr. 0014/0016, unabhängig
+  voneinander, keine Sperre, enthaltene Auslagen sofort in die Kasse, PDF-Download, Rücknahme jeder ZA mit Recht); Kosten-Link je Aktion (Migr. 0015, öffentliche Seite `/p/actions/auslagen/<token>`, Einreichung mit Beleg + IBAN, Prüfung vor Übernahme).
+  Core: öffentliches Multipart (`ApiEndpoint.multipart`), Admin-Seite **Zurücksetzen** (`/system/reset`, Bereiche je Modul + Core, Vorschau, Passwort/TOTP,
+  Pflicht-JSON-Export, Bestätigungswort, `ConfirmDialog`), `core.storage.purge`, Jobs pausierbar, Core-Migration 0005. Details: `architecture.md`,
+  `module-actions.md`, `module-treasury.md`. Offen: Reset-Token nur bei einer Instanz; Buchungsbelege der Kasse bei Teil-Reset verwaist; ZA nicht im Export/Import.
 - **Core**: Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`, Tabelle `job_run`, `/api/v1/jobs`), optionale
   Modul-Abhängigkeiten (`optionalDependencies`, `core.modules.useOptional`); `members` liefert `listMemberContacts`,
   `actions` liefert `listReceivableSources`/`listActionRefs` (`actions/contract.ts`).
-- Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`.
+- **Modul `events` – Termine (2026-10-18)**: Termine (Titel, Beschreibung, Ort, Farbe, Start/Ende mit optionaler Uhrzeit), freie Tags
+  (`TagInput`, Vorschläge `GET /tags`), Zuordnung zu „ganzer Stamm“ (`stamm`, Name aus Einstellung `events.stamm.name`) und `members`-Gruppen,
+  Sichtbarkeit/Bearbeitung über **Freigabe an Principals** (Stamm, Gruppe, Rolle, Benutzer*in, Mitglied; `read|edit`), Eigentümer*in, `view-all`/`edit-all`,
+  Rolle „Mitglied“ bekommt `events.event.view` (`defaultRoleGrants`). Website: `GET /website/events` nur mit Recht/Scope `events.website.read`
+  (API-Key der Stammeswebsite, serverseitig abrufen, nur öffentliche Felder). Core dazu: `$lib/sdk/{types,server}/sharing.ts`, `core.roles.directory`,
+  `core.users.roleIds`, `members`-Dienste `listGroups`/`principalIdsForUser`/`searchMembers`; UI `SharePanel` & Co. mit `type`/`everyoneLabel`,
+  `TagInput`, `MonthCalendar`. UI: Liste/Monat, Dialog, Ansicht, E2E. Details: `rules/module-events.md`.
+  **Serien (2026-10-18, Migr. 0002, v1.1.0)**: Wiederholungstermine täglich/wöchentlich (Wochentage)/monatlich/jährlich mit Intervall und Ende
+  (nie/bis/Anzahl), einzelne Vorkommen absagen oder ändern (`/events/:id/occurrences/:date`), Website liefert jedes Vorkommen einzeln
+  (`recurring`, `occurrenceDate`), Vorschlag „Gruppenstunde übernehmen“; Ansicht als gesperrtes Popup (Dialog statt Sheet) mit Auswahl
+  „Nur diesen Termin / Ganze Serie“, **Monat ist Standardansicht** (`?view=list` für die Liste). Offen: kein „diesen und folgende“.
+- **Modul `galleries` – Galerien (2026-10-18)** (Termine hängen an der **ganzen Galerie**, nicht an einzelnen Bildern; Migr. 0002): Galerien mit Bildern (Upload je Datei ≤ 25 MB, Beschreibung je Bild),
+  Titelbild (Standard = zuerst hochgeladenes Bild, änderbar), Zuordnung von Bildern zu Terminen (`events`-Dienst `EventRefsService`),
+  Freigabe an Principals wie `events` plus Sichtbarkeit **öffentlich/privat**; öffentliche Galerien per API-Key (`galleries.website.read`)
+  inkl. Bilddateien `thumb`/`web` für die Website (serverseitig). Core: `core.images.process` (sharp, Metadaten/GPS entfernt, Varianten).
+  Details: `rules/module-galleries.md`.
+- **API-Übersicht (2026-10-18)**: Admin-Seite `/api-docs` (Recht `core.api.view`) mit allen REST-Endpunkten, automatisch aus der Registry
+  (`core/api/catalog/`, Vertrag `src/lib/api-docs/types.ts`): Rechte, Rate-Limits, Schemas, abgeleitete Fehler, Beispiel-JSON, Konsole zum
+  Ausprobieren mit eigener Session (Mutationen mit Bestätigung). Details: `docs/api.md`. Offen: viele Endpunkte haben kein `response`-Schema.
+- Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`, `rules/module-events.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Programm: Pro-Kopf-Preis wird **aufgerundet** auf volle Euro. Puffer in **Prozent**. Team zahlt einen **Prozentsatz**,
@@ -128,6 +152,8 @@
    nur per **Brieflink** verknüpfen (`/p/members/verknuepfen/<token>`; eine Seite `/claim` gibt es nicht). Die **Anmeldebestätigung** (`registration`) geht an
    die Formular-Adresse und lässt sich nicht je Mitglied abschalten. Zeitstempel am Benutzer und ein laufender E-Mail-Wechsel (`pendingEmail`) sind in der UI
    nicht ermittelbar. **Prettier-Warnungen** in der Windows-Arbeitskopie sind CRLF-Zeilenenden, kein Formatfehler.
+7. **Aktionen auf Principal-Freigabe umstellen** (nach Abschluss der parallelen `actions`-Arbeiten): `action_shares(user_id)` → Muster
+   `<obj>_shares(principal_type, principal_id)` mit `principalKeysFor`/`principalMatchSql`, `ShareMenu` mit `type`. Termine: Seite (Liste/Monat) fertigstellen.
 3. Aufräumen: Git-Initial-Commit, Schema-/Doku-Aktualisierung, ggf. `docs/` um das Modul `actions` ergänzen.
 
 ## Bekannte Eigenheiten

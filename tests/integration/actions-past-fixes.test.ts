@@ -59,7 +59,7 @@ const PERMS = [
 
 const ctxOf = async (userId: string) => {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 };
 
@@ -150,8 +150,8 @@ const close = async (id: string) =>
 const payeeOf = async (id: string, payeeId: string) =>
 	(await state(id)).payees!.find((x) => x.id === payeeId)!;
 
-describe('Vorab erstattete Auslagen und Kassen-Rueckname', () => {
-	it('markReimbursed(false) laesst vorab erstattete Auslagen erstattet (kein Doppelzahlen)', async () => {
+describe('Vorab erstattete Auslagen und Kassen-Rückname', () => {
+	it('markReimbursed(false) lässt vorab erstattete Auslagen erstattet (kein Doppelzahlen)', async () => {
 		const a = await createAction();
 		const p = await newPayee(a.id, 'Gina');
 		const upfront = await data<{ id: string }>(
@@ -165,13 +165,13 @@ describe('Vorab erstattete Auslagen und Kassen-Rueckname', () => {
 		// Kasse zahlt nur die offene Auslage
 		expect(await actionsService.markReimbursed(a.id, p.id, true)).toBe(1);
 		expect(await payeeOf(a.id, p.id)).toMatchObject({ openCents: 0, reimbursedCents: 3500 });
-		// Kassen-Zahlung geloescht: nur die Kassen-Auszahlung wird wieder offen
+		// Kassen-Zahlung gelöscht: nur die Kassen-Auszahlung wird wieder offen
 		expect(await actionsService.markReimbursed(a.id, p.id, false)).toBe(1);
 		expect(await payeeOf(a.id, p.id)).toMatchObject({ openCents: 2500, reimbursedCents: 1000 });
 		const list = (await actionsService.listReimbursements()).filter((x) => x.actionId === a.id);
 		expect(list.reduce((s, x) => s + x.openCents, 0)).toBe(2500);
 
-		// Ausdrueckliche Ruecknahme der Person: beide wieder offen und editierbar
+		// Ausdrückliche Rücknahme der Person: beide wieder offen und editierbar
 		await reopen(a.id);
 		await data(await as('owner', `${A(a.id)}/payees/${p.id}/reimburse`, { method: 'DELETE' }));
 		expect(await payeeOf(a.id, p.id)).toMatchObject({ openCents: 3500, reimbursedCents: 0 });
@@ -183,12 +183,12 @@ describe('Vorab erstattete Auslagen und Kassen-Rueckname', () => {
 			})
 		);
 		expect(put.amountCents).toBe(1200);
-		// danach ist nichts mehr "vorab": Kasse zahlt alles, Rueckname setzt alles zurueck
+		// danach ist nichts mehr "vorab": Kasse zahlt alles, Rückname setzt alles zurück
 		expect(await actionsService.markReimbursed(a.id, p.id, true)).toBe(2);
 		expect(await actionsService.markReimbursed(a.id, p.id, false)).toBe(2);
 	});
 
-	it('manuelles „als ausgezahlt markieren“ bleibt zuruecknehmbar durch markReimbursed(false)', async () => {
+	it('manuelles „als ausgezahlt markieren“ bleibt zurücknehmbar durch markReimbursed(false)', async () => {
 		const a = await createAction();
 		const p = await newPayee(a.id, 'Hans');
 		await data(await postEntry(a.id, entryBody({ payeeId: p.id, amountCents: 700 })), 201);
@@ -228,7 +228,7 @@ describe('Vorab erstattete Auslagen und Kassen-Rueckname', () => {
 		);
 		const second = await readDoc(imported.id);
 		expect(second.entries).toEqual(first.entries);
-		// importierte vorab erstattete Auslage ist weiter geschuetzt
+		// importierte vorab erstattete Auslage ist weiter geschützt
 		const person = (await state(imported.id)).payees![0]!;
 		expect(await actionsService.markReimbursed(imported.id, person.id, true)).toBe(1);
 		expect(await actionsService.markReimbursed(imported.id, person.id, false)).toBe(1);
@@ -239,7 +239,7 @@ describe('Vorab erstattete Auslagen und Kassen-Rueckname', () => {
 	});
 });
 
-describe('reimbursed beim Aendern', () => {
+describe('reimbursed beim Ändern', () => {
 	it('PUT mit reimbursed:true auf offener Auslage: 422 mit Pfad reimbursed; false/fehlend wirkungslos', async () => {
 		const a = await createAction();
 		const p = await newPayee(a.id, 'Jana');

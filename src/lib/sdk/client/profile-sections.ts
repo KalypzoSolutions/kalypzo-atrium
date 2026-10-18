@@ -2,14 +2,14 @@ import type { ProfileSection } from '$lib/sdk/types/module-ui';
 
 /** Abschnitt mit Modul-ID (Ergebnis von `selectProfileSections`). */
 export interface ResolvedProfileSection extends ProfileSection {
-	/** `<moduleId>:<id>` – eindeutig ueber alle Module */
+	/** `<moduleId>:<id>` – eindeutig über alle Module */
 	key: string;
 	moduleId: string;
 }
 
 /**
- * Waehlt die Profil-Abschnitte aktiver Module: nur Module in `activeModules`, nur mit vorhandenem Recht
- * (`permission` leer = fuer alle), sortiert nach `order` (Standard 100), dann Modul-ID und Abschnitts-ID.
+ * Wählt die Profil-Abschnitte aktiver Module: nur Module in `activeModules`, nur mit vorhandenem Recht
+ * (`permission` leer = für alle), sortiert nach `order` (Standard 100), dann Modul-ID und Abschnitts-ID.
  * Reine Funktion (Unit-Test: `tests/unit/profile-sections.test.ts`).
  */
 export function selectProfileSections(

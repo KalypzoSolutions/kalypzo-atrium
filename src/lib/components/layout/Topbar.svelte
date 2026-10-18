@@ -6,7 +6,7 @@
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
 	import UserIcon from '@lucide/svelte/icons/user';
-	import { Avatar, AvatarFallback } from '$lib/components/ui/avatar';
+	import { Avatar, AvatarFallback, AvatarImage } from '$lib/components/ui/avatar';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		DropdownMenu,
@@ -27,13 +27,15 @@
 		permissions,
 		navigation
 	}: {
-		user: { name: string; email: string };
+		user: { name: string; email: string; image?: string | null };
 		systemName: string;
 		permissions: string[];
 		navigation: ModuleNavEntry[];
 	} = $props();
 
 	let menuOpen = $state(false);
+	/** Nur eigene Profilbilder (`/avatar/…`) anzeigen, keine fremden Adressen aus alten Daten */
+	const avatarSrc = $derived(user.image?.startsWith('/avatar/') ? user.image : null);
 	const initials = $derived(
 		user.name
 			.split(/\s+/)
@@ -94,7 +96,10 @@
 		<DropdownMenuTrigger>
 			{#snippet child({ props })}
 				<Button {...props} variant="ghost" class="h-9 gap-2 px-2" aria-label="Benutzermenü">
-					<Avatar class="size-7"><AvatarFallback>{initials}</AvatarFallback></Avatar>
+					<Avatar class="size-7">
+						{#if avatarSrc}<AvatarImage src={avatarSrc} alt="" />{/if}
+						<AvatarFallback>{initials}</AvatarFallback>
+					</Avatar>
 					<span class="hidden max-w-40 truncate text-sm sm:inline">{user.name}</span>
 				</Button>
 			{/snippet}

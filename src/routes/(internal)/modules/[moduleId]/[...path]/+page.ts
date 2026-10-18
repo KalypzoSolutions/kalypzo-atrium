@@ -4,8 +4,8 @@ import type { ModuleUi } from '$lib/sdk/types/module-ui';
 import type { PageLoad } from './$types';
 
 /**
- * Build-Zeit-Registry der Modul-Oberflaechen. Die Aktivierung wird serverseitig in
- * +page.server.ts geprueft; hier wird nur die Komponente aufgeloest.
+ * Build-Zeit-Registry der Modul-Oberflächen. Die Aktivierung wird serverseitig in
+ * +page.server.ts geprüft; hier wird nur die Komponente aufgelöst.
  */
 const uis = import.meta.glob<{ default: ModuleUi }>('/src/lib/modules/*/ui.ts');
 

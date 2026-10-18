@@ -1,4 +1,5 @@
 import type { Component } from 'svelte';
+import Backpack from '@lucide/svelte/icons/backpack';
 import Box from '@lucide/svelte/icons/box';
 import Calendar from '@lucide/svelte/icons/calendar';
 import ChartBar from '@lucide/svelte/icons/chart-bar';
@@ -6,10 +7,12 @@ import FileText from '@lucide/svelte/icons/file-text';
 import Folder from '@lucide/svelte/icons/folder';
 import HardDrive from '@lucide/svelte/icons/hard-drive';
 import House from '@lucide/svelte/icons/house';
+import Images from '@lucide/svelte/icons/images';
 import KeyRound from '@lucide/svelte/icons/key-round';
 import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 import Mail from '@lucide/svelte/icons/mail';
 import Puzzle from '@lucide/svelte/icons/puzzle';
+import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 import ScrollText from '@lucide/svelte/icons/scroll-text';
 import Settings from '@lucide/svelte/icons/settings';
 import Shield from '@lucide/svelte/icons/shield';
@@ -24,6 +27,7 @@ import Wallet from '@lucide/svelte/icons/wallet';
 type Icon = Component<any>;
 
 const ICONS: Record<string, Icon> = {
+	backpack: Backpack,
 	box: Box,
 	calendar: Calendar,
 	chart: ChartBar,
@@ -34,10 +38,12 @@ const ICONS: Record<string, Icon> = {
 	'hard-drive': HardDrive,
 	home: House,
 	house: House,
+	images: Images,
 	'key-round': KeyRound,
 	'layout-dashboard': LayoutDashboard,
 	mail: Mail,
 	puzzle: Puzzle,
+	'rotate-ccw': RotateCcw,
 	'scroll-text': ScrollText,
 	settings: Settings,
 	shield: Shield,
@@ -49,7 +55,7 @@ const ICONS: Record<string, Icon> = {
 	wrench: Wrench
 };
 
-/** Icon-Lookup per Manifest-Name; unbekannte Namen fallen auf `Box` zurueck. */
+/** Icon-Lookup per Manifest-Name; unbekannte Namen fallen auf `Box` zurück. */
 export function iconFor(name: string | undefined): Icon {
 	return (name && ICONS[name]) || Box;
 }

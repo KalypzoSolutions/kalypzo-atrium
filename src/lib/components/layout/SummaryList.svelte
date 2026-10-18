@@ -2,10 +2,10 @@
 	export interface SummaryRow {
 		label: string;
 		value: string;
-		/** Erlaeuterung als Tooltip (per Fokus/Hover erreichbar) */
+		/** Erläuterung als Tooltip (per Fokus/Hover erreichbar) */
 		hint?: string;
 		emphasis?: 'normal' | 'strong' | 'muted';
-		/** Abzug: dezente Farbe und fuehrendes „−“ */
+		/** Abzug: dezente Farbe und führendes „−“ */
 		negative?: boolean;
 		details?: { label: string; value: string }[];
 	}

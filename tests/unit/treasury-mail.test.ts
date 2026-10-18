@@ -27,7 +27,7 @@ describe('GiroCode (EPC)', () => {
 			'R-2026-0001 Lena Müller'
 		]);
 	});
-	it('ohne IBAN, Empfaenger oder Betrag kein Code; lange Texte gekuerzt', () => {
+	it('ohne IBAN, Empfänger oder Betrag kein Code; lange Texte gekürzt', () => {
 		expect(epcPayload({ ...bank, iban: '', amountCents: 100, purpose: 'x' })).toBeNull();
 		expect(epcPayload({ ...bank, holder: ' ', amountCents: 100, purpose: 'x' })).toBeNull();
 		expect(epcPayload({ ...bank, amountCents: 0, purpose: 'x' })).toBeNull();
@@ -37,7 +37,7 @@ describe('GiroCode (EPC)', () => {
 });
 
 describe('Mail-HTML', () => {
-	it('escaped Nutzertexte und ersetzt Blockabsaetze', () => {
+	it('escaped Nutzertexte und ersetzt Blockabsätze', () => {
 		const html = templateToHtml(
 			'Hallo <b>{name}</b>,\n\n{posten}\n\nGruß',
 			{ name: '<script>' },
@@ -64,7 +64,7 @@ describe('Mail-HTML', () => {
 			'bei der Kasse erfragen'
 		);
 	});
-	it('composeMail: Bestaetigung ohne, Erinnerung mit Zahlungskasten', () => {
+	it('composeMail: Bestätigung ohne, Erinnerung mit Zahlungskasten', () => {
 		const invoices = [
 			{
 				number: 'R-1',

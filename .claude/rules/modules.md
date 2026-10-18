@@ -63,7 +63,7 @@ return result;
 - Seite: `ui.ts` → `publicRoutes: { 'anmeldung/:token': () => import(...) }`, erreichbar unter `/p/<id>/<pfad>` ohne Login.
 - Antworten identisch für „nicht vorhanden“ und „deaktiviert“ (keine Existenz verraten), keine internen Zahlen/Tokens ausgeben.
 - Honeypot-Treffer wie Erfolg beantworten, aber nichts speichern. Audit mit `core.audit.log` (actor `system`), ohne personenbezogene Daten.
-- Texte, die Besucher sehen (z. B. 409-Meldungen), dürfen echte Umlaute haben; interne API-Fehler bleiben ASCII.
+- Alle Texte (auch interne API-Fehler und Kommentare) mit echten Umlauten; ASCII nur in Schlüsseln, Pfaden, Dateinamen.
 - Mail nach der Transaktion über `core.mail.send`, Fehler abfangen (`emailSent=false`), nie Nutzereingaben in Header.
 
 ## Daten- und Formatregeln

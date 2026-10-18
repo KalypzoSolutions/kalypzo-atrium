@@ -76,6 +76,16 @@ Eigenes Profil (Name, E-Mail-Wechsel, Profilbild, Darstellung) läuft **nicht** 
 
 Modul-Endpunkte: `/api/v1/modules/<id>/…`. Deaktivierte Module liefern `404 module_disabled`.
 
+Termine für die Stammeswebsite (Modul `events`): `GET /api/v1/modules/events/website/events?from=&to=&tag=&limit=` mit einem API-Key,
+der nur den Scope `events.website.read` hat (Besitzer*in muss das Recht haben). `from` Standard heute (Europe/Berlin), `limit` 1–200 (50),
+Rate-Limit 120/60 s; nur Termine mit „auf der Website“ und nur öffentliche Felder (Titel, Beschreibung, Ort, Farbe, Zeiten, Tags,
+Gruppennamen). Serverseitig abrufen – der Key gehört nicht in den Browser (kein CORS).
+
+```bash
+curl -H "Authorization: Bearer $WEBSITE_KEY" \
+  "https://intern.example.org/api/v1/modules/events/website/events?from=2026-10-01&to=2026-12-31&limit=20"
+```
+
 Abrechnung im Modul `actions`: `POST …/actions/:id/accounting/entries` akzeptiert bei Auslagen (Ausgabe, bezahlt von Person) `reimbursed: true`
 („bereits erstattet“, nur beim Anlegen; `422` mit Pfad `reimbursed` bei Einnahmen/Stamm-Ausgaben). `PUT …/entries/:entryId` mit
 `reimbursed: true` liefert `422` („Die Erstattung kann nur beim Anlegen gesetzt werden“); `false`/fehlend ist wirkungslos.
@@ -101,3 +111,17 @@ curl -X POST https://intern.example.org/api/v1/pdf -H "Authorization: Bearer $KE
   -H "Content-Type: application/json" -o liste.pdf \
   -d '{"title":"Liste","content":[{"type":"paragraph","text":"Hallo"}]}'
 ```
+
+## API-Übersicht im internen Bereich (`/api-docs`)
+
+Admin-Seite (Recht `core.api.view`, Navigation „Administration → API-Übersicht“) mit allen Endpunkten von Core und Modulen.
+Sie wird **automatisch** aus der Registry erzeugt (`buildApiCatalog` in `src/lib/server/core/api/catalog/`): Schemas aus
+`buildOpenApiDocument()` (`$ref` aufgelöst), mögliche Fehler aus den Endpunkt-Eigenschaften (`deriveErrors`), Rate-Limits
+(`catalog/limits.ts` spiegelt die Router-Standards 120/60 bzw. anonym 30/60, ein Integrationstest prüft den Abgleich).
+
+- Liste je Core-Tag/Modul mit Suche und Filtern (Modul, Methode, Zugriff, „nur für mich aufrufbar“), Filter und `?endpoint=<id>` in der URL.
+- Detail: Übersicht, Anfrage (Parameter/Query/Body als Feldbaum), Antwort (`{ data }` + Beispiel), Fehler, **Ausprobieren**
+  (Request mit der eigenen Session, schreibende Methoden nur nach Bestätigung, curl-Snippet mit Platzhalter `$EPK_KEY`;
+  Multipart-Endpunkte nicht).
+- Gute Doku entsteht im Code: `summary`, `description` und `response`-Schema am Endpunkt pflegen. Der Test
+  `tests/integration/api-catalog.test.ts` verlangt für jeden Endpunkt eine `summary` und für `:param`-Pfade ein `params`-Schema.

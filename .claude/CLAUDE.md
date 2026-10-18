@@ -23,6 +23,8 @@ bei Widerspruch gewinnt der Code, danach `docs/`.
 | `rules/module-members.md` | Modul Mitglieder & Gruppen: Dateien, Datenmodell, Rechte, API, Regeln |
 | `rules/module-actions.md` | Modul Aktionen: Kalkulation, Zuschuss, Anmeldelink, Abrechnung, Rückzahlung, PDF-Bericht |
 | `rules/module-treasury.md` | Modul Kasse: Konten, Buchungen, Rechnungen aus Aktionen, Zuordnung/Geschwister, Import, Mails, Berichte |
+| `rules/module-events.md` | Modul Termine: Termine, Tags, Gruppen-Zuordnung, Freigabe an Principals, Website-API |
+| `rules/module-galleries.md` | Modul Galerien: Bilder, Titelbild, Freigabe/öffentlich, Termin-Zuordnung, Website-API, `core.images` |
 | `rules/project-state.md` | Stand, getroffene Entscheidungen, offene Punkte |
 
 ## Befehle
@@ -47,5 +49,6 @@ bei Widerspruch gewinnt der Code, danach `docs/`.
 6. Geld immer als Integer-Cent, Datum als `YYYY-MM-DD`-String, IDs per `crypto.randomUUID()`.
 7. bits-ui setzt `data-state` / `data-orientation` – **nie** `data-open:`/`data-checked:`/`data-horizontal:` in Tailwind-Klassen.
 8. Keine nativen `<select>`/`<input type=color>`; Core-Bausteine nutzen (`SelectField`, `MultiSelect`, `ColorPicker` …).
-9. Texte in der Oberfläche deutsch mit echten Umlauten; Server-Fehlertexte deutsch ASCII-transliteriert (ae/oe/ue).
+9. Alle deutschen Texte mit echten Umlauten und ß (UTF-8): Oberfläche, Server-Fehlertexte, Mails, Kommentare. ASCII bleibt nur in
+   Bezeichnern, Schlüsseln, Pfaden/Slugs, Dateinamen und angewendeten SQL-Migrationen.
 10. Nichts committen oder pushen, solange der Nutzer es nicht verlangt. Demo-Server nie hart beenden (`.data/stop`).

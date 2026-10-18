@@ -62,7 +62,7 @@ const PERMS = [
 
 const ctxOf = async (userId: string) => {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 };
 
@@ -143,7 +143,7 @@ beforeAll(async () => {
 afterAll(() => setPdfRendererForTests(undefined));
 
 describe('Aktion liegt in der Vergangenheit (isPast)', () => {
-	it('Standard false; setzen, Liste und Detail; PUT ohne Feld laesst den Wert', async () => {
+	it('Standard false; setzen, Liste und Detail; PUT ohne Feld lässt den Wert', async () => {
 		const plain = await createAction();
 		expect(plain.isPast).toBe(false);
 		const past = await createAction({ name: 'Alt', isPast: true });
@@ -179,7 +179,7 @@ describe('Aktion liegt in der Vergangenheit (isPast)', () => {
 		expect(on.isPast).toBe(true);
 	});
 
-	it('lehnt Nicht-Boolean mit 422 ab; Audit enthaelt isPast', async () => {
+	it('lehnt Nicht-Boolean mit 422 ab; Audit enthält isPast', async () => {
 		const res = await as('owner', '/actions', {
 			method: 'POST',
 			json: {
@@ -331,7 +331,7 @@ describe('Auslage bereits erstattet (reimbursed)', () => {
 		expect((await state(a.id)).entries).toHaveLength(0);
 	});
 
-	it('PUT/DELETE auf erstattete Auslage 409; Ruecknahme macht sie editierbar', async () => {
+	it('PUT/DELETE auf erstattete Auslage 409; Rücknahme macht sie editierbar', async () => {
 		const a = await createAction();
 		const p = await newPayee(a.id, 'Dora');
 		const e = await data<{ id: string }>(

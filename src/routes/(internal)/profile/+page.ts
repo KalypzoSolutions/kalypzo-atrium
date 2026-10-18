@@ -3,8 +3,8 @@ import type { ModuleUi, ProfileSection } from '$lib/sdk/types/module-ui';
 import type { PageLoad } from './$types';
 
 /**
- * Build-Zeit-Registry der Modul-Oberflaechen. Hier werden nur die `profileSections` aktiver Module
- * (und mit vorhandenem Recht) ausgewaehlt; die Komponenten laden ihre Daten selbst per `apiFetch`.
+ * Build-Zeit-Registry der Modul-Oberflächen. Hier werden nur die `profileSections` aktiver Module
+ * (und mit vorhandenem Recht) ausgewählt; die Komponenten laden ihre Daten selbst per `apiFetch`.
  */
 const uis = import.meta.glob<{ default: ModuleUi }>('/src/lib/modules/*/ui.ts');
 

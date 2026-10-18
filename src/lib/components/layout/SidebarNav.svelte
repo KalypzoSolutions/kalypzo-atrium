@@ -33,7 +33,7 @@
 
 	const primary = $derived(PRIMARY_NAV.filter((i) => hasPermission(permissions, i.permission)));
 
-	/** Modul-Eintraege: gleiche `group` (je Modul) werden zu einer Gruppe, Reihenfolge bleibt erhalten. */
+	/** Modul-Einträge: gleiche `group` (je Modul) werden zu einer Gruppe, Reihenfolge bleibt erhalten. */
 	const moduleEntries = $derived.by(() => {
 		const out: Entry[] = [];
 		const groups = new Map<string, Extract<Entry, { kind: 'group' }>>();
@@ -65,7 +65,7 @@
 				href: i.href,
 				icon: i.icon
 			})),
-			// Modul-Eintraege fuer die Verwaltung (z. B. Kassen-Einstellungen)
+			// Modul-Einträge für die Verwaltung (z. B. Kassen-Einstellungen)
 			...navigation
 				.filter((n) => n.admin)
 				.map((n) => ({ label: n.label, href: n.path, icon: n.icon }))
@@ -92,7 +92,7 @@
 		);
 	});
 
-	// Manuell umgeschaltete Gruppen; ohne Eintrag ist eine Gruppe offen, wenn sie die aktive Seite enthaelt.
+	// Manuell umgeschaltete Gruppen; ohne Eintrag ist eine Gruppe offen, wenn sie die aktive Seite enthält.
 	let toggled = $state<Record<string, boolean>>({});
 	const isOpen = (g: Extract<Entry, { kind: 'group' }>) =>
 		toggled[g.id] ?? g.items.some((i) => i.href === activeHref);

@@ -39,8 +39,8 @@ export async function listApiKeys(ctx: RequestContext): Promise<ApiKeyItem[]> {
 }
 
 /**
- * Erzeugt einen API-Key. Der Klartext-Key wird genau einmal zurueckgegeben und
- * ausschliesslich als SHA-256-Hash gespeichert.
+ * Erzeugt einen API-Key. Der Klartext-Key wird genau einmal zurückgegeben und
+ * ausschließlich als SHA-256-Hash gespeichert.
  */
 export async function createApiKey(
 	ctx: RequestContext,
@@ -49,7 +49,7 @@ export async function createApiKey(
 	await requirePermission(ctx, 'core.api.manage');
 	if (!ctx.userId) throw errors.unauthenticated();
 	if (ctx.actor.type === 'api_key')
-		throw errors.forbidden('API-Keys koennen keine API-Keys erzeugen');
+		throw errors.forbidden('API-Keys können keine API-Keys erzeugen');
 	const scopes = [...new Set(input.scopes)];
 	if (!scopes.length) throw errors.badRequest('Mindestens ein Scope ist erforderlich');
 	const known = await existingKeys(scopes);

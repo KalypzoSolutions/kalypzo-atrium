@@ -44,7 +44,11 @@ export function buildOpenApiDocument(version = '1.0.0') {
 		if (e.body) {
 			request.body = {
 				required: true,
-				content: { 'application/json': { schema: e.body as unknown as z.ZodType } }
+				content: {
+					[e.multipart ? 'multipart/form-data' : 'application/json']: {
+						schema: e.body as unknown as z.ZodType
+					}
+				}
 			};
 		}
 		const tags = e.moduleId === 'core' ? (e.tags ?? ['Core']) : [`Modul: ${e.moduleId}`];
@@ -71,7 +75,7 @@ export function buildOpenApiDocument(version = '1.0.0') {
 					}
 				},
 				400: {
-					description: 'Ungueltige Anfrage',
+					description: 'Ungültige Anfrage',
 					content: { 'application/json': { schema: ErrorSchema } }
 				},
 				401: {

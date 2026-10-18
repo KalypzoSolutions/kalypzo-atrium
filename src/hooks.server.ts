@@ -12,7 +12,7 @@ import { getSetting } from '$lib/server/core/settings/service';
 import { applyAppearance, loadUserPrefs } from '$lib/server/core/settings/user-prefs';
 
 const PUBLIC_PAGES = ['/login', '/forgot-password', '/reset-password'];
-/** Oeffentliche Modulseiten (`/p/<moduleId>/…`): keine Session noetig */
+/** Öffentliche Modulseiten (`/p/<moduleId>/…`): keine Session nötig */
 const PUBLIC_PREFIXES = ['/p/'];
 
 if (!building) {
@@ -42,10 +42,10 @@ const init: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
 	event.locals.sessionId = null;
 
-	// Better-Auth-Endpunkte loest Better Auth selbst auf
+	// Better-Auth-Endpunkte löst Better Auth selbst auf
 	const isApi = event.url.pathname.startsWith('/api/');
 	if (!isApi || event.url.pathname.startsWith('/api/v1/')) {
-		// API-v1 authentifiziert selbst (Session oder API-Key); fuer Seiten hier die Session laden
+		// API-v1 authentifiziert selbst (Session oder API-Key); für Seiten hier die Session laden
 		if (!isApi) {
 			const session = await resolveSession(event.request.headers, { ip, requestId });
 			if (session) {
@@ -72,16 +72,16 @@ const guard: Handle = async ({ event, resolve }) => {
 				`/login${path !== '/' ? `?redirectTo=${encodeURIComponent(path + event.url.search)}` : ''}`
 			);
 		}
-		// Moduloberflaeche: deaktivierte Module sind nicht erreichbar
+		// Moduloberfläche: deaktivierte Module sind nicht erreichbar
 		const m = /^\/(?:modules|p)\/([^/]+)/.exec(path);
 		if (m && !(await isModuleEnabled(m[1] as string))) {
-			return new Response('Modul nicht verfuegbar', { status: 404 });
+			return new Response('Modul nicht verfügbar', { status: 404 });
 		}
 	}
 	return resolve(event);
 };
 
-/** Akzentfarbe (Benutzer oder System) und Dichte fuer die Platzhalter in `app.html`; Fehler = Standard. */
+/** Akzentfarbe (Benutzer oder System) und Dichte für die Platzhalter in `app.html`; Fehler = Standard. */
 async function appearanceFor(event: Parameters<Handle>[0]['event']) {
 	try {
 		const prefs = event.locals.user ? await loadUserPrefs(event.locals.user.id) : null;
@@ -95,7 +95,7 @@ async function appearanceFor(event: Parameters<Handle>[0]['event']) {
 const headers: Handle = async ({ event, resolve }) => {
 	let appearance: ReturnType<typeof appearanceFor> | undefined;
 	const response = await resolve(event, {
-		// Laeuft beim Rendern (nach Session und Layout-Load): der Theme-Cookie ist dann bereits abgeglichen
+		// Läuft beim Rendern (nach Session und Layout-Load): der Theme-Cookie ist dann bereits abgeglichen
 		transformPageChunk: async ({ html }) => {
 			if (!html.includes('%app.')) return html;
 			appearance ??= appearanceFor(event);

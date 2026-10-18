@@ -1,6 +1,6 @@
 /**
  * Vergangene Aktionen (`actions.is_past`, Migration 0012 von `actions`): Die Kasse legt keine
- * Rechnungen mehr an und fasst bestehende Posten nicht an; Auszahlungen bleiben unveraendert.
+ * Rechnungen mehr an und fasst bestehende Posten nicht an; Auszahlungen bleiben unverändert.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
@@ -62,7 +62,7 @@ async function data<T>(res: Response, status = 200): Promise<T> {
 
 async function ctxOf(userId: string) {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -172,7 +172,7 @@ afterAll(async () => {
 });
 
 describe('Abgleich bei vergangenen Aktionen', () => {
-	it('legt fuer eine vergangene Aktion keine Rechnungen an, Aktion bleibt in der Liste', async () => {
+	it('legt für eine vergangene Aktion keine Rechnungen an, Aktion bleibt in der Liste', async () => {
 		const id = await newAction('Altfahrt');
 		await data(
 			await A(`/actions/${id}/participants`, {
@@ -196,7 +196,7 @@ describe('Abgleich bei vergangenen Aktionen', () => {
 		expect(again.find((a) => a.actionId === id)).toMatchObject({ isPast: false, invoiceCount: 1 });
 	});
 
-	it('Anmeldung ueber Link: keine Rechnung, Bestaetigung ohne PDF-Anhang', async () => {
+	it('Anmeldung über Link: keine Rechnung, Bestätigung ohne PDF-Anhang', async () => {
 		const id = await newAction('Vergangene Freizeit');
 		await setPast(id, true);
 		const token = await enableForm(id);
@@ -204,7 +204,7 @@ describe('Abgleich bei vergangenen Aktionen', () => {
 		await register(token, 'Vera Vergangen', 'vera.eltern@example.test');
 		expect(mails).toHaveLength(1);
 		expect(mails[0]!.to).toBe('vera.eltern@example.test');
-		// Layout-Anhaenge (Logo) sind erlaubt, aber keine Rechnung
+		// Layout-Anhänge (Logo) sind erlaubt, aber keine Rechnung
 		expect(
 			(mails[0]!.attachments ?? []).filter((a) => a.filename.startsWith('Rechnung'))
 		).toHaveLength(0);
@@ -231,7 +231,7 @@ describe('Abgleich bei vergangenen Aktionen', () => {
 		expect(before.totalCents).toBe(18500);
 
 		await setPast(id, true);
-		// Beitrag aendern UND Teilnehmende*n entfernen: ohne Einfrieren gaebe es Update bzw. Storno
+		// Beitrag ändern UND Teilnehmende*n entfernen: ohne Einfrieren gäbe es Update bzw. Storno
 		await actionsSql(
 			sql`UPDATE actions SET fee_cents = 9000, team_fee_cents = 9000 WHERE id = ${id}`
 		);

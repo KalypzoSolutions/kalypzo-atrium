@@ -69,7 +69,7 @@ async function data<T>(res: Response, status = 200): Promise<T> {
 
 async function ctxOf(userId: string) {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -190,7 +190,7 @@ describe('Standardkonto', () => {
 
 describe('Zahler mit Bankverbindung und IBAN-Abgleich', () => {
 	let payerId = '';
-	it('speichert die IBAN verschluesselt, Klartext nur mit bank.view', async () => {
+	it('speichert die IBAN verschlüsselt, Klartext nur mit bank.view', async () => {
 		const members = await data<{ id: string; name: string }[]>(await T('/members'));
 		const p = await data<Payer>(
 			await T('/payers', {
@@ -211,7 +211,7 @@ describe('Zahler mit Bankverbindung und IBAN-Abgleich', () => {
 		const iban = await data<{ iban: string }>(await T(`/payers/${payerId}/iban`));
 		expect(iban.iban).toBe('DE89 3704 0044 0532 0130 00');
 		expect((await T(`/payers/${payerId}/iban`, {}, 'ohneBank')).status).toBe(403);
-		// Ungueltige IBAN
+		// Ungültige IBAN
 		const bad = await T(`/payers/${payerId}`, {
 			method: 'PUT',
 			json: { name: 'Familie Müller', iban: 'DE00 1234' }
@@ -225,7 +225,7 @@ describe('Zahler mit Bankverbindung und IBAN-Abgleich', () => {
 		);
 	});
 
-	it('erkennt eine Zahlung ueber die IBAN des Zahlers (ohne Namen im Zweck)', async () => {
+	it('erkennt eine Zahlung über die IBAN des Zahlers (ohne Namen im Zweck)', async () => {
 		await data(
 			await A(`/actions/${actionId}/participants`, {
 				method: 'POST',
@@ -260,10 +260,10 @@ describe('Zahler mit Bankverbindung und IBAN-Abgleich', () => {
 	});
 });
 
-describe('Rechnungs-PDF bei Anmeldung und geaenderte Rechnung', () => {
+describe('Rechnungs-PDF bei Anmeldung und geänderte Rechnung', () => {
 	let token = '';
 	let participantId = '';
-	it('haengt die Rechnung an die Anmeldebestaetigung', async () => {
+	it('hängt die Rechnung an die Anmeldebestätigung', async () => {
 		const cfg = await data<FormConfig>(await A(`/actions/${actionId}/form`));
 		await data(
 			await A(`/actions/${actionId}/form`, {
@@ -321,7 +321,7 @@ describe('Rechnungs-PDF bei Anmeldung und geaenderte Rechnung', () => {
 		participantId = parts.find((p) => p.name === 'Max Muster')!.id;
 	});
 
-	it('verschickt bei Wechsel ins Team eine geaenderte Rechnung (genau einmal)', async () => {
+	it('verschickt bei Wechsel ins Team eine geänderte Rechnung (genau einmal)', async () => {
 		mails.length = 0;
 		await data(
 			await A(`/actions/${actionId}/participants/${participantId}`, {
@@ -344,9 +344,9 @@ describe('Rechnungs-PDF bei Anmeldung und geaenderte Rechnung', () => {
 	});
 });
 
-describe('Ausstehende Ueberweisungen', () => {
+describe('Ausstehende Überweisungen', () => {
 	let payeeId = '';
-	it('uebernimmt Auslagen aus der Abrechnung und markiert sie nach Zahlung als ausgezahlt', async () => {
+	it('übernimmt Auslagen aus der Abrechnung und markiert sie nach Zahlung als ausgezahlt', async () => {
 		payeeId = (
 			await data<{ id: string }>(
 				await A(`/actions/${actionId}/accounting/payees`, {
@@ -416,7 +416,7 @@ describe('Ausstehende Ueberweisungen', () => {
 		expect(again.cancelledAt).toBeNull();
 		expect(again.paidCents).toBe(4250);
 
-		// Zahlung loeschen → in der Abrechnung wieder offen
+		// Zahlung löschen → in der Abrechnung wieder offen
 		await data(await T(`/transactions/${paid.payments[0]!.transactionId}`, { method: 'DELETE' }));
 		const reverted = await core.database
 			.forModule('actions')

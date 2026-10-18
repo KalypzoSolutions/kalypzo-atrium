@@ -12,7 +12,7 @@ const UUID_B = '9b2f6c0e-1a4d-4c7e-8f31-2d5a7b9c1e44';
 
 describe('ageFromBirthDate', () => {
 	const today = new Date(2026, 5, 15); // 15.06.2026 (lokal)
-	it('Geburtstag heute zaehlt bereits', () => {
+	it('Geburtstag heute zählt bereits', () => {
 		expect(ageFromBirthDate('2013-06-15', today)).toBe(13);
 	});
 	it('Geburtstag morgen noch nicht', () => {
@@ -21,18 +21,18 @@ describe('ageFromBirthDate', () => {
 	it('Geburtstag gestern bereits', () => {
 		expect(ageFromBirthDate('2013-06-14', today)).toBe(13);
 	});
-	it('Schaltjahr: 29.02. wird am 28.02. noch nicht, am 01.03. gezaehlt', () => {
+	it('Schaltjahr: 29.02. wird am 28.02. noch nicht, am 01.03. gezählt', () => {
 		expect(ageFromBirthDate('2012-02-29', new Date(2026, 1, 28))).toBe(13);
 		expect(ageFromBirthDate('2012-02-29', new Date(2026, 2, 1))).toBe(14);
 		expect(ageFromBirthDate('2012-02-29', new Date(2028, 1, 29))).toBe(16);
 	});
-	it('ungueltiges Format -> null', () => {
+	it('ungültiges Format -> null', () => {
 		expect(ageFromBirthDate('15.06.2013', today)).toBeNull();
 	});
 });
 
 describe('isRealDate', () => {
-	it('prueft Kalenderdaten', () => {
+	it('prüft Kalenderdaten', () => {
 		expect(isRealDate('2024-02-29')).toBe(true);
 		expect(isRealDate('2025-02-29')).toBe(false);
 		expect(isRealDate('2025-13-01')).toBe(false);
@@ -115,7 +115,7 @@ describe('memberInput: Mitgliedschaft', () => {
 });
 
 describe('memberInput', () => {
-	it('akzeptiert gueltige Eingaben und normalisiert', () => {
+	it('akzeptiert gültige Eingaben und normalisiert', () => {
 		const r = memberInput.safeParse(validMember);
 		expect(r.success).toBe(true);
 		if (r.success) {
@@ -124,14 +124,14 @@ describe('memberInput', () => {
 			expect(r.data.scoutName).toBeNull();
 		}
 	});
-	it('lehnt ungueltige E-Mail ab', () => {
+	it('lehnt ungültige E-Mail ab', () => {
 		const r = memberInput.safeParse({
 			...validMember,
 			emails: [{ name: null, value: 'kein-mail' }]
 		});
 		expect(r.success).toBe(false);
 	});
-	it('lehnt ungueltige Telefonnummer ab', () => {
+	it('lehnt ungültige Telefonnummer ab', () => {
 		for (const value of ['abc', '12', '++49 123 456', '1234567890123456789'])
 			expect(
 				memberInput.safeParse({ ...validMember, phones: [{ name: null, value }] }).success
@@ -161,7 +161,7 @@ describe('memberInput', () => {
 		expect(memberInput.safeParse({ ...validMember, birthDate: '2025-02-30' }).success).toBe(false);
 		expect(memberInput.safeParse({ ...validMember, birthDate: '1800-01-01' }).success).toBe(false);
 	});
-	it('lehnt ungueltige Gruppen-ID und Stand ab', () => {
+	it('lehnt ungültige Gruppen-ID und Stand ab', () => {
 		expect(memberInput.safeParse({ ...validMember, groupIds: ['x'] }).success).toBe(false);
 		expect(memberInput.safeParse({ ...validMember, stage: 'chef' }).success).toBe(false);
 	});
@@ -185,7 +185,7 @@ describe('groupInput', () => {
 			expect(r.data.meetingWeekday).toBeNull();
 		}
 	});
-	it('lehnt ungueltigen Wochentag, Farbe und fehlende Leiter ab', () => {
+	it('lehnt ungültigen Wochentag, Farbe und fehlende Leiter ab', () => {
 		expect(groupInput.safeParse({ ...base, meetingWeekday: 0 }).success).toBe(false);
 		expect(groupInput.safeParse({ ...base, meetingWeekday: 8 }).success).toBe(false);
 		expect(groupInput.safeParse({ ...base, meetingWeekday: 1.5 }).success).toBe(false);

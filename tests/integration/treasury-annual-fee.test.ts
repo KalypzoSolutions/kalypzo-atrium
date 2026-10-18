@@ -68,7 +68,7 @@ async function data<D>(res: Response, status = 200): Promise<D> {
 
 async function ctxOf(userId: string) {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -375,7 +375,7 @@ describe('Jahresbeitrag', () => {
 		expect(p.invoices.map((i) => [i.recipientName, i.totalCents])).toEqual([['Paul Neu', 1200]]);
 		expect(p.invoices[0]!.members[0]!.note).toBe('late-entry');
 		mails.length = 0;
-		// PDF-Erzeugung schlaegt fehl: Rechnung bleibt gespeichert, Fehler wird gezaehlt
+		// PDF-Erzeugung schlägt fehl: Rechnung bleibt gespeichert, Fehler wird gezählt
 		setPdfRendererForTests(async () => {
 			throw new Error('PDF kaputt');
 		});
@@ -389,7 +389,7 @@ describe('Jahresbeitrag', () => {
 			lastHtml = html;
 			return new TextEncoder().encode('%PDF-fake');
 		});
-		// SMTP faellt aus: Wiederholung zaehlt Mailfehler, legt keine Rechnung an
+		// SMTP fällt aus: Wiederholung zählt Mailfehler, legt keine Rechnung an
 		setMailTransportForTests({
 			sendMail: async () => {
 				throw new Error('SMTP weg');
@@ -466,7 +466,7 @@ describe('Jahresbeitrag', () => {
 			await T(`/annual-fees/${r.id}/schedule`, { method: 'POST', json: { sendOn: '2027-06-01' } }),
 			201
 		);
-		// Inhalt eines geplanten Laufs aendern → Planung zurueckgenommen (Versand neu freigeben)
+		// Inhalt eines geplanten Laufs ändern → Planung zurückgenommen (Versand neu freigeben)
 		const changed = await data<AnnualRun>(
 			await T(`/annual-fees/${r.id}`, { method: 'PUT', json: { pdfText: 'Neuer Text {jahr}' } })
 		);
@@ -475,7 +475,7 @@ describe('Jahresbeitrag', () => {
 			await T(`/annual-fees/${r.id}/schedule`, { method: 'POST', json: { sendOn: '2027-06-01' } }),
 			201
 		);
-		// Job darf nur geplante, faellige Laeufe versenden (Pruefung unter Sperre)
+		// Job darf nur geplante, fällige Läufe versenden (Prüfung unter Sperre)
 		expect(await sendRun(admin, r.id, 'run', { scheduledOnly: true })).toBeNull();
 		const u = await data<AnnualRun>(
 			await T(`/annual-fees/${r.id}/unschedule`, { method: 'POST' }),

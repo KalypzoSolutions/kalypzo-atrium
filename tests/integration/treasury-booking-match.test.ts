@@ -189,7 +189,7 @@ async function transactionCount(): Promise<number> {
 describe('Neue Buchung direkt zuordnen', () => {
 	let preview: MatchPreview;
 
-	it('schlaegt fuer eine Einnahme die passenden Rechnungen vor', async () => {
+	it('schlägt für eine Einnahme die passenden Rechnungen vor', async () => {
 		preview = await data<MatchPreview>(
 			await T('/match-preview', {
 				method: 'POST',
@@ -208,7 +208,7 @@ describe('Neue Buchung direkt zuordnen', () => {
 		expect(preview.payables).toEqual([]);
 	});
 
-	it('lehnt eine Zuordnung ueber dem Buchungsbetrag ab und legt nichts an', async () => {
+	it('lehnt eine Zuordnung über dem Buchungsbetrag ab und legt nichts an', async () => {
 		const before = await transactionCount();
 		const res = await T('/transactions', {
 			method: 'POST',
@@ -221,7 +221,7 @@ describe('Neue Buchung direkt zuordnen', () => {
 		});
 		expect(res.status).toBe(422);
 		expect(await transactionCount()).toBe(before);
-		// Ausgaben koennen keinen Rechnungen zugeordnet werden
+		// Ausgaben können keinen Rechnungen zugeordnet werden
 		const neg = await T('/transactions', {
 			method: 'POST',
 			json: {
@@ -234,7 +234,7 @@ describe('Neue Buchung direkt zuordnen', () => {
 		expect(neg.status).toBe(422);
 	});
 
-	it('bucht und ordnet in einem Schritt zu, lernt den Zahler und bestaetigt', async () => {
+	it('bucht und ordnet in einem Schritt zu, lernt den Zahler und bestätigt', async () => {
 		mails.length = 0;
 		const t = await data<TransactionCreated>(
 			await T('/transactions', {
@@ -266,7 +266,7 @@ describe('Neue Buchung direkt zuordnen', () => {
 
 describe('Ausgabe direkt einer Auszahlung zuordnen', () => {
 	let payableId = '';
-	it('schlaegt die passende Eingangsrechnung vor (Name + Betrag)', async () => {
+	it('schlägt die passende Eingangsrechnung vor (Name + Betrag)', async () => {
 		payableId = (
 			await data<{ id: string }>(
 				await T('/payables', {
@@ -298,7 +298,7 @@ describe('Ausgabe direkt einer Auszahlung zuordnen', () => {
 		);
 		expect(p.lines).toEqual([]);
 		expect(p.payableSuggestion).toMatchObject({ payableId, confidence: 'high' });
-		// IBAN allein genuegt ebenfalls
+		// IBAN allein genügt ebenfalls
 		const byIban = await data<MatchPreview>(
 			await T('/match-preview', {
 				method: 'POST',
@@ -327,7 +327,7 @@ describe('Ausgabe direkt einer Auszahlung zuordnen', () => {
 		expect(t.allocation).toBeNull();
 		const p = (await data<PayableList>(await T('/payables'))).items.find((x) => x.id === payableId);
 		expect(p?.openCents ?? 0).toBe(0);
-		// Einnahmen koennen keiner Auszahlung zugeordnet werden
+		// Einnahmen können keiner Auszahlung zugeordnet werden
 		const res = await T('/transactions', {
 			method: 'POST',
 			json: { accountId: giro, bookedOn: '2026-06-03', amountCents: 500, payableId }
@@ -371,7 +371,7 @@ describe('Zahlung erfassen mit Bankdaten', () => {
 			}),
 			201
 		);
-		// Familie Mueller existiert schon (IBAN-Treffer) → ergaenzt, nicht doppelt angelegt
+		// Familie Mueller existiert schon (IBAN-Treffer) → ergänzt, nicht doppelt angelegt
 		expect(r.payer).toMatchObject({ name: 'Familie Müller', created: false });
 		const payers = await data<Payer[]>(await T('/payers'));
 		expect(payers.filter((p) => p.name === 'Familie Müller')).toHaveLength(1);
@@ -379,7 +379,7 @@ describe('Zahlung erfassen mit Bankdaten', () => {
 		expect(t.counterpartyIbanLast4).toBe('3000');
 	});
 
-	it('lehnt eine ungueltige IBAN ab', async () => {
+	it('lehnt eine ungültige IBAN ab', async () => {
 		const list = await data<InvoiceList>(await T('/invoices?status=all'));
 		const res = await T(`/invoices/${list.items[0]!.id}/mark-paid`, {
 			method: 'POST',

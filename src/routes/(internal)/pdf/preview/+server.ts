@@ -10,10 +10,10 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user) throw error(401, 'Nicht angemeldet');
 	if (!locals.ctx.permissions.has('core.pdf.manage')) throw error(403, 'Keine Berechtigung');
 	const template = id.safeParse(url.searchParams.get('template'));
-	if (!template.success) throw error(400, 'Ungueltige Vorlage');
+	if (!template.success) throw error(400, 'Ungültige Vorlage');
 	const onlyRaw = url.searchParams.get('only');
 	const only = onlyRaw === null ? undefined : id.safeParse(onlyRaw);
-	if (only && !only.success) throw error(400, 'Ungueltiger Bestandteil');
+	if (only && !only.success) throw error(400, 'Ungültiger Bestandteil');
 	try {
 		const png = await renderTemplatePreview({
 			template: template.data,

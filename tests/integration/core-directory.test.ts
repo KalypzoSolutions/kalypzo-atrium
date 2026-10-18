@@ -41,12 +41,28 @@ beforeAll(async () => {
 });
 
 describe('core.users.directory', () => {
-	it('findet aktive Benutzer ohne core.users.view und liefert nur id, name, email', async () => {
+	it('findet aktive Benutzer ohne core.users.view und liefert nur id, name, email, image', async () => {
 		const plain = await ctxOf(ids.bernd!);
 		expect(plain.permissions.has('core.users.view')).toBe(false);
 		const res = await core.users.directory(plain, { search: 'anna' });
 		expect(res.map((r) => r.name)).toEqual(['Anna Beispiel']);
-		expect(Object.keys(res[0]!).sort()).toEqual(['email', 'id', 'name']);
+		expect(Object.keys(res[0]!).sort()).toEqual(['email', 'id', 'image', 'name']);
+		expect(res[0]!.image).toBeNull();
+	});
+
+	it('liefert nur eigene Profilbild-Adressen (/avatar/<id>), fremde URLs werden verworfen', async () => {
+		const own = `/avatar/${ids.bernd}?v=1`;
+		await getDb().update(schema.user).set({ image: own }).where(eq(schema.user.id, ids.bernd!));
+		await getDb()
+			.update(schema.user)
+			.set({ image: 'https://tracker.example/pixel.png' })
+			.where(eq(schema.user.id, ids.anna!));
+		const res = await core.users.directory(admin, { ids: [ids.anna!, ids.bernd!] });
+		const byId = new Map(res.map((r) => [r.id, r.image]));
+		expect(byId.get(ids.bernd!)).toBe(own);
+		expect(byId.get(ids.anna!)).toBeNull();
+		await getDb().update(schema.user).set({ image: null }).where(eq(schema.user.id, ids.bernd!));
+		await getDb().update(schema.user).set({ image: null }).where(eq(schema.user.id, ids.anna!));
 	});
 
 	it('verlangt mindestens 2 Zeichen und liefert sonst nichts', async () => {
@@ -54,7 +70,7 @@ describe('core.users.directory', () => {
 		expect(await core.users.directory(admin, {})).toEqual([]);
 	});
 
-	it('loest explizite IDs auf, aber nur aktive Benutzer', async () => {
+	it('löst explizite IDs auf, aber nur aktive Benutzer', async () => {
 		const res = await core.users.directory(admin, { ids: [ids.anna!, ids.inaktiv!] });
 		expect(res.map((r) => r.id)).toEqual([ids.anna]);
 	});
@@ -76,7 +92,7 @@ describe('core.users.directory', () => {
 });
 
 describe('core.crypto.forModule', () => {
-	it('verschluesselt und entschluesselt pro Modul', () => {
+	it('verschlüsselt und entschlüsselt pro Modul', () => {
 		const a = core.crypto.forModule('actions');
 		const b = core.crypto.forModule('other');
 		const enc = a.encrypt('DE75 5206 0410 0506 4394 38');

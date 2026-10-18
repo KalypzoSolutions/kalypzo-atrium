@@ -46,7 +46,7 @@
 		editRoleIds = checked ? [...editRoleIds, id] : editRoleIds.filter((r) => r !== id);
 	}
 
-	/** Gemeinsame Enhance-Logik: Ladezustand, Toast, Dialog schliessen. */
+	/** Gemeinsame Enhance-Logik: Ladezustand, Toast, Dialog schließen. */
 	const submit =
 		(close?: () => void): SubmitFunction =>
 		() => {

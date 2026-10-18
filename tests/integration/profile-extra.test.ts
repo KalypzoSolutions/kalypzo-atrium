@@ -1,6 +1,6 @@
 /**
- * Zusaetzliche Qualitaetssicherung zu Profil, Benutzer-Einstellungen, eigenen Mitgliedern,
- * Mail-Abwahlen und Standard-Rollenrechten (Luecken der Tests core-profile / members-own).
+ * Zusätzliche Qualitätssicherung zu Profil, Benutzer-Einstellungen, eigenen Mitgliedern,
+ * Mail-Abwahlen und Standard-Rollenrechten (Lücken der Tests core-profile / members-own).
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
@@ -145,7 +145,7 @@ afterAll(async () => {
 });
 beforeEach(() => resetAllForTests());
 
-describe('E-Mail-Wechsel: Randfaelle', () => {
+describe('E-Mail-Wechsel: Randfälle', () => {
 	it('gleiche Adresse (auch in anderer Schreibweise) -> bad_request, keine Mail', async () => {
 		const id = await createUser(admin, { name: 'Gina', email: 'gina@example.test', password: PW });
 		const headers = await login('gina@example.test');
@@ -156,7 +156,7 @@ describe('E-Mail-Wechsel: Randfaelle', () => {
 		}
 	});
 
-	it('Validierung kommt vor der Passwortpruefung (kein Zaehler-Verbrauch bei ungueltiger Adresse)', async () => {
+	it('Validierung kommt vor der Passwortprüfung (kein Zähler-Verbrauch bei ungültiger Adresse)', async () => {
 		const id = await createUser(admin, { name: 'Hans', email: 'hans@example.test', password: PW });
 		const headers = await login('hans@example.test');
 		reset(`pwcheck:${id}`);
@@ -185,7 +185,7 @@ describe('E-Mail-Wechsel: Randfaelle', () => {
 		}
 	});
 
-	it('leeres bzw. zu langes Passwort wird abgewiesen und zaehlt als Fehlversuch', async () => {
+	it('leeres bzw. zu langes Passwort wird abgewiesen und zählt als Fehlversuch', async () => {
 		const id = await createUser(admin, { name: 'Jan', email: 'jan@example.test', password: PW });
 		const headers = await login('jan@example.test');
 		for (const password of ['', 'x'.repeat(129)]) {
@@ -257,7 +257,7 @@ describe('Profilbild', () => {
 	const imageOf = async () =>
 		(await getDb().select().from(schema.user).where(eq(schema.user.id, id)))[0]!.image;
 
-	it('ohne S3: gueltiges Bild -> 503 unavailable, user.image bleibt leer', async () => {
+	it('ohne S3: gültiges Bild -> 503 unavailable, user.image bleibt leer', async () => {
 		uninstallFakeStorage();
 		await expect(
 			setOwnAvatar(await ctxOf(id), { data: png, contentType: 'image/png' })
@@ -265,20 +265,20 @@ describe('Profilbild', () => {
 		expect(await imageOf()).toBeNull();
 	});
 
-	it('Typ: gif/svg/leer abgewiesen (bad_request), PNG mit Parameter + Grossschreibung ok-Pfad erreicht Storage', async () => {
+	it('Typ: gif/svg/leer abgewiesen (bad_request), PNG mit Parameter + Großschreibung ok-Pfad erreicht Storage', async () => {
 		const ctx = await ctxOf(id);
 		for (const contentType of ['image/gif', 'image/svg+xml', 'application/pdf', '']) {
 			await expect(setOwnAvatar(ctx, { data: png, contentType })).rejects.toMatchObject({
 				code: 'bad_request'
 			});
 		}
-		// Typpruefung passiert (Fehler kommt erst vom Storage)
+		// Typprüfung passiert (Fehler kommt erst vom Storage)
 		await expect(
 			setOwnAvatar(ctx, { data: png, contentType: 'IMAGE/PNG; charset=binary' })
 		).rejects.toMatchObject({ code: 'unavailable' });
 	});
 
-	it('Groesse: 0 Byte und Maximum+1 -> 413, vor dem Storage', async () => {
+	it('Größe: 0 Byte und Maximum+1 -> 413, vor dem Storage', async () => {
 		const ctx = await ctxOf(id);
 		await expect(
 			setOwnAvatar(ctx, { data: new Uint8Array(0), contentType: 'image/png' })
@@ -299,7 +299,7 @@ describe('Profilbild', () => {
 		expect(await readAvatar('gibt-es-nicht')).toBeNull();
 	});
 
-	it('mit Fake-Storage: Maximum (2 MB) ok, Lesen liefert Typ, Entfernen loescht', async () => {
+	it('mit Fake-Storage: Maximum (2 MB) ok, Lesen liefert Typ, Entfernen löscht', async () => {
 		await installFakeStorage(admin);
 		const ctx = await ctxOf(id);
 		const webp = new Uint8Array(AVATAR_MAX_BYTES);
@@ -359,7 +359,7 @@ describe('saveSettings (Profil-Action)', () => {
 		});
 	});
 
-	it('Theme setzt auch das Cookie; ungueltiges Theme -> 400 ohne Cookie', async () => {
+	it('Theme setzt auch das Cookie; ungültiges Theme -> 400 ohne Cookie', async () => {
 		const ok = await save({ theme: 'dark' });
 		expect(ok.cookiesSet.theme).toBe('dark');
 		const bad = await save({ theme: 'neon' });
@@ -368,7 +368,7 @@ describe('saveSettings (Profil-Action)', () => {
 		expect((await loadUserPrefs(uid)).theme).toBe('dark');
 	});
 
-	it('Hex-Injection in der Akzentfarbe wird abgewiesen, gueltige gespeichert', async () => {
+	it('Hex-Injection in der Akzentfarbe wird abgewiesen, gültige gespeichert', async () => {
 		for (const v of [
 			'#12345',
 			'#1234567',
@@ -403,7 +403,7 @@ describe('saveSettings (Profil-Action)', () => {
 		expect((await save({ pageSize: '' })).res.status).toBe(400);
 	});
 
-	it('startPage: externe/unbekannte Ziele fallen auf /dashboard zurueck', async () => {
+	it('startPage: externe/unbekannte Ziele fallen auf /dashboard zurück', async () => {
 		for (const v of [
 			'//evil.com',
 			'https://evil.com',
@@ -461,7 +461,7 @@ describe('Eigene Mitglieder: Kontakte, Grenzen', () => {
 		await link(kid, 'nurEdit');
 	});
 
-	it('10 Eintraege ok, 11 -> 422 (Telefone und E-Mails getrennt)', async () => {
+	it('10 Einträge ok, 11 -> 422 (Telefone und E-Mails getrennt)', async () => {
 		expect((await put(kid, { phones: phones(10), emails: emails(10) })).status).toBe(200);
 		expect((await put(kid, { phones: phones(11), emails: emails(1) })).status).toBe(422);
 		expect((await put(kid, { phones: [], emails: emails(11) })).status).toBe(422);
@@ -470,7 +470,7 @@ describe('Eigene Mitglieder: Kontakte, Grenzen', () => {
 		expect(list[0].emails).toHaveLength(10);
 	});
 
-	it('letzte E-Mail loeschen -> 422 und Zustand bleibt; Telefone duerfen leer werden', async () => {
+	it('letzte E-Mail löschen -> 422 und Zustand bleibt; Telefone dürfen leer werden', async () => {
 		await put(kid, { phones: phones(2), emails: emails(1) });
 		const res = await put(kid, { phones: phones(2), emails: [] });
 		expect(res.status).toBe(422);
@@ -494,7 +494,7 @@ describe('Eigene Mitglieder: Kontakte, Grenzen', () => {
 		expect((await put('abc', body)).status).toBe(422);
 	});
 
-	it('Fremdes Mitglied bleibt bei 404 unveraendert (kein Seiteneffekt)', async () => {
+	it('Fremdes Mitglied bleibt bei 404 unverändert (kein Seiteneffekt)', async () => {
 		await put(fremd, { phones: phones(1), emails: emails(1) });
 		const res = await M(`/members/${fremd}`, 'admin');
 		const m = (await res.json()).data;
@@ -539,7 +539,7 @@ describe('Eigene Mitglieder: Kontakte, Grenzen', () => {
 		expect(after).toBe(before);
 	});
 
-	it('Trennung der Eltern: Verknuepfung geloest -> 404', async () => {
+	it('Trennung der Eltern: Verknüpfung gelöst -> 404', async () => {
 		const k2 = await mkMember('Zweitkind');
 		await link(k2, 'eltern');
 		expect((await put(k2, { phones: [], emails: [] })).status).toBe(200);
@@ -550,7 +550,7 @@ describe('Eigene Mitglieder: Kontakte, Grenzen', () => {
 	});
 });
 
-describe('Mail-Abwahlen: Randfaelle', () => {
+describe('Mail-Abwahlen: Randfälle', () => {
 	let kid = '';
 	const pref = (id: string, json: unknown, who = 'eltern', prefix = '/my') =>
 		M(`${prefix}/members/${id}/mail-prefs`, who, { method: 'PUT', json });
@@ -583,7 +583,7 @@ describe('Mail-Abwahlen: Randfaelle', () => {
 		expect((await rows()).filter((r) => r.member_id === kid)).toHaveLength(0);
 	});
 
-	it('Body-Validierung: fehlendes/nicht-boolesches enabled, zusaetzliche Felder -> 422', async () => {
+	it('Body-Validierung: fehlendes/nicht-boolesches enabled, zusätzliche Felder -> 422', async () => {
 		expect((await pref(kid, { category: 'action-info' })).status).toBe(422);
 		expect((await pref(kid, { category: 'action-info', enabled: 'false' })).status).toBe(422);
 		expect((await pref(kid, { category: 'action-info', enabled: false, x: 1 })).status).toBe(422);
@@ -615,7 +615,7 @@ describe('Mail-Abwahlen: Randfaelle', () => {
 	});
 });
 
-describe('defaultRoleGrants (Randfaelle)', () => {
+describe('defaultRoleGrants (Randfälle)', () => {
 	const hasPerm = async (userId: string, key: string) => (await ctxOf(userId)).permissions.has(key);
 
 	it('Rolle „Mitglied“ aus dem Manifest hat own.view und own.edit, ist kein System', async () => {
@@ -629,7 +629,7 @@ describe('defaultRoleGrants (Randfaelle)', () => {
 		expect(perms.map((p) => p.k).sort()).toEqual(['members.own.edit', 'members.own.view']);
 	});
 
-	it('bestehende Rolle mit zugewiesenem Benutzer bekommt die Rechte nachtraeglich', async () => {
+	it('bestehende Rolle mit zugewiesenem Benutzer bekommt die Rechte nachträglich', async () => {
 		const roleId = await createRole(admin, { name: 'Eltern-Bestand', permissions: [] });
 		const uid = await createUser(admin, {
 			name: 'Bestand',
@@ -656,7 +656,7 @@ describe('defaultRoleGrants (Randfaelle)', () => {
 		await enableModule(admin, 'grantx');
 		expect(await hasPerm(uid, 'grantx.thing.view')).toBe(true);
 		expect(await hasPerm(uid, 'grantx.thing.edit')).toBe(false);
-		// Rolle nicht doppelt angelegt, Doppel-Eintraege in der Liste fuehren nicht zu Duplikaten
+		// Rolle nicht doppelt angelegt, Doppel-Einträge in der Liste führen nicht zu Duplikaten
 		const roles = await getDb()
 			.select()
 			.from(schema.role)
@@ -681,7 +681,7 @@ describe('defaultRoleGrants (Randfaelle)', () => {
 		expect(left).toHaveLength(0);
 	});
 
-	it('Rolle zwischenzeitlich geloescht: Sync legt sie nicht erneut an, wenn alle Rechte markiert sind', async () => {
+	it('Rolle zwischenzeitlich gelöscht: Sync legt sie nicht erneut an, wenn alle Rechte markiert sind', async () => {
 		const [r] = await getDb()
 			.select()
 			.from(schema.role)
@@ -695,7 +695,7 @@ describe('defaultRoleGrants (Randfaelle)', () => {
 		expect(again).toHaveLength(0);
 	});
 
-	it('Rolle ohne Rechte im Manifest (nur unbekannte Schluessel) wird nicht angelegt', async () => {
+	it('Rolle ohne Rechte im Manifest (nur unbekannte Schlüssel) wird nicht angelegt', async () => {
 		registerModule({
 			manifest: {
 				id: 'granty',

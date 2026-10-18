@@ -11,7 +11,7 @@ const definitions = new Map<string, ModuleDefinition>();
 export function validateDefinition(def: ModuleDefinition): void {
 	const m = def.manifest;
 	if (!MODULE_ID_PATTERN.test(m.id) || RESERVED_MODULE_IDS.has(m.id)) {
-		throw new Error(`Ungueltige Modul-ID: "${m.id}"`);
+		throw new Error(`Ungültige Modul-ID: "${m.id}"`);
 	}
 	if (!/^\d+\.\d+\.\d+/.test(m.version)) {
 		throw new Error(`Modul ${m.id}: Version muss SemVer sein`);
@@ -36,13 +36,13 @@ export function validateDefinition(def: ModuleDefinition): void {
 	const jobIds = new Set<string>();
 	for (const j of def.jobs ?? []) {
 		if (!/^[a-z][a-z0-9-]*$/.test(j.id) || jobIds.has(j.id)) {
-			throw new Error(`Modul ${m.id}: ungueltige oder doppelte Job-ID "${j.id}"`);
+			throw new Error(`Modul ${m.id}: ungültige oder doppelte Job-ID "${j.id}"`);
 		}
 		jobIds.add(j.id);
 	}
 	for (const dep of m.optionalDependencies ?? []) {
 		if (dep === m.id || m.dependencies.includes(dep)) {
-			throw new Error(`Modul ${m.id}: optionale Abhaengigkeit "${dep}" ist ungueltig`);
+			throw new Error(`Modul ${m.id}: optionale Abhängigkeit "${dep}" ist ungültig`);
 		}
 	}
 }
@@ -67,12 +67,12 @@ export function allDefinitions(): ModuleDefinition[] {
 	return [...definitions.values()];
 }
 
-/** Topologische Pruefung: unbekannte Abhaengigkeiten und Zyklen werden abgelehnt. */
+/** Topologische Prüfung: unbekannte Abhängigkeiten und Zyklen werden abgelehnt. */
 export function assertDependenciesResolvable(): void {
 	for (const d of definitions.values()) {
 		for (const dep of d.manifest.dependencies) {
 			if (!definitions.has(dep)) {
-				throw new Error(`Modul ${d.manifest.id} benoetigt unbekanntes Modul "${dep}"`);
+				throw new Error(`Modul ${d.manifest.id} benötigt unbekanntes Modul "${dep}"`);
 			}
 		}
 	}
@@ -81,7 +81,7 @@ export function assertDependenciesResolvable(): void {
 	const visit = (id: string, trail: string[]) => {
 		if (done.has(id)) return;
 		if (visiting.has(id))
-			throw new Error(`Zyklische Modulabhaengigkeit: ${[...trail, id].join(' -> ')}`);
+			throw new Error(`Zyklische Modulabhängigkeit: ${[...trail, id].join(' -> ')}`);
 		visiting.add(id);
 		for (const dep of definitions.get(id)?.manifest.dependencies ?? []) visit(dep, [...trail, id]);
 		visiting.delete(id);

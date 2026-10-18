@@ -2,7 +2,7 @@ export interface NavItem {
 	label: string;
 	href: string;
 	icon: string;
-	/** Ohne Angabe: fuer alle angemeldeten Benutzer sichtbar */
+	/** Ohne Angabe: für alle angemeldeten Benutzer sichtbar */
 	permission?: string;
 }
 
@@ -11,7 +11,7 @@ export const PRIMARY_NAV: NavItem[] = [
 	{ label: 'Dashboard', href: '/dashboard', icon: 'layout-dashboard' }
 ];
 
-/** Verwaltungs-Eintraege: in der Seitenleiste in einer einklappbaren Gruppe */
+/** Verwaltungs-Einträge: in der Seitenleiste in einer einklappbaren Gruppe */
 export const ADMIN_NAV: NavItem[] = [
 	{ label: 'Benutzer', href: '/users', icon: 'users', permission: 'core.users.view' },
 	{ label: 'Rollen', href: '/roles', icon: 'shield', permission: 'core.roles.view' },
@@ -23,11 +23,18 @@ export const ADMIN_NAV: NavItem[] = [
 	},
 	{ label: 'Module', href: '/modules', icon: 'puzzle', permission: 'core.modules.view' },
 	{ label: 'API-Keys', href: '/api-keys', icon: 'terminal', permission: 'core.api.view' },
+	{ label: 'API-Übersicht', href: '/api-docs', icon: 'terminal', permission: 'core.api.view' },
 	{ label: 'Einstellungen', href: '/settings', icon: 'settings', permission: 'core.settings.view' },
 	{ label: 'KI', href: '/ai', icon: 'sparkles', permission: 'core.ai.view' },
 	{ label: 'Storage', href: '/storage', icon: 'hard-drive', permission: 'core.storage.manage' },
 	{ label: 'PDF', href: '/pdf', icon: 'file-text', permission: 'core.pdf.manage' },
-	{ label: 'Audit-Logs', href: '/audit', icon: 'scroll-text', permission: 'core.audit.view' }
+	{ label: 'Audit-Logs', href: '/audit', icon: 'scroll-text', permission: 'core.audit.view' },
+	{
+		label: 'Zurücksetzen',
+		href: '/system/reset',
+		icon: 'rotate-ccw',
+		permission: 'core.system.reset'
+	}
 ];
 
 /** Eintrag eines Moduls in der Seitenleiste (siehe ModuleNavigationItem). */

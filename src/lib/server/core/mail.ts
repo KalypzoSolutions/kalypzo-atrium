@@ -11,7 +11,7 @@ export interface MailMessage {
 	html?: string;
 	/** `false`: ohne Stamm-Layout senden (Standard: Layout aus den Einstellungen) */
 	layout?: boolean;
-	/** Dateianhaenge (z. B. Rechnung als PDF) */
+	/** Dateianhänge (z. B. Rechnung als PDF) */
 	files?: { filename: string; contentType: string; content: Buffer }[];
 }
 
@@ -27,7 +27,7 @@ export interface MailTransport {
 }
 
 let testTransport: MailTransport | undefined;
-/** Fuer Tests: ersetzt SMTP durch einen Testadapter. */
+/** Für Tests: ersetzt SMTP durch einen Testadapter. */
 export function setMailTransportForTests(t: MailTransport | undefined): void {
 	testTransport = t;
 }

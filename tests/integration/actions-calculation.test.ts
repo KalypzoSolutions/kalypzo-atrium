@@ -68,7 +68,7 @@ let actionId: string;
 
 async function ctxOf(userId: string) {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -162,7 +162,7 @@ beforeAll(async () => {
 });
 
 describe('Kalkulation: Standardwerte', () => {
-	it('liefert ohne Speicherung Standardposten und Naechte aus den Aktionsdaten', async () => {
+	it('liefert ohne Speicherung Standardposten und Nächte aus den Aktionsdaten', async () => {
 		const c = await data<CalculationDto>(await as('owner', `/actions/${actionId}/calculation`));
 		expect(c.persisted).toBe(false);
 		expect(c.updatedAt).toBeNull();
@@ -192,7 +192,7 @@ describe('Kalkulation: Speichern', () => {
 		// 100 EUR / 12 Teilnehmende = 8,33 -> 9 EUR je Person
 		expect(saved.result.programPerPersonCents).toBe(900);
 		expect(saved.result.programTotalCents).toBe(10800);
-		// Essen: 10 EUR x 14 Personen x 5 Naechte = 700 EUR
+		// Essen: 10 EUR x 14 Personen x 5 Nächte = 700 EUR
 		expect(saved.result.totalCents).toBe(10800 + 70000);
 
 		const got = await data<CalculationDto>(await as('owner', `/actions/${actionId}/calculation`));
@@ -203,7 +203,7 @@ describe('Kalkulation: Speichern', () => {
 		expect(got.result.totalCents).toBe(saved.result.totalCents);
 	});
 
-	it('ersetzt die Posten statt sie zu verdoppeln und filtert Checklisten-Schluessel', async () => {
+	it('ersetzt die Posten statt sie zu verdoppeln und filtert Checklisten-Schlüssel', async () => {
 		const put = async () =>
 			data<CalculationDto>(
 				await as('owner', `/actions/${actionId}/calculation`, {
@@ -243,7 +243,7 @@ describe('Kalkulation: Validierung', () => {
 		...over
 	});
 
-	it('lehnt ungueltige Eingaben mit 422 ab', async () => {
+	it('lehnt ungültige Eingaben mit 422 ab', async () => {
 		expect((await put(calcBody({ items: [item({ amountCents: -1 })] as never }))).status).toBe(422);
 		expect((await put(calcBody({ participants: 1001 }))).status).toBe(422);
 		expect((await put(calcBody({ nights: 61 }))).status).toBe(422);
@@ -278,7 +278,7 @@ describe('Kalkulation: Zugriff', () => {
 		expect(c.settings.participants).toBe(20);
 	});
 
-	it('stranger erhaelt 404 auf alle Endpoints', async () => {
+	it('stranger erhält 404 auf alle Endpoints', async () => {
 		const p = `/actions/${actionId}/calculation`;
 		expect((await as('stranger', p)).status).toBe(404);
 		expect((await as('stranger', `${p}/suggestions`)).status).toBe(404);
@@ -286,8 +286,8 @@ describe('Kalkulation: Zugriff', () => {
 	});
 });
 
-describe('Kalkulation: Vorschlaege', () => {
-	it('zaehlt Teilnehmende nach Alter, Wohnort und Juleica', async () => {
+describe('Kalkulation: Vorschläge', () => {
+	it('zählt Teilnehmende nach Alter, Wohnort und Juleica', async () => {
 		const id = await createAction({ endsOn: '2026-07-14' });
 		const add = async (json: Record<string, unknown>) =>
 			data(await as('owner', `/actions/${id}/participants`, { method: 'POST', json }), 201);
@@ -334,7 +334,7 @@ describe('Kalkulation: Vorschlaege', () => {
 	});
 });
 
-describe('Kalkulation: Beitrag uebernehmen', () => {
+describe('Kalkulation: Beitrag übernehmen', () => {
 	const calcPath = (id: string) => `/actions/${id}/calculation`;
 	const put = async (id: string, over: Partial<CalculationInput>) =>
 		data<CalculationDto>(await as('owner', calcPath(id), { method: 'PUT', json: calcBody(over) }));
@@ -352,7 +352,7 @@ describe('Kalkulation: Beitrag uebernehmen', () => {
 		expect(res.status).toBe(422);
 	});
 
-	it('uebernimmt, erkennt Veraenderungen und nimmt zurueck', async () => {
+	it('übernimmt, erkennt Veränderungen und nimmt zurück', async () => {
 		const id = await createAction();
 		const saved = await put(id, { teamPercent: 50 });
 		expect(saved.applied).toBeNull();

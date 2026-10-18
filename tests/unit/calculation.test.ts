@@ -42,7 +42,7 @@ describe('calculate', () => {
 		expect(r.perPersonCents).toBe(3600);
 	});
 
-	it('Pauschalposten bleiben unveraendert', () => {
+	it('Pauschalposten bleiben unverändert', () => {
 		const r = calculate(base({ items: [item('materials', 5000)] }));
 		expect(r.subtotalCents).toBe(5000);
 	});
@@ -112,7 +112,7 @@ describe('calculate', () => {
 		expect(r.byCategory.reduce((s, c) => s + c.share, 0)).toBeCloseTo(1, 10);
 	});
 
-	it('behandelt ungueltige Eingaben als 0', () => {
+	it('behandelt ungültige Eingaben als 0', () => {
 		const r = calculate(
 			base({
 				participants: Number.NaN,
@@ -197,7 +197,7 @@ describe('calculate Team-Anteil und Basen', () => {
 });
 
 describe('nightsBetween', () => {
-	it('zaehlt Naechte', () => {
+	it('zählt Nächte', () => {
 		expect(nightsBetween('2026-07-01', '2026-07-08')).toBe(7);
 	});
 	it('gleicher Tag ist 0', () => {
@@ -210,7 +210,7 @@ describe('nightsBetween', () => {
 		expect(nightsBetween('2028-02-28', '2028-03-01')).toBe(2);
 		expect(nightsBetween('2026-02-28', '2026-03-01')).toBe(1);
 	});
-	it('ungueltig ergibt null', () => {
+	it('ungültig ergibt null', () => {
 		expect(nightsBetween('2026-07-01', null)).toBeNull();
 		expect(nightsBetween('2026-07-01', 'quatsch')).toBeNull();
 		expect(nightsBetween('2026-07-01', '2026-02-30')).toBeNull();

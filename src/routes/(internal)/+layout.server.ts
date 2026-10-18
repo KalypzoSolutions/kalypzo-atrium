@@ -6,7 +6,7 @@ export const load: LayoutServerLoad = async ({ locals, url, cookies }) => {
 	if (!locals.user) {
 		throw redirect(303, `/login?redirectTo=${encodeURIComponent(url.pathname + url.search)}`);
 	}
-	// Theme: die Datenbank (ausdruecklich gespeicherte Wahl) gewinnt gegenueber dem Cookie (SSR-Quelle)
+	// Theme: die Datenbank (ausdrücklich gespeicherte Wahl) gewinnt gegenüber dem Cookie (SSR-Quelle)
 	const prefs = await loadUserPrefs(locals.user.id);
 	if (prefs.themeExplicit && (cookies.get('theme') ?? 'system') !== prefs.theme) {
 		cookies.set('theme', prefs.theme, {

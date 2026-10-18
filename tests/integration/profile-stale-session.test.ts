@@ -1,5 +1,5 @@
 /**
- * Regression: /profile darf bei einer aelteren Anmeldung nicht mit 500 abbrechen.
+ * Regression: /profile darf bei einer älteren Anmeldung nicht mit 500 abbrechen.
  * Better Auth `listSessions` verlangt eine frische Sitzung (`freshAge`, Standard 1 Tag) und wirft sonst
  * „Session is not fresh“ – die Seite liest die Sitzungen deshalb direkt aus der Datenbank.
  */
@@ -45,7 +45,7 @@ beforeAll(async () => {
 	});
 	const [s] = await getDb().select().from(schema.session).where(eq(schema.session.userId, userId));
 	sessionId = s!.id;
-	// Anmeldung vor drei Tagen: laenger als `freshAge`
+	// Anmeldung vor drei Tagen: länger als `freshAge`
 	await getDb()
 		.update(schema.session)
 		.set({ createdAt: new Date(Date.now() - 3 * DAY) })

@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	requirePerm(locals, 'core.storage.manage');
 	const [fields, usage] = await Promise.all([
 		loadFields(['storage']),
-		// Ohne konfigurierten Storage ist die Metadaten-Abfrage dennoch moeglich; Fehler abfangen
+		// Ohne konfigurierten Storage ist die Metadaten-Abfrage dennoch möglich; Fehler abfangen
 		usageByModule(locals.ctx).catch(() => [])
 	]);
 	return { fields, usage };

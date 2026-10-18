@@ -212,6 +212,24 @@ await core.ai.usage(ctx, { from, to }); // Verbrauch je Modul/Modell (core.ai.vi
 
 Zugriff: `<module>.storage.read|write|delete` oder `core.storage.manage`; für Modul `core` entsprechend `core.storage.*`. Grenzen: `core.storage.maxFileSizeMb`, Content-Type-Allowlist (HTML/SVG nur bei expliziter Freigabe). Metadaten liegen in `file`, Objekte unter einem nicht ableitbaren Schlüssel im Bucket.
 
+## core.images
+
+```ts
+const img = await core.images.process(bytes, {
+	variants: [
+		{ name: 'thumb', maxEdge: 480, format: 'webp', quality: 75 },
+		{ name: 'full', maxEdge: null, format: 'auto', quality: 90 }
+	]
+});
+// img.format, img.width, img.height, img.hasAlpha, img.variants[i] = { name, bytes, contentType, extension, width, height }
+```
+
+- Bildverarbeitung mit [sharp](https://sharp.pixelplumbing.com/) (libvips), nur im Core; Typen (`ImageVariantSpec`, `ProcessedImage`, `ProcessedVariant`, `ProcessImageOptions`) über `$lib/sdk/server`. Kein Kontext nötig, keine Berechtigung.
+- Erkennt das Format am **Inhalt** (JPEG, PNG, WebP, AVIF, GIF – nur erstes Bild), Grenzen `maxInputPixels` (Standard 50 MP) und `maxInputBytes` (25 MB).
+- Dreht nach EXIF-Ausrichtung und **entfernt alle Metadaten** (EXIF inkl. GPS, XMP, IPTC; Farbprofil → sRGB). Varianten werden nie vergrößert; `maxEdge: null` = Originalgröße; `format: 'auto'` = JPEG, bei Transparenz PNG.
+- Fehler: unlesbar/nicht unterstützt/zu viele Pixel → `badRequest`, zu groß → `tooLarge`. HEIC wird nicht unterstützt.
+- Dateien speichert der Aufrufer selbst (`core.storage`); Beispiel: Modul `galleries`.
+
 ## core.audit
 
 ```ts

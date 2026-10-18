@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 // Mitglieder: Ansicht (gesperrter Dialog), Bearbeiten mit Tabs, Mitgliedschaft (Zweitmitglied, Eintritt/Austritt),
-// Fehlerfuehrung zum Tab „Mitgliedschaft“ und Statusfilter „Ausgetreten“.
+// Fehlerführung zum Tab „Mitgliedschaft“ und Statusfilter „Ausgetreten“.
 
 const ADMIN = { email: 'admin@example.test', password: 'e2e-admin-password-1' };
 const ORIGIN = 'http://localhost:4173';
@@ -30,7 +30,7 @@ async function api<T>(page: Page, method: string, path: string, body?: unknown):
 	return (text ? (JSON.parse(text) as { data: T }).data : null) as T;
 }
 
-/** Module in Reihenfolge aktivieren (Abhaengigkeiten zuerst), falls noch nicht aktiv. */
+/** Module in Reihenfolge aktivieren (Abhängigkeiten zuerst), falls noch nicht aktiv. */
 async function ensureModules(page: Page, ids: string[]) {
 	const list = await api<{ manifest: { id: string }; enabled: boolean }[]>(page, 'GET', '/modules');
 	for (const id of ids) {
@@ -101,7 +101,7 @@ test('Mitglied: Ansicht, Bearbeiten mit Tabs, Austritt und Statusfilter', async 
 	await expect(dialog.getByRole('checkbox', { name: 'Bund', exact: true })).not.toBeChecked();
 	await expect(dialog.getByLabel('Eintritt', { exact: true })).toHaveValue('2020-09-01');
 
-	// Austritt vor dem Eintritt → Fehler; der Dialog springt zurueck auf „Mitgliedschaft“
+	// Austritt vor dem Eintritt → Fehler; der Dialog springt zurück auf „Mitgliedschaft“
 	const exitInput = dialog.getByLabel('Austritt', { exact: true });
 	await exitInput.fill('2019-12-31');
 	await personTab.click();
@@ -130,7 +130,7 @@ test('Mitglied: Ansicht, Bearbeiten mit Tabs, Austritt und Statusfilter', async 
 	await expect(leftRow).toBeVisible();
 	await expect(leftRow).toContainText('ausgetreten');
 
-	// Gespeicherte Werte per API gegenpruefen
+	// Gespeicherte Werte per API gegenprüfen
 	const list = await api<{ items: { lastName: string; exitDate: string | null }[] }>(
 		page,
 		'GET',

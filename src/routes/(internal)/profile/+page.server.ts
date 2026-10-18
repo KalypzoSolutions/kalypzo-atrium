@@ -22,7 +22,7 @@ import type { Actions, PageServerLoad } from './$types';
 /**
  * Aktive Sitzungen des Benutzers direkt aus der Datenbank. `api.listSessions` verlangt eine
  * *frische* Sitzung (`freshAge`, Standard 1 Tag) und wirft sonst „Session is not fresh“ – die
- * Seite wuerde fuer jede aeltere Anmeldung mit 500 abbrechen.
+ * Seite würde für jede ältere Anmeldung mit 500 abbrechen.
  */
 function listOwnSessions(userId: string) {
 	return getDb()
@@ -86,7 +86,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		createdAt: dbUser?.createdAt ?? null,
 		emailVerified: dbUser?.emailVerified ?? false,
 		roles: roles.map((r) => r.name),
-		// Session-Tokens verlassen den Server nie; Widerruf erfolgt ueber die Session-ID
+		// Session-Tokens verlassen den Server nie; Widerruf erfolgt über die Session-ID
 		sessions: sessions.map((s) => ({
 			id: s.id,
 			current: s.id === locals.sessionId,
@@ -95,18 +95,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 			createdAt: s.createdAt,
 			expiresAt: s.expiresAt
 		})),
-		/** Eigene, nicht widerrufene API-Keys (hoechstens 3; leer ohne Recht `core.api.manage`) */
+		/** Eigene, nicht widerrufene API-Keys (höchstens 3; leer ohne Recht `core.api.manage`) */
 		apiKeys,
-		/** Einstellungen (Alias `settings` fuer aeltere Aufrufer) */
+		/** Einstellungen (Alias `settings` für ältere Aufrufer) */
 		userPrefs,
 		settings: userPrefs,
-		/** Auswahl fuer die Startseite: Dashboard, Profil und Modul-Navigation (nach Rechten) */
+		/** Auswahl für die Startseite: Dashboard, Profil und Modul-Navigation (nach Rechten) */
 		startPageOptions: [
 			{ value: '/dashboard', label: 'Dashboard' },
 			{ value: '/profile', label: 'Profil' },
 			...nav.map((n) => ({ value: n.path, label: n.label }))
 		],
-		/** IDs aktiver Module (fuer `profileSections` in `+page.ts`) */
+		/** IDs aktiver Module (für `profileSections` in `+page.ts`) */
 		activeModules: [...enabled].sort(),
 		permissions: [...locals.ctx.permissions].sort()
 	};
@@ -125,7 +125,7 @@ export const actions: Actions = {
 		const current = String(f.get('currentPassword') ?? '');
 		const next = String(f.get('newPassword') ?? '');
 		if (next !== String(f.get('confirm') ?? '')) {
-			return fail(400, { section: 'password', error: 'Die Passwoerter stimmen nicht ueberein.' });
+			return fail(400, { section: 'password', error: 'Die Passwörter stimmen nicht überein.' });
 		}
 		const p = passwordSchema.safeParse(next);
 		if (!p.success) return fail(400, { section: 'password', error: p.error.issues[0]?.message });
@@ -141,10 +141,10 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, {
 				section: 'password',
-				error: authErrorMessage(e, 'Passwort konnte nicht geaendert werden.')
+				error: authErrorMessage(e, 'Passwort konnte nicht geändert werden.')
 			});
 		}
-		return { section: 'password', success: 'Passwort wurde geaendert.' };
+		return { section: 'password', success: 'Passwort wurde geändert.' };
 	},
 
 	enable2fa: async ({ request }) => {
@@ -180,7 +180,7 @@ export const actions: Actions = {
 				headers: request.headers
 			});
 		} catch (e) {
-			return fail(400, { section: '2fa', error: authErrorMessage(e, 'Code ungueltig.') });
+			return fail(400, { section: '2fa', error: authErrorMessage(e, 'Code ungültig.') });
 		}
 		return { section: '2fa', success: 'Zwei-Faktor-Authentifizierung ist aktiv.' };
 	},
@@ -275,7 +275,7 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, {
 				section: 'account',
-				error: isCoreError(e) ? e.message : 'Name konnte nicht geaendert werden.'
+				error: isCoreError(e) ? e.message : 'Name konnte nicht geändert werden.'
 			});
 		}
 		return { section: 'account', success: 'Name wurde gespeichert.' };
@@ -290,7 +290,7 @@ export const actions: Actions = {
 					.trim()
 					.toLowerCase()
 					.max(255)
-					.pipe(z.email('Bitte eine gueltige E-Mail-Adresse eingeben.')),
+					.pipe(z.email('Bitte eine gültige E-Mail-Adresse eingeben.')),
 				password: z.string().min(1, 'Bitte das Passwort eingeben.').max(128)
 			})
 			.safeParse({ newEmail: f.get('newEmail'), password: f.get('password') });
@@ -304,10 +304,10 @@ export const actions: Actions = {
 				section: 'email',
 				error: isCoreError(e)
 					? e.message
-					: authErrorMessage(e, 'Die Aenderung konnte nicht angefragt werden.')
+					: authErrorMessage(e, 'Die Änderung konnte nicht angefragt werden.')
 			});
 		}
-		// Neutrale Antwort: unabhaengig davon, ob die Adresse bereits vergeben ist
+		// Neutrale Antwort: unabhängig davon, ob die Adresse bereits vergeben ist
 		return {
 			section: 'email',
 			success:
@@ -319,11 +319,11 @@ export const actions: Actions = {
 		const f = await request.formData();
 		const file = f.get('avatar');
 		if (!(file instanceof File) || file.size === 0) {
-			return fail(400, { section: 'avatar', error: 'Bitte ein Bild auswaehlen.' });
+			return fail(400, { section: 'avatar', error: 'Bitte ein Bild auswählen.' });
 		}
-		// Groesse vor dem Einlesen pruefen (kein Puffern ueberlanger Uploads)
+		// Größe vor dem Einlesen prüfen (kein Puffern überlanger Uploads)
 		if (file.size > AVATAR_MAX_BYTES) {
-			return fail(413, { section: 'avatar', error: 'Das Bild darf hoechstens 2 MB gross sein' });
+			return fail(413, { section: 'avatar', error: 'Das Bild darf höchstens 2 MB groß sein' });
 		}
 		try {
 			await setOwnAvatar(locals.ctx, {

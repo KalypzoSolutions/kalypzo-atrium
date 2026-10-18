@@ -91,7 +91,7 @@ describe('Gitter-Tabelle', () => {
 		expect(html).not.toContain('<b>Zelt');
 	});
 
-	it('ignoriert ungueltige align- und widths-Werte', () => {
+	it('ignoriert ungültige align- und widths-Werte', () => {
 		const html = renderBlocks([
 			{
 				type: 'table',
@@ -107,7 +107,7 @@ describe('Gitter-Tabelle', () => {
 		expect(html).toContain('text-align:left');
 	});
 
-	it('bricht lange Woerter (Dateinamen, IBAN) in der Zelle um', () => {
+	it('bricht lange Wörter (Dateinamen, IBAN) in der Zelle um', () => {
 		const html = renderBlocks([
 			{
 				type: 'table',
@@ -150,7 +150,7 @@ describe('Seitenumbruch-Regeln', () => {
 		expect(long).toContain('<thead style="display:table-header-group;">');
 	});
 
-	it('Summenzeile haengt an der letzten Datenzeile (kein Umbruch davor)', () => {
+	it('Summenzeile hängt an der letzten Datenzeile (kein Umbruch davor)', () => {
 		const html = renderBlocks([grid(3, { totalRow: ['Summe', '1'] })]);
 		expect(html).toContain('break-before:avoid');
 		expect(html.match(/break-after:avoid/g)?.length).toBeGreaterThanOrEqual(1);
@@ -188,7 +188,7 @@ describe('Seitenumbruch-Regeln', () => {
 		const [first, second] = html.split('\n') as [string, string];
 		expect(first).toContain('break-after:avoid');
 		expect(second).not.toContain('Bezeichnung');
-		expect(second).toContain('margin:6px 0 16px');
+		expect(second).toContain('margin:0 0 16px');
 	});
 
 	it('pageBreak: kein Umbruch am Anfang/Ende, aufeinanderfolgende nur einmal', () => {
@@ -206,7 +206,7 @@ describe('Seitenumbruch-Regeln', () => {
 		expect(html.indexOf('break-before:page')).toBeLessThan(html.indexOf('B</p>'));
 	});
 
-	it('Ueberschriften brechen nie direkt nach sich selbst um', () => {
+	it('Überschriften brechen nie direkt nach sich selbst um', () => {
 		const t = getTemplate('default')!;
 		const css = t.css({
 			title: 'T',
@@ -223,7 +223,7 @@ describe('Seitenumbruch-Regeln', () => {
 });
 
 describe('Anlagen', () => {
-	it('haengt Bild- und PDF-Anlagen in Reihenfolge an (Seitenzahl)', async () => {
+	it('hängt Bild- und PDF-Anlagen in Reihenfolge an (Seitenzahl)', async () => {
 		const res = await pdf.generate(ctxWith(), {
 			title: 'Bericht',
 			content: [],
@@ -266,7 +266,7 @@ describe('Anlagen', () => {
 		expect(htmls[1]).toContain('&lt;u&gt;y&lt;/u&gt;');
 	});
 
-	it('begrenzt Anzahl und Groesse', async () => {
+	it('begrenzt Anzahl und Größe', async () => {
 		const many = Array.from({ length: 81 }, () => ({
 			label: 'x',
 			contentType: 'image/png',

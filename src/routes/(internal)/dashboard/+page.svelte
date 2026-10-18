@@ -58,7 +58,7 @@
 	</div>
 {:else if data.stats.length === 0}
 	<EmptyState
-		title="Keine Uebersicht verfuegbar"
-		description="Ihre Rollen enthalten keine Berechtigungen fuer Dashboard-Kennzahlen."
+		title="Keine Übersicht verfügbar"
+		description="Ihre Rollen enthalten keine Berechtigungen für Dashboard-Kennzahlen."
 	/>
 {/if}

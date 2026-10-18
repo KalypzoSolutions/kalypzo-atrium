@@ -22,7 +22,7 @@ class ThemeState {
 		this.choice = choice;
 		document.cookie = `theme=${choice}; path=/; max-age=31536000; SameSite=Lax`;
 		this.apply();
-		// Optimistisch auch in der Datenbank speichern (`core.user.theme`); ohne Anmeldung/Netz: Cookie genuegt
+		// Optimistisch auch in der Datenbank speichern (`core.user.theme`); ohne Anmeldung/Netz: Cookie genügt
 		void fetch('/profile/theme', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },

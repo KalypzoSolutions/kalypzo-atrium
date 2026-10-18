@@ -7,7 +7,7 @@ import { ADMIN_ROLE_ID, PERMISSION_PATTERN } from './catalog';
 
 export function assertPermissionKey(key: string): void {
 	if (!PERMISSION_PATTERN.test(key)) {
-		throw errors.badRequest(`Ungueltiger Berechtigungsschluessel: ${key}`);
+		throw errors.badRequest(`Ungültiger Berechtigungsschlüssel: ${key}`);
 	}
 }
 
@@ -49,7 +49,7 @@ export async function requireAny(ctx: RequestContext, keys: string[]): Promise<v
 	if (!hasAny(ctx, keys)) throw errors.forbidden(`Berechtigung fehlt: ${keys.join(' | ')}`);
 }
 
-/** Schutz vor Rechteausweitung: nur eigene Berechtigungen duerfen vergeben werden. */
+/** Schutz vor Rechteausweitung: nur eigene Berechtigungen dürfen vergeben werden. */
 export function assertCanGrant(ctx: RequestContext, keys: Iterable<string>): void {
 	if (ctx.actor.type === 'system') return;
 	const missing = [...keys].filter((k) => !ctx.permissions.has(k));
@@ -66,7 +66,7 @@ export async function listPermissions(tx?: DbOrTx) {
 }
 
 /**
- * Gleicht die Berechtigungstabelle mit Core und registrierten Modulen ab und haengt neue
+ * Gleicht die Berechtigungstabelle mit Core und registrierten Modulen ab und hängt neue
  * Berechtigungen an die Systemrolle `Administrator`.
  */
 export async function syncPermissions(

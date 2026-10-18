@@ -23,6 +23,8 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
 `crypto.forModule(id)` (`encrypt/decrypt/isEncrypted`, AES-256-GCM), `permissions` (`require`, `has`, …),
 `modules` (`use`, `useOptional` für `optionalDependencies`), `settings`, `api`, `database.forModule(id).transaction`, `pdf`, `ai`, `storage`
 (`upload/download/remove/stat/list/signed*`; braucht `<modul>.storage.read|write|delete`), `audit.logFromContext`.
+`images.process(bytes, { variants })` (sharp, nur Core): Inhalt prüfen (JPEG/PNG/WebP/AVIF/GIF, ≤ 50 MP), nach EXIF drehen,
+**alle Metadaten inkl. GPS entfernen**, Varianten (WebP/JPEG/PNG) mit Maßen; Typen `ImageVariantSpec` & Co. über `$lib/sdk/server`.
 
 ## Datenbank
 - Jedes Modul hat genau ein Schema `mod_<id>` (Bindestrich → Unterstrich). `forModule(id).transaction` setzt
@@ -36,7 +38,7 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
 
 ## Fehler und Audit
 - `errors.notFound|forbidden|validation|badRequest|conflict|unauthenticated|tooLarge|unavailable` (`$lib/sdk/server`).
-  HTTP: 400/403/404/409/422/401/413/503. Texte deutsch, ASCII-transliteriert.
+  HTTP: 400/403/404/409/422/401/413/503. Texte deutsch mit echten Umlauten.
 - Fremde Objekte → `notFound` (nicht `forbidden`), damit Existenz nicht verraten wird.
 - Audit **nach** der Transaktion: `core.audit.logFromContext(ctx, 'modul.ressource.aktion', { target, metadata })`.
   Keine personenbezogenen Details (Geburtsdatum, Allergien, E-Mail, IBAN) in `metadata`.
@@ -58,3 +60,32 @@ Security-Header und CSP aus `hooks.server.ts`/`svelte.config.js`; CSRF über Sve
 Öffentliche Modul-Endpoints sind **verboten** (`permission` darf nicht `null` sein) – Phase 3 führt ein
 kontrolliertes Opt-in (`public: true`, Pflicht-Rate-Limit) ein. Details: `docs/security.md`.
 Nutzereingaben nie als `{@html}` ausgeben; CSV-Exporte gegen Formel-Injection (`= + - @`) absichern.
+
+## Öffentliches Multipart und Admin-Reset (2026-10-18)
+- `ApiEndpoint.multipart { maxBytes ≤ 12 MB, maxFiles ≤ 10 (Standard 1) }` nur für `public: true` + POST + `body`: Router verlangt
+  `multipart/form-data` + `Content-Length` (413 bei Überschreitung), Textfelder → `body`-Zod (doppelte Felder/`__proto__` → 400), Dateien → `files`.
+- Reset (`core/system/reset.ts`, Recht `core.system.reset`, Seite `/system/reset`): `listResetAreas` → `previewReset` (Token 15 min, im Prozessspeicher)
+  → `exportResetData` (Passwort + TOTP bei 2FA, JSON ohne Geheimnisse) → `executeReset` (Wort `ZURÜCKSETZEN`). Bereiche: Core (`core:audit|api-log|jobs|
+  ai-usage|api-keys|users|roles|settings`) + `ModuleDefinition.resetAreas` (`<modul>:<id>`, `implies` transitiv, `rebuild` = Schema neu inkl. Startdaten)
+  + `resetUsers(tx, keepUserId)`. Jobs pausiert; Reihenfolge Module → Benutzer → Core → Dateien (`core.storage.purge`) → Einstellungen (Storage/SMTP/Secrets
+  bleiben) → Audit (DELETE nur mit `SET LOCAL app.audit_reset = 'on'`, Migration 0005) → Eintrag `core.system.reset`.
+
+## Freigabe an Principals (2026-10-18)
+- Generische Objekt-Freigabe für Module: Typen in `$lib/sdk/types/sharing.ts` (Client + Server), Logik in `$lib/sdk/server/sharing.ts`
+  (über `$lib/sdk/server` exportiert). Principal-Typen `everyone` (ID `*`, „Stamm“), `group` / `member` (aus `members`), `role`, `user`.
+  Schlüssel `typ:id` (`principalKey`, `parsePrincipalKey`), z. B. `group:<id>`, `everyone:*`.
+- Tabellenmuster im Modulschema: `<obj>_shares(<obj>_id FK CASCADE, principal_type CHECK …, principal_id, level CHECK read|edit, created_by,
+  created_at, PK (<obj>_id, principal_type, principal_id))` + Index `(principal_type, principal_id)`. Vorlage: `events/migrations/0001_init.sql`.
+- Ablauf: `const keys = await principalKeysFor(ctx, '<modul>')` **vor** der Transaktion (ruft Core + `members` auf, PGlite), in SQL
+  `principalMatchSql('s', keys)` (`(s.principal_type || ':' || s.principal_id) IN (…)`, leere Liste → `FALSE`, Alias nur `[a-z_][a-z0-9_]*`).
+  Schlüssel des Aufrufers: `everyone:*`, `user:<id>`, alle `role:<id>` (`core.users.roleIds`), dazu `member:<id>` der verknüpften, nicht
+  ausgetretenen Mitglieder und `group:<id>` ihrer Gruppen (Mitgliedschaft **und** Leitung). Ohne `userId` nur `everyone:*`.
+- Weitere Helfer (alle nach/vor der Transaktion): `searchPrincipals(ctx, modul, q, { everyoneLabel, types?, limitPerType? })` (ab 2 Zeichen,
+  Reihenfolge everyone, group, role, member, user), `describePrincipals` (Anzeige, Unbekannte = „Unbekannt“), `validatePrincipals` (422,
+  Pfad `[pathPrefix ?? 'shares', i, 'id']`, `everyone` nur mit `*`).
+- `members` ist **optional**: Modul führt `members` in `optionalDependencies`; `PrincipalProvider` (`listGroups`, `principalIdsForUser`,
+  `searchMembers`, im SDK dupliziert, implementiert in `members/principals.service.ts`) via `core.modules.useOptional`. Ohne `members`
+  entfallen Gruppen/Mitglieder still (Validierung → 422).
+- Core: `core.roles.directory(ctx, { search, ids, limit })` (id/name, nur Anmeldung nötig, Suche ab 2 Zeichen, max. 30) und
+  `core.users.roleIds(userId)`. UI: `SharePanel`/`ShareMenu`/`ShareDialog` mit `type` und `everyoneLabel` (siehe `ui-design.md`).
+- Nutzer: `events` (siehe `module-events.md`). `actions` nutzt noch die Benutzer-Freigabe (`action_shares.user_id`) – Umstellung offen.

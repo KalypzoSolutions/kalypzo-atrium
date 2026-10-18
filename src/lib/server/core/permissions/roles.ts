@@ -1,11 +1,50 @@
-import { count, eq } from 'drizzle-orm';
+import { and, asc, count, eq, ilike, inArray } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
+import { requireUser } from '../auth/context';
 import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { newId } from '../util';
 import { ADMIN_ROLE_ID } from './catalog';
 import { assertCanGrant, existingKeys, permissionsOfRole, requirePermission } from './service';
+
+const ROLE_DIRECTORY_MAX = 30;
+const ROLE_DIRECTORY_MIN_SEARCH = 2;
+
+/**
+ * Minimales Rollenverzeichnis (id, name) für Module, z. B. für Freigaben an Rollen.
+ * Braucht nur eine angemeldete Identität (kein `core.roles.view`). Suche ab 2 Zeichen oder
+ * explizite IDs (max. 100); ohne beides leer. Höchstens 30 Treffer (Standard 20), nach Name sortiert.
+ */
+export async function roleDirectory(
+	ctx: RequestContext,
+	opts: { search?: string; ids?: string[]; limit?: number } = {}
+): Promise<{ id: string; name: string }[]> {
+	if (ctx.actor.type !== 'system') requireUser(ctx);
+	const limit = Math.min(Math.max(opts.limit ?? 20, 1), ROLE_DIRECTORY_MAX);
+	const s = opts.search?.trim().replace(/[%_\\]/g, '') ?? '';
+	const ids = (opts.ids ?? []).slice(0, 100);
+	const useSearch = s.length >= ROLE_DIRECTORY_MIN_SEARCH;
+	if (!useSearch && ids.length === 0) return [];
+	const conditions = [];
+	if (ids.length) conditions.push(inArray(schema.role.id, ids));
+	if (useSearch) conditions.push(ilike(schema.role.name, `%${s}%`));
+	return getDb()
+		.select({ id: schema.role.id, name: schema.role.name })
+		.from(schema.role)
+		.where(and(...conditions))
+		.orderBy(asc(schema.role.name))
+		.limit(limit);
+}
+
+/** Rollen-IDs eines Benutzers (gezielte Abfrage auf `user_role`). */
+export async function roleIdsForUser(userId: string): Promise<string[]> {
+	const rows = await getDb()
+		.select({ roleId: schema.userRole.roleId })
+		.from(schema.userRole)
+		.where(eq(schema.userRole.userId, userId));
+	return rows.map((r) => r.roleId);
+}
 
 export interface RoleItem {
 	id: string;
@@ -94,7 +133,7 @@ export async function updateRole(
 	const [role] = await db.select().from(schema.role).where(eq(schema.role.id, id));
 	if (!role) throw errors.notFound('Rolle nicht gefunden');
 	if (role.isSystem && (input.name !== undefined || input.permissions !== undefined)) {
-		throw errors.forbidden('Systemrollen koennen nicht veraendert werden');
+		throw errors.forbidden('Systemrollen können nicht verändert werden');
 	}
 	const current = await permissionsOfRole(id);
 	// Eine Rolle darf nur bearbeiten, wer alle ihre Rechte selbst besitzt (sonst Rechte-Entzug/-Umgehung)
@@ -145,11 +184,11 @@ export async function updateRole(
 
 export async function deleteRole(ctx: RequestContext, id: string): Promise<void> {
 	await requirePermission(ctx, 'core.roles.delete');
-	if (id === ADMIN_ROLE_ID) throw errors.forbidden('Systemrollen koennen nicht geloescht werden');
+	if (id === ADMIN_ROLE_ID) throw errors.forbidden('Systemrollen können nicht gelöscht werden');
 	const db = getDb();
 	const [role] = await db.select().from(schema.role).where(eq(schema.role.id, id));
 	if (!role) throw errors.notFound('Rolle nicht gefunden');
-	if (role.isSystem) throw errors.forbidden('Systemrollen koennen nicht geloescht werden');
+	if (role.isSystem) throw errors.forbidden('Systemrollen können nicht gelöscht werden');
 	assertCanGrant(ctx, await permissionsOfRole(id));
 	await db.transaction(async (tx) => {
 		await tx.delete(schema.role).where(eq(schema.role.id, id));

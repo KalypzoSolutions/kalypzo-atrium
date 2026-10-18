@@ -43,7 +43,7 @@ export class CoreError extends Error {
 }
 
 export const errors = {
-	badRequest: (m = 'Ungueltige Anfrage', d?: unknown) => new CoreError('bad_request', m, d),
+	badRequest: (m = 'Ungültige Anfrage', d?: unknown) => new CoreError('bad_request', m, d),
 	validation: (d: unknown, m = 'Validierung fehlgeschlagen') =>
 		new CoreError('validation_failed', m, d),
 	unauthenticated: (m = 'Authentifizierung erforderlich') => new CoreError('unauthenticated', m),
@@ -53,7 +53,7 @@ export const errors = {
 	conflict: (m = 'Konflikt') => new CoreError('conflict', m),
 	rateLimited: (m = 'Zu viele Anfragen') => new CoreError('rate_limited', m),
 	moduleDisabled: (id: string) => new CoreError('module_disabled', `Modul "${id}" ist nicht aktiv`),
-	tooLarge: (m = 'Datei ist zu gross') => new CoreError('payload_too_large', m),
+	tooLarge: (m = 'Datei ist zu groß') => new CoreError('payload_too_large', m),
 	unavailable: (m = 'Dienst nicht konfiguriert oder nicht erreichbar') =>
 		new CoreError('unavailable', m)
 };

@@ -60,7 +60,7 @@ const consumer = defineModule({
 
 async function ctxOf(userId: string) {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -90,7 +90,7 @@ afterAll(async () => {
 });
 
 describe('Hintergrundjobs', () => {
-	it('laufen nur fuer aktive Module', async () => {
+	it('laufen nur für aktive Module', async () => {
 		expect(await runDueJobs()).toEqual([]);
 		expect(runs).toBe(0);
 		await enableModule(admin, 'jobprov');
@@ -98,7 +98,7 @@ describe('Hintergrundjobs', () => {
 		expect(runs).toBe(1);
 	});
 
-	it('laufen hoechstens einmal je Intervall', async () => {
+	it('laufen höchstens einmal je Intervall', async () => {
 		now = new Date('2026-10-16T20:00:00Z');
 		expect(await runDueJobs()).toEqual([]);
 		now = new Date('2026-10-17T08:00:00Z');
@@ -108,7 +108,7 @@ describe('Hintergrundjobs', () => {
 		expect(info).toMatchObject({ key: 'jobprov.tick', lastStatus: 'ok', lastMessage: 'Lauf 2' });
 	});
 
-	it('protokollieren Fehler und lassen sich manuell ausloesen', async () => {
+	it('protokollieren Fehler und lassen sich manuell auslösen', async () => {
 		fail = true;
 		const info = await runJobNow(admin, 'jobprov.tick');
 		expect(info.lastStatus).toBe('error');
@@ -124,7 +124,7 @@ describe('Hintergrundjobs', () => {
 	});
 });
 
-describe('Optionale Abhaengigkeiten', () => {
+describe('Optionale Abhängigkeiten', () => {
 	it('liefert den Dienst nur, wenn der Anbieter aktiv ist', async () => {
 		const svc = await useOptionalModuleService<{ hello: () => string }>('jobprov', 'jobcons');
 		expect(svc?.hello()).toBe('hallo');

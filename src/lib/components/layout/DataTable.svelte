@@ -28,14 +28,14 @@
 		emptyAction,
 		mobile = 'scroll'
 	}: {
-		/** Zugaengliche Beschreibung der Tabelle */
+		/** Zugängliche Beschreibung der Tabelle */
 		caption: string;
 		/** Optionaler sichtbarer Kartentitel (+ Beschreibung) */
 		title?: string;
 		description?: string;
 		loading?: boolean;
 		error?: string;
-		/** Keine Datensaetze vorhanden (nach Laden/Filtern) */
+		/** Keine Datensätze vorhanden (nach Laden/Filtern) */
 		empty?: boolean;
 		emptyTitle?: string;
 		emptyDescription?: string;

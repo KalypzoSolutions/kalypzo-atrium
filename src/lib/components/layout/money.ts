@@ -1,8 +1,8 @@
 /**
- * Geldbetraege als ganzzahlige Cent. Reine Funktionen ohne Seiteneffekte.
+ * Geldbeträge als ganzzahlige Cent. Reine Funktionen ohne Seiteneffekte.
  */
 
-/** Mehr Euro-Stellen werden abgelehnt, um Ueberlaeufe zu vermeiden */
+/** Mehr Euro-Stellen werden abgelehnt, um Überläufe zu vermeiden */
 const MAX_INT_DIGITS = 13;
 
 /**
@@ -11,8 +11,8 @@ const MAX_INT_DIGITS = 13;
  * - Dezimaltrenner ist Komma; ist kein Komma vorhanden, gilt ein einzelner Punkt mit 1-2
  *   Nachkommastellen als Dezimalpunkt („12.50“), sonst als Tausendertrenner („1.234“).
  * - Punkte als Tausendertrenner, Leerzeichen und „€“ werden ignoriert.
- * - Mehr als zwei Nachkommastellen werden kaufmaennisch gerundet.
- * - Leere oder ungueltige Eingaben liefern `null`; negative Betraege ebenfalls (`null`).
+ * - Mehr als zwei Nachkommastellen werden kaufmännisch gerundet.
+ * - Leere oder ungültige Eingaben liefern `null`; negative Beträge ebenfalls (`null`).
  */
 export function parseEuroToCents(text: string): number | null {
 	const s = text.replace(/[\s€]/g, '');
@@ -52,7 +52,7 @@ const decimal = new Intl.NumberFormat('de-DE', {
 });
 const currency = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
 
-/** „1.234,50“ (ohne Waehrungszeichen) */
+/** „1.234,50“ (ohne Währungszeichen) */
 export function formatCents(cents: number): string {
 	return decimal.format(cents / 100);
 }

@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const body = z
 		.object({ theme: z.enum(['light', 'dark', 'system']) })
 		.safeParse(await request.json().catch(() => null));
-	if (!body.success) throw error(422, 'Ungueltige Darstellung');
+	if (!body.success) throw error(422, 'Ungültige Darstellung');
 	try {
 		await setSetting(locals.ctx, 'core.user.theme', body.data.theme);
 	} catch (e) {

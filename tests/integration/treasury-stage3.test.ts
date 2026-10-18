@@ -212,14 +212,14 @@ describe('Zahler aus Buchungen', () => {
 		const payer = (await data<Payer[]>(await T('/payers'))).find((p) => p.id === payerId)!;
 		expect(payer.members.map((m) => m.name).sort()).toEqual(['Jonas Müller', 'Lena Müller']);
 		expect(payer).toMatchObject({ ibanMasked: '•••• 3000', accountHolder: 'Petra Müller' });
-		// Bestaetigung als HTML mit Postentabelle, ohne Zahlungskasten
+		// Bestätigung als HTML mit Postentabelle, ohne Zahlungskasten
 		expect(mails).toHaveLength(1);
 		expect(mails[0]!.html).toContain('<table');
 		expect(mails[0]!.html).toContain('Lena Müller');
 		expect(mails[0]!.html).not.toContain('Zahlungsinformationen');
 	});
 
-	it('uebernimmt die IBAN des gewaehlten Zahlers in neue Buchungen', async () => {
+	it('übernimmt die IBAN des gewählten Zahlers in neue Buchungen', async () => {
 		const t = await data<Transaction>(
 			await T('/transactions', {
 				method: 'POST',
@@ -237,7 +237,7 @@ describe('Zahler aus Buchungen', () => {
 		expect(t.counterpartyIbanLast4).toBe('3000');
 	});
 
-	it('Guthaben wird auf das Herkunftskonto der Zahlung zurueckgezahlt', async () => {
+	it('Guthaben wird auf das Herkunftskonto der Zahlung zurückgezahlt', async () => {
 		const list = await data<InvoiceList>(await T('/invoices?status=all&search=Lena'));
 		await data(
 			await T(`/invoices/${list.items[0]!.id}/cancel`, { method: 'POST', json: { reason: null } }),
@@ -295,7 +295,7 @@ describe('Rechnungs-PDF und Erinnerung mit Zahlungsdaten', () => {
 		expect(pdfHtml).toContain(`${inv.number} Familie Müller`);
 	});
 
-	it('Erinnerungsmail enthaelt den Zahlungskasten', async () => {
+	it('Erinnerungsmail enthält den Zahlungskasten', async () => {
 		mails.length = 0;
 		setTreasuryTodayForTests('2026-07-08');
 		await data(await T('/reminders/run', { method: 'POST' }), 201);
@@ -312,7 +312,7 @@ describe('Zahlstand in der Teilnehmerliste', () => {
 		type P = { id: string; name: string; payment?: Record<string, unknown> | null };
 		const list = async () => data<P[]>(await A(`/actions/${actionId}/participants`));
 		const before = await list();
-		// Jonas ist ueber die Sammelzahlung bezahlt, Lenas Rechnung wurde storniert
+		// Jonas ist über die Sammelzahlung bezahlt, Lenas Rechnung wurde storniert
 		expect(before.find((p) => p.name === 'Jonas Müller')!.payment).toMatchObject({
 			status: 'paid',
 			openCents: 0

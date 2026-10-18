@@ -60,7 +60,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 const createSchema = z.object({
 	name: z.string().trim().min(1, 'Name ist erforderlich').max(100),
-	email: z.string().trim().email('Ungueltige E-Mail-Adresse').max(255),
+	email: z.string().trim().email('Ungültige E-Mail-Adresse').max(255),
 	password: z.string().min(12, 'Passwort muss mindestens 12 Zeichen lang sein').max(128),
 	roleIds: z.array(z.string()).max(50)
 });
@@ -68,7 +68,7 @@ const createSchema = z.object({
 const updateSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().trim().min(1, 'Name ist erforderlich').max(100),
-	email: z.string().trim().email('Ungueltige E-Mail-Adresse').max(255)
+	email: z.string().trim().email('Ungültige E-Mail-Adresse').max(255)
 });
 
 export const actions: Actions = {
@@ -134,7 +134,7 @@ export const actions: Actions = {
 		if (!parsed.success) return invalid(parsed.error);
 		try {
 			await deleteUser(locals.ctx, parsed.data.id);
-			return { success: true, message: 'Benutzer geloescht' };
+			return { success: true, message: 'Benutzer gelöscht' };
 		} catch (e) {
 			return toFail(e);
 		}

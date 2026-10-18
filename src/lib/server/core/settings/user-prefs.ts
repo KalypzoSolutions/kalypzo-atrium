@@ -7,7 +7,7 @@ export type ThemeChoice = 'light' | 'dark' | 'system';
 export interface UserPrefs {
 	/** Wert aus der Datenbank (Standard `system`) */
 	theme: ThemeChoice;
-	/** `true`, wenn der Benutzer die Darstellung ausdruecklich gespeichert hat */
+	/** `true`, wenn der Benutzer die Darstellung ausdrücklich gespeichert hat */
 	themeExplicit: boolean;
 	/** `''` oder `#rrggbb` */
 	accentColor: string;
@@ -19,7 +19,7 @@ export interface UserPrefs {
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const START = /^\/(?!\/)[a-z0-9\-/]*$/;
 
-/** Gibt nur eine gueltige `#rrggbb`-Farbe zurueck, sonst `null` (Schutz vor CSS-/HTML-Injektion). */
+/** Gibt nur eine gültige `#rrggbb`-Farbe zurück, sonst `null` (Schutz vor CSS-/HTML-Injektion). */
 export function safeHexColor(v: unknown): string | null {
 	return typeof v === 'string' && HEX.test(v) ? v.toLowerCase() : null;
 }
@@ -59,7 +59,7 @@ export async function loadUserPrefs(userId: string): Promise<UserPrefs> {
 const pageSizeCache = new WeakMap<object, Promise<number | null>>();
 
 /**
- * Eintraege pro Seite fuer Listen: ausdruecklich gespeicherte Benutzereinstellung `core.user.pageSize`
+ * Einträge pro Seite für Listen: ausdrücklich gespeicherte Benutzereinstellung `core.user.pageSize`
  * (10-200), sonst `fallback` (Standard der jeweiligen Seite). Je Anfrage (`locals`) nur einmal gelesen.
  */
 export async function resolvePageSize(
@@ -88,7 +88,7 @@ export function allowedStartPages(navigationPaths: string[]): Set<string> {
 	return new Set(['/dashboard', '/profile', ...navigationPaths]);
 }
 
-/** Startseite, die der Server tatsaechlich verwendet (sonst `/dashboard`). */
+/** Startseite, die der Server tatsächlich verwendet (sonst `/dashboard`). */
 export function resolveStartPage(startPage: string, navigationPaths: string[]): string {
 	return START.test(startPage) && allowedStartPages(navigationPaths).has(startPage)
 		? startPage

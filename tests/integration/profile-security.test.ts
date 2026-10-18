@@ -1,6 +1,6 @@
 /**
- * Sicherheitsreview Profil: gesperrter HTTP-Weg fuer /change-email und /update-user, Rate-Limit und
- * Session-Widerruf beim E-Mail-Wechsel, Info-Mail bei Kontaktaenderung durch verknuepfte Konten,
+ * Sicherheitsreview Profil: gesperrter HTTP-Weg für /change-email und /update-user, Rate-Limit und
+ * Session-Widerruf beim E-Mail-Wechsel, Info-Mail bei Kontaktänderung durch verknüpfte Konten,
  * Startseiten-Schema, Avatar (Magic-Bytes, eigener Pfad, aktive Benutzer).
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -125,7 +125,7 @@ beforeEach(() => {
 });
 
 describe('E-Mail-Wechsel: HTTP-Weg gesperrt, Action-Weg offen', () => {
-	it('POST /api/auth/change-email mit gueltiger Session -> 403, keine Mail, keine Aenderung', async () => {
+	it('POST /api/auth/change-email mit gültiger Session -> 403, keine Mail, keine Änderung', async () => {
 		const id = await createUser(admin, { name: 'Eva', email: 'eva@example.test', password: PW });
 		const headers = await login('eva@example.test');
 		const res = await postAuth('/change-email', headers, { newEmail: 'angreifer@example.test' });
@@ -156,7 +156,7 @@ describe('E-Mail-Wechsel: HTTP-Weg gesperrt, Action-Weg offen', () => {
 
 	it('Hinweismail an die alte Adresse nur nach erfolgreichem changeEmail-Aufruf', async () => {
 		const id = await createUser(admin, { name: 'Ella', email: 'ella@example.test', password: PW });
-		// Ungueltige Session-Header: changeEmail wirft, also darf keine Hinweismail rausgehen
+		// Ungültige Session-Header: changeEmail wirft, also darf keine Hinweismail rausgehen
 		await expect(
 			requestEmailChange(await ctxOf(id), new Headers({ origin: ORIGIN }), {
 				newEmail: 'ella2@example.test',
@@ -167,7 +167,7 @@ describe('E-Mail-Wechsel: HTTP-Weg gesperrt, Action-Weg offen', () => {
 		expect(mails.filter((m) => m.to === 'ella@example.test')).toHaveLength(0);
 	});
 
-	it('POST /api/auth/update-user mit image/name -> 403, Profil unveraendert', async () => {
+	it('POST /api/auth/update-user mit image/name -> 403, Profil unverändert', async () => {
 		const id = await createUser(admin, { name: 'Udo', email: 'udo@example.test', password: PW });
 		const headers = await login('udo@example.test');
 		for (const body of [
@@ -184,7 +184,7 @@ describe('E-Mail-Wechsel: HTTP-Weg gesperrt, Action-Weg offen', () => {
 });
 
 describe('E-Mail-Wechsel: Rate-Limit und Sessions', () => {
-	it('hoechstens 3 Anfragen je Stunde und Benutzer (danach rate_limited)', async () => {
+	it('höchstens 3 Anfragen je Stunde und Benutzer (danach rate_limited)', async () => {
 		const id = await createUser(admin, { name: 'Rita', email: 'rita@example.test', password: PW });
 		const headers = await login('rita@example.test');
 		const ctx = await ctxOf(id);
@@ -219,7 +219,7 @@ describe('E-Mail-Wechsel: Rate-Limit und Sessions', () => {
 		expect((await userRow(id)).email).toBe('sven2@example.test');
 		const left = await sessionsOf(id);
 		expect(left).toHaveLength(1);
-		// die verbleibende Session gehoert zum bestaetigenden Browser
+		// die verbleibende Session gehört zum bestätigenden Browser
 		const me = await getAuth().api.getSession({ headers: a });
 		expect(me?.session.id).toBe(left[0]!.id);
 		const { rows } = await listAudit({ target: id, limit: 50 });
@@ -228,7 +228,7 @@ describe('E-Mail-Wechsel: Rate-Limit und Sessions', () => {
 	});
 });
 
-describe('Kontaktaenderung durch verknuepftes Konto: Info-Mail', () => {
+describe('Kontaktänderung durch verknüpftes Konto: Info-Mail', () => {
 	let kid = '';
 	const emailsOf = async (member: string) =>
 		(
@@ -284,7 +284,7 @@ describe('Kontaktaenderung durch verknuepftes Konto: Info-Mail', () => {
 		});
 	});
 
-	it('nur Telefonliste geaendert: keine Mail', async () => {
+	it('nur Telefonliste geändert: keine Mail', async () => {
 		const res = await put({
 			phones: [{ name: 'Mutter', value: '+49 170 7654321' }],
 			emails: [
@@ -297,7 +297,7 @@ describe('Kontaktaenderung durch verknuepftes Konto: Info-Mail', () => {
 		expect(mails).toHaveLength(0);
 	});
 
-	it('E-Mail-Liste geaendert: je eine Mail an die BISHERIGEN Adressen, ohne neue Adresse im Text', async () => {
+	it('E-Mail-Liste geändert: je eine Mail an die BISHERIGEN Adressen, ohne neue Adresse im Text', async () => {
 		const res = await put({
 			phones: [{ name: 'Mutter', value: '+49 170 7654321' }],
 			emails: [
@@ -332,7 +332,7 @@ describe('Kontaktaenderung durch verknuepftes Konto: Info-Mail', () => {
 });
 
 describe('Startseite', () => {
-	it("'//x' wird vom Schema abgelehnt, gueltige Pfade bleiben erlaubt", async () => {
+	it("'//x' wird vom Schema abgelehnt, gültige Pfade bleiben erlaubt", async () => {
 		const id = await createUser(admin, { name: 'Sara', email: 'sara@example.test', password: PW });
 		const ctx = await ctxOf(id);
 		for (const bad of ['//x', '//evil.example', '/A']) {
@@ -380,7 +380,7 @@ describe('Profilbild', () => {
 		expect(fakeObjects.size).toBe(0);
 	});
 
-	it('gueltige PNG/JPEG/WebP werden akzeptiert und gelesen', async () => {
+	it('gültige PNG/JPEG/WebP werden akzeptiert und gelesen', async () => {
 		const ctx = await ctxOf(id);
 		for (const [data, contentType] of [
 			[png, 'image/png'],
@@ -414,7 +414,7 @@ describe('Profilbild', () => {
 		await getDb().update(schema.user).set({ active: true }).where(eq(schema.user.id, other));
 	});
 
-	it('removeOwnAvatar loescht Bild und Datei sauber', async () => {
+	it('removeOwnAvatar löscht Bild und Datei sauber', async () => {
 		const ctx = await ctxOf(other);
 		const before = fakeObjects.size;
 		await removeOwnAvatar(ctx);

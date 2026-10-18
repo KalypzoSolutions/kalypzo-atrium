@@ -46,7 +46,7 @@ const mod = (id: string, over: Partial<ModuleDefinition['manifest']> = {}): Modu
 });
 
 describe('crypto', () => {
-	it('verschluesselt und entschluesselt Secrets (zufaellige IV)', () => {
+	it('verschlüsselt und entschlüsselt Secrets (zufällige IV)', () => {
 		const a = encryptSecret('hallo');
 		const b = encryptSecret('hallo');
 		expect(a).not.toEqual(b);
@@ -78,7 +78,7 @@ describe('rate-limit', () => {
 });
 
 describe('audit sanitize', () => {
-	it('entfernt Secrets, kuerzt lange Strings und begrenzt Tiefe', () => {
+	it('entfernt Secrets, kürzt lange Strings und begrenzt Tiefe', () => {
 		const out = sanitizeMetadata({
 			password: 'p',
 			token: 't',
@@ -112,7 +112,7 @@ describe('Berechtigungen', () => {
 });
 
 describe('Modulregistrierung', () => {
-	it('validiert IDs, Versionen, Berechtigungs-Praefix und Navigationspfade', () => {
+	it('validiert IDs, Versionen, Berechtigungs-Präfix und Navigationspfade', () => {
 		expect(() => validateDefinition(mod('core'))).toThrow();
 		expect(() => validateDefinition(mod('Bad ID'))).toThrow();
 		expect(() => validateDefinition(mod('ok', { version: 'x' }))).toThrow();
@@ -129,7 +129,7 @@ describe('Modulregistrierung', () => {
 			)
 		).not.toThrow();
 	});
-	it('erkennt fehlende Abhaengigkeiten und Zyklen', () => {
+	it('erkennt fehlende Abhängigkeiten und Zyklen', () => {
 		registerModule(mod('zz-a', { dependencies: ['zz-b'] }));
 		expect(() => assertDependenciesResolvable()).toThrow(/unbekanntes Modul/);
 		registerModule(mod('zz-b', { dependencies: ['zz-a'] }));
@@ -145,7 +145,7 @@ describe('Modulregistrierung', () => {
 });
 
 describe('Einstellungskatalog', () => {
-	it('Schluessel eindeutig, Defaults gueltig, Secrets ohne Klartext-Default', () => {
+	it('Schlüssel eindeutig, Defaults gültig, Secrets ohne Klartext-Default', () => {
 		const keys = CORE_SETTINGS.map((s) => s.key);
 		expect(new Set(keys).size).toBe(keys.length);
 		for (const s of CORE_SETTINGS) {

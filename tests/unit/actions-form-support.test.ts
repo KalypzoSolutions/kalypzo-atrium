@@ -15,7 +15,7 @@ import {
 import { STANDARD_FORM_KEYS } from '$lib/modules/actions/schemas';
 
 describe('buildDefaultFormDefinition', () => {
-	it('enthaelt alle Standardfelder gesperrt, in fester Reihenfolge', () => {
+	it('enthält alle Standardfelder gesperrt, in fester Reihenfolge', () => {
 		const def = buildDefaultFormDefinition({ groupOptions: ['Wölflinge', 'Wölflinge', ' '] });
 		expect(def.fields.map((f) => f.key)).toEqual(Object.values(STANDARD_FORM_KEYS));
 		expect(def.fields.every((f) => f.locked)).toBe(true);
@@ -27,7 +27,7 @@ describe('buildDefaultFormDefinition', () => {
 });
 
 describe('mergeStandardFields', () => {
-	it('ergaenzt fehlende Felder und erzwingt Typ/locked', () => {
+	it('ergänzt fehlende Felder und erzwingt Typ/locked', () => {
 		const def = buildDefaultFormDefinition();
 		const tampered = {
 			...def,
@@ -69,7 +69,7 @@ describe('renderDisclaimer', () => {
 });
 
 describe('normalizeDedupeKey', () => {
-	it('normalisiert Gross/Klein und Leerzeichen', () => {
+	it('normalisiert Groß/Klein und Leerzeichen', () => {
 		expect(normalizeDedupeKey('  Max   MUSTER ', '2016-05-04')).toBe('max muster|2016-05-04');
 	});
 });
@@ -116,7 +116,7 @@ describe('Hilfen', () => {
 		expect(isPlausibleBirthDate('2026-06-02', '2026-06-01')).toBe(false);
 		expect(isPlausibleBirthDate('1900-01-01', '2026-06-01')).toBe(false);
 	});
-	it('Antwort-Mapping und oeffentliche Definition', () => {
+	it('Antwort-Mapping und öffentliche Definition', () => {
 		const def = buildDefaultFormDefinition();
 		def.fields.push({ id: 't', key: 't', type: 'text', label: 'T' });
 		const m = mapStandardAnswers(def, {

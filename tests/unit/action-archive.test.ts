@@ -70,7 +70,7 @@ const zipOf = (d: unknown, m: unknown = manifest) =>
 	});
 
 describe('slug und Dateiname', () => {
-	it('transliteriert Umlaute und kuerzt', () => {
+	it('transliteriert Umlaute und kürzt', () => {
 		expect(slugify('Sommerlager Nörd & Süd!')).toBe('sommerlager-noerd-sued');
 		expect(slugify('   ')).toBe('aktion');
 		expect(slugify('x'.repeat(100)).length).toBe(40);
@@ -143,9 +143,9 @@ describe('Archiv lesen/schreiben', () => {
 		expect(parsed.files.get('receipts/e1-beleg.pdf')).toEqual(PDF);
 	});
 
-	it('lehnt Muell, falsches Format und falsche Version ab', () => {
-		expect(() => parseArchive(strToU8('hallo welt, kein zip, nur Text mit genug Laenge'))).toThrow(
-			/kein gueltiges ZIP/
+	it('lehnt Müll, falsches Format und falsche Version ab', () => {
+		expect(() => parseArchive(strToU8('hallo welt, kein zip, nur Text mit genug Länge'))).toThrow(
+			/kein gültiges ZIP/
 		);
 		expect(() => parseArchive(zipOf(doc(), { format: 'x' }))).toThrow(/kein Aktions-Export/);
 		expect(() => parseArchive(zipOf(doc(), { ...manifest, formatVersion: 2 }))).toThrow(
@@ -172,20 +172,20 @@ describe('Archiv lesen/schreiben', () => {
 		}
 	});
 
-	it('Zip-Bomb-Grenzen: Eintraege, Einzelgroesse, Summe', () => {
+	it('Zip-Bomb-Grenzen: Einträge, Einzelgröße, Summe', () => {
 		const many: Zippable = {};
 		for (let i = 0; i < 2001; i++) many[`receipts/f${i}.pdf`] = new Uint8Array(1);
 		expect(() => unpackArchive(zipSync(many))).toThrow(/mehr als 2000/);
 
 		const big = new Uint8Array(11 * 1024 * 1024);
 		expect(() => unpackArchive(zipSync({ 'receipts/big.pdf': [big, { level: 1 }] }))).toThrow(
-			/zu grosse Datei/
+			/zu große Datei/
 		);
 
 		const ten = new Uint8Array(10 * 1024 * 1024);
 		const sum: Zippable = {};
 		for (let i = 0; i < 31; i++) sum[`receipts/f${i}.pdf`] = [ten, { level: 1 }];
-		expect(() => unpackArchive(zipSync(sum))).toThrow(/entpackt zu gross/);
+		expect(() => unpackArchive(zipSync(sum))).toThrow(/entpackt zu groß/);
 	});
 });
 
@@ -204,7 +204,7 @@ describe('Dokument-Schema', () => {
 		expect(parseArchive(zipOf(doc())).document.action.isPast).toBeUndefined();
 	});
 
-	it('reimbursedUpfront ist optional und nur mit reimbursedAt gueltig', () => {
+	it('reimbursedUpfront ist optional und nur mit reimbursedAt gültig', () => {
 		const base = { paidBy: 'person', payeeRef: 'y1', reimbursedAt: '2026-07-12T10:00:00.000Z' };
 		const ok = (e: unknown) => parse({ ...doc(), entries: [e] }).success;
 		expect(ok(entry(base))).toBe(true);
@@ -215,13 +215,13 @@ describe('Dokument-Schema', () => {
 		expect(ok(entry({ reimbursedUpfront: true }))).toBe(false);
 	});
 
-	it('ist strikt (unbekannte Schluessel)', () => {
+	it('ist strikt (unbekannte Schlüssel)', () => {
 		expect(parse(doc()).success).toBe(true);
 		expect(parse({ ...doc(), owner: 'x' }).success).toBe(false);
 		expect(parse({ ...doc(), action: { ...doc().action, ownerId: 'x' } }).success).toBe(false);
 	});
 
-	it('prueft Betraege, Kategorien und Regeln', () => {
+	it('prüft Beträge, Kategorien und Regeln', () => {
 		const withEntry = (e: unknown) => parse({ ...doc(), entries: [e] }).success;
 		expect(withEntry(entry())).toBe(true);
 		expect(withEntry(entry({ amountCents: 0 }))).toBe(false);
@@ -246,14 +246,14 @@ describe('Dokument-Schema', () => {
 		).toBe(false);
 	});
 
-	it('Querpruefungen: Referenzen und doppelte IDs per parseArchive', () => {
+	it('Querprüfungen: Referenzen und doppelte IDs per parseArchive', () => {
 		const run = (d: unknown) => parseArchive(zipOf(d));
 		expect(() => run({ ...doc(), entries: [entry({ paidBy: 'person', payeeRef: 'y9' })] })).toThrow(
-			/unbekannten Empfaenger/
+			/unbekannten Empfänger/
 		);
 		expect(() => run({ ...doc(), entries: [entry(), entry()] })).toThrow(/doppelte/);
 		expect(() => run({ ...doc(), entries: [entry({ category: 'refund' })], refund: null })).toThrow(
-			/Rueckzahlungs-Buchung ohne/
+			/Rückzahlungs-Buchung ohne/
 		);
 		expect(() =>
 			run({
@@ -282,7 +282,7 @@ describe('Dokument-Schema', () => {
 			})
 		).toThrow(/Beleg fehlt/);
 		expect(() => run({ ...doc(), action: { ...doc().action, endsOn: '2026-07-01' } })).toThrow(
-			/Aktion ist ungueltig/
+			/Aktion ist ungültig/
 		);
 	});
 });

@@ -89,7 +89,7 @@ interface GroupDto {
 	memberCount: number;
 }
 
-// Gemeinsamer Zustand ueber die Tests hinweg (Bootstrap-Fluss)
+// Gemeinsamer Zustand über die Tests hinweg (Bootstrap-Fluss)
 
 beforeAll(async () => {
 	await useTestDatabase();
@@ -101,7 +101,7 @@ beforeAll(async () => {
 	adminId = u!.id;
 	const ctxOf = async () => {
 		const r = await contextForUser(adminId);
-		if (!r) throw new Error('Kontext nicht aufloesbar');
+		if (!r) throw new Error('Kontext nicht auflösbar');
 		return r.ctx;
 	};
 	admin = await ctxOf();
@@ -158,7 +158,7 @@ describe('Sammelaktionen auf Mitgliedern', () => {
 		).key;
 	});
 
-	it('fuegt Gruppen hinzu (idempotent, zaehlt nur Aenderungen)', async () => {
+	it('fügt Gruppen hinzu (idempotent, zählt nur Änderungen)', async () => {
 		let r = await data<{ affected: number; skipped: unknown[] }>(
 			await bulk({ action: 'add-groups', ids: [a, b], groupIds: [g2] }),
 			201
@@ -205,10 +205,10 @@ describe('Sammelaktionen auf Mitgliedern', () => {
 		).toBe(422);
 		const r = await bulk({ action: 'set-stage', ids: [a, crypto.randomUUID()], stage: 'spaeher' });
 		expect(r.status).toBe(404);
-		expect((await get(a)).stage).toBe('knappe'); // nichts geaendert
+		expect((await get(a)).stage).toBe('knappe'); // nichts geändert
 	});
 
-	it('Loeschen braucht das Loeschrecht und ueberspringt einzige Leiter', async () => {
+	it('Löschen braucht das Löschrecht und überspringt einzige Leiter', async () => {
 		expect((await bulk({ action: 'delete', ids: [b] }, editKey)).status).toBe(403);
 		expect((await bulk({ action: 'set-stage', ids: [b], stage: 'spaeher' }, editKey)).status).toBe(
 			201

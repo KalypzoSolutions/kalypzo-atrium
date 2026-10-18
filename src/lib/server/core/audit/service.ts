@@ -7,7 +7,7 @@ const SENSITIVE_KEY = /pass(word)?|secret|token|api[-_]?key|authorization|cookie
 const MAX_STRING = 500;
 const MAX_DEPTH = 4;
 
-/** Entfernt Geheimnisse und begrenzt die Groesse von Audit-Metadaten. */
+/** Entfernt Geheimnisse und begrenzt die Größe von Audit-Metadaten. */
 export function sanitizeMetadata(value: unknown, depth = 0): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value === 'string') {
@@ -52,7 +52,7 @@ export async function logAudit(entry: AuditEntry, tx?: DbOrTx): Promise<void> {
 	});
 }
 
-/** Komfortvariante: Akteur, IP und Request-ID aus dem Kontext uebernehmen. */
+/** Komfortvariante: Akteur, IP und Request-ID aus dem Kontext übernehmen. */
 export function auditFromContext(
 	ctx: RequestContext,
 	action: string,
@@ -66,7 +66,7 @@ export interface AuditFilter {
 	search?: string;
 	action?: string;
 	actorId?: string;
-	/** Exakter Treffer auf `target` (Entitaets-ID) */
+	/** Exakter Treffer auf `target` (Entitäts-ID) */
 	target?: string;
 	/** Exakte Treffer auf mehrere `target`-IDs (max. 50) */
 	targets?: string[];

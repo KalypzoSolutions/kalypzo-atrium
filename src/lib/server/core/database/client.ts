@@ -5,7 +5,7 @@ import * as schema from './schema';
 
 export type Db = NodePgDatabase<typeof schema>;
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
-/** Gemeinsame Basis fuer Funktionen, die mit Datenbank oder Transaktion arbeiten */
+/** Gemeinsame Basis für Funktionen, die mit Datenbank oder Transaktion arbeiten */
 export type DbOrTx = Db | Tx;
 
 interface State {
@@ -20,7 +20,7 @@ function create(): State {
 	const e = env();
 	if (e.DATABASE_DRIVER === 'pglite') {
 		throw new Error(
-			'PGlite muss vor dem ersten Zugriff ueber useTestDatabase() initialisiert werden.'
+			'PGlite muss vor dem ersten Zugriff über useTestDatabase() initialisiert werden.'
 		);
 	}
 	const pool = new pg.Pool({ connectionString: e.DATABASE_URL, max: e.DATABASE_POOL_MAX });

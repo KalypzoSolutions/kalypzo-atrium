@@ -114,7 +114,7 @@ beforeEach(() => {
 });
 
 describe('Storage-Service', () => {
-	it('laedt hoch und herunter und trennt Modulbereiche', async () => {
+	it('lädt hoch und herunter und trennt Modulbereiche', async () => {
 		const ctx = ctxWith('members.storage.write', 'members.storage.read');
 		const f = await storage.upload(ctx, txt('members', 'documents/a.txt', 'hallo'));
 		expect(f.size).toBe(5);
@@ -127,7 +127,7 @@ describe('Storage-Service', () => {
 		).rejects.toMatchObject({ code: 'forbidden' });
 	});
 
-	it('ersetzt bestehende Dateien und loescht das alte Objekt', async () => {
+	it('ersetzt bestehende Dateien und löscht das alte Objekt', async () => {
 		const ctx = ctxWith('core.storage.manage');
 		await storage.upload(ctx, txt('members', 'a.txt', '1'));
 		await storage.upload(ctx, txt('members', 'a.txt', '22'));
@@ -135,7 +135,7 @@ describe('Storage-Service', () => {
 		expect(fakes.objects.size).toBe(1);
 	});
 
-	it('lehnt Pfad-Traversal und ungueltige Pfade ab', async () => {
+	it('lehnt Pfad-Traversal und ungültige Pfade ab', async () => {
 		const ctx = ctxWith('members.storage.write');
 		for (const path of ['../x', 'a/../b', '/abs', 'a//b', 'a\\b', 'a\u0000b', 'x/']) {
 			await expect(storage.upload(ctx, txt('members', path))).rejects.toMatchObject({
@@ -144,7 +144,7 @@ describe('Storage-Service', () => {
 		}
 	});
 
-	it('erzwingt Groessenlimit und Content-Type-Allowlist', async () => {
+	it('erzwingt Größenlimit und Content-Type-Allowlist', async () => {
 		const ctx = ctxWith('members.storage.write');
 		await expect(
 			storage.upload(ctx, {
@@ -165,7 +165,7 @@ describe('Storage-Service', () => {
 		).resolves.toBeTruthy();
 	});
 
-	it('prueft Berechtigungen; System-Akteur darf alles', async () => {
+	it('prüft Berechtigungen; System-Akteur darf alles', async () => {
 		await expect(storage.upload(ctxWith(), txt('members', 'a.txt'))).rejects.toMatchObject({
 			code: 'forbidden'
 		});
@@ -175,7 +175,7 @@ describe('Storage-Service', () => {
 		).rejects.toMatchObject({ code: 'forbidden' });
 	});
 
-	it('loescht Dateien und schreibt ein Audit-Event', async () => {
+	it('löscht Dateien und schreibt ein Audit-Event', async () => {
 		const ctx = ctxWith('members.storage.write', 'members.storage.delete');
 		await storage.upload(ctx, txt('members', 'a.txt'));
 		await storage.remove(ctx, { module: 'members', path: 'a.txt' });
@@ -197,7 +197,7 @@ describe('Storage-Service', () => {
 		expect(docs.folders).toEqual(['sub']);
 	});
 
-	it('signierter Upload: pending bis zur Bestaetigung, Groesse wird geprueft', async () => {
+	it('signierter Upload: pending bis zur Bestätigung, Größe wird geprüft', async () => {
 		const ctx = ctxWith('members.storage.write', 'members.storage.read');
 		const signed = await storage.createSignedUploadUrl(ctx, {
 			module: 'members',
@@ -235,7 +235,7 @@ describe('Storage-Service', () => {
 		expect(dl.expiresInSec).toBe(3600);
 	});
 
-	it('nutzt Multipart-Upload fuer grosse Dateien', async () => {
+	it('nutzt Multipart-Upload für große Dateien', async () => {
 		settingsStore['core.storage.maxFileSizeMb'] = 50;
 		const putLarge = vi.fn(async (key: string, body: Uint8Array) => {
 			fakes.objects.set(key, { body });

@@ -41,7 +41,7 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 		}),
 		emailAndPassword: {
 			enabled: true,
-			disableSignUp: true, // Benutzer werden ausschliesslich administrativ angelegt
+			disableSignUp: true, // Benutzer werden ausschließlich administrativ angelegt
 			minPasswordLength: 12,
 			maxPasswordLength: 128,
 			revokeSessionsOnPasswordReset: true,
@@ -50,18 +50,18 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 				// Fire-and-forget (Timing-Angleich); Fehler werden nicht an den Client gegeben
 				void sendMail({
 					to: user.email,
-					subject: `${name}: Passwort zuruecksetzen`,
-					text: `Hallo ${user.name},\n\nueber den folgenden Link koennen Sie Ihr Passwort zuruecksetzen (1 Stunde gueltig):\n${url}\n\nWenn Sie das nicht angefordert haben, ignorieren Sie diese Nachricht.`
+					subject: `${name}: Passwort zurücksetzen`,
+					text: `Hallo ${user.name},\n\nueber den folgenden Link können Sie Ihr Passwort zurücksetzen (1 Stunde gültig):\n${url}\n\nWenn Sie das nicht angefordert haben, ignorieren Sie diese Nachricht.`
 				}).catch((err) => console.error('[mail] Passwort-Reset fehlgeschlagen:', err?.message));
 			},
 			resetPasswordTokenExpiresIn: 60 * 60
 		},
 		emailVerification: {
-			// Wird ausschliesslich fuer den E-Mail-Wechsel genutzt (Link geht an die NEUE Adresse);
+			// Wird ausschließlich für den E-Mail-Wechsel genutzt (Link geht an die NEUE Adresse);
 			// `requireEmailVerification` bleibt aus, Konten werden administrativ als verifiziert angelegt.
 			expiresIn: 60 * 60,
 			afterEmailVerification: async (user, request) => {
-				// Alte Adresse aus dem (bereits geprueften) Token lesen; nur maskiert protokollieren
+				// Alte Adresse aus dem (bereits geprüften) Token lesen; nur maskiert protokollieren
 				let from = '';
 				try {
 					const token = new URL(request?.url ?? '', 'http://x').searchParams.get('token') ?? '';
@@ -108,9 +108,7 @@ bitte bestätige mit dem folgenden Link, dass diese Adresse künftig für dein K
 ${url}
 
 Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
-				}).catch((err) =>
-					console.error('[mail] E-Mail-Bestaetigung fehlgeschlagen:', err?.message)
-				);
+				}).catch((err) => console.error('[mail] E-Mail-Bestätigung fehlgeschlagen:', err?.message));
 			}
 		},
 		user: {
@@ -158,15 +156,15 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 		},
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
-				// Profil-Aenderungen laufen nur ueber die Server-Actions (`auth.api.*` ohne `request`):
-				// E-Mail-Wechsel braucht dort Passwortpruefung, Rate-Limit und Hinweismail; Name/Bild
-				// haben eigene Pruefungen. Der direkte HTTP-Weg wuerde das alles umgehen.
+				// Profil-Änderungen laufen nur über die Server-Actions (`auth.api.*` ohne `request`):
+				// E-Mail-Wechsel braucht dort Passwortprüfung, Rate-Limit und Hinweismail; Name/Bild
+				// haben eigene Prüfungen. Der direkte HTTP-Weg würde das alles umgehen.
 				if ((ctx.path === '/change-email' || ctx.path === '/update-user') && ctx.request) {
 					throw new APIError('FORBIDDEN', {
-						message: 'Diese Aenderung ist nur ueber das Profil moeglich.'
+						message: 'Diese Änderung ist nur über das Profil möglich.'
 					});
 				}
-				// Bestaetigungslink ohne gueltige Session: keine Anmeldung ueber den Link (2FA-Umgehung)
+				// Bestätigungslink ohne gültige Session: keine Anmeldung über den Link (2FA-Umgehung)
 				if (ctx.path === '/verify-email') {
 					const session = await getSessionFromCtx(ctx);
 					if (!session) throw ctx.redirect('/login');
@@ -183,7 +181,7 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 						metadata: { reason: 'too_many_failures' }
 					});
 					throw new APIError('TOO_MANY_REQUESTS', {
-						message: 'Zu viele fehlgeschlagene Anmeldeversuche. Bitte spaeter erneut versuchen.'
+						message: 'Zu viele fehlgeschlagene Anmeldeversuche. Bitte später erneut versuchen.'
 					});
 				}
 			}),

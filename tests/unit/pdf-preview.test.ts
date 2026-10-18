@@ -83,14 +83,14 @@ describe('Empfaengervalidierung', () => {
 		await expect(gen(['Ma\nx'])).rejects.toMatchObject({ code: 'bad_request' });
 	});
 
-	it('akzeptiert gueltige Zeilen und trimmt sie', async () => {
+	it('akzeptiert gültige Zeilen und trimmt sie', async () => {
 		await gen(['  Max <Mustermann>  ', 'Weg 1']);
 		expect(rendered!.html).toContain('Max &lt;Mustermann&gt;|Weg 1');
 	});
 });
 
 describe('Vorlagen mit festem Seitenlayout', () => {
-	it('ueberschreibt Format, Raender und Kopf/Fuss; Reihenfolge overlay, titleBlock, Inhalt', async () => {
+	it('überschreibt Format, Ränder und Kopf/Fuß; Reihenfolge overlay, titleBlock, Inhalt', async () => {
 		await pdf.generate(ctxWith(), {
 			title: 'T',
 			template: 'testbrief',
@@ -113,7 +113,7 @@ describe('Vorlagen mit festem Seitenlayout', () => {
 		expect(h.indexOf('class="tb"')).toBeLessThan(h.indexOf('INHALT'));
 	});
 
-	it('Vorlagen ohne page bleiben unveraendert', async () => {
+	it('Vorlagen ohne page bleiben unverändert', async () => {
 		await pdf.generate(ctxWith(), { title: 'T', content: [], template: 'default' });
 		expect(rendered!.options).toMatchObject({
 			format: 'A3',
@@ -151,7 +151,7 @@ describe('renderTemplatePreview', () => {
 		});
 	});
 
-	it('ungueltiges only -> 400', async () => {
+	it('ungültiges only -> 400', async () => {
 		await expect(
 			pdf.renderTemplatePreview({ template: 'testbrief', only: 'unbekannt' })
 		).rejects.toMatchObject({ code: 'bad_request' });
