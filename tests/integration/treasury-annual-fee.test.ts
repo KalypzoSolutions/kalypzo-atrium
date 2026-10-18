@@ -164,6 +164,7 @@ beforeAll(async () => {
 	ids.tom = await member({
 		firstName: 'Tom',
 		lastName: 'Solo',
+		birthDate: '1990-01-01',
 		emails: [{ name: 'Tom', value: 'tom.solo@example.test' }]
 	});
 	ids.ex = await member({ firstName: 'Erik', lastName: 'Ex', exitDate: '2026-09-01' });
@@ -329,6 +330,12 @@ describe('Jahresbeitrag', () => {
 				/^Rechnung-R-2026-\d{4}\.pdf$/
 			);
 		}
+		// Volljährige: kein „für <Name>“; Kinder: Hinweis bleibt
+		const adultMail = mails.find((m) => m.to === 'tom.solo@example.test')!;
+		expect(adultMail.text).toContain('der Jahresbeitrag 2027 ist fällig');
+		expect(adultMail.text).not.toContain('für Tom');
+		const kidMail = mails.find((m) => m.to === 'zoe@example.test')!;
+		expect(kidMail.text).toContain('für Zoe');
 		const list = await data<InvoiceList>(await T('/invoices?source=annual'));
 		expect(list.total).toBe(3);
 		expect(list.totals.totalCents).toBe(15300);
