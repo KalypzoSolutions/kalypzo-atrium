@@ -18,10 +18,16 @@ vorerst** (`/download` → 308 auf `/`). API-Seite: `docs/api.md` → „Stammes
   Änderungen an `WebsiteEvent`, `WebsiteGallery*`, `WebsiteOffice`, `WebsiteGroup` immer auf **beiden** Seiten nachziehen.
 - Deutsch mit echten Umlauten; keine nativen Selects (Filter als Link-Chips `FilterChip`, Zustand in der URL); kein Dunkelmodus.
 - Nutzertexte nie per `{@html}` (Umbrüche per `whitespace-pre-line`); Farben aus der API in `style:` nur über `safeColor` (`format.ts`).
-- Optik wie die alte Website (weiß, eckige Karten `bg-white border border-gray-300`, Labels `text-gray-700`, Werte `text-sm text-gray-500`,
-  Inhaltsbreite `max-w-5xl`); Gruppenfarben-Varianten per `color-mix()` im `<style>` über CSS-Variable (`groupColor`, `ContactBox`).
-- Design-Tokens in `src/app.css` (`@theme`): `brand-50…950`, `ink`, `muted`, `canvas`, `surface`, `line`, `rounded-card`, `shadow-card`;
-  Utilities `container-page`, `section-y`, `eyebrow`, `link`, `prose-site`, `btn btn-primary|btn-secondary|btn-ghost`.
+- **Design (seit 2026-10-19 überarbeitet)**: Farben aus dem Wappen – `brand-*` (Wappenblau), Akzente `sun-*` (Gelb) und `ember-600` (Rot);
+  warmer Seitenhintergrund `canvas`, weiße Karten. Bausteine statt Einzel-Klassen: `card` (+ `card-hover`), `chip`, `section-title`, `eyebrow`,
+  `link`, `link-more`, `btn btn-primary|btn-secondary|btn-ghost` (Pillen), Inhaltsbreite `container-page` (`max-w-6xl`), Abstand `section-y`.
+  Jede Unterseite beginnt mit `PageHeader` (Band mit Verlauf, `eyebrow`/`title`/`lead`); Ausnahme: Gruppen-Steckbrief (Kopf in Gruppenfarbe),
+  Termin-/Galerie-Detail (Zurück-Link + Karte). Navbar mit Wappen und aktiver Seite als Pille, Fußzeile dunkel (`brand-950`) mit Wappenfarben-Streifen
+  und Instagram-Link; der Instagram-Kasten (`Instagram.svelte`) steht nur auf der Startseite. Termine mit Datums-Kachel (`DateBadge`), Serien mit
+  Farbbalken, Gruppenkarten im Raster mit Bild und Gruppenfarbe. Keine `gray-300`-/`blue-*`-/`indigo-*`-Altklassen mehr verwenden.
+  Gruppen-/Amtsfarben-Varianten per `color-mix()` im `<style>` über CSS-Variable (`groupColor`, `ContactBox`); Amt-Standardfarbe Wappenrot `#c62828`.
+- Design-Tokens in `src/app.css` (`@theme`): `brand-50…950`, `sun-300/400`, `ember-600`, `ink`, `muted`, `canvas`, `surface`, `line`, `soft`,
+  `rounded-card` (1 rem), `shadow-card`, `shadow-card-hover`.
 
 ## Umgebung (`website/.env`, Vorlage `.env.example`)
 | Variable | Bedeutung |
@@ -44,13 +50,13 @@ vorerst** (`/download` → 308 auf `/`). API-Seite: `docs/api.md` → „Stammes
 ## Seiten
 | Seite | Quelle / Verhalten |
 |---|---|
-| `/` | Hero, Über uns, Gruppenkarten (`data.groups`), `UpcomingEvents` (4 nächste Vorkommen inkl. Serien), Kontakt-Teaser; **ohne FAQ** |
+| `/` | Hero (Wappen, „Gruppe finden“/„Nächste Termine“), Über uns mit drei Eckpunkten, Gruppenkarten (`data.groups`, Anker `#gruppen`), `UpcomingEvents`, Treffpunkt mit Karte, Instagram; **ohne FAQ** |
 | `/termine` | `listEvents` heute + 365 Tage in Quartals-Blöcken (je ≤ 200, dedupliziert – Serien würden ein einzelnes Limit füllen), Filter `?tag=`, `?gruppe=` (Slug, ID oder `stamm`) auf der Seite, Rückblick `?rueckblick=JJJJ` (bis 2023); Serien als „Regelmäßige Termine“ zusammengefasst, `?serien=alle` zeigt jedes Vorkommen |
 | `/termine/[id]` (`?am=YYYY-MM-DD`) | `getEvent` + verknüpfte Galerien (`listGalleries({ eventId })`), Teilen, OSM-Link; 404/503 |
 | `/galerie` (`?jahr=`, `?seite=`) | alle öffentlichen Galerien (Seiten zu 24 auf der Seite), Datum = frühester verknüpfter Termin, sonst `updatedAt` |
 | `/galerie/[id]` (`?bild=<imageId>`) | Raster `thumb`, `Lightbox` (`web`, Tastatur/Wischen, Fokusfalle, Deep-Link serverseitig offen) |
-| `/gruppen`, `/gruppen/[slug]` | Übersicht Meute/Sippe (`GroupGrid`); Steckbrief **im Aufbau der alten Meute-/Sippe-Seiten**: Typ-Überschrift in Gruppenfarbe, Karte `border-gray-300 p-8` mit Gruppenname/Gruppenleitung (Vornamen)/Uhrzeit (`formatMeeting(tag, beginn, ende)` → „Freitags 16:30 – 18:00 Uhr“)/Ort/Alter + Bild rechts (`md:w-1/3`; API, sonst statisches Altbild je Slug), „Das sind wir“, „Treffpunkt“ + Karte, Kontaktkasten (`ContactBox`), 3 Termine (`group`, `UpcomingEvents`) |
-| `/kontakt` | wie die alte Kontaktseite: Einleitung, Treffpunkt + Karte, Formular an formsubmit.co (`FORM_RECIPIENT`), Ansprechpartner*innen als `ContactBox` (Gruppen aus `data.groups` in Gruppenfarbe, danach Ämter `OfficeCard` in Rot), Link „Ganzes Team ansehen“ → `/team` |
+| `/gruppen`, `/gruppen/[slug]` | Übersicht Meute/Sippe (`GroupGrid`); Steckbrief: Kopf in Gruppenfarbe mit Typ/Alter, Name, Eckdaten-Kacheln Gruppenleitung (Vornamen)/Uhrzeit (`formatMeeting(tag, beginn, ende)` → „Freitags 16:30 – 18:00 Uhr“)/Ort/Alter + Bild (API, sonst statisches Altbild je Slug); darunter „Das sind wir“, „Treffpunkt“ + Karte, daneben Kontaktkasten (`ContactBox`, sticky), 3 Termine (`group`, `UpcomingEvents`) |
+| `/kontakt` | `PageHeader`, Formular an formsubmit.co (`FORM_RECIPIENT`) neben Treffpunkt + Karte, Ansprechpartner*innen als `ContactBox` im Zweierraster (Gruppen aus `data.groups` in Gruppenfarbe, danach Ämter `OfficeCard` in Wappenrot), Link „Ganzes Team ansehen“ → `/team` |
 | `/team` | „Unser Team“: Ämter aus `listOffices` als Personenkarten (`PersonCard`: Profilbild über `/bilder/amt/<userId>`, sonst Initialen; Ämter mit „seit“, Bio aufklappbar). **Eine Karte je Person** mit allen Ämtern (`teamMembers` in `contact.ts`; Bio ist ohnehin eine je Person), unbesetzte Ämter als Hinweiszeile; Abschnitt „Gruppenleitungen“ je Gruppe (nur Vornamen, Gruppenfarbe, Link zur Gruppe) |
 | `/cpd`, `/impressum`, `/datenschutz` | statisch aus der alten Website |
 
