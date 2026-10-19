@@ -209,6 +209,39 @@ await core.database.forModule('events').transaction(async (tx) =>
 - Rückkanäle zwischen Modulen ohne Zyklus: `manifest.optionalDependencies` + `core.modules.useOptional` (liefert `null`, wenn der
   Anbieter aus ist). Beispiel: `actions` → `treasury` (Ist-Beiträge in der Abrechnung).
 
+### Ämter als Vorlage und Benachrichtigungen (Modul `offices`)
+
+Ein Modul kann Ämter mitbringen, deren Inhaber*innen bei Ereignissen eine Mail an ihre Konto-Adresse bekommen
+(Beispiel: Kasse → Amt „Kasse“). Das Modul `offices` legt jede Vorlage **einmal** an; danach ist es ein normales Amt
+(umbenennen, Personen zuordnen, löschen). Ein gelöschtes Vorlagen-Amt wird nicht neu angelegt.
+
+```ts
+// module.ts (Manifest)
+optionalDependencies: ['offices'],
+offices: [
+	{
+		key: 'kasse', name: 'Kasse', description: 'Kassenführung des Stamms',
+		notifications: [{ key: 'payable-created', label: 'Neue Überweisung steht an' }]
+	}
+]
+
+// Auslöser, NACH der Transaktion
+import type { OfficesService } from '$lib/modules/offices/contract';
+try {
+	const offices = await core.modules.useOptional<OfficesService>('offices', MODULE_ID); // null, wenn aus
+	await offices?.notify(ctx, [
+		{ module: MODULE_ID, office: 'kasse', event: 'payable-created',
+		  subject: 'Neue Überweisung: 12,00 € an …', text: '…', link: '/modules/treasury?tab=outgoing' }
+	]);
+} catch (e) { console.error(e); }
+```
+
+- Ereignisse eines Vorgangs in **einem** Aufruf übergeben: „Sofort“ verschickt je Person **eine** gebündelte Mail.
+- Die Inhaber*innen wählen im Profil je Ereignis **Sofort / Täglich (Zusammenfassung) / Aus** (Standard Sofort); „Täglich“
+  sammelt der Job `offices.notify-digest`.
+- `subject` ≤ 150 Zeichen, `text` ≤ 4000 Zeichen Klartext, keine sensiblen Daten (IBAN, Gesundheitsdaten); `link` relativ.
+- Rückgabe `{ sent, queued, skipped }`; `notify` wirft nie. Vollständige Regeln: `.claude/rules/module-offices.md`.
+
 ### Profil-Abschnitte und Standard-Rollenrechte
 
 **`profileSections`** (in `ui.ts`) fügen der Seite `/profile` eigene Karten hinzu (z. B. verknüpfte Mitglieder):

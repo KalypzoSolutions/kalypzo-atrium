@@ -124,6 +124,19 @@
 - **API-Übersicht (2026-10-18)**: Admin-Seite `/api-docs` (Recht `core.api.view`) mit allen REST-Endpunkten, automatisch aus der Registry
   (`core/api/catalog/`, Vertrag `src/lib/api-docs/types.ts`): Rechte, Rate-Limits, Schemas, abgeleitete Fehler, Beispiel-JSON, Konsole zum
   Ausprobieren mit eigener Session (Mutationen mit Bestätigung). Details: `docs/api.md`. Offen: viele Endpunkte haben kein `response`-Schema.
+- **Modul `offices` – Ämter (2026-10-19)**: Ämter mit Beschreibung, eigener Reihenfolge (neu am Ende, Umsortieren per Ziehen/Pfeilen), E-Mail-Adressen,
+  verknüpften Rollen und Inhaber*innen (Konten, „seit“, Reihenfolge); **eine** persönliche Beschreibung je Person für alle Ämter (`/me/bio`, Profilkarte „Meine Ämter“).
+  Inhaber*innen erhalten die Rollen ihrer Ämter **plus** Rolle „Amtsinhaber*in“ (`offices.office.view`) über die neue Core-Tabelle `user_role_grant`
+  (Migration 0006, `core.roles.replaceModuleGrants|listModuleGrants|assertCanGrant`), nur bei aktivem Modul, manuelle Rollen bleiben; `core.users.roleIds`
+  enthält verliehene Rollen; Rechteausweitung → 403; stündlicher Abgleich-Job. Website: `GET /website/offices` + Avatar (Scope `offices.website.read`,
+  keine Benutzer-Mails/Rollen). Tests `offices*.test.ts`, E2E `offices.spec.ts`, Demo `scripts/seed-demo-offices.mjs`. Details: `rules/module-offices.md`.
+- **Ämter aus Modulen + Benachrichtigungen (2026-10-19)**: Module bringen Ämter als **Vorlage** mit (`manifest.offices`, `ModuleOfficeTemplate`);
+  `offices` legt sie einmal an (Marker `office_templates_applied`, Migr. 0002), danach normales Amt – gelöscht → nicht neu angelegt. Benachrichtigungen per
+  `OfficesService.notify` (über `provides`, Aufrufer mit `optionalDependencies: ['offices']`) an die **Konto-Adresse** der Inhaber*innen; Modus je Person
+  und Ereignis **Sofort / Täglich (Zusammenfassung) / Aus** (Standard Sofort) **nur im Profil** („Meine Ämter“ → „Benachrichtigungen“), Bündelung je
+  Aufruf, Tagesjob `offices.notify-digest`. Ämterseite: Badge „Vorlage: <Modul>“, Hinweis im Dialog und in der Lösch-Bestätigung. Erste Nutzerin:
+  Kasse (Amt `kasse`, Ereignisse `payable-created`, `accounting-closed` inkl. Zwischenabrechnung, ausgelöst auch aus `actions`). Details:
+  `module-offices.md`, `module-treasury.md`. Offen: echter SMTP-Versand und Tagesjob im Echtbetrieb ungeprüft.
 - Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`, `rules/module-events.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)

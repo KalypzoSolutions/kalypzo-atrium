@@ -160,6 +160,7 @@ const CORE_AREAS: CoreAreaDef[] = [
 		tables: [
 			{ table: 'setting', where: (keep) => sql`scope_id <> '' AND scope_id <> ${keep}` },
 			{ table: 'user_role', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
+			{ table: 'user_role_grant', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
 			{ table: 'user', where: (keep) => sql`id <> ${keep}`, columns: USER_COLUMNS }
 		]
 	},
@@ -174,6 +175,11 @@ const CORE_AREAS: CoreAreaDef[] = [
 				where: () => sql`role_name NOT IN (SELECT name FROM "public"."role" WHERE is_system)`
 			},
 			{ table: 'user_role', where: () => sql`role_id IN (${NON_SYSTEM_ROLE_IDS})`, cascade: true },
+			{
+				table: 'user_role_grant',
+				where: () => sql`role_id IN (${NON_SYSTEM_ROLE_IDS})`,
+				cascade: true
+			},
 			{
 				table: 'role_permission',
 				where: () => sql`role_id IN (${NON_SYSTEM_ROLE_IDS})`,
@@ -734,6 +740,8 @@ async function runReset(defs: AreaDef[], keep: string, result: ResetResult): Pro
 				await tx
 					.delete(schema.moduleMigration)
 					.where(eq(schema.moduleMigration.moduleId, moduleId));
+				// Vom Modul verliehene Rollen hängen an den gelöschten Daten (z. B. Ämter)
+				await tx.delete(schema.userRoleGrant).where(eq(schema.userRoleGrant.moduleId, moduleId));
 				await runModuleMigrations(moduleId, tx);
 			});
 			result.deletedRows += rows;

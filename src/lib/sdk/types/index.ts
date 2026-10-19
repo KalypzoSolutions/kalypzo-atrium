@@ -59,6 +59,11 @@ export interface ModuleManifest {
 	 */
 	optionalDependencies?: string[];
 	permissions: string[];
+	/**
+	 * Beschreibung je Recht aus `permissions` (Anzeige unter Administration → Berechtigungen und bei
+	 * API-Key-Scopes). Wird bei jedem Start in die Datenbank übernommen.
+	 */
+	permissionDescriptions?: Record<string, string>;
 	navigation: ModuleNavigationItem[];
 	/**
 	 * Standard-Rechte für Rollen (Rollenname -> Rechte aus `permissions`). Die Rolle wird per Name gesucht
@@ -67,6 +72,26 @@ export interface ModuleManifest {
 	 * `ModuleDefinition.defaultRoleGrants`.
 	 */
 	defaultRoleGrants?: Record<string, string[]>;
+	/**
+	 * Ämter, die das Modul als **Vorlage** mitbringt (nur wirksam, wenn das Modul `offices` aktiv ist).
+	 * Das Amt wird einmalig angelegt und ist danach ein normales Amt; Benachrichtigungen des Moduls
+	 * gehen an dessen Inhaber*innen (`OfficesService.notify`). Schlüssel `[a-z][a-z0-9-]*`.
+	 */
+	offices?: ModuleOfficeTemplate[];
+}
+
+/** Benachrichtigung, die ein Modul-Amt erhalten kann (Modus je Person im Profil: sofort/täglich/aus) */
+export interface ModuleOfficeNotification {
+	key: string;
+	label: string;
+	description?: string;
+}
+
+export interface ModuleOfficeTemplate {
+	key: string;
+	name: string;
+	description?: string;
+	notifications: ModuleOfficeNotification[];
 }
 
 export type SettingScope = 'global' | 'user';

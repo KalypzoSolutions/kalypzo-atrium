@@ -43,6 +43,13 @@
       "when": 1792310400000,
       "tag": "0005_audit_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792396800000,
+      "tag": "0006_user_role_grant",
+      "breakpoints": true
     }
   ]
 }

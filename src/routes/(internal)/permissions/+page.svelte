@@ -26,9 +26,10 @@
 
 	{#each groups as [moduleId, items] (moduleId)}
 		<DataTable
-			caption="Berechtigungen {moduleId}"
-			title={moduleId}
-			description="{items.length} Berechtigungen"
+			caption="Berechtigungen {data.moduleNames[moduleId] ?? moduleId}"
+			title={data.moduleNames[moduleId] ?? moduleId}
+			description="{items.length} Berechtigungen · Modul-ID {moduleId}"
+			mobile="cards"
 		>
 			{#snippet head()}
 				<Table.Row>
@@ -40,7 +41,7 @@
 			{#each items as p (p.key)}
 				<Table.Row>
 					<Table.Cell><code class="text-xs">{p.key}</code></Table.Cell>
-					<Table.Cell>{p.description ?? '–'}</Table.Cell>
+					<Table.Cell class="whitespace-normal">{p.description ?? '–'}</Table.Cell>
 					<Table.Cell>
 						<div class="flex flex-wrap gap-1">
 							{#each p.roles as r (r)}<Badge variant="secondary">{r}</Badge>{/each}

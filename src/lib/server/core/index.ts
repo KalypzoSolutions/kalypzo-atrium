@@ -39,6 +39,12 @@ import {
 	requirePermission
 } from './permissions/service';
 import { roleDirectory, roleIdsForUser } from './permissions/roles';
+import {
+	assertCanGrantRoles,
+	listModuleRoleGrants,
+	replaceModuleRoleGrants
+} from './permissions/grants';
+import { readAvatar } from './auth/profile';
 import * as pdf from './pdf';
 import { sendMail } from './mail';
 import { errors } from './errors';
@@ -135,15 +141,26 @@ export const core = {
 		 * kontrollierten öffentlichen Pfaden (z. B. gültiger Verknüpfungscode) aufrufen.
 		 */
 		registerWithRole: registerUserWithRole,
-		/** Rollen-IDs eines Benutzers (z. B. für Freigaben an Rollen) */
-		roleIds: roleIdsForUser
+		/** Rollen-IDs eines Benutzers inkl. von Modulen verliehener (z. B. für Freigaben an Rollen) */
+		roleIds: roleIdsForUser,
+		/** Profilbild eines aktiven Benutzers (`null` ohne Bild/Storage), z. B. für Website-APIs */
+		readAvatar
 	},
 	roles: {
 		/**
 		 * Minimales Rollenverzeichnis (id, name), z. B. für Freigaben an Rollen.
 		 * Braucht nur Anmeldung (kein `core.roles.view`); Suche ab 2 Zeichen oder IDs, maximal 30 Treffer.
 		 */
-		directory: roleDirectory
+		directory: roleDirectory,
+		/**
+		 * Ersetzt alle Rollen, die das Modul Benutzer*innen verleiht (z. B. über Ämter). Wirksam nur bei
+		 * aktivem Modul; manuelle Rollen bleiben unberührt. Keine Rechteprüfung – vorher `assertCanGrant`.
+		 * Nicht innerhalb einer Modul-Transaktion aufrufen.
+		 */
+		replaceModuleGrants: replaceModuleRoleGrants,
+		listModuleGrants: listModuleRoleGrants,
+		/** Wirft `forbidden`, wenn dem Kontext Rechte einer der Rollen fehlen (Rechteausweitung) */
+		assertCanGrant: assertCanGrantRoles
 	},
 	crypto: {
 		/** Verschlüsselung sensibler Modul-Daten (AES-256-GCM), Schlüssel je Modul abgeleitet */

@@ -6,21 +6,31 @@ import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { newId } from '../util';
 import { ADMIN_ROLE_ID } from './catalog';
+import { moduleGrantRoleIds } from './grants';
 import { assertCanGrant, existingKeys, permissionsOfRole, requirePermission } from './service';
 
 const ROLE_DIRECTORY_MAX = 30;
 const ROLE_DIRECTORY_MIN_SEARCH = 2;
+const ROLE_DIRECTORY_ALL_MAX = 200;
 
 /**
  * Minimales Rollenverzeichnis (id, name) für Module, z. B. für Freigaben an Rollen.
  * Braucht nur eine angemeldete Identität (kein `core.roles.view`). Suche ab 2 Zeichen oder
  * explizite IDs (max. 100); ohne beides leer. Höchstens 30 Treffer (Standard 20), nach Name sortiert.
+ * `all: true` liefert alle Rollen (max. 200, z. B. für eine Rollen-Auswahl).
  */
 export async function roleDirectory(
 	ctx: RequestContext,
-	opts: { search?: string; ids?: string[]; limit?: number } = {}
+	opts: { search?: string; ids?: string[]; limit?: number; all?: boolean } = {}
 ): Promise<{ id: string; name: string }[]> {
 	if (ctx.actor.type !== 'system') requireUser(ctx);
+	if (opts.all) {
+		return getDb()
+			.select({ id: schema.role.id, name: schema.role.name })
+			.from(schema.role)
+			.orderBy(asc(schema.role.name))
+			.limit(ROLE_DIRECTORY_ALL_MAX);
+	}
 	const limit = Math.min(Math.max(opts.limit ?? 20, 1), ROLE_DIRECTORY_MAX);
 	const s = opts.search?.trim().replace(/[%_\\]/g, '') ?? '';
 	const ids = (opts.ids ?? []).slice(0, 100);
@@ -37,13 +47,16 @@ export async function roleDirectory(
 		.limit(limit);
 }
 
-/** Rollen-IDs eines Benutzers (gezielte Abfrage auf `user_role`). */
+/** Rollen-IDs eines Benutzers: manuelle (`user_role`) plus von aktiven Modulen verliehene. */
 export async function roleIdsForUser(userId: string): Promise<string[]> {
-	const rows = await getDb()
-		.select({ roleId: schema.userRole.roleId })
-		.from(schema.userRole)
-		.where(eq(schema.userRole.userId, userId));
-	return rows.map((r) => r.roleId);
+	const [rows, granted] = await Promise.all([
+		getDb()
+			.select({ roleId: schema.userRole.roleId })
+			.from(schema.userRole)
+			.where(eq(schema.userRole.userId, userId)),
+		moduleGrantRoleIds(userId)
+	]);
+	return [...new Set([...rows.map((r) => r.roleId), ...granted])];
 }
 
 export interface RoleItem {

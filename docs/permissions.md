@@ -46,6 +46,15 @@ wie jede andere bearbeiten.
 
 Modulberechtigungen kommen aus den Manifesten (`<modul>.…`), siehe [Modulentwicklung](module-development.md).
 
+### Rollen aus Modulen (z. B. Ämter)
+
+Neben manuell zugewiesenen Rollen (`user_role`) können **Module** Rollen verleihen (Core-Tabelle `user_role_grant`, Spalte `module_id`). Erster Nutzer ist das Modul `offices`: Inhaber*innen eines Amts erhalten die mit dem Amt verknüpften Rollen und zusätzlich die Rolle „Amtsinhaber*in“ (`offices.office.view`).
+
+- Verliehene Rollen zählen zu den Rechten (`getUserPermissions`) und zu `core.users.roleIds` (z. B. Freigaben an Rollen) – aber **nur, solange das verleihende Modul aktiv ist**.
+- Manuelle Rollen bleiben unberührt: Wer eine Rolle manuell **und** über ein Amt hat, behält sie beim Entfernen aus dem Amt.
+- Benutzer- oder Rollenlöschung entfernt die Verleihungen (Fremdschlüssel mit CASCADE).
+- Module ersetzen ihre Verleihungen nur gesammelt über `core.roles.replaceModuleGrants` und prüfen vorher mit `core.roles.assertCanGrant` (siehe unten).
+
 ## Systemrolle Administrator
 
 Die Rolle `Administrator` (ID `role_administrator`, `isSystem`) wird beim Start angelegt; neue Berechtigungen werden ihr automatisch zugeordnet. Es gibt **kein Wildcard-Recht**: Der Administrator besitzt konkret alle registrierten Berechtigungen. Systemrollen können weder umbenannt, noch in ihren Rechten geändert, noch gelöscht werden. Der erste Administrator entsteht über `INITIAL_ADMIN_EMAIL/PASSWORD`.
@@ -57,6 +66,7 @@ Die Rolle `Administrator` (ID `role_administrator`, `isSystem`) wird beim Start 
 - **Zuweisung an Benutzer**: `core.roles.assign` plus Besitz aller Rechte der zugewiesenen/entzogenen Rolle.
 - Eigene Rollen können nicht entzogen werden; der **letzte aktive Administrator** kann weder deaktiviert, gelöscht noch seiner Rolle beraubt werden; Selbstdeaktivierung/-löschung ist gesperrt.
 - API-Keys können keine API-Keys erzeugen; Key-Verwaltung ist `sessionOnly`.
+- **Rollen über Module** (z. B. Ämter): Wer Personen eines Amts zuordnet/entfernt oder ein besetztes Amt löscht, braucht alle Rechte der Amt-Rollen und der Rolle „Amtsinhaber*in“; wer Rollen eines Amts verknüpft oder löst (auch bei unbesetztem Amt), braucht die Rechte der geänderten Rollen (sonst 403).
 
 ## API-Key-Scopes
 

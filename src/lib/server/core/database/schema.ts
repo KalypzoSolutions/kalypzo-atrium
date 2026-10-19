@@ -142,6 +142,25 @@ export const userRole = pgTable(
 );
 
 /**
+ * Rollen, die ein Modul verleiht (z. B. `offices` über Ämter). Getrennt von `user_role`,
+ * damit manuelle Zuweisungen unberührt bleiben; wirksam nur bei aktivem Modul.
+ */
+export const userRoleGrant = pgTable(
+	'user_role_grant',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		roleId: text('role_id')
+			.notNull()
+			.references(() => role.id, { onDelete: 'cascade' }),
+		moduleId: text('module_id').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.roleId, t.moduleId] })]
+);
+
+/**
  * Marker für einmalig nachgezogene Standard-Rechte (`ModuleDefinition.defaultRoleGrants`):
  * bewusst entzogene Rechte kommen dadurch nicht zurück.
  */

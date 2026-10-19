@@ -46,7 +46,13 @@ export async function syncModules(): Promise<void> {
 			moduleId: 'core',
 			description
 		})),
-		...defs.flatMap((d) => d.manifest.permissions.map((key) => ({ key, moduleId: d.manifest.id })))
+		...defs.flatMap((d) =>
+			d.manifest.permissions.map((key) => ({
+				key,
+				moduleId: d.manifest.id,
+				description: d.manifest.permissionDescriptions?.[key]
+			}))
+		)
 	]);
 	await applyDefaultRoleGrants(defs);
 	invalidateModuleStateCache();

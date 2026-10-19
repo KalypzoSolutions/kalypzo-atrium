@@ -25,6 +25,7 @@ bei Widerspruch gewinnt der Code, danach `docs/`.
 | `rules/module-treasury.md` | Modul Kasse: Konten, Buchungen, Rechnungen aus Aktionen, Zuordnung/Geschwister, Import, Mails, Berichte |
 | `rules/module-events.md` | Modul Termine: Termine, Tags, Gruppen-Zuordnung, Freigabe an Principals, Website-API |
 | `rules/module-galleries.md` | Modul Galerien: Bilder, Titelbild, Freigabe/öffentlich, Termin-Zuordnung, Website-API, `core.images` |
+| `rules/module-offices.md` | Modul Ämter: Reihenfolge, E-Mails, Inhaber*innen, Rollen aus Ämtern (`user_role_grant`), Bio, Website-API |
 | `rules/project-state.md` | Stand, getroffene Entscheidungen, offene Punkte |
 
 ## Befehle

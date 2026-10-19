@@ -147,7 +147,9 @@
 						<span class="text-sm text-muted-foreground">Keine Rolle zugewiesen.</span>
 					{/each}
 				</div>
-				<p class="text-xs text-muted-foreground">Rollen vergibt die Administration.</p>
+				<p class="text-xs text-muted-foreground">
+					Rollen vergibt die Administration, einige kommen über Ämter.
+				</p>
 			</div>
 		</CardContent>
 	</Card>

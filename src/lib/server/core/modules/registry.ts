@@ -40,6 +40,22 @@ export function validateDefinition(def: ModuleDefinition): void {
 		}
 		jobIds.add(j.id);
 	}
+	const officeKeys = new Set<string>();
+	for (const o of m.offices ?? []) {
+		if (!/^[a-z][a-z0-9-]*$/.test(o.key) || officeKeys.has(o.key) || !o.name.trim()) {
+			throw new Error(`Modul ${m.id}: ungültige oder doppelte Amt-Vorlage "${o.key}"`);
+		}
+		officeKeys.add(o.key);
+		const events = new Set<string>();
+		for (const n of o.notifications) {
+			if (!/^[a-z][a-z0-9-]*$/.test(n.key) || events.has(n.key)) {
+				throw new Error(
+					`Modul ${m.id}: ungültige oder doppelte Benachrichtigung "${o.key}.${n.key}"`
+				);
+			}
+			events.add(n.key);
+		}
+	}
 	for (const dep of m.optionalDependencies ?? []) {
 		if (dep === m.id || m.dependencies.includes(dep)) {
 			throw new Error(`Modul ${m.id}: optionale Abhängigkeit "${dep}" ist ungültig`);

@@ -1,6 +1,7 @@
 import type { Component } from 'svelte';
 import Backpack from '@lucide/svelte/icons/backpack';
 import Box from '@lucide/svelte/icons/box';
+import Briefcase from '@lucide/svelte/icons/briefcase';
 import Calendar from '@lucide/svelte/icons/calendar';
 import Cloud from '@lucide/svelte/icons/cloud';
 import ChartBar from '@lucide/svelte/icons/chart-bar';
@@ -31,6 +32,7 @@ type Icon = Component<any>;
 const ICONS: Record<string, Icon> = {
 	backpack: Backpack,
 	box: Box,
+	briefcase: Briefcase,
 	calendar: Calendar,
 	cloud: Cloud,
 	chart: ChartBar,
@@ -45,6 +47,7 @@ const ICONS: Record<string, Icon> = {
 	'key-round': KeyRound,
 	'layout-dashboard': LayoutDashboard,
 	mail: Mail,
+	offices: Briefcase,
 	puzzle: Puzzle,
 	'rotate-ccw': RotateCcw,
 	'scroll-text': ScrollText,

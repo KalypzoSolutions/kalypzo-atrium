@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { and, desc, eq, gt, isNull } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import QRCode from 'qrcode';
 import { z } from 'zod';
 import { getAuth } from '$lib/server/core/auth';
@@ -14,6 +14,7 @@ import { getDb, schema } from '$lib/server/core/database/client';
 import { isCoreError } from '$lib/server/core/errors';
 import { navigationFor } from '$lib/server/core/modules/service';
 import { enabledModuleIds } from '$lib/server/core/modules/state';
+import { roleIdsForUser } from '$lib/server/core/permissions/roles';
 import { setSetting } from '$lib/server/core/settings/service';
 import { loadUserPrefs, resolveStartPage } from '$lib/server/core/settings/user-prefs';
 import { authErrorMessage } from '../../login/auth-error';
@@ -51,12 +52,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.select({ createdAt: schema.user.createdAt, emailVerified: schema.user.emailVerified })
 			.from(schema.user)
 			.where(eq(schema.user.id, userId)),
-		getDb()
-			.select({ name: schema.role.name })
-			.from(schema.userRole)
-			.innerJoin(schema.role, eq(schema.role.id, schema.userRole.roleId))
-			.where(eq(schema.userRole.userId, userId))
-			.orderBy(schema.role.name),
+		// Manuelle Rollen plus von Modulen verliehene (z. B. über Ämter)
+		roleIdsForUser(userId).then((ids) =>
+			ids.length
+				? getDb()
+						.select({ name: schema.role.name })
+						.from(schema.role)
+						.where(inArray(schema.role.id, ids))
+						.orderBy(schema.role.name)
+				: []
+		),
 		canApiKeys
 			? getDb()
 					.select({

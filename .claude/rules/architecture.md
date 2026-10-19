@@ -89,3 +89,14 @@ Nutzereingaben nie als `{@html}` ausgeben; CSV-Exporte gegen Formel-Injection (`
 - Core: `core.roles.directory(ctx, { search, ids, limit })` (id/name, nur Anmeldung nötig, Suche ab 2 Zeichen, max. 30) und
   `core.users.roleIds(userId)`. UI: `SharePanel`/`ShareMenu`/`ShareDialog` mit `type` und `everyoneLabel` (siehe `ui-design.md`).
 - Nutzer: `events` (siehe `module-events.md`). `actions` nutzt noch die Benutzer-Freigabe (`action_shares.user_id`) – Umstellung offen.
+
+## Rollen aus Modulen (2026-10-19)
+- Core-Tabelle `user_role_grant(user_id, role_id, module_id)` (Migration `drizzle/0006_user_role_grant.sql`, FK auf `user`/`role` mit CASCADE): Rollen, die ein
+  **Modul** verleiht (erster Nutzer: `offices` – Inhaber*innen bekommen die Rollen ihrer Ämter). Getrennt von `user_role` (manuell), daher bleiben
+  manuelle Zuweisungen unberührt.
+- Wirksam nur bei **aktivem** verleihendem Modul: `getUserPermissions` (`permissions/service.ts`) und `roleIdsForUser` (`permissions/roles.ts`, = `core.users.roleIds`)
+  filtern nach `enabledModuleIds`. Deaktivieren entzieht die Rechte sofort, die Zeilen bleiben (Aktivieren stellt sie wieder her).
+- API für Module (`permissions/grants.ts`, über `core.roles`): `replaceModuleGrants(moduleId, [{ userId, roleIds }])` ersetzt **alle** Zeilen des Moduls atomar
+  (unbekannte Benutzer/Rollen still übersprungen, **keine** Rechteprüfung, nie in einer Modul-Transaktion), `listModuleGrants(moduleId, { userId? })`,
+  `assertCanGrant(ctx, roleIds)` (403, wenn dem Aufrufer Rechte einer Rolle fehlen – vor dem Ersetzen aufrufen). `core.roles.directory` kennt `all: true` (≤ 200).
+- Reset: Core-Bereiche `users`/`roles` löschen passende Zeilen mit; ein Modul-`rebuild` löscht die Zeilen des Moduls. Details: `module-offices.md`.
