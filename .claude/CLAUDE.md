@@ -26,6 +26,7 @@ bei Widerspruch gewinnt der Code, danach `docs/`.
 | `rules/module-events.md` | Modul Termine: Termine, Tags, Gruppen-Zuordnung, Freigabe an Principals, Website-API |
 | `rules/module-galleries.md` | Modul Galerien: Bilder, Titelbild, Freigabe/öffentlich, Termin-Zuordnung, Website-API, `core.images` |
 | `rules/module-offices.md` | Modul Ämter: Reihenfolge, E-Mails, Inhaber*innen, Rollen aus Ämtern (`user_role_grant`), Bio, Website-API |
+| `rules/module-orders.md` | Modul Bestellungen: Artikel/Größen/Bilder, Bestellen mit Rechnung über die Kasse, Ausgabe, Lager, Einkauf mit Teillieferung |
 | `rules/project-state.md` | Stand, getroffene Entscheidungen, offene Punkte |
 
 ## Befehle

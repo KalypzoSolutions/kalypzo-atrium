@@ -99,7 +99,7 @@
   Core: öffentliches Multipart (`ApiEndpoint.multipart`), Admin-Seite **Zurücksetzen** (`/system/reset`, Bereiche je Modul + Core, Vorschau, Passwort/TOTP,
   Pflicht-JSON-Export, Bestätigungswort, `ConfirmDialog`), `core.storage.purge`, Jobs pausierbar, Core-Migration 0005. Details: `architecture.md`,
   `module-actions.md`, `module-treasury.md`. Offen: Reset-Token nur bei einer Instanz; Buchungsbelege der Kasse bei Teil-Reset verwaist; ZA nicht im Export/Import.
-- **Platzhalter-Module (2026-10-18)**: `files` (Dateien, Cloud-Ablage) und `orders` (Bestellungen) – nur Manifest, Navigation und eine Seite „In Planung“, keine Endpoints/Migrationen.
+- **Platzhalter-Module (2026-10-18)**: `files` (Dateien, Cloud-Ablage) und `orders` (Bestellungen, seit 2026-10-19 umgesetzt) – nur Manifest, Navigation und eine Seite „In Planung“, keine Endpoints/Migrationen.
   **Geplant `files`**: Ablage (Ordner, Up-/Download, „Meine Dateien“ + Stammesordner), Freigabe an Benutzer (Lesen/Bearbeiten, `ShareMenu`-Muster), Link-Freigabe (Ablauf, Passwort, widerrufbar, rate-limitiert; **offen: auch für Personen ohne Konto?**), Quota, Papierkorb; kein Sync/Versionen/Mitbearbeiten.
   **Geplant `orders`**: Mitglieder bestellen interne Artikel (Halstuch, Liederbuch …); Zuständige mit Lager- und Bestellverwaltung; Rechnung an das zugeordnete Mitglied (Konto-Verknüpfung, Mail) und an die Kasse (`treasury`-Rechnung/Zuordnung).
 - **Core**: Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`, Tabelle `job_run`, `/api/v1/jobs`), optionale
@@ -137,6 +137,12 @@
   Aufruf, Tagesjob `offices.notify-digest`. Ämterseite: Badge „Vorlage: <Modul>“, Hinweis im Dialog und in der Lösch-Bestätigung. Erste Nutzerin:
   Kasse (Amt `kasse`, Ereignisse `payable-created`, `accounting-closed` inkl. Zwischenabrechnung, ausgelöst auch aus `actions`). Details:
   `module-offices.md`, `module-treasury.md`. Offen: echter SMTP-Versand und Tagesjob im Echtbetrieb ungeprüft.
+- **Modul `orders` – Bestellungen / Kämmerer*in (2026-10-19)**: ersetzt den Platzhalter. Artikel mit optionalen Größen (eigene Preise → Preisspanne),
+  Bildern, internen Notizen und Nachbestelllinks; Benutzer bestellen für verknüpfte Mitglieder (Kämmerer*in für alle) → Rechnung **sofort** über die Kasse
+  (Push `TreasuryService.upsertOrderInvoice`, Kasse-Migration 0007, Herkunft „Bestellung“); Ausgabe aus dem Lager auch teilweise; Lager mit Fehlmengen und
+  Bestellvorschlag; Einkauf mit Teillieferung, Lieferantenrechnung als Auszahlung (`upsertOrderPayable`) mit Bezahlstatus. Amts-Vorlage „Kämmerer*in“
+  (Benachrichtigungen neue Bestellung / Fehlmengen), Rolle „Kämmerer*in“ per `defaultRoleGrants`. Details: `rules/module-orders.md`.
+  Bekannt (nicht durch `orders`): E2E `annual-fee.spec.ts` (sucht alten Kassen-Tab „Jahresbeitrag“) und `pdf-lists.spec.ts` (Auswahl leer) schlagen fehl.
 - Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`, `rules/module-events.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
