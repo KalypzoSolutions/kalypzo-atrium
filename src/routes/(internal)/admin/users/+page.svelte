@@ -3,7 +3,15 @@
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import type { SubmitFunction } from '@sveltejs/kit';
-	import { DataTable, PageHeader, Pagination, SearchInput } from '$lib/components/layout';
+	import {
+		ConfirmDialog,
+		DataTable,
+		EntityAvatar,
+		FileField,
+		PageHeader,
+		Pagination,
+		SearchInput
+	} from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
@@ -20,7 +28,9 @@
 	let editOpen = $state(false);
 	let deleteOpen = $state(false);
 	let busy = $state(false);
-	let editUser = $state<UserRow | null>(null);
+	let editUserId = $state<string | null>(null);
+	/** Aus `data` abgeleitet, damit ein neues Profilbild nach dem Speichern sofort erscheint */
+	const editUser = $derived(data.users.find((u) => u.id === editUserId) ?? null);
 	let deleteUser = $state<UserRow | null>(null);
 	let editRoleIds = $state<string[]>([]);
 	let formError = $state('');
@@ -30,11 +40,27 @@
 	}
 
 	function openEdit(u: UserRow) {
-		editUser = u;
+		editUserId = u.id;
 		editRoleIds = u.roles.map((r) => r.id);
 		formError = '';
+		avatarFile = null;
 		editOpen = true;
 	}
+
+	// --- Profilbild (im Bearbeiten-Dialog)
+	let avatarFile = $state<File | null>(null);
+	let avatarRemoveOpen = $state(false);
+	let avatarRemoveForm = $state<HTMLFormElement | null>(null);
+	let preview = $state<string | null>(null);
+	$effect(() => {
+		if (!avatarFile) {
+			preview = null;
+			return;
+		}
+		const url = URL.createObjectURL(avatarFile);
+		preview = url;
+		return () => URL.revokeObjectURL(url);
+	});
 
 	function openDelete(u: UserRow) {
 		deleteUser = u;
@@ -108,7 +134,12 @@
 		{/snippet}
 		{#each data.users as u (u.id)}
 			<Table.Row>
-				<Table.Cell class="font-medium">{u.name}</Table.Cell>
+				<Table.Cell class="font-medium">
+					<span class="flex items-center gap-2">
+						<EntityAvatar name={u.name} src={u.image} size={28} />
+						{u.name}
+					</span>
+				</Table.Cell>
 				<Table.Cell>{u.email}</Table.Cell>
 				<Table.Cell>
 					<div class="flex flex-wrap gap-1">
@@ -212,6 +243,53 @@
 			<Dialog.Title>Benutzer bearbeiten</Dialog.Title>
 		</Dialog.Header>
 		{#if editUser}
+			<section class="space-y-3 rounded-md border p-3" aria-labelledby="e-avatar-title">
+				<h3 id="e-avatar-title" class="text-sm font-medium">Profilbild</h3>
+				<form
+					method="POST"
+					action="?/setAvatar"
+					enctype="multipart/form-data"
+					class="flex flex-col gap-3 sm:flex-row sm:items-start"
+					use:enhance={submit(() => (avatarFile = null))}
+				>
+					<input type="hidden" name="id" value={editUser.id} />
+					<EntityAvatar name={editUser.name} src={preview ?? editUser.image} size={56} />
+					<div class="min-w-0 flex-1 space-y-2">
+						<FileField
+							id="e-avatar-file"
+							name="avatar"
+							bind:file={avatarFile}
+							accept="image/png,image/jpeg,image/webp"
+							maxBytes={2 * 1024 * 1024}
+							disabled={busy}
+						/>
+						<div class="flex flex-wrap gap-2">
+							<Button type="submit" size="sm" disabled={!avatarFile || busy}>
+								{busy && avatarFile ? 'Lädt hoch …' : 'Hochladen'}
+							</Button>
+							{#if editUser.image && !avatarFile}
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									disabled={busy}
+									onclick={() => (avatarRemoveOpen = true)}>Entfernen</Button
+								>
+							{/if}
+						</div>
+					</div>
+				</form>
+				<form
+					method="POST"
+					action="?/removeAvatar"
+					class="hidden"
+					bind:this={avatarRemoveForm}
+					use:enhance={submit()}
+				>
+					<input type="hidden" name="id" value={editUser.id} />
+				</form>
+				<p class="text-xs text-muted-foreground">PNG, JPEG oder WebP, höchstens 2 MB.</p>
+			</section>
 			<form
 				method="POST"
 				action="?/update"
@@ -263,6 +341,15 @@
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>
+
+<ConfirmDialog
+	bind:open={avatarRemoveOpen}
+	title="Profilbild entfernen?"
+	description={editUser ? `${editUser.name} wird danach mit Initialen angezeigt.` : undefined}
+	confirmLabel="Entfernen"
+	destructive
+	onconfirm={() => avatarRemoveForm?.requestSubmit()}
+/>
 
 <!-- Löschen bestätigen -->
 <Dialog.Root bind:open={deleteOpen}>

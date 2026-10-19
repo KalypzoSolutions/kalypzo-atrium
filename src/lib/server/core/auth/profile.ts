@@ -5,6 +5,7 @@ import { auditFromContext } from '../audit/service';
 import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { sendMail } from '../mail';
+import { requirePermission } from '../permissions/service';
 import { hit, peek, reset } from '../rate-limit';
 import { getSetting } from '../settings/service';
 import * as storage from '../storage';
@@ -129,7 +130,47 @@ export async function setOwnAvatar(
 	ctx: RequestContext,
 	file: { data: Uint8Array; contentType: string }
 ): Promise<string> {
-	const userId = requireUser(ctx);
+	return writeAvatar(ctx, requireUser(ctx), file);
+}
+
+export async function removeOwnAvatar(ctx: RequestContext): Promise<void> {
+	await deleteAvatar(ctx, requireUser(ctx));
+}
+
+/** Profilbild eines anderen Benutzers setzen (Verwaltung, Recht `core.users.edit`). */
+export async function setUserAvatar(
+	ctx: RequestContext,
+	userId: string,
+	file: { data: Uint8Array; contentType: string }
+): Promise<string> {
+	await requireEditableUser(ctx, userId);
+	return writeAvatar(ctx, userId, file);
+}
+
+/** Profilbild eines anderen Benutzers entfernen (Verwaltung, Recht `core.users.edit`). */
+export async function removeUserAvatar(ctx: RequestContext, userId: string): Promise<void> {
+	await requireEditableUser(ctx, userId);
+	await deleteAvatar(ctx, userId);
+}
+
+async function requireEditableUser(ctx: RequestContext, userId: string): Promise<void> {
+	await requirePermission(ctx, 'core.users.edit');
+	const [u] = await getDb()
+		.select({ id: schema.user.id })
+		.from(schema.user)
+		.where(eq(schema.user.id, userId));
+	if (!u) throw errors.notFound('Benutzer nicht gefunden');
+}
+
+/** Audit-Zusatz, wenn jemand das Bild eines anderen Kontos ändert */
+const byAdmin = (ctx: RequestContext, userId: string) =>
+	ctx.userId === userId ? undefined : { byAdmin: true };
+
+async function writeAvatar(
+	ctx: RequestContext,
+	userId: string,
+	file: { data: Uint8Array; contentType: string }
+): Promise<string> {
 	const type = file.contentType.split(';')[0]!.trim().toLowerCase();
 	if (!(AVATAR_TYPES as readonly string[]).includes(type)) {
 		throw errors.badRequest('Nur PNG-, JPEG- oder WebP-Bilder sind erlaubt');
@@ -152,12 +193,14 @@ export async function setOwnAvatar(
 		.update(schema.user)
 		.set({ image, updatedAt: new Date() })
 		.where(eq(schema.user.id, userId));
-	await auditFromContext(ctx, 'core.user.avatar_changed', { target: userId });
+	await auditFromContext(ctx, 'core.user.avatar_changed', {
+		target: userId,
+		metadata: byAdmin(ctx, userId)
+	});
 	return image;
 }
 
-export async function removeOwnAvatar(ctx: RequestContext): Promise<void> {
-	const userId = requireUser(ctx);
+async function deleteAvatar(ctx: RequestContext, userId: string): Promise<void> {
 	await getDb()
 		.update(schema.user)
 		.set({ image: null, updatedAt: new Date() })
@@ -170,7 +213,10 @@ export async function removeOwnAvatar(ctx: RequestContext): Promise<void> {
 				console.error('[avatar] Entfernen fehlgeschlagen:', err?.message);
 			}
 		});
-	await auditFromContext(ctx, 'core.user.avatar_removed', { target: userId });
+	await auditFromContext(ctx, 'core.user.avatar_removed', {
+		target: userId,
+		metadata: byAdmin(ctx, userId)
+	});
 }
 
 /** `true`, wenn `image` auf das eigene Profilbild (`/avatar/<userId>` mit optionaler Query) zeigt. */

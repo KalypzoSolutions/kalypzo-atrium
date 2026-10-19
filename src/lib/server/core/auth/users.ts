@@ -17,6 +17,8 @@ export interface UserListItem {
 	twoFactorEnabled: boolean;
 	createdAt: Date;
 	roles: { id: string; name: string }[];
+	/** Profilbild-Adresse (`/avatar/<id>?v=…`) oder `null` */
+	image: string | null;
 }
 
 async function rolesByUser(userIds: string[]) {
@@ -61,7 +63,8 @@ export async function listUsers(
 		active: u.active,
 		twoFactorEnabled: u.twoFactorEnabled,
 		createdAt: u.createdAt,
-		roles: roles.get(u.id) ?? []
+		roles: roles.get(u.id) ?? [],
+		image: directoryAvatar(u.id, u.image)
 	}));
 	return { items, total: total?.n ?? 0 };
 }
@@ -78,7 +81,8 @@ export async function getUser(ctx: RequestContext, id: string): Promise<UserList
 		active: u.active,
 		twoFactorEnabled: u.twoFactorEnabled,
 		createdAt: u.createdAt,
-		roles: roles.get(id) ?? []
+		roles: roles.get(id) ?? [],
+		image: directoryAvatar(u.id, u.image)
 	};
 }
 

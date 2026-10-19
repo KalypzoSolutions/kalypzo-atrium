@@ -50,6 +50,8 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
   5/300 s, `/update-user` 20/300 s. Audit `core.auth.email_change_requested|email_changed` mit maskierten Adressen (`a***@domain`).
   Admin `updateUser` mit neuer Adresse: `emailVerified=true`, alle Sessions des Benutzers widerrufen, Duplikat 409.
 - Profilbild: `setOwnAvatar` → Storage `core/avatars/<userId>` (braucht S3, sonst 503), `user.image=/avatar/<id>?v=…`, Auslieferung `GET /avatar/<userId>`.
+  Verwaltung (2026-10-19): `setUserAvatar`/`removeUserAvatar` (`core/auth/profile.ts`, Recht `core.users.edit`, unbekannt 404, gleiche Typ-/Größen-/Magic-Bytes-Prüfung),
+  Aktionen `setAvatar`/`removeAvatar` auf `/admin/users` (Bereich „Profilbild“ im Bearbeiten-Dialog, Avatar in der Liste; `UserListItem.image`). Audit wie beim eigenen Bild, mit `byAdmin: true`.
 - Theme: Cookie `theme` ist SSR-Quelle, `core.user.theme` (nur bei ausdrücklicher Wahl) gewinnt beim `(internal)`-Load;
   `theme.set()` schreibt zusätzlich per `POST /profile/theme`. `hooks.server.ts` ersetzt `%app.theme%`, `%app.density%`,
   `%app.style%` (`--accent-color`, nur validiertes `#rrggbb`) in `app.html`; Inline-Skript setzt `dark` bei „system“ (CSP-Nonce).

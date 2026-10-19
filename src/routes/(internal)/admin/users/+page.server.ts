@@ -8,6 +8,7 @@ import {
 	setUserRoles,
 	updateUser
 } from '$lib/server/core/auth/users';
+import { AVATAR_MAX_BYTES, removeUserAvatar, setUserAvatar } from '$lib/server/core/auth/profile';
 import { isCoreError } from '$lib/server/core/errors';
 import { resolvePageSize } from '$lib/server/core/settings/user-prefs';
 import { listRoles } from '$lib/server/core/permissions/roles';
@@ -123,6 +124,41 @@ export const actions: Actions = {
 				success: true,
 				message: parsed.data.active === 'true' ? 'Benutzer aktiviert' : 'Benutzer deaktiviert'
 			};
+		} catch (e) {
+			return toFail(e);
+		}
+	},
+
+	setAvatar: async ({ request, locals }) => {
+		const fd = await request.formData();
+		const id = fd.get('id');
+		const file = fd.get('avatar');
+		if (typeof id !== 'string' || !id) return fail(422, { message: 'Benutzer fehlt' });
+		if (!(file instanceof File) || file.size === 0) {
+			return fail(400, { message: 'Bitte ein Bild auswählen.' });
+		}
+		// Größe vor dem Einlesen prüfen (kein Puffern überlanger Uploads)
+		if (file.size > AVATAR_MAX_BYTES) {
+			return fail(413, { message: 'Das Bild darf höchstens 2 MB groß sein' });
+		}
+		try {
+			await setUserAvatar(locals.ctx, id, {
+				data: new Uint8Array(await file.arrayBuffer()),
+				contentType: file.type
+			});
+			return { success: true, message: 'Profilbild gespeichert' };
+		} catch (e) {
+			return toFail(e);
+		}
+	},
+
+	removeAvatar: async ({ request, locals }) => {
+		const fd = await request.formData();
+		const parsed = z.object({ id: z.string().min(1) }).safeParse({ id: fd.get('id') });
+		if (!parsed.success) return invalid(parsed.error);
+		try {
+			await removeUserAvatar(locals.ctx, parsed.data.id);
+			return { success: true, message: 'Profilbild entfernt' };
 		} catch (e) {
 			return toFail(e);
 		}

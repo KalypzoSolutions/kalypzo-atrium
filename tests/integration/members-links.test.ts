@@ -4,7 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { contextForUser } from '$lib/server/core/auth/context';
-import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
+import { bootstrapAdmin, createUser, setUserActive } from '$lib/server/core/auth/users';
 import { registerModule } from '$lib/server/core/modules/registry';
 import { disableModule, enableModule, syncModules } from '$lib/server/core/modules/service';
 import { registerCoreApi } from '$lib/server/core/api/endpoints';
@@ -345,6 +345,74 @@ describe('Konto-Verknüpfung', () => {
 		expect(vater).toHaveLength(0);
 	});
 
+	it('Konto per Hand verknüpfen (ohne Code)', async () => {
+		const vaterId = parents.Vater!.id;
+		const found = await data<{ id: string; name: string; email: string }[]>(
+			await call('/link-users?search=vat')
+		);
+		expect(found.map((u) => u.id)).toContain(vaterId);
+		expect(await data<unknown[]>(await call('/link-users?search=v'))).toEqual([]);
+
+		const links = await data<{ users: { id: string; relation: string | null }[] }>(
+			await call(`/members/${kid1}/links`, {
+				method: 'POST',
+				json: { userId: vaterId, relation: 'Vater' }
+			}),
+			201
+		);
+		expect(links.users.find((u) => u.id === vaterId)?.relation).toBe('Vater');
+		const vater = await data<{ id: string }[]>(
+			await api(`${BASE}/my/members`, { token: parents.Vater!.key })
+		);
+		expect(vater.map((m) => m.id)).toEqual([kid1]);
+
+		// doppelt → 409, unbekanntes Konto/Mitglied → 422/404, Fremdfelder → 422
+		const again = await call(`/members/${kid1}/links`, {
+			method: 'POST',
+			json: { userId: vaterId }
+		});
+		expect(again.status).toBe(409);
+		const unknownUser = await call(`/members/${kid1}/links`, {
+			method: 'POST',
+			json: { userId: 'gibt-es-nicht' }
+		});
+		expect(unknownUser.status).toBe(422);
+		expect((await unknownUser.json()).error.code).toBe('validation_failed');
+		expect(
+			(
+				await call(`/members/${crypto.randomUUID()}/links`, {
+					method: 'POST',
+					json: { userId: vaterId }
+				})
+			).status
+		).toBe(404);
+		expect(
+			(
+				await call(`/members/${kid1}/links`, {
+					method: 'POST',
+					json: { userId: vaterId, extra: 1 }
+				})
+			).status
+		).toBe(422);
+
+		// deaktivierte Konten lassen sich nicht verknüpfen
+		const inactive = await createUser(admin, {
+			name: 'Inaktiv',
+			email: 'inaktiv@example.test',
+			password: PW,
+			roleIds: []
+		});
+		await setUserActive(admin, inactive, false);
+		expect(
+			(await call(`/members/${kid1}/links`, { method: 'POST', json: { userId: inactive } })).status
+		).toBe(422);
+
+		// wieder lösen, damit die folgenden Tests den alten Stand sehen
+		expect((await call(`/members/${kid1}/links/${vaterId}`, { method: 'DELETE' })).status).toBe(
+			200
+		);
+	});
+
 	it('Sammel-PDF: ein Brief je Mitglied in einem Dokument', async () => {
 		const res = await call('/members/link-letters.pdf', {
 			method: 'POST',
@@ -371,6 +439,8 @@ describe('Konto-Verknüpfung', () => {
 		expect(await as(`/members/${kid1}/link-code`, viewKey, 'POST')).toBe(403);
 		expect(await as(`/members/${kid1}/link-letter.pdf`, viewKey)).toBe(403);
 		expect(await as(`/members/${kid1}/links/x`, viewKey, 'DELETE')).toBe(403);
+		expect(await as(`/members/${kid1}/links`, viewKey, 'POST')).toBe(403);
+		expect(await as(`/link-users?search=ma`, viewKey)).toBe(403);
 		expect(await as(`/members/${kid1}/links`, lettersKey)).toBe(403);
 		expect(await as(`/members/${kid1}/link-letter.pdf`, lettersKey)).toBe(200);
 		expect(await as(`/members/${kid1}/links`)).toBe(401);

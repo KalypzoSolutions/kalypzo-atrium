@@ -13,8 +13,10 @@ import {
 	AVATAR_MAX_BYTES,
 	readAvatar,
 	removeOwnAvatar,
+	removeUserAvatar,
 	requestEmailChange,
 	setOwnAvatar,
+	setUserAvatar,
 	updateOwnName
 } from '$lib/server/core/auth/profile';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
@@ -318,6 +320,62 @@ describe('Profilbild', () => {
 		await removeOwnAvatar(ctx);
 		expect(await imageOf()).toBeNull();
 		expect(await readAvatar(id)).toBeNull();
+		uninstallFakeStorage();
+	});
+});
+
+describe('Profilbild durch die Verwaltung', () => {
+	let id: string;
+	let plainId: string;
+	const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+	beforeAll(async () => {
+		id = await createUser(admin, { name: 'Bea', email: 'bea@example.test', password: PW });
+		plainId = await createUser(admin, { name: 'Ohne', email: 'ohne@example.test', password: PW });
+	});
+	const imageOf = async () =>
+		(await getDb().select().from(schema.user).where(eq(schema.user.id, id)))[0]!.image;
+
+	it('ohne core.users.edit -> forbidden, unbekannter Benutzer -> not_found', async () => {
+		const plain = await ctxOf(plainId);
+		await expect(
+			setUserAvatar(plain, id, { data: png, contentType: 'image/png' })
+		).rejects.toMatchObject({ code: 'forbidden' });
+		await expect(removeUserAvatar(plain, id)).rejects.toMatchObject({ code: 'forbidden' });
+		await expect(
+			setUserAvatar(admin, 'gibt-es-nicht', { data: png, contentType: 'image/png' })
+		).rejects.toMatchObject({ code: 'not_found' });
+		await expect(removeUserAvatar(admin, 'gibt-es-nicht')).rejects.toMatchObject({
+			code: 'not_found'
+		});
+	});
+
+	it('gleiche Prüfungen wie beim eigenen Bild (Typ, Größe, ohne S3)', async () => {
+		uninstallFakeStorage();
+		await expect(
+			setUserAvatar(admin, id, { data: png, contentType: 'image/gif' })
+		).rejects.toMatchObject({ code: 'bad_request' });
+		await expect(
+			setUserAvatar(admin, id, { data: new Uint8Array(0), contentType: 'image/png' })
+		).rejects.toMatchObject({ code: 'payload_too_large' });
+		await expect(
+			setUserAvatar(admin, id, { data: png, contentType: 'image/png' })
+		).rejects.toMatchObject({ code: 'unavailable' });
+		expect(await imageOf()).toBeNull();
+	});
+
+	it('mit Fake-Storage: setzen, lesen, entfernen; Audit mit byAdmin am Zielkonto', async () => {
+		await installFakeStorage(admin);
+		const img = await setUserAvatar(admin, id, { data: png, contentType: 'image/png' });
+		expect(img).toMatch(new RegExp(`^/avatar/${id}\\?v=\\d+$`));
+		expect(await imageOf()).toBe(img);
+		expect((await readAvatar(id))?.contentType).toBe('image/png');
+		const changed = await auditOf(id, 'core.user.avatar_changed');
+		expect(changed[0]?.metadata).toMatchObject({ byAdmin: true });
+		await removeUserAvatar(admin, id);
+		expect(await imageOf()).toBeNull();
+		expect(await readAvatar(id)).toBeNull();
+		const removed = await auditOf(id, 'core.user.avatar_removed');
+		expect(removed[0]?.metadata).toMatchObject({ byAdmin: true });
 		uninstallFakeStorage();
 	});
 });
