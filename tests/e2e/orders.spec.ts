@@ -115,20 +115,16 @@ test('Für ein Mitglied bestellen und ausgeben', async ({ page }) => {
 		emails: [{ name: 'Eltern', value: `bea-${run}@example.test` }]
 	});
 
-	await page.goto('/modules/orders');
-	await page.getByRole('button', { name: `${title} ansehen` }).click();
-	const detail = page.getByRole('dialog');
-	await detail.getByRole('button', { name: 'In den Warenkorb' }).click();
-	await expect(detail).toBeHidden();
-
-	const cart = page.getByRole('region', { name: /Warenkorb/ }).first();
-	await cart.getByLabel('Mitglied suchen').fill(lastName);
-	await cart.getByRole('button', { name: memberName }).click();
-	await cart.getByRole('button', { name: 'Verbindlich bestellen' }).click();
-	await page
-		.getByRole('alertdialog')
-		.getByRole('button', { name: 'Verbindlich bestellen' })
-		.click();
+	// Kämmerer*in bestellt für ein beliebiges Mitglied über „Bestellung anlegen“
+	await page.goto('/modules/orders?tab=bestellungen');
+	await page.getByRole('button', { name: 'Bestellung anlegen' }).click();
+	const create = page.getByRole('dialog');
+	await create.getByLabel('Mitglied suchen').fill(lastName);
+	await create.getByRole('button', { name: memberName }).click();
+	await create.getByRole('button', { name: 'Artikel Position 1' }).click();
+	await page.getByRole('option', { name: new RegExp(title) }).click();
+	await create.getByRole('button', { name: 'Verbindlich bestellen' }).click();
+	await expect(create).toBeHidden();
 	await expect(page.getByText(/Bestellung B-\d{4}-\d{4}/).first()).toBeVisible();
 
 	const list = await api<{ items: OrderDto[] }>(
