@@ -27,7 +27,7 @@ bei Widerspruch gewinnt der Code, danach `docs/`.
 | `rules/module-galleries.md` | Modul Galerien: Bilder, Titelbild, Freigabe/öffentlich, Termin-Zuordnung, Website-API, `core.images` |
 | `rules/module-offices.md` | Modul Ämter: Reihenfolge, E-Mails, Inhaber*innen, Rollen aus Ämtern (`user_role_grant`), Bio, Website-API |
 | `rules/module-orders.md` | Modul Bestellungen: Artikel/Größen/Bilder, Bestellen mit Rechnung über die Kasse, Ausgabe, Lager, Einkauf mit Teillieferung |
-| `rules/module-files.md` | Modul Dateien: Ablage als Baum, Upload/Drag & Drop, Vorschau, Freigabe an Principals, öffentliche Links, Papierkorb, Kontingent, Sicherheitsregeln |
+| `rules/module-files.md` | Modul Dateien: eine Ansicht (eigene + Freigegebenes), Upload/Drag & Drop, Rechtsklick, Vorschau, Freigabe an Principals/Stamm, öffentliche Ansicht-/Upload-Links, Papierkorb, Kontingent, Sicherheitsregeln |
 | `rules/project-state.md` | Stand, getroffene Entscheidungen, offene Punkte |
 
 ## Befehle

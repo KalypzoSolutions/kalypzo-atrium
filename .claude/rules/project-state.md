@@ -155,6 +155,12 @@
   ohne Konto (`/p/files/link/<token>`, Ablauf, optionales Passwort, widerrufbar, rate-limitiert, nur ansehen/herunterladen; Token nur als Hash, 10 Fehlversuche/h
   → 429). Freigaben/Links nur für Bereichsberechtigte (nicht über eine edit-Freigabe). Rolle „Mitglied“ bekommt `files.file.view`. Kein Sync, keine Versionen,
   kein Mitbearbeiten, keine Videos. Offen u. a.: Link-Token im `api_log` (Core-Fix vorgeschlagen), `no-store` bei öffentlichen Thumbnails. Details: `rules/module-files.md`.
+  **Umbau 2026-10-19 (Migr. 0003, v1.1.0)**: **eine Ansicht** „Dateien“ (eigene + mir freigegebene Einträge in der Wurzel, Papierkorb über Knopf im
+  Seitenkopf) statt Meine Dateien/Stamm/Mit mir geteilt; Stammesordner abgeschafft → Freigabe `everyone:*` („Mit dem ganzen Stamm teilen“), Rechte
+  `files.shared.*` entfallen, alte Stamm-Ordner gehören der anlegenden Person und sind an den Stamm (Lesen) freigegeben (Bearbeiten-Rechte früherer
+  `files.shared.edit`-Rollen werden **nicht** übertragen). Link-URL **jederzeit** abrufbar (`token_enc`), Link-Arten Ansehen / Hochladen / Ansehen und
+  hochladen (Upload nur für Ordner); **öffentlicher Upload** mit optionalem Namen (Eigentum/Kontingent der Ordner-Eigentümer*in, ≤ 10 Dateien/30 MB je
+  Request, 20/600 s je IP); **Rechtsklick-Kontextmenü** über neue Core-Komponente `ui/context-menu`. Tests `files-upload-link.test.ts`, `files-migration.test.ts`.
 - Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`, `rules/module-events.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)

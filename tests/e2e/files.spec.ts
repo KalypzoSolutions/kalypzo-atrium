@@ -2,6 +2,7 @@ import {
 	expect,
 	test,
 	type APIRequestContext,
+	type Browser,
 	type BrowserContext,
 	type Locator,
 	type Page
@@ -9,9 +10,11 @@ import {
 import { crc32, deflateSync } from 'node:zlib';
 import { startS3Mock, type S3Mock } from '../helpers/s3-mock';
 
-// Dateien (Cloud-Ablage) mit S3-Ersatz: Ordner anlegen und navigieren, Upload per Drag & Drop und
-// Dateiauswahl, Bild- und PDF-Vorschau, Verschieben per Drag & Drop, Papierkorb mit Rückgängig und
-// Wiederherstellen, öffentlicher Link ohne Login (auch mit Passwort).
+// Dateien (Cloud-Ablage) mit S3-Ersatz – eine Ansicht „Dateien“: Ordner anlegen und navigieren, Upload
+// per Drag & Drop und Dateiauswahl, Bild- und PDF-Vorschau, Kontextmenü per Rechtsklick (Umbenennen,
+// „Neuer Ordner“ auf leerer Fläche), Verschieben per Drag & Drop, Papierkorb mit Rückgängig und
+// Wiederherstellen, Freigabe „Mit dem ganzen Stamm teilen“ (zweite Person sieht den Ordner), öffentliche
+// Links (URL jederzeit wieder sichtbar, mit Passwort) und Upload-Link ohne Login mit Namensangabe.
 // Die E2E-Instanz hat kein S3 – die Spec stellt den Speicher vorübergehend auf einen lokalen Ersatz
 // (`tests/helpers/s3-mock.ts`) um und setzt die Einstellungen danach zurück (andere Specs erwarten 503).
 
@@ -23,11 +26,22 @@ const run = Date.now().toString(36);
 
 const ROOT = `E2E Ablage ${run}`;
 const SUB = 'Unterordner';
+const CTX_FOLDER = 'Per Rechtsklick';
 const IMG1 = 'Bild-1.png';
 const IMG2 = 'Bild-2.png';
 const PDF_NAME = 'Elternbrief.pdf';
 const TXT_NAME = 'Notizen.txt';
+const TXT_RENAMED = 'Packliste.txt';
 const LINK_PASSWORD = 'Zeltlager-2026';
+const UPLOAD_1 = 'Gruppenfoto.png';
+const UPLOAD_2 = 'Zeltplatz.png';
+const UPLOADER = 'Oma Erna';
+
+const MEMBER = {
+	name: `Lena Stamm ${run}`,
+	email: `lena-${run}@example.test`,
+	password: 'e2e-lena-password-1'
+};
 
 const STORAGE_KEYS = {
 	endpoint: 'core.storage.endpoint',
@@ -50,9 +64,16 @@ interface FileNode {
 	name: string;
 	kind: 'folder' | 'file';
 	contentType: string | null;
+	own: boolean;
+	owner: { id: string; name: string };
+	uploadedByName: string | null;
+	viaLink: boolean;
 }
 interface FolderListing {
 	items: FileNode[];
+}
+interface NodeShares {
+	shares: { type: string; id: string; level: string }[];
 }
 
 const PDF = Buffer.from(
@@ -74,7 +95,7 @@ const PDF = Buffer.from(
  * Einfarbiges PNG ohne `sharp` (Playwrights Modul-Lader verträgt sharp nicht): 320 × 240, RGB.
  * `color` als `#rrggbb`.
  */
-async function picture(color: string): Promise<Buffer> {
+function picture(color: string): Buffer {
 	const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
 	const width = 320;
 	const height = 240;
@@ -103,12 +124,24 @@ async function picture(color: string): Promise<Buffer> {
 
 // --- Hilfen ------------------------------------------------------------------------------
 
-async function login(page: Page) {
-	await page.goto('/login');
-	await page.getByLabel('E-Mail').fill(ADMIN.email);
-	await page.getByLabel('Passwort').fill(ADMIN.password);
-	await page.getByRole('button', { name: 'Anmelden' }).click();
-	await page.waitForURL(/\/dashboard/);
+/**
+ * Anmeldung über die Login-Seite. Better Auth begrenzt Anmeldungen auf 10/min (gemeinsamer Bucket
+ * aller Specs) – bei einer Sperre kurz warten und erneut versuchen.
+ */
+async function login(page: Page, creds: { email: string; password: string } = ADMIN) {
+	for (let attempt = 0; ; attempt++) {
+		await page.goto('/login');
+		await page.getByLabel('E-Mail').fill(creds.email);
+		await page.getByLabel('Passwort').fill(creds.password);
+		await page.getByRole('button', { name: 'Anmelden' }).click();
+		try {
+			await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 10_000 });
+			return;
+		} catch (e) {
+			if (attempt >= 3) throw e;
+			await page.waitForTimeout(15_000);
+		}
+	}
 }
 
 async function call<T>(
@@ -147,8 +180,8 @@ function toast(page: Page, text: string | RegExp): Locator {
 }
 
 async function listing(page: Page, parent?: string): Promise<FileNode[]> {
-	const q = new URLSearchParams({ space: 'personal', ...(parent ? { parent } : {}) });
-	return (await api<FolderListing>(page, 'GET', `/modules/files/nodes?${q.toString()}`)).items;
+	const qs = parent ? `?${new URLSearchParams({ parent }).toString()}` : '';
+	return (await api<FolderListing>(page, 'GET', `/modules/files/nodes${qs}`)).items;
 }
 
 async function nodeByName(page: Page, name: string, parent?: string): Promise<FileNode> {
@@ -160,6 +193,99 @@ async function nodeByName(page: Page, name: string, parent?: string): Promise<Fi
 async function openFolder(page: Page, id: string) {
 	await page.goto(`/modules/files?folder=${id}`);
 	await expect(page.getByRole('listbox', { name: 'Dateien und Ordner' })).toBeVisible();
+}
+
+/** Synthetisches `DataTransfer` mit Dateien (für Drop-Ereignisse) */
+async function filesTransfer(page: Page, files: { name: string; type: string; bytes: Buffer }[]) {
+	const list = files.map((f) => ({ name: f.name, type: f.type, b64: f.bytes.toString('base64') }));
+	return page.evaluateHandle((entries) => {
+		const d = new DataTransfer();
+		for (const f of entries) {
+			const bytes = Uint8Array.from(atob(f.b64), (c) => c.charCodeAt(0));
+			d.items.add(new File([bytes], f.name, { type: f.type }));
+		}
+		return d;
+	}, list);
+}
+
+/**
+ * Rechtsklick an einer festen Stelle von `target`; prüft, dass das Kontextmenü an der Mausposition
+ * erscheint: waagerecht beginnt (oder endet, wenn es nach links klappt) es am Klickpunkt, senkrecht
+ * überdeckt es die Höhe des Klickpunkts (am unteren Rand verschiebt es sich nach oben).
+ */
+async function rightClick(page: Page, target: Locator, position: { x: number; y: number }) {
+	await target.click({ button: 'right', position });
+	const menu = page.getByRole('menu');
+	await expect(menu).toBeVisible();
+	// Erst nach dem Klick messen: Playwright scrollt das Ziel dafür ggf. in den sichtbaren Bereich
+	const box = await target.boundingBox();
+	const m = await menu.boundingBox();
+	if (!box || !m) throw new Error('Ziel oder Kontextmenü nicht sichtbar');
+	const px = box.x + position.x;
+	const py = box.y + position.y;
+	const near = (a: number, b: number) => Math.abs(a - b) <= 40;
+	expect(near(m.x, px) || near(m.x + m.width, px), 'Menü waagerecht am Mauszeiger').toBe(true);
+	expect(m.y <= py + 40 && m.y + m.height >= py - 40, 'Menü senkrecht am Mauszeiger').toBe(true);
+	return menu;
+}
+
+/** „…“-Menü eines Eintrags öffnen und einen Punkt wählen */
+async function menuAction(page: Page, name: string, action: string) {
+	await page.getByRole('button', { name: `Aktionen für ${name}` }).click();
+	await page.getByRole('menuitem', { name: action }).click();
+}
+
+/** Link-Dialog eines Eintrags öffnen (wartet, bis die Liste geladen ist) */
+async function openLinkDialog(page: Page, name: string): Promise<Locator> {
+	await menuAction(page, name, 'Öffentlicher Link');
+	const dialog = page.getByRole('dialog', { name: new RegExp(escapeRe(`„${name}“`)) });
+	await expect(dialog).toBeVisible();
+	await expect(dialog.getByRole('heading', { name: /^Aktive Links \(\d+\)/ })).toBeVisible();
+	return dialog;
+}
+
+async function linkUrls(dialog: Locator): Promise<string[]> {
+	return dialog
+		.locator('input[id^="files-link-url-"]')
+		.evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
+}
+
+async function closeDialog(dialog: Locator) {
+	await dialog.getByRole('button', { name: 'Schließen' }).last().click();
+	await expect(dialog).toBeHidden();
+}
+
+/** Link anlegen und die neue URL aus der Liste zurückgeben */
+async function createLink(
+	page: Page,
+	name: string,
+	opts: { password?: string; mode?: RegExp } = {}
+): Promise<string> {
+	const dialog = await openLinkDialog(page, name);
+	const before = await linkUrls(dialog);
+	if (opts.mode) {
+		const radio = dialog
+			.getByRole('radiogroup', { name: 'Art des Links' })
+			.getByRole('radio', { name: opts.mode });
+		await radio.click();
+		await expect(radio).toHaveAttribute('aria-checked', 'true');
+	}
+	if (opts.password) {
+		await dialog.locator('#files-link-use-password').click();
+		await dialog.locator('#files-link-password').fill(opts.password);
+	}
+	await dialog.getByRole('button', { name: 'Link erstellen' }).click();
+	await expect(toast(page, 'Link erstellt')).toBeVisible();
+	await expect(dialog.locator('input[id^="files-link-url-"]')).toHaveCount(before.length + 1);
+	const url = (await linkUrls(dialog)).find((u) => !before.includes(u));
+	expect(url).toMatch(/\/p\/files\/link\/[A-Za-z0-9_-]{20,}$/);
+	await closeDialog(dialog);
+	return url!;
+}
+
+async function guestPage(browser: Browser): Promise<{ guest: BrowserContext; pub: Page }> {
+	const guest = await browser.newContext({ baseURL: ORIGIN });
+	return { guest, pub: await guest.newPage() };
 }
 
 // --- Speicher umstellen und zurücksetzen --------------------------------------------------
@@ -229,6 +355,9 @@ test.describe.serial('Dateien', () => {
 	test('Ordner anlegen, hineinnavigieren, Breadcrumbs zurück', async () => {
 		await page.goto('/modules/files');
 		await expect(page.getByRole('heading', { name: 'Dateien', exact: true })).toBeVisible();
+		// Eine Ansicht: keine Reiter mehr, Papierkorb als Knopf im Seitenkopf
+		await expect(page.getByRole('tab')).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Papierkorb', exact: true })).toBeVisible();
 
 		// Wurzelordner über „Neuer Ordner“
 		await page.getByRole('button', { name: 'Neuer Ordner' }).click();
@@ -258,14 +387,14 @@ test.describe.serial('Dateien', () => {
 		subId = new URL(page.url()).searchParams.get('folder')!;
 		expect(subId).not.toBe(rootId);
 
-		// Breadcrumbs zurück: erst zum Wurzelordner, dann zu „Meine Dateien“
+		// Breadcrumbs zurück: erst zum Wurzelordner, dann zu „Dateien“
 		await crumbs.getByRole('button', { name: ROOT }).click();
 		await expect(crumbs.locator('[aria-current="page"]')).toHaveText(ROOT);
 		await expect(item(page, SUB)).toBeVisible();
 		expect(new URL(page.url()).searchParams.get('folder')).toBe(rootId);
 
-		await crumbs.getByRole('button', { name: 'Meine Dateien' }).click();
-		await expect(crumbs.locator('[aria-current="page"]')).toHaveText('Meine Dateien');
+		await crumbs.getByRole('button', { name: 'Dateien' }).click();
+		await expect(crumbs.locator('[aria-current="page"]')).toHaveText('Dateien');
 		await expect(item(page, ROOT)).toBeVisible();
 		expect(new URL(page.url()).searchParams.get('folder')).toBeNull();
 	});
@@ -273,18 +402,10 @@ test.describe.serial('Dateien', () => {
 	test('Upload per Drag & Drop', async () => {
 		await openFolder(page, rootId);
 
-		const files = [
-			{ name: IMG1, type: 'image/png', b64: (await picture('#2563eb')).toString('base64') },
-			{ name: IMG2, type: 'image/png', b64: (await picture('#16a34a')).toString('base64') }
-		];
-		const dt = await page.evaluateHandle((list) => {
-			const d = new DataTransfer();
-			for (const f of list) {
-				const bytes = Uint8Array.from(atob(f.b64), (c) => c.charCodeAt(0));
-				d.items.add(new File([bytes], f.name, { type: f.type }));
-			}
-			return d;
-		}, files);
+		const dt = await filesTransfer(page, [
+			{ name: IMG1, type: 'image/png', bytes: picture('#2563eb') },
+			{ name: IMG2, type: 'image/png', bytes: picture('#16a34a') }
+		]);
 
 		// Externe Dateien landen über das Listenelement in der Upload-Zone des aktuellen Ordners
 		const target = page.getByRole('listbox', { name: 'Dateien und Ordner' });
@@ -356,6 +477,42 @@ test.describe.serial('Dateien', () => {
 		expect((await res.body()).subarray(0, 5).toString()).toBe('%PDF-');
 	});
 
+	test('Rechtsklick: Umbenennen und „Neuer Ordner“ auf leerer Fläche', async () => {
+		await openFolder(page, rootId);
+
+		// Rechtsklick auf eine Datei → Kontextmenü an der Mausposition → Umbenennen
+		let menu = await rightClick(page, item(page, TXT_NAME), { x: 60, y: 40 });
+		await expect(menu.getByRole('menuitem', { name: 'Herunterladen' })).toBeVisible();
+		await menu.getByRole('menuitem', { name: 'Umbenennen' }).click();
+		await expect(menu).toBeHidden();
+		let dialog = page.getByRole('dialog', { name: 'Datei umbenennen' });
+		await expect(dialog).toBeVisible();
+		await expect(dialog.getByLabel('Name *')).toHaveValue(TXT_NAME);
+		await dialog.getByLabel('Name *').fill(TXT_RENAMED);
+		await dialog.getByRole('button', { name: 'Umbenennen' }).click();
+		await expect(dialog).toBeHidden();
+		await expect(toast(page, 'Umbenannt')).toBeVisible();
+		await expect(item(page, TXT_RENAMED)).toBeVisible();
+		await expect(item(page, TXT_NAME)).toHaveCount(0);
+
+		// Rechtsklick auf die leere Fläche unter der Liste → „Neuer Ordner“
+		const area = page.getByRole('listbox', { name: 'Dateien und Ordner' }).locator('..');
+		const box = await area.boundingBox();
+		if (!box) throw new Error('Fläche der Dateiliste nicht sichtbar');
+		menu = await rightClick(page, area, { x: 8, y: box.height - 8 });
+		await expect(menu.getByRole('menuitem', { name: 'Dateien hochladen' })).toBeVisible();
+		await expect(menu.getByRole('menuitem', { name: 'Umbenennen' })).toHaveCount(0);
+		await menu.getByRole('menuitem', { name: 'Neuer Ordner' }).click();
+		dialog = page.getByRole('dialog', { name: 'Neuer Ordner' });
+		await expect(dialog).toBeVisible();
+		await dialog.getByLabel('Name *').fill(CTX_FOLDER);
+		await dialog.getByRole('button', { name: 'Anlegen' }).click();
+		await expect(dialog).toBeHidden();
+		await expect(toast(page, 'Ordner angelegt')).toBeVisible();
+		await expect(item(page, CTX_FOLDER)).toBeVisible();
+		expect((await listing(page, rootId)).map((n) => n.name)).toContain(CTX_FOLDER);
+	});
+
 	test('Verschieben per Drag & Drop', async () => {
 		await openFolder(page, rootId);
 		const img2 = await nodeByName(page, IMG2, rootId);
@@ -387,73 +544,127 @@ test.describe.serial('Dateien', () => {
 		await openFolder(page, rootId);
 
 		const trash = async () => {
-			await page.getByRole('button', { name: `Aktionen für ${TXT_NAME}` }).click();
-			await page.getByRole('menuitem', { name: 'In den Papierkorb' }).click();
+			await menuAction(page, TXT_RENAMED, 'In den Papierkorb');
 			const confirm = page.getByRole('alertdialog');
-			await expect(confirm).toContainText(`„${TXT_NAME}“ in den Papierkorb?`);
+			await expect(confirm).toContainText(`„${TXT_RENAMED}“ in den Papierkorb?`);
 			await confirm.getByRole('button', { name: 'In den Papierkorb' }).click();
 			await expect(confirm).toBeHidden();
-			await expect(toast(page, `„${TXT_NAME}“ liegt im Papierkorb`)).toBeVisible();
-			await expect(item(page, TXT_NAME)).toBeHidden();
+			await expect(toast(page, `„${TXT_RENAMED}“ liegt im Papierkorb`)).toBeVisible();
+			await expect(item(page, TXT_RENAMED)).toBeHidden();
 		};
 
 		// Löschen + Rückgängig im Toast
 		await trash();
-		await toast(page, `„${TXT_NAME}“ liegt im Papierkorb`)
+		await toast(page, `„${TXT_RENAMED}“ liegt im Papierkorb`)
 			.getByRole('button', { name: 'Rückgängig' })
 			.click();
 		await expect(toast(page, 'Wiederhergestellt')).toBeVisible();
-		await expect(item(page, TXT_NAME)).toBeVisible();
+		await expect(item(page, TXT_RENAMED)).toBeVisible();
 
-		// Erneut löschen, im Papierkorb-Tab wiederherstellen
+		// Erneut löschen, über den Knopf „Papierkorb“ wiederherstellen
 		await trash();
-		await page.getByRole('tab', { name: 'Papierkorb' }).click();
+		await page.getByRole('button', { name: 'Papierkorb', exact: true }).click();
 		await expect(page).toHaveURL(/view=trash/);
-		const restore = page.getByRole('button', { name: `${TXT_NAME} wiederherstellen` });
+		await expect(page.getByRole('heading', { name: 'Papierkorb', exact: true })).toBeVisible();
+		const restore = page.getByRole('button', { name: `${TXT_RENAMED} wiederherstellen` });
 		await expect(restore).toBeVisible();
 		await expect(page.getByText(new RegExp(escapeRe(ROOT))).first()).toBeVisible();
 		await restore.click();
 		await expect(restore).toBeHidden();
 
+		// Zurück zu „Dateien“ über den Knopf im Seitenkopf
+		await page.getByRole('button', { name: 'Zurück zu Dateien' }).click();
+		await expect(page).not.toHaveURL(/view=trash/);
+		await expect(item(page, ROOT)).toBeVisible();
+
 		await openFolder(page, rootId);
-		await expect(item(page, TXT_NAME)).toBeVisible();
+		await expect(item(page, TXT_RENAMED)).toBeVisible();
 	});
 
-	test('Öffentlicher Link ohne Login, auch mit Passwort', async ({ browser }) => {
+	test('Mit dem ganzen Stamm teilen: zweite Person sieht den Ordner', async ({ browser }) => {
+		// Eine zusätzliche Anmeldung; bei Login-Sperre (10/min) wartet `login` und versucht es erneut
+		test.setTimeout(120_000);
+
+		// Zweite Person mit Grundrecht der Ablage (über eine eigene Rolle)
+		const role = await api<{ id: string }>(page, 'POST', '/roles', {
+			name: `E2E Dateien ${run}`,
+			permissions: ['files.file.view']
+		});
+		await api(page, 'POST', '/users', { ...MEMBER, roleIds: [role.id] });
+
+		await page.goto('/modules/files');
+		await expect(item(page, ROOT)).toBeVisible();
+		await menuAction(page, ROOT, 'Freigeben');
+		const dialog = page.getByRole('dialog', { name: new RegExp(escapeRe(`„${ROOT}“ freigeben`)) });
+		await expect(dialog).toBeVisible();
+		const stamm = dialog.getByRole('switch', { name: 'Mit dem ganzen Stamm teilen' });
+		await expect(stamm).toBeEnabled();
+		await expect(stamm).not.toBeChecked();
+		await stamm.click();
+		await expect(toast(page, 'Freigabe gespeichert')).toBeVisible();
+		await expect(stamm).toBeChecked();
+		await closeDialog(dialog);
+
+		const shares = await api<NodeShares>(page, 'GET', `/modules/files/nodes/${rootId}/shares`);
+		expect(shares.shares).toContainEqual(
+			expect.objectContaining({ type: 'everyone', id: '*', level: 'read' })
+		);
+		await expect(item(page, ROOT)).toContainText('Mit dem ganzen Stamm geteilt');
+		const ownerName = (await nodeByName(page, ROOT)).owner.name;
+
+		// Zweite Person in eigenem Browser-Context: Ordner liegt direkt unter „Dateien“ mit „von …“
+		const other = await browser.newContext({ baseURL: ORIGIN });
+		try {
+			const p2 = await other.newPage();
+			await login(p2, MEMBER);
+			await p2.goto('/modules/files');
+			await expect(p2.getByRole('heading', { name: 'Dateien', exact: true })).toBeVisible();
+			const shared = item(p2, ROOT);
+			await expect(shared).toBeVisible();
+			await expect(shared).toContainText(`von ${ownerName}`);
+
+			const mine = await listing(p2);
+			const entry = mine.find((n) => n.id === rootId);
+			expect(entry?.own).toBe(false);
+			expect(entry?.owner.name).toBe(ownerName);
+
+			// Hinein: Inhalt sichtbar, aber nur lesend (kein „Neuer Ordner“)
+			await shared.dblclick();
+			await p2.waitForURL(new RegExp(`[?&]folder=${rootId}`));
+			await expect(item(p2, SUB)).toBeVisible();
+			await expect(item(p2, IMG1)).toBeVisible();
+			await expect(p2.getByRole('button', { name: 'Neuer Ordner' })).toHaveCount(0);
+		} finally {
+			await other.close();
+		}
+	});
+
+	test('Öffentlicher Link: URL jederzeit sichtbar, ohne Login, auch mit Passwort', async ({
+		browser
+	}) => {
 		await page.goto('/modules/files');
 		await expect(item(page, ROOT)).toBeVisible();
 
-		const createLink = async (password: string | null): Promise<string> => {
-			await page.getByRole('button', { name: `Aktionen für ${ROOT}` }).click();
-			await page.getByRole('menuitem', { name: 'Öffentlicher Link' }).click();
-			const dialog = page.getByRole('dialog', { name: new RegExp(escapeRe(ROOT)) });
-			await expect(dialog).toBeVisible();
-			if (password) {
-				await dialog.locator('#files-link-use-password').click();
-				await dialog.locator('input[type="password"]').fill(password);
-			}
-			await dialog.getByRole('button', { name: 'Link erstellen' }).click();
-			const urlInput = dialog.locator('#files-link-url');
-			await expect(urlInput).toHaveValue(/\/p\/files\/link\/[A-Za-z0-9_-]{20,}$/);
-			const url = await urlInput.inputValue();
-			await dialog.getByRole('button', { name: 'Schließen' }).last().click();
-			await expect(dialog).toBeHidden();
-			return url;
-		};
+		const openUrl = await createLink(page, ROOT);
 
-		const openUrl = await createLink(null);
-		const lockedUrl = await createLink(LINK_PASSWORD);
+		// Dialog erneut öffnen: dieselbe URL steht weiterhin in der Liste
+		const again = await openLinkDialog(page, ROOT);
+		await expect.poll(() => linkUrls(again)).toContain(openUrl);
+		await closeDialog(again);
+
+		const lockedUrl = await createLink(page, ROOT, { password: LINK_PASSWORD });
 		expect(lockedUrl).not.toBe(openUrl);
 
 		// Neuer Context ohne Anmeldung
-		const guest = await browser.newContext({ baseURL: ORIGIN });
+		const { guest, pub } = await guestPage(browser);
 		try {
-			const pub = await guest.newPage();
 			await pub.goto(openUrl);
 			await expect(pub).toHaveURL(/\/p\/files\/link\//);
 			await expect(pub.getByRole('heading', { name: ROOT })).toBeVisible();
 			await expect(pub.getByRole('button', { name: `Ordner ${SUB} öffnen` })).toBeVisible();
 			await expect(pub.getByRole('button', { name: `${PDF_NAME} ansehen` })).toBeVisible();
+			// „Ansehen“ bietet keinen Upload an
+			await expect(pub.locator('#uploader-name')).toHaveCount(0);
 			await pub.getByRole('button', { name: `${IMG1} ansehen` }).click();
 			const preview = pub.getByRole('dialog');
 			await expect(preview).toBeVisible();
@@ -483,5 +694,73 @@ test.describe.serial('Dateien', () => {
 		} finally {
 			await guest.close();
 		}
+	});
+
+	test('Upload-Link ohne Login: Inhalt verborgen, Datei mit Namen landet im Ordner', async ({
+		browser
+	}) => {
+		await openFolder(page, rootId);
+		const uploadUrl = await createLink(page, SUB, { mode: /^Hochladen/ });
+
+		const { guest, pub } = await guestPage(browser);
+		try {
+			await pub.goto(uploadUrl);
+			await expect(
+				pub.getByRole('heading', { name: `Dateien hochladen in „${SUB}“` })
+			).toBeVisible();
+			// „Hochladen“ zeigt keinen Inhalt des Ordners
+			await expect(pub.getByRole('button', { name: `${IMG2} ansehen` })).toHaveCount(0);
+			await expect(pub.getByText(IMG2)).toHaveCount(0);
+
+			// Name angeben, Datei über die Auswahl hochladen
+			await pub.locator('#uploader-name').fill(UPLOADER);
+			await pub.locator('input[type="file"]').setInputFiles({
+				name: UPLOAD_1,
+				mimeType: 'image/png',
+				buffer: picture('#ea580c')
+			});
+			await expect(pub.getByText('Danke! 1 Datei hochgeladen')).toBeVisible({ timeout: 20_000 });
+			await expect(pub.getByRole('status').filter({ hasText: 'Danke!' })).toContainText(UPLOAD_1);
+			// Auch nach dem Upload kein Ordnerinhalt
+			await expect(pub.getByText(IMG2)).toHaveCount(0);
+
+			// Weitere Datei per Drag & Drop (der Name bleibt erhalten)
+			await pub.getByRole('button', { name: 'Weitere Dateien hochladen' }).click();
+			await expect(pub.locator('#uploader-name')).toHaveValue(UPLOADER);
+			const zone = pub.getByRole('button', { name: /Dateien auswählen/ });
+			const dt = await filesTransfer(pub, [
+				{ name: UPLOAD_2, type: 'image/png', bytes: picture('#9333ea') }
+			]);
+			// Element festhalten: während des Ziehens ändert sich der zugängliche Name der Fläche (Overlay-Text)
+			const zoneEl = await zone.elementHandle();
+			await zoneEl!.dispatchEvent('dragenter', { dataTransfer: dt });
+			await zoneEl!.dispatchEvent('dragover', { dataTransfer: dt });
+			await zoneEl!.dispatchEvent('drop', { dataTransfer: dt });
+			await expect(pub.getByText('Danke! 1 Datei hochgeladen')).toBeVisible({ timeout: 20_000 });
+			await expect(pub.getByRole('status').filter({ hasText: 'Danke!' })).toContainText(UPLOAD_2);
+		} finally {
+			await guest.close();
+		}
+
+		// Zurück als Eigentümer*in: beide Dateien im Ordner, Details zeigen den Namen
+		const files = await listing(page, subId);
+		for (const name of [UPLOAD_1, UPLOAD_2]) {
+			const f = files.find((n) => n.name === name);
+			expect(f, name).toBeDefined();
+			expect(f!.viaLink).toBe(true);
+			expect(f!.uploadedByName).toBe(UPLOADER);
+			expect(f!.own).toBe(true);
+		}
+
+		await openFolder(page, subId);
+		await expect(item(page, UPLOAD_1)).toBeVisible();
+		await expect(item(page, UPLOAD_2)).toBeVisible();
+		const menu = await rightClick(page, item(page, UPLOAD_1), { x: 60, y: 40 });
+		await menu.getByRole('menuitem', { name: 'Details' }).click();
+		const details = page.getByRole('dialog', { name: 'Details' });
+		await expect(details).toBeVisible();
+		await expect(details).toContainText(UPLOAD_1);
+		await expect(details).toContainText(`von „${UPLOADER}“`);
+		await closeDialog(details);
 	});
 });

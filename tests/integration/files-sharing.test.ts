@@ -1,5 +1,6 @@
 /**
- * Modul `files` – Freigaben an Principals, Sicherheitsregeln, öffentliche Links, Reset.
+ * Modul `files` – Freigaben an Principals (eine Ansicht: Freigegebenes erscheint in der Wurzel „Dateien“),
+ * Sicherheitsregeln, öffentliche Links (Ansehen), Reset. Upload-Links: `files-upload-link.test.ts`.
  * Storage über `tests/helpers/fake-storage.ts`; Testbild mit sharp (für Thumbnails).
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -29,6 +30,7 @@ import filesModule from '$lib/modules/files/module';
 import {
 	MAX_LINKS_PER_NODE,
 	MAX_UNLOCK_FAILURES,
+	ROOT_LABEL,
 	type FileNode,
 	type FolderListing,
 	type NodeShares,
@@ -109,10 +111,7 @@ const paths = (r: Res): string[] =>
 	((r.body.error?.details ?? []) as { path?: unknown[] }[]).map((d) => (d.path ?? []).join('.'));
 
 async function folder(who: string, name: string, parentId: string | null = null) {
-	return ok<FileNode>(
-		await call(who, 'POST', '/folders', { space: 'personal', parentId, name }),
-		201
-	).id;
+	return ok<FileNode>(await call(who, 'POST', '/folders', { parentId, name }), 201).id;
 }
 
 async function upload(
@@ -124,7 +123,6 @@ async function upload(
 ) {
 	const fd = new FormData();
 	fd.set('file', new File([bytes as BlobPart], name, { type }));
-	fd.set('space', 'personal');
 	// Upload verlangt `content-length` → Formular vorab serialisieren
 	const encoded = new Response(fd);
 	const bytesOut = new Uint8Array(await encoded.arrayBuffer());
@@ -185,14 +183,10 @@ beforeAll(async () => {
 		permissions: ['files.file.view', 'files.link.create', 'core.api.manage']
 	});
 	teamRoleId = await createRole(admin, { name: 'Team', permissions: ['files.file.view'] });
-	const stammRole = await createRole(admin, {
-		name: 'Stammteam',
-		permissions: ['files.shared.edit']
-	});
 	const users: [string, string[]][] = [
 		['owner', [base]],
 		['reader', [base]],
-		['editor', [base, stammRole]],
+		['editor', [base]],
 		['team', [base, teamRoleId]],
 		['stranger', [base]],
 		['gone', [base]]
@@ -274,7 +268,7 @@ describe('Zugriffsmatrix', () => {
 		);
 		fail(await call('reader', 'PATCH', `/nodes/${unter}`, { name: 'Neu' }), 403, 'forbidden');
 		fail(
-			await call('reader', 'POST', '/folders', { space: 'personal', parentId: projekt, name: 'N' }),
+			await call('reader', 'POST', '/folders', { parentId: projekt, name: 'N' }),
 			403,
 			'forbidden'
 		);
@@ -330,25 +324,42 @@ describe('Zugriffsmatrix', () => {
 		fail(await call('owner', 'GET', `/nodes/${tmp}/shares`), 404);
 	});
 
-	it('/shared-with-me listet nur oberste freigegebene Knoten', async () => {
-		const list = ok<FileNode[]>(await call('reader', 'GET', '/shared-with-me'));
-		const names = list.map((n) => n.name);
+	it('Wurzel zeigt eigene + oberste freigegebene Knoten (kein /shared-with-me mehr)', async () => {
+		fail(await call('reader', 'GET', '/shared-with-me'), 404);
+		const root = ok<FolderListing>(await call('reader', 'GET', '/nodes'));
+		expect(root.breadcrumbs).toEqual([{ id: null, name: ROOT_LABEL }]);
+		const names = root.items.map((n) => n.name);
 		expect(names).toContain('Projekt');
 		expect(names).toContain('Für alle');
 		expect(names).not.toContain('Unter');
 		expect(names).not.toContain('notiz.txt');
 		expect(names).not.toContain('Nur Team');
-		// Eigentümer*in sieht eigene Ordner nicht unter „Mit mir geteilt“
-		const own = ok<FileNode[]>(await call('owner', 'GET', '/shared-with-me'));
-		expect(own.map((n) => n.name)).not.toContain('Projekt');
-		// Freigabe auf Kind UND Eltern → nur der Elternordner
+		const p = root.items.find((n) => n.id === projekt)!;
+		expect(p).toMatchObject({ own: false, stamm: false, access: 'read', canShare: false });
+		expect(p.owner).toEqual({ id: ids.owner, name: 'Olivia Owner' });
+		expect(root.items.find((n) => n.name === 'Für alle')!.stamm).toBe(true);
+		// Eigentümer*in sieht eigene Ordner genau einmal (als eigene)
+		const own = ok<FolderListing>(await call('owner', 'GET', '/nodes'));
+		const mine = own.items.filter((n) => n.id === projekt);
+		expect(mine).toHaveLength(1);
+		expect(mine[0]!.own).toBe(true);
+		// Freigabe auf Kind UND Eltern → nur der Elternordner in der Wurzel
 		ok(await share('owner', unter, [{ type: 'user', id: ids.reader, level: 'edit' }]));
-		const again = ok<FileNode[]>(await call('reader', 'GET', '/shared-with-me'));
-		expect(again.map((n) => n.name)).not.toContain('Unter');
+		const again = ok<FolderListing>(await call('reader', 'GET', '/nodes'));
+		expect(again.items.map((n) => n.name)).not.toContain('Unter');
+		// höchste Stufe gewinnt: im Kind edit
+		expect(ok<FileNode>(await call('reader', 'GET', `/nodes/${unter}`)).access).toBe('edit');
 		ok(await share('owner', unter, []));
+		// Suche findet Freigegebenes, nicht Fremdes
+		const s = ok<{ items: (FileNode & { path: string })[] }>(
+			await call('reader', 'GET', '/search?q=notiz')
+		);
+		expect(s.items.map((i) => i.path)).toEqual([`${ROOT_LABEL} / Projekt / Unter`]);
+		const none = ok<{ items: unknown[] }>(await call('stranger', 'GET', '/search?q=notiz'));
+		expect(none.items).toEqual([]);
 	});
 
-	it('Breadcrumbs beginnen bei „Mit mir geteilt“, ohne private Oberordner', async () => {
+	it('Breadcrumbs beginnen bei „Dateien“, ohne private Oberordner', async () => {
 		const top = await folder('owner', 'Privat-Oben');
 		const freigabe = await folder('owner', 'Freigabe', top);
 		const tief = await folder('owner', 'Tief', freigabe);
@@ -356,7 +367,7 @@ describe('Zugriffsmatrix', () => {
 
 		const l = ok<FolderListing>(await call('reader', 'GET', `/nodes?parent=${tief}`));
 		expect(l.breadcrumbs).toEqual([
-			{ id: null, name: 'Mit mir geteilt' },
+			{ id: null, name: ROOT_LABEL },
 			{ id: freigabe, name: 'Freigabe' },
 			{ id: tief, name: 'Tief' }
 		]);
@@ -365,7 +376,7 @@ describe('Zugriffsmatrix', () => {
 
 		const own = ok<FolderListing>(await call('owner', 'GET', `/nodes?parent=${tief}`));
 		expect(own.breadcrumbs.map((b) => b.name)).toEqual([
-			'Meine Dateien',
+			ROOT_LABEL,
 			'Privat-Oben',
 			'Freigabe',
 			'Tief'
@@ -406,17 +417,29 @@ describe('Sicherheitsregeln für edit-Freigaben', () => {
 		ok(await share('owner', f, [{ type: 'user', id: ids.editor, level: 'edit' }]));
 	});
 
-	it('kein Verschieben in eigene Ablage/Stamm (403), innerhalb des Ordners 201', async () => {
-		const move = (ids_: string[], targetId: string | null, space: string) =>
-			call('editor', 'POST', '/nodes/move', { ids: ids_, targetId, space });
-		fail(await move([f], null, 'personal'), 403, 'forbidden');
-		fail(await move([sub], null, 'personal'), 403, 'forbidden');
-		// editor hat `files.shared.edit` – trotzdem kein Herausziehen in den Stammesordner
-		fail(await move([sub], null, 'shared'), 403, 'forbidden');
+	it('kein Verschieben in eigene Ablage (403), innerhalb des Ordners 201', async () => {
+		const move = (ids_: string[], targetId: string | null) =>
+			call('editor', 'POST', '/nodes/move', { ids: ids_, targetId });
+		fail(await move([f], null), 403, 'forbidden');
+		fail(await move([sub], null), 403, 'forbidden');
 		const own = await folder('editor', 'Editor-Eigen');
-		fail(await move([sub], own, 'personal'), 403, 'forbidden');
+		fail(await move([sub], own), 403, 'forbidden');
+		// auch nicht in einen an den Stamm freigegebenen Ordner der editor-Person
+		const stammEigen = await folder('editor', 'Editor-Stamm');
+		ok(await share('editor', stammEigen, [{ type: 'everyone', id: '*', level: 'edit' }]));
+		fail(await move([sub], stammEigen), 403, 'forbidden');
+		// `space` gibt es nicht mehr
+		fail(
+			await call('editor', 'POST', '/nodes/move', {
+				ids: [sub],
+				targetId: sub2,
+				space: 'personal'
+			}),
+			422,
+			'validation_failed'
+		);
 
-		const inside = ok<{ affected: number }>(await move([sub], sub2, 'personal'), 201);
+		const inside = ok<{ affected: number }>(await move([sub], sub2), 201);
 		expect(inside.affected).toBe(1);
 		const after = ok<FileNode>(await call('owner', 'GET', `/nodes/${sub}`));
 		expect(after.parentId).toBe(sub2);
@@ -495,16 +518,19 @@ describe('Öffentliche Links', () => {
 		token = tokenOf(folderLink);
 	});
 
-	it('Anlegen: `url` einmalig, nur Hash gespeichert', async () => {
+	it('Anlegen: `url` jederzeit abrufbar, Token nur als Hash + verschlüsselt gespeichert', async () => {
 		expect(folderLink.url).toMatch(/\/p\/files\/link\/[A-Za-z0-9_-]{20,}$/);
 		expect(folderLink.hasPassword).toBe(false);
 		expect(folderLink.active).toBe(true);
+		expect(folderLink.mode).toBe('view');
 		const rows = await q(sql`SELECT * FROM mod_files.share_links WHERE id = ${folderLink.id}`);
 		expect(rows).toHaveLength(1);
 		expect(rows[0]!.token_hash).not.toBe(token);
 		expect(JSON.stringify(rows)).not.toContain(token);
 		const list = ok<ShareLink[]>(await call('owner', 'GET', `/nodes/${root}/links`));
-		expect(list.find((l) => l.id === folderLink.id)?.url).toBeNull();
+		expect(list.find((l) => l.id === folderLink.id)?.url).toBe(folderLink.url);
+		expect(rows[0]!.token_enc).toBeTruthy();
+		expect(rows[0]!.mode).toBe('view');
 	});
 
 	it('Info, Liste, Inhalt ohne Login; Ausgabe ohne ownerId/createdBy', async () => {
@@ -512,7 +538,9 @@ describe('Öffentliche Links', () => {
 		expect(info).toMatchObject({
 			name: 'Öffentlich',
 			kind: 'folder',
+			mode: 'view',
 			needsPassword: false,
+			upload: null,
 			node: null
 		});
 		const list = ok<{ breadcrumbs: unknown[]; items: { id: string; name: string }[] }>(
@@ -757,10 +785,7 @@ describe('Reset', () => {
 		ok(await share('gone', alt, [{ type: 'user', id: ids.reader, level: 'read' }]));
 		ok(await call(null, 'GET', `/public/links/${tokenOf(gl)}`));
 		// Gleichnamiger Ordner in der Ablage der behaltenen Person → kein Konflikt
-		ok(
-			await call('owner', 'POST', '/folders', { space: 'personal', parentId: null, name: 'Alt' }),
-			201
-		);
+		ok(await call('owner', 'POST', '/folders', { parentId: null, name: 'Alt' }), 201);
 
 		await core.database
 			.forModule('files')
@@ -821,7 +846,7 @@ describe('Reset', () => {
 		const l = ok<FolderListing>(
 			await (async () => {
 				keys.admin = (await createApiKey(admin, { name: 'a', scopes: ['files.file.view'] })).key;
-				return call('admin', 'GET', '/nodes?space=personal');
+				return call('admin', 'GET', '/nodes');
 			})()
 		);
 		expect(l.items).toEqual([]);

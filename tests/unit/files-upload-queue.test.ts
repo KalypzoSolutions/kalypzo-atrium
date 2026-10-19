@@ -1,15 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { FilesMeta } from '../../src/lib/modules/files/schemas';
 import {
+	MULTIPART_BASE_RESERVE,
 	collectEntries,
 	fromFileList,
 	makeItems,
+	partReserve,
 	pendingBytes,
+	planBatches,
 	precheck,
+	publicUploadError,
 	queueProgress,
 	summaryToast,
 	typeAllowed,
 	uploadError,
+	xhrUpload,
 	type EntryLike,
 	type FileLike
 } from '../../src/lib/modules/files/pages/upload-queue';
@@ -22,7 +27,7 @@ function meta(over: Partial<FilesMeta> = {}, quota?: FilesMeta['quota']): FilesM
 		maxFileBytes: 10 * MB,
 		allowedContentTypes: [],
 		trashDays: 30,
-		can: { sharedView: true, sharedEdit: true, linkCreate: true, manageAll: false },
+		can: { linkCreate: true, manageAll: false },
 		...over
 	};
 }
@@ -47,12 +52,12 @@ describe('typeAllowed', () => {
 
 describe('precheck', () => {
 	it('ohne meta wird nichts abgelehnt', () => {
-		const r = precheck([inp(f('a', 999 * MB))], null, 'personal');
+		const r = precheck([inp(f('a', 999 * MB))], null);
 		expect(r[0]!.problem).toBeNull();
 	});
 
 	it('Größe: genau Maximum erlaubt, ein Byte mehr abgelehnt', () => {
-		const r = precheck([inp(f('ok', 10 * MB)), inp(f('gross', 10 * MB + 1))], meta(), 'shared');
+		const r = precheck([inp(f('ok', 10 * MB)), inp(f('gross', 10 * MB + 1))], meta());
 		expect(r[0]!.problem).toBeNull();
 		expect(r[1]!.problem).toMatch(/^Zu groß \(10 MB, max\. 10 MB\)$/);
 	});
@@ -65,34 +70,185 @@ describe('precheck', () => {
 				inp(f('a.exe', 1, 'application/x-msdownload')),
 				inp(f('x', 1))
 			],
-			m,
-			'shared'
+			m
 		);
 		expect(r.map((x) => x.problem === null)).toEqual([true, false, true]);
 		expect(r[1]!.problem).toContain('Dateityp nicht erlaubt');
 	});
 
-	it('Kontingent: ab der ersten Datei, die nicht passt, wird abgelehnt (nur personal)', () => {
+	it('Kontingent: ab der ersten Datei, die nicht passt, wird abgelehnt (nur mit checkQuota)', () => {
 		const m = meta({}, { usedBytes: 6 * MB, limitBytes: 10 * MB });
 		const files = [inp(f('a', 3 * MB)), inp(f('b', 2 * MB)), inp(f('c', 1))];
-		const r = precheck(files, m, 'personal');
+		const r = precheck(files, m, { checkQuota: true });
 		expect(r[0]!.problem).toBeNull();
 		expect(r[1]!.problem).toContain('Kontingent');
 		// auch die kleine Datei danach (ab dem Eintrag, der nicht mehr passt)
 		expect(r[2]!.problem).toContain('Kontingent');
-		// Stamm-Bereich: kein Kontingent
-		expect(precheck(files, m, 'shared').every((x) => x.problem === null)).toBe(true);
+		// Ziel ist ein (evtl. fremder) Ordner: Kontingent prüft der Server
+		expect(precheck(files, m).every((x) => x.problem === null)).toBe(true);
+		expect(precheck(files, m, { checkQuota: false }).every((x) => x.problem === null)).toBe(true);
 	});
 
 	it('Kontingent: genau passend erlaubt, wartende Bytes zählen mit', () => {
 		const m = meta({}, { usedBytes: 6 * MB, limitBytes: 10 * MB });
-		expect(precheck([inp(f('a', 4 * MB))], m, 'personal')[0]!.problem).toBeNull();
-		expect(precheck([inp(f('a', 4 * MB))], m, 'personal', 1)[0]!.problem).toContain('Kontingent');
+		expect(precheck([inp(f('a', 4 * MB))], m, { checkQuota: true })[0]!.problem).toBeNull();
+		expect(
+			precheck([inp(f('a', 4 * MB))], m, { checkQuota: true, pendingBytes: 1 })[0]!.problem
+		).toContain('Kontingent');
 	});
 
 	it('unbegrenztes Kontingent', () => {
 		const m = meta({}, { usedBytes: 99 * MB, limitBytes: null });
-		expect(precheck([inp(f('a', 5 * MB))], m, 'personal')[0]!.problem).toBeNull();
+		expect(precheck([inp(f('a', 5 * MB))], m, { checkQuota: true })[0]!.problem).toBeNull();
+	});
+
+	it('öffentliche Grenzen ohne Kontingent; Datei muss samt Aufschlag in einen Request passen', () => {
+		const limits = {
+			maxFileBytes: 30 * MB,
+			allowedContentTypes: ['image/*'],
+			maxRequestBytes: 30 * MB
+		};
+		const r = precheck(
+			[inp(f('a.jpg', 5 * MB, 'image/jpeg')), inp(f('b.jpg', 30 * MB, 'image/jpeg'))],
+			limits,
+			{ checkQuota: true }
+		);
+		expect(r[0]!.problem).toBeNull();
+		expect(r[1]!.problem).toMatch(/^Zu groß/);
+		const max = 30 * MB - MULTIPART_BASE_RESERVE - partReserve('c.jpg');
+		expect(precheck([inp(f('c.jpg', max, 'image/jpeg'))], limits)[0]!.problem).toBeNull();
+		expect(precheck([inp(f('c.jpg', max + 1, 'image/jpeg'))], limits)[0]!.problem).toMatch(
+			/^Zu groß/
+		);
+	});
+});
+
+describe('planBatches', () => {
+	it('leer → keine Pakete', () => {
+		expect(planBatches([], 10, 30 * MB)).toEqual([]);
+	});
+	it('höchstens maxFiles je Paket, Reihenfolge bleibt', () => {
+		const files = Array.from({ length: 23 }, (_, i) => f(`d${i}`, 1));
+		const b = planBatches(files, 10, 30 * MB);
+		expect(b.map((x) => x.length)).toEqual([10, 10, 3]);
+		expect(b.flat()).toEqual(files.map((_, i) => i));
+	});
+	it('Bytes je Paket inkl. Aufschlag ≤ maxRequestBytes', () => {
+		const files = [f('a', 12 * MB), f('b', 12 * MB), f('c', 12 * MB), f('d', 1)];
+		const b = planBatches(files, 10, 30 * MB);
+		expect(b).toEqual([
+			[0, 1],
+			[2, 3]
+		]);
+		for (const batch of b) {
+			const sum = batch.reduce(
+				(s, i) => s + files[i]!.size + partReserve(files[i]!.name),
+				MULTIPART_BASE_RESERVE
+			);
+			expect(sum).toBeLessThanOrEqual(30 * MB);
+		}
+	});
+	it('zu große Einzeldatei bekommt ein eigenes Paket', () => {
+		expect(planBatches([f('a', 1), f('riesig', 40 * MB), f('b', 1)], 10, 30 * MB)).toEqual([
+			[0],
+			[1],
+			[2]
+		]);
+	});
+});
+
+describe('publicUploadError', () => {
+	it('Statuscodes', () => {
+		expect(publicUploadError(413, { error: { message: 'x' } }, false)).toEqual({
+			kind: 'rejected',
+			message: 'Zu groß bzw. kein Speicherplatz mehr frei'
+		});
+		expect(publicUploadError(422, { error: { message: 'Dateityp nicht erlaubt' } }, false)).toEqual(
+			{ kind: 'rejected', message: 'Dateityp nicht erlaubt' }
+		);
+		expect(publicUploadError(429, null, false)).toEqual({
+			kind: 'retry',
+			message: 'Gerade zu viele Uploads – bitte kurz warten'
+		});
+		expect(publicUploadError(404, null, false).kind).toBe('unavailable');
+		expect(publicUploadError(403, null, true).kind).toBe('relock');
+		expect(publicUploadError(403, null, false).kind).toBe('rejected');
+		expect(publicUploadError(0, null, false).kind).toBe('retry');
+		expect(publicUploadError(500, null, false).kind).toBe('retry');
+	});
+});
+
+describe('xhrUpload', () => {
+	class FakeXhr {
+		static last: FakeXhr | null = null;
+		upload: { onprogress: ((e: ProgressEvent) => void) | null } = { onprogress: null };
+		onload: (() => void) | null = null;
+		onerror: (() => void) | null = null;
+		onabort: (() => void) | null = null;
+		status = 0;
+		responseText = '';
+		method = '';
+		url = '';
+		headers: Record<string, string> = {};
+		sent: unknown = null;
+		constructor() {
+			FakeXhr.last = this;
+		}
+		open(method: string, url: string) {
+			this.method = method;
+			this.url = url;
+		}
+		setRequestHeader(k: string, v: string) {
+			this.headers[k] = v;
+		}
+		send(body: unknown) {
+			this.sent = body;
+		}
+		abort() {
+			this.onabort?.();
+		}
+	}
+	const original = (globalThis as { XMLHttpRequest?: unknown }).XMLHttpRequest;
+	beforeEach(() => {
+		(globalThis as { XMLHttpRequest?: unknown }).XMLHttpRequest = FakeXhr;
+	});
+	afterEach(() => {
+		(globalThis as { XMLHttpRequest?: unknown }).XMLHttpRequest = original;
+	});
+
+	it('Fortschritt und JSON-Antwort', async () => {
+		const seen: number[] = [];
+		const form = new FormData();
+		const p = xhrUpload('/x', form, (l, t) => seen.push(l / t));
+		const x = FakeXhr.last!;
+		expect(x).toMatchObject({ method: 'POST', url: '/x', sent: form });
+		x.upload.onprogress?.({ lengthComputable: true, loaded: 5, total: 10 } as ProgressEvent);
+		x.status = 201;
+		x.responseText = '{"data":{"uploaded":[]}}';
+		x.onload?.();
+		expect(await p).toEqual({ status: 201, body: { data: { uploaded: [] } }, aborted: false });
+		expect(seen).toEqual([0.5]);
+	});
+	it('kaputtes JSON → body null; Netzwerkfehler → 0', async () => {
+		const p1 = xhrUpload('/x', new FormData());
+		FakeXhr.last!.status = 500;
+		FakeXhr.last!.responseText = '<html>';
+		FakeXhr.last!.onload?.();
+		expect(await p1).toEqual({ status: 500, body: null, aborted: false });
+		const p2 = xhrUpload('/x', new FormData());
+		FakeXhr.last!.onerror?.();
+		expect(await p2).toEqual({ status: 0, body: null, aborted: false });
+	});
+	it('Abbrechen per Signal', async () => {
+		const c = new AbortController();
+		const p = xhrUpload('/x', new FormData(), undefined, c.signal);
+		c.abort();
+		expect(await p).toEqual({ status: 0, body: null, aborted: true });
+		const pre = new AbortController();
+		pre.abort();
+		expect(await xhrUpload('/x', new FormData(), undefined, pre.signal)).toMatchObject({
+			aborted: true
+		});
 	});
 });
 
@@ -104,7 +260,7 @@ describe('makeItems / pendingBytes', () => {
 				{ ...inp(f('a.jpg', 5), 'Fotos/a.jpg'), problem: null },
 				{ ...inp(f('b', 7)), problem: 'Zu groß' }
 			],
-			{ space: 'personal', parentId: null },
+			{ parentId: null },
 			() => `k${++n}`
 		);
 		expect(items[0]).toMatchObject({
@@ -185,6 +341,10 @@ describe('uploadError', () => {
 		});
 		expect(uploadError(0, null).message).toContain('Netzwerkfehler');
 		expect(uploadError(403, 'kaputt').rejected).toBe(false);
+		expect(uploadError(429, null)).toEqual({
+			message: 'Gerade zu viele Uploads – bitte kurz warten',
+			rejected: false
+		});
 	});
 });
 

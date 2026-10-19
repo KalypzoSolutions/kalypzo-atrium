@@ -2,7 +2,15 @@
 import { describe, expect, it } from 'vitest';
 import {
 	bulkInput,
+	folderCreateInput,
+	LINK_MODE_LABELS,
+	LINK_MODES,
+	linkCanUpload,
+	linkCanView,
 	linkCreateInput,
+	listQuery,
+	MAX_UPLOADER_NAME,
+	publicUploadFields,
 	MAX_BULK,
 	MAX_NAME,
 	MAX_PASSWORD,
@@ -116,20 +124,62 @@ describe('sharesInput', () => {
 	});
 });
 
-describe('moveInput / bulkInput', () => {
-	it('moveInput Grenzen', () => {
-		bad(moveInput, { ids: [], targetId: null, space: 'personal' });
-		ok(moveInput, { ids: ids(1), targetId: null, space: 'personal' });
-		ok(moveInput, { ids: ids(MAX_BULK), targetId: crypto.randomUUID(), space: 'shared' });
-		bad(moveInput, { ids: ids(MAX_BULK + 1), targetId: null, space: 'personal' });
+describe('folderCreateInput / listQuery', () => {
+	it('ohne `space`; `parentId` Pflicht (null = eigene Wurzel)', () => {
+		ok(folderCreateInput, { parentId: null, name: 'Fotos' });
+		ok(folderCreateInput, { parentId: crypto.randomUUID(), name: 'Fotos' });
+		bad(folderCreateInput, { name: 'Fotos' });
+		bad(folderCreateInput, { parentId: null, name: 'Fotos', space: 'shared' });
 	});
 
-	it('moveInput Felder', () => {
-		bad(moveInput, { ids: ['keine-uuid'], targetId: null, space: 'personal' });
-		bad(moveInput, { ids: ids(1), targetId: 'root', space: 'personal' });
-		bad(moveInput, { ids: ids(1), targetId: null, space: 'fremd' });
-		bad(moveInput, { ids: ids(1), space: 'personal' });
-		bad(moveInput, { ids: ids(1), targetId: null, space: 'personal', x: 1 });
+	it('listQuery ignoriert `space`', () => {
+		const r = listQuery.safeParse({ space: 'shared' });
+		expect(r.success).toBe(true);
+		expect(r.data).toEqual({});
+	});
+});
+
+describe('Link-Arten', () => {
+	it('LINK_MODES, Labels, Standard `view`', () => {
+		expect([...LINK_MODES]).toEqual(['view', 'upload', 'view-upload']);
+		for (const m of LINK_MODES) expect(LINK_MODE_LABELS[m]).toBeTruthy();
+		expect(linkCreateInput.parse({ expiresOn: null, password: null }).mode).toBe('view');
+		ok(linkCreateInput, { expiresOn: null, password: null, mode: 'upload' });
+		ok(linkCreateInput, { expiresOn: null, password: null, mode: 'view-upload' });
+		bad(linkCreateInput, { expiresOn: null, password: null, mode: 'edit' });
+	});
+
+	it('linkCanView / linkCanUpload', () => {
+		expect(LINK_MODES.map(linkCanView)).toEqual([true, false, true]);
+		expect(LINK_MODES.map(linkCanUpload)).toEqual([false, true, true]);
+	});
+
+	it('publicUploadFields: Name optional, ≤ MAX_UPLOADER_NAME, strikt', () => {
+		ok(publicUploadFields, {});
+		ok(publicUploadFields, { name: 'x'.repeat(MAX_UPLOADER_NAME) });
+		ok(publicUploadFields, { name: `  ${'x'.repeat(MAX_UPLOADER_NAME)}  ` });
+		bad(publicUploadFields, { name: 'x'.repeat(MAX_UPLOADER_NAME + 1) });
+		ok(publicUploadFields, { t: 'abc' });
+		bad(publicUploadFields, { t: 'x'.repeat(501) });
+		bad(publicUploadFields, { relativePath: 'a/b' });
+	});
+});
+
+describe('moveInput / bulkInput', () => {
+	it('moveInput Grenzen', () => {
+		bad(moveInput, { ids: [], targetId: null });
+		ok(moveInput, { ids: ids(1), targetId: null });
+		ok(moveInput, { ids: ids(MAX_BULK), targetId: crypto.randomUUID() });
+		bad(moveInput, { ids: ids(MAX_BULK + 1), targetId: null });
+	});
+
+	it('moveInput Felder (ohne `space` seit 0003)', () => {
+		bad(moveInput, { ids: ['keine-uuid'], targetId: null });
+		bad(moveInput, { ids: ids(1), targetId: 'root' });
+		bad(moveInput, { ids: ids(1) });
+		bad(moveInput, { ids: ids(1), targetId: null, x: 1 });
+		// `space` ist kein Feld mehr (strikt)
+		bad(moveInput, { ids: ids(1), targetId: null, space: 'personal' });
 	});
 
 	it('bulkInput Grenzen', () => {

@@ -1,7 +1,7 @@
 /**
  * Modul `files` (Dateien) über die REST-API (`handleApiRequest`): Meta, Ordner, Upload (Fake-Storage),
- * Inhalt/Thumbnail, Liste, Umbenennen, Verschieben, Suche, Papierkorb inkl. Job, Zugriff, Audit,
- * Modul deaktiviert. Testbilder werden mit sharp erzeugt.
+ * Inhalt/Thumbnail, Liste (eine Ansicht „Dateien“: eigene + freigegebene Einträge), Umbenennen, Verschieben,
+ * Stamm-Freigabe (`everyone:*`), Suche, Papierkorb inkl. Job, Zugriff, Audit, Modul deaktiviert. Testbilder werden mit sharp erzeugt.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, like, sql } from 'drizzle-orm';
@@ -29,6 +29,7 @@ import { core } from '$lib/server/core';
 import filesModule from '$lib/modules/files/module';
 import {
 	MAX_DEPTH,
+	ROOT_LABEL,
 	type FileNode,
 	type FolderListing,
 	type TrashItem
@@ -79,7 +80,6 @@ const api = (who: string | null, method: string, path: string, data?: unknown) =
 	});
 
 interface UploadOpts {
-	space?: 'personal' | 'shared';
 	relativePath?: string;
 	conflict?: 'rename' | 'replace';
 	type?: string;
@@ -90,7 +90,6 @@ interface UploadOpts {
 
 async function upload(who: string, parent: string, name: string, o: UploadOpts = {}) {
 	const form = new FormData();
-	form.set('space', o.space ?? 'personal');
 	if (o.relativePath !== undefined) form.set('relativePath', o.relativePath);
 	if (o.conflict) form.set('conflict', o.conflict);
 	const bytes = o.bytes ?? new Uint8Array(o.size ?? 10).fill(65);
@@ -102,11 +101,11 @@ async function upload(who: string, parent: string, name: string, o: UploadOpts =
 	return send(who, 'POST', `/nodes/${parent}/upload`, { headers, body: buf });
 }
 
-const folder = async (who: string, space: string, parentId: string | null, name: string) =>
-	api(who, 'POST', '/folders', { space, parentId, name });
+const folder = async (who: string, parentId: string | null, name: string) =>
+	api(who, 'POST', '/folders', { parentId, name });
 
-const list = async (who: string, space: string, parent?: string) =>
-	api(who, 'GET', `/nodes?space=${space}${parent ? `&parent=${parent}` : ''}`);
+const list = async (who: string, parent?: string) =>
+	api(who, 'GET', `/nodes${parent ? `?parent=${parent}` : ''}`);
 
 const names = (l: FolderListing) => l.items.map((i) => i.name);
 
@@ -143,17 +142,17 @@ beforeAll(async () => {
 	await installFakeStorage(admin);
 
 	const roles = {
-		// Stamm bearbeiten
+		// Dateien + öffentliche Links
 		editor: await createRole(admin, {
-			name: 'Dateien Stamm',
-			permissions: ['files.file.view', 'files.shared.edit', 'core.api.manage']
+			name: 'Dateien Links',
+			permissions: ['files.file.view', 'files.link.create', 'core.api.manage']
 		}),
-		// Stamm nur lesen
+		// Grundrecht
 		reader: await createRole(admin, {
 			name: 'Dateien Lesen',
-			permissions: ['files.file.view', 'files.shared.view', 'core.api.manage']
+			permissions: ['files.file.view', 'core.api.manage']
 		}),
-		// nur eigene Ablage
+		// Grundrecht
 		plain: await createRole(admin, {
 			name: 'Dateien Basis',
 			permissions: ['files.file.view', 'core.api.manage']
@@ -177,6 +176,7 @@ beforeAll(async () => {
 		const c = await ctxOf(ids[n]!);
 		keys[n] = (await createApiKey(c, { name: 'k', scopes: [...c.permissions] })).key;
 	}
+	keys.admin = (await createApiKey(admin, { name: 'a', scopes: [...admin.permissions] })).key;
 });
 
 afterAll(async () => {
@@ -192,52 +192,60 @@ describe('Meta', () => {
 		expect(r1.body.data.trashDays).toBe(30);
 		expect(r1.body.data.maxFileBytes).toBeGreaterThan(0);
 		expect(r1.body.data.allowedContentTypes).toContain('text/plain');
-		expect(r1.body.data.can).toEqual({
-			sharedView: true,
-			sharedEdit: true,
-			linkCreate: false,
-			manageAll: false
-		});
-		const r2 = await api('u2', 'GET', '/meta');
-		expect(r2.body.data.can).toMatchObject({ sharedView: true, sharedEdit: false });
+		// keine Stamm-Flags mehr (eine Ansicht)
+		expect(r1.body.data.can).toEqual({ linkCreate: true, manageAll: false });
 		const r3 = await api('u3', 'GET', '/meta');
-		expect(r3.body.data.can).toMatchObject({ sharedView: false, sharedEdit: false });
+		expect(r3.body.data.can).toEqual({ linkCreate: false, manageAll: false });
+		expect((await api('admin', 'GET', '/meta')).body.data.can).toEqual({
+			linkCreate: true,
+			manageAll: true
+		});
 	});
 
 	it('ohne files.file.view → 403 forbidden', async () => {
 		const r = await api('u4', 'GET', '/meta');
 		expect(r.status).toBe(403);
 		expect(r.body.error.code).toBe('forbidden');
-		const l = await list('u4', 'personal');
+		const l = await list('u4');
 		expect(l.status).toBe(403);
 	});
 });
 
 describe('Ordner', () => {
-	it('legt Ordner in persönlicher Wurzel, Stamm und verschachtelt an', async () => {
-		const p = await folder('u1', 'personal', null, 'Projekte');
+	it('legt Ordner in der eigenen Wurzel und verschachtelt an', async () => {
+		const p = await folder('u1', null, 'Projekte');
 		expect(p.status).toBe(201);
 		expect(p.body.data).toMatchObject({
 			kind: 'folder',
-			space: 'personal',
 			parentId: null,
 			name: 'Projekte',
 			ownerId: ids.u1,
 			access: 'edit',
+			own: true,
+			stamm: false,
+			canShare: true,
+			viaLink: false,
+			uploadedByName: null,
 			childCount: 0
 		});
-		const sub = await folder('u1', 'personal', p.body.data.id, 'Sommer');
+		expect(p.body.data.owner).toEqual({ id: ids.u1, name: 'U1' });
+		expect(p.body.data).not.toHaveProperty('space');
+		const sub = await folder('u1', p.body.data.id, 'Sommer');
 		expect(sub.status).toBe(201);
 		expect(sub.body.data.parentId).toBe(p.body.data.id);
-		const s = await folder('u1', 'shared', null, 'Stammesordner');
-		expect(s.status).toBe(201);
-		expect(s.body.data.space).toBe('shared');
+		// `space` gibt es nicht mehr (strikte Eingabe)
+		const s = await api('u1', 'POST', '/folders', {
+			space: 'shared',
+			parentId: null,
+			name: 'Stammesordner'
+		});
+		expect(s.status).toBe(422);
 		// gleicher Name bei anderer Person erlaubt
-		expect((await folder('u3', 'personal', null, 'Projekte')).status).toBe(201);
+		expect((await folder('u3', null, 'Projekte')).status).toBe(201);
 	});
 
 	it('Namenskonflikt (ohne Groß/Klein) → 409 conflict mit Vorschlag', async () => {
-		const r = await folder('u1', 'personal', null, 'projekte');
+		const r = await folder('u1', null, 'projekte');
 		expect(r.status).toBe(409);
 		expect(r.body.error.code).toBe('conflict');
 		expect(r.body.error.message).toBe('Es gibt hier schon „projekte“. Vorschlag: „projekte (2)“');
@@ -245,7 +253,7 @@ describe('Ordner', () => {
 
 	it('ungültige Namen → 422', async () => {
 		for (const name of ['a/b', 'a\\b', '..', '.', '', '   ', 'x\u0001', 'A‮b', 'x'.repeat(201)]) {
-			const r = await folder('u1', 'personal', null, name);
+			const r = await folder('u1', null, name);
 			expect(r.status, JSON.stringify(name)).toBe(422);
 			expect(r.body.error.code).toBe('validation_failed');
 		}
@@ -254,11 +262,11 @@ describe('Ordner', () => {
 	it(`mehr als MAX_DEPTH (${MAX_DEPTH}) Ebenen → 422`, async () => {
 		let parent: string | null = null;
 		for (let i = 1; i <= MAX_DEPTH; i++) {
-			const r = await folder('u3', 'personal', parent, `Ebene ${i}`);
+			const r = await folder('u3', parent, `Ebene ${i}`);
 			expect(r.status, `Ebene ${i}`).toBe(201);
 			parent = r.body.data.id;
 		}
-		const tooDeep = await folder('u3', 'personal', parent, 'zu tief');
+		const tooDeep = await folder('u3', parent, 'zu tief');
 		expect(tooDeep.status).toBe(422);
 		expect(tooDeep.body.error.code).toBe('validation_failed');
 		expect(JSON.stringify(tooDeep.body.error)).toContain('Ordnerebenen');
@@ -326,11 +334,11 @@ describe('Upload und Inhalt', () => {
 		const b = await upload('u1', 'root', 'egal.txt', { relativePath: 'fotos/2026/b.txt' });
 		expect(b.status).toBe(201);
 		expect(b.body.data.parentId).toBe(a.body.data.parentId);
-		const root = (await list('u1', 'personal')).body.data as FolderListing;
+		const root = (await list('u1')).body.data as FolderListing;
 		expect(names(root).filter((n) => n.toLowerCase() === 'fotos')).toEqual(['Fotos']);
-		const inner = (await list('u1', 'personal', a.body.data.parentId)).body.data as FolderListing;
+		const inner = (await list('u1', a.body.data.parentId)).body.data as FolderListing;
 		expect(names(inner)).toEqual(['a.txt', 'b.txt']);
-		expect(inner.breadcrumbs.map((b) => b.name)).toEqual(['Meine Dateien', 'Fotos', '2026']);
+		expect(inner.breadcrumbs.map((b) => b.name)).toEqual([ROOT_LABEL, 'Fotos', '2026']);
 
 		const bad = await upload('u1', 'root', 'x.txt', { relativePath: '//' });
 		expect(bad.status).toBe(422);
@@ -408,9 +416,26 @@ describe('Upload und Inhalt', () => {
 			expect(r.body.error.code).toBe('payload_too_large');
 			expect(r.body.error.message).toContain('Speicherplatz ist voll');
 			expect(fakeObjects.size).toBe(before);
-			// Stamm zählt nicht zum persönlichen Kontingent
-			const s = await upload('u1', 'root', 'stamm.txt', { space: 'shared', size: 1024 * 1024 + 1 });
-			expect(s.status).toBe(201);
+			// Upload in einen freigegebenen Ordner zählt bei der Eigentümer*in (u1 voll → 413 für u3)
+			const box = (await folder('u1', null, 'Kontingent-Box')).body.data.id as string;
+			expect(
+				(
+					await api('u1', 'PUT', `/nodes/${box}/shares`, {
+						shares: [{ type: 'user', id: ids.u3, level: 'edit' }]
+					})
+				).status
+			).toBe(200);
+			const usedU1 = (await api('u1', 'GET', '/meta')).body.data.quota.usedBytes as number;
+			const full = await upload('u1', box, 'voll.txt', { size: 1024 * 1024 - usedU1 - 50 });
+			expect(full.status).toBe(201);
+			const usedU3 = (await api('u3', 'GET', '/meta')).body.data.quota.usedBytes as number;
+			const s = await upload('u3', box, 'fremd.txt', { size: 200 });
+			expect(s.status).toBe(413);
+			const ok = await upload('u3', box, 'klein.txt', { size: 10 });
+			expect(ok.status).toBe(201);
+			expect(ok.body.data.ownerId).toBe(ids.u1);
+			// eigenes Kontingent von u3 unverändert
+			expect((await api('u3', 'GET', '/meta')).body.data.quota.usedBytes).toBe(usedU3);
 		} finally {
 			await setSetting(admin, 'files.quota.mb', 0);
 		}
@@ -426,28 +451,28 @@ describe('Liste, Umbenennen, Verschieben', () => {
 	let ziel: string;
 
 	it('Liste: Ordner zuerst, dann Dateien, je nach Name; Breadcrumbs', async () => {
-		const root = (await list('u1', 'personal')).body.data as FolderListing;
+		const root = (await list('u1')).body.data as FolderListing;
 		const kinds = root.items.map((i) => i.kind);
 		const firstFile = kinds.indexOf('file');
 		expect(firstFile).toBeGreaterThan(0);
 		expect(kinds.slice(firstFile).every((k) => k === 'file')).toBe(true);
 		const folders = root.items.filter((i) => i.kind === 'folder').map((i) => i.name);
 		expect(folders).toEqual([...folders].sort((a, b) => a.localeCompare(b, 'de')));
-		expect(root.breadcrumbs).toEqual([{ id: null, name: 'Meine Dateien' }]);
+		expect(root.breadcrumbs).toEqual([{ id: null, name: ROOT_LABEL }]);
 		expect(root.access).toBe('edit');
 		projekte = root.items.find((i) => i.name === 'Projekte')!;
 		expect(projekte.childCount).toBe(1);
-		const inner = (await list('u1', 'personal', projekte.id)).body.data as FolderListing;
+		const inner = (await list('u1', projekte.id)).body.data as FolderListing;
 		expect(inner.breadcrumbs).toEqual([
-			{ id: null, name: 'Meine Dateien' },
+			{ id: null, name: ROOT_LABEL },
 			{ id: projekte.id, name: 'Projekte' }
 		]);
 		expect(inner.folder?.id).toBe(projekte.id);
 	});
 
 	it('Umbenennen: ok, nur Groß/Klein ok, Konflikt 409, ungültig 422', async () => {
-		const a = await folder('u1', 'personal', projekte.id, 'Alt');
-		const b = await folder('u1', 'personal', projekte.id, 'Belegt');
+		const a = await folder('u1', projekte.id, 'Alt');
+		const b = await folder('u1', projekte.id, 'Belegt');
 		const r = await api('u1', 'PATCH', `/nodes/${a.body.data.id}`, { name: 'Neu' });
 		expect(r.status).toBe(200);
 		expect(r.body.data.name).toBe('Neu');
@@ -464,67 +489,72 @@ describe('Liste, Umbenennen, Verschieben', () => {
 	});
 
 	it('Verschieben: mehrere, in sich selbst 422, Namenskonflikt → automatisch umbenannt', async () => {
-		ziel = (await folder('u1', 'personal', null, 'Ziel')).body.data.id;
-		await folder('u1', 'personal', ziel, 'Doppelt');
-		const d = await folder('u1', 'personal', null, 'Doppelt');
+		ziel = (await folder('u1', null, 'Ziel')).body.data.id;
+		await folder('u1', ziel, 'Doppelt');
+		const d = await folder('u1', null, 'Doppelt');
 		const f = await upload('u1', 'root', 'mitnehmen.txt');
 		const mv = await api('u1', 'POST', '/nodes/move', {
 			ids: [d.body.data.id, f.body.data.id],
-			targetId: ziel,
-			space: 'personal'
+			targetId: ziel
 		});
 		expect(mv.status).toBe(201);
 		expect(mv.body.data.affected).toBe(2);
-		const inner = (await list('u1', 'personal', ziel)).body.data as FolderListing;
+		const inner = (await list('u1', ziel)).body.data as FolderListing;
 		expect(names(inner)).toEqual(['Doppelt', 'Doppelt (2)', 'mitnehmen.txt']);
 
 		const self = await api('u1', 'POST', '/nodes/move', {
 			ids: [ziel],
-			targetId: ziel,
-			space: 'personal'
+			targetId: ziel
 		});
 		expect(self.status).toBe(422);
 		expect(self.body.error.code).toBe('validation_failed');
 		const child = inner.items[0]!.id;
 		const intoChild = await api('u1', 'POST', '/nodes/move', {
 			ids: [ziel],
-			targetId: child,
-			space: 'personal'
+			targetId: child
 		});
 		expect(intoChild.status).toBe(422);
 		expect(intoChild.body.error.code).toBe('validation_failed');
 	});
 
-	it('personal → Stamm mit files.shared.edit: ganzer Teilbaum wechselt den Bereich', async () => {
-		const mv = await api('u1', 'POST', '/nodes/move', {
+	it('An den Stamm freigeben: erscheint in fremder Wurzel (stamm), Lesen hindert Verschieben', async () => {
+		// `space` gibt es nicht mehr (strikte Eingabe)
+		const sp = await api('u1', 'POST', '/nodes/move', {
 			ids: [ziel],
 			targetId: null,
 			space: 'shared'
 		});
-		expect(mv.status).toBe(201);
-		expect(mv.body.data.affected).toBe(1);
+		expect(sp.status).toBe(422);
+		const sh = await api('u1', 'PUT', `/nodes/${ziel}/shares`, {
+			shares: [{ type: 'everyone', id: '*', level: 'read' }]
+		});
+		expect(sh.status).toBe(200);
 		const node = (await api('u1', 'GET', `/nodes/${ziel}`)).body.data as FileNode;
-		expect(node.space).toBe('shared');
-		const inner = (await list('u1', 'shared', ziel)).body.data as FolderListing;
-		expect(inner.items.every((i) => i.space === 'shared')).toBe(true);
-		expect(inner.breadcrumbs[0]).toEqual({ id: null, name: 'Stamm' });
+		expect(node).toMatchObject({ own: true, stamm: true, shared: true });
+		const root2 = (await list('u2')).body.data as FolderListing;
+		const seen = root2.items.find((i) => i.id === ziel)!;
+		expect(seen).toMatchObject({ own: false, stamm: true, access: 'read', canShare: false });
+		expect(seen.owner).toEqual({ id: ids.u1, name: 'U1' });
+		const inner = (await list('u2', ziel)).body.data as FolderListing;
+		expect(inner.breadcrumbs[0]).toEqual({ id: null, name: ROOT_LABEL });
+		expect(inner.access).toBe('read');
+		expect(inner.items.every((i) => i.stamm && i.access === 'read')).toBe(true);
 		// Stamm-Leser darf nicht hinein verschieben
-		const own = await folder('u2', 'personal', null, 'Eigenes');
+		const own = await folder('u2', null, 'Eigenes');
 		const no = await api('u2', 'POST', '/nodes/move', {
 			ids: [own.body.data.id],
-			targetId: null,
-			space: 'shared'
+			targetId: ziel
 		});
 		expect(no.status).toBe(403);
 		expect(no.body.error.code).toBe('forbidden');
+		expect((await api('u1', 'PUT', `/nodes/${ziel}/shares`, { shares: [] })).status).toBe(200);
 	});
 });
 
 describe('Suche', () => {
 	it('findet Treffer, behandelt % und _ wörtlich, ignoriert Gelöschte', async () => {
-		const p = 'personal';
 		for (const n of ['100% Spaß', '1000 Spaß', 'a_b Liste', 'axb Liste', 'Weg Liste']) {
-			expect((await folder('u3', p, null, n)).status).toBe(201);
+			expect((await folder('u3', null, n)).status).toBe(201);
 		}
 		const s = await api('u3', 'GET', '/search?q=liste');
 		expect(s.status).toBe(200);
@@ -533,7 +563,7 @@ describe('Suche', () => {
 				.map((i: FileNode) => i.name)
 				.sort((a: string, b: string) => a.localeCompare(b, 'de'))
 		).toEqual(['a_b Liste', 'axb Liste', 'Weg Liste']);
-		expect(s.body.data.items[0].path).toBe('Meine Dateien');
+		expect(s.body.data.items[0].path).toBe(ROOT_LABEL);
 		const pct = await api('u3', 'GET', `/search?q=${encodeURIComponent('0%')}`);
 		expect(pct.body.data.items.map((i: FileNode) => i.name)).toEqual(['100% Spaß']);
 		const und = await api('u3', 'GET', '/search?q=a_b');
@@ -560,13 +590,13 @@ describe('Papierkorb', () => {
 		expect(t.status).toBe(201);
 		expect(t.body.data.affected).toBe(1);
 		expect((await api('u3', 'GET', `/nodes/${id}`)).status).toBe(404);
-		const root = (await list('u3', 'personal')).body.data as FolderListing;
+		const root = (await list('u3')).body.data as FolderListing;
 		expect(names(root)).not.toContain('papier.txt');
 
 		const tr = await api('u3', 'GET', '/trash');
 		expect(tr.status).toBe(200);
 		const item = (tr.body.data as TrashItem[]).find((i) => i.id === id)!;
-		expect(item).toMatchObject({ kind: 'file', name: 'papier.txt', originalPath: 'Meine Dateien' });
+		expect(item).toMatchObject({ kind: 'file', name: 'papier.txt', originalPath: ROOT_LABEL });
 		const expected = new Date(new Date(item.deletedAt).getTime() + 30 * 86_400_000)
 			.toISOString()
 			.slice(0, 10);
@@ -585,7 +615,7 @@ describe('Papierkorb', () => {
 	});
 
 	it('Wiederherstellen: Elternordner weg → Wurzel, Namenskonflikt → umbenannt', async () => {
-		const box = (await folder('u3', 'personal', null, 'Kiste')).body.data.id;
+		const box = (await folder('u3', null, 'Kiste')).body.data.id;
 		const f = await upload('u3', box, 'inhalt.txt');
 		const id = f.body.data.id;
 		await api('u3', 'POST', '/nodes/trash', { ids: [id] });
@@ -611,7 +641,7 @@ describe('Papierkorb', () => {
 	});
 
 	it('endgültig löschen entfernt Knoten und Storage-Objekte (inkl. Teilbaum)', async () => {
-		const box = (await folder('u3', 'personal', null, 'Endgültig')).body.data.id;
+		const box = (await folder('u3', null, 'Endgültig')).body.data.id;
 		const a = await upload('u3', box, 'a.png', { type: 'image/png', bytes: await pngBytes() });
 		const b = await upload('u3', box, 'b.txt');
 		expect(objectsOf(a.body.data.id).length).toBe(2);
@@ -660,55 +690,73 @@ describe('Zugriff', () => {
 	let sharedFolder: string;
 
 	beforeAll(async () => {
-		privateFolder = (await folder('u1', 'personal', null, 'Privat')).body.data.id;
-		sharedFolder = (await folder('u1', 'shared', null, 'Stamm Ordner')).body.data.id;
-		await upload('u1', sharedFolder, 'liesmich.txt', { space: 'shared' });
+		privateFolder = (await folder('u1', null, 'Privat')).body.data.id;
+		sharedFolder = (await folder('u1', null, 'Stamm Ordner')).body.data.id;
+		await upload('u1', sharedFolder, 'liesmich.txt');
+		const sh = await api('u1', 'PUT', `/nodes/${sharedFolder}/shares`, {
+			shares: [{ type: 'everyone', id: '*', level: 'read' }]
+		});
+		expect(sh.status).toBe(200);
 	});
 
-	it('fremde persönliche Ablage → 404 (auch Liste, Inhalt, Umbenennen, Upload)', async () => {
+	it('fremde Ablage → 404 (auch Liste, Inhalt, Umbenennen, Upload)', async () => {
 		for (const who of ['u2', 'u3']) {
 			expect((await api(who, 'GET', `/nodes/${privateFolder}`)).status).toBe(404);
-			const l = await list(who, 'personal', privateFolder);
+			const l = await list(who, privateFolder);
 			expect(l.status).toBe(404);
 			expect(l.body.error.code).toBe('not_found');
 			const r = await api(who, 'PATCH', `/nodes/${privateFolder}`, { name: 'x' });
 			expect(r.status).toBe(404);
 			const up = await upload(who, privateFolder, 'x.txt');
 			expect(up.status).toBe(404);
+			// privater Ordner taucht nicht in der fremden Wurzel auf
+			const root = (await list(who)).body.data as FolderListing;
+			expect(root.items.some((i) => i.id === privateFolder)).toBe(false);
 		}
-		// ?owner= ohne manage-all → 404
-		const o = await api('u3', 'GET', `/nodes?space=personal&owner=${ids.u1}`);
+		// ?owner= ohne manage-all → 404, mit manage-all → Wurzel der Person
+		const o = await api('u3', 'GET', `/nodes?owner=${ids.u1}`);
 		expect(o.status).toBe(404);
+		const a = await api('admin', 'GET', `/nodes?owner=${ids.u1}`);
+		expect(a.status).toBe(200);
+		expect(names(a.body.data)).toContain('Privat');
 	});
 
-	it('Stamm ohne files.shared.view → 404 (Liste/Knoten), 403 beim Anlegen', async () => {
-		const l = await list('u3', 'shared');
-		expect(l.status).toBe(404);
-		expect(l.body.error.code).toBe('not_found');
-		expect((await api('u3', 'GET', `/nodes/${sharedFolder}`)).status).toBe(404);
-		const c = await folder('u3', 'shared', null, 'Neu');
-		expect(c.status).toBe(403);
-		expect(c.body.error.code).toBe('forbidden');
+	it('An den Stamm (everyone:*) freigegeben: alle sehen es in ihrer Wurzel, auch ohne Rolle', async () => {
+		for (const who of ['u2', 'u3']) {
+			const root = (await list(who)).body.data as FolderListing;
+			expect(root.breadcrumbs).toEqual([{ id: null, name: ROOT_LABEL }]);
+			const item = root.items.find((i) => i.id === sharedFolder)!;
+			expect(item).toMatchObject({ name: 'Stamm Ordner', stamm: true, own: false, access: 'read' });
+			expect((await api(who, 'GET', `/nodes/${sharedFolder}`)).status).toBe(200);
+		}
+		// Ohne Modulrecht weiterhin 403
+		expect((await list('u4')).status).toBe(403);
 	});
 
-	it('files.shared.view: nur lesen (Liste/Inhalt ok, Upload/Anlegen/Umbenennen/Löschen 403)', async () => {
-		const l = await list('u2', 'shared', sharedFolder);
+	it('Stamm-Freigabe read: nur lesen (Liste/Inhalt ok, Upload/Anlegen/Umbenennen/Löschen 403)', async () => {
+		const l = await list('u2', sharedFolder);
 		expect(l.status).toBe(200);
 		expect(l.body.data.access).toBe('read');
 		const file = (l.body.data as FolderListing).items.find((i) => i.name === 'liesmich.txt')!;
 		expect(file.access).toBe('read');
+		expect(file.stamm).toBe(true);
 		expect((await send('u2', 'GET', `/nodes/${file.id}/content`)).status).toBe(200);
 
-		const up = await upload('u2', sharedFolder, 'neu.txt', { space: 'shared' });
+		const up = await upload('u2', sharedFolder, 'neu.txt');
 		expect(up.status).toBe(403);
 		expect(up.body.error.code).toBe('forbidden');
-		const upRoot = await upload('u2', 'root', 'neu.txt', { space: 'shared' });
-		expect(upRoot.status).toBe(403);
-		expect((await folder('u2', 'shared', sharedFolder, 'Neu')).status).toBe(403);
+		// `root` ist immer die eigene Wurzel
+		const upRoot = await upload('u2', 'root', 'neu.txt');
+		expect(upRoot.status).toBe(201);
+		expect(upRoot.body.data.ownerId).toBe(ids.u2);
+		expect((await folder('u2', sharedFolder, 'Neu')).status).toBe(403);
 		expect((await api('u2', 'PATCH', `/nodes/${file.id}`, { name: 'x.txt' })).status).toBe(403);
 		const t = await api('u2', 'POST', '/nodes/trash', { ids: [file.id] });
 		expect(t.status).toBe(403);
 		expect(t.body.error.code).toBe('forbidden');
+		// Freigaben/Links verwalten nur die Eigentümer*in
+		const fs = await api('u2', 'PUT', `/nodes/${sharedFolder}/shares`, { shares: [] });
+		expect(fs.status).toBe(403);
 	});
 });
 
