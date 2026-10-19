@@ -99,8 +99,7 @@
   Core: öffentliches Multipart (`ApiEndpoint.multipart`), Admin-Seite **Zurücksetzen** (`/admin/reset`, früher `/system/reset`, Bereiche je Modul + Core, Vorschau, Passwort/TOTP,
   Pflicht-JSON-Export, Bestätigungswort, `ConfirmDialog`), `core.storage.purge`, Jobs pausierbar, Core-Migration 0005. Details: `architecture.md`,
   `module-actions.md`, `module-treasury.md`. Offen: Reset-Token nur bei einer Instanz; Buchungsbelege der Kasse bei Teil-Reset verwaist; ZA nicht im Export/Import.
-- **Platzhalter-Module (2026-10-18)**: `files` (Dateien, Cloud-Ablage) und `orders` (Bestellungen, seit 2026-10-19 umgesetzt) – nur Manifest, Navigation und eine Seite „In Planung“, keine Endpoints/Migrationen.
-  **Geplant `files`**: Ablage (Ordner, Up-/Download, „Meine Dateien“ + Stammesordner), Freigabe an Benutzer (Lesen/Bearbeiten, `ShareMenu`-Muster), Link-Freigabe (Ablauf, Passwort, widerrufbar, rate-limitiert; **offen: auch für Personen ohne Konto?**), Quota, Papierkorb; kein Sync/Versionen/Mitbearbeiten.
+- **Platzhalter-Module (2026-10-18)**: `files` (Dateien, Cloud-Ablage, seit 2026-10-19 umgesetzt, siehe „Modul `files` – Dateien“ unten) und `orders` (Bestellungen, seit 2026-10-19 umgesetzt) – damals nur Manifest, Navigation und eine Seite „In Planung“, keine Endpoints/Migrationen.
   **Geplant `orders`**: Mitglieder bestellen interne Artikel (Halstuch, Liederbuch …); Zuständige mit Lager- und Bestellverwaltung; Rechnung an das zugeordnete Mitglied (Konto-Verknüpfung, Mail) und an die Kasse (`treasury`-Rechnung/Zuordnung).
 - **Core**: Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`, Tabelle `job_run`, `/api/v1/jobs`), optionale
   Modul-Abhängigkeiten (`optionalDependencies`, `core.modules.useOptional`); `members` liefert `listMemberContacts`,
@@ -149,6 +148,13 @@
   „Übersicht“), Übersicht, Reiter (`LinkTabs`) und **Befehlspalette** (Strg+K, Topbar „Suchen“). Alte URLs → 308 (`core/admin-redirects.ts`).
   Neuer Reiter Einstellungen → Module (generische Modul-Einstellungen, Module mit eigener Seite wie Kasse als Link). Tests
   `tests/unit/admin-{registry,redirects}.test.ts`, E2E `admin-nav.spec.ts` (+ `admin.spec.ts`/`api-docs.spec.ts` auf neue URLs). Details: `architecture.md`.
+- **Modul `files` – Dateien (2026-10-19)**: ersetzt den Platzhalter. Cloud-Ablage mit „Meine Dateien“ (Kontingent `files.quota.mb`, Standard 1 GB) und
+  Stammesordner (`files.shared.view|edit`); Ordner/Dateien als Baum (virtuelle Wurzeln, eindeutige Namen je Ordner), Upload auch ganzer Ordner per
+  Drag & Drop, internes Verschieben per Ziehen, Vorschau für Bilder (Zoom/Blättern), PDF (Blob-iframe) und Text; Papierkorb mit Ablauf (`files.trash.days`,
+  Job `files.purge-trash`). **Freigabe an Principals** (Stamm, Gruppe, Rolle, Mitglied, Benutzer*in; read/edit, vererbt) und **öffentliche Links** für Personen
+  ohne Konto (`/p/files/link/<token>`, Ablauf, optionales Passwort, widerrufbar, rate-limitiert, nur ansehen/herunterladen; Token nur als Hash, 10 Fehlversuche/h
+  → 429). Freigaben/Links nur für Bereichsberechtigte (nicht über eine edit-Freigabe). Rolle „Mitglied“ bekommt `files.file.view`. Kein Sync, keine Versionen,
+  kein Mitbearbeiten, keine Videos. Offen u. a.: Link-Token im `api_log` (Core-Fix vorgeschlagen), `no-store` bei öffentlichen Thumbnails. Details: `rules/module-files.md`.
 - Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`, `rules/module-events.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
