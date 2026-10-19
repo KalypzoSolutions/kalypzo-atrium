@@ -183,6 +183,7 @@ beforeAll(async () => {
 			'POST',
 			'/groups',
 			groupBody('Falken', 'sippe', [bert.id], {
+				meetingEndTime: '18:30',
 				website: { onWebsite: true, slug: 'falken' }
 			})
 		),
@@ -356,6 +357,72 @@ describe('Gruppen: Website-Felder', () => {
 	});
 });
 
+describe('Gruppenstunde: Ende', () => {
+	it('speichert und liefert `meetingEndTime` (Anlegen, Ändern, Leeren)', async () => {
+		// beim Anlegen gespeichert (spätere Tests ändern Falken ohne Ende)
+		expect(falken.meetingEndTime).toBe('18:30');
+		const changed = ok<Group>(
+			await call(
+				'editor',
+				'PUT',
+				`/groups/${falken.id}`,
+				groupBody('Falken', 'sippe', [bert.id], { meetingTime: '16:30', meetingEndTime: '18:00' })
+			)
+		);
+		expect(changed).toMatchObject({ meetingTime: '16:30', meetingEndTime: '18:00' });
+		const cleared = ok<Group>(
+			await call(
+				'editor',
+				'PUT',
+				`/groups/${falken.id}`,
+				groupBody('Falken', 'sippe', [bert.id], { meetingEndTime: null })
+			)
+		);
+		expect(cleared.meetingEndTime).toBeNull();
+		// für die folgenden Website-Tests wiederherstellen
+		const restored = ok<Group>(
+			await call(
+				'editor',
+				'PUT',
+				`/groups/${falken.id}`,
+				groupBody('Falken', 'sippe', [bert.id], { meetingEndTime: '18:30' })
+			)
+		);
+		expect(restored.meetingEndTime).toBe('18:30');
+		const got = ok<Group>(await call('editor', 'GET', `/groups/${falken.id}`));
+		expect(got.meetingEndTime).toBe('18:30');
+	});
+
+	it('Ende ohne Beginn, Ende ≤ Beginn oder falsches Format → 422 (Pfad meetingEndTime)', async () => {
+		const cases: Record<string, unknown>[] = [
+			{ meetingTime: null, meetingEndTime: '18:00' },
+			{ meetingTime: '17:00', meetingEndTime: '17:00' },
+			{ meetingTime: '17:00', meetingEndTime: '16:59' },
+			{ meetingTime: '17:00', meetingEndTime: '25:00' }
+		];
+		for (const over of cases) {
+			const res = await call(
+				'editor',
+				'POST',
+				'/groups',
+				groupBody('Ungültige Zeit', 'sippe', [anna.id], over)
+			);
+			fail(res, 422, 'validation_failed');
+			expect(JSON.stringify(res.body), JSON.stringify(over)).toContain('meetingEndTime');
+		}
+		const noStart = await call(
+			'editor',
+			'POST',
+			'/groups',
+			groupBody('Ungültige Zeit', 'sippe', [anna.id], {
+				meetingTime: null,
+				meetingEndTime: '18:00'
+			})
+		);
+		expect(JSON.stringify(noStart.body)).toContain('Beginn');
+	});
+});
+
 describe('Website-API', () => {
 	it('Key nur mit Scope members.website.read: interne Endpunkte → 403', async () => {
 		fail(await call('website', 'GET', '/groups'), 403, 'forbidden');
@@ -387,6 +454,7 @@ describe('Website-API', () => {
 				'meetingPlace',
 				'meetingWeekday',
 				'meetingTime',
+				'meetingEndTime',
 				'color',
 				'contactEmail',
 				'leaders',
@@ -402,8 +470,13 @@ describe('Website-API', () => {
 			contactEmail: 'woelflinge@stamm.example',
 			meetingWeekday: 3,
 			meetingTime: '17:00',
+			meetingEndTime: null,
 			color: '#2f855a',
 			imagePath: null
+		});
+		expect(list.find((g) => g.slug === 'falken')).toMatchObject({
+			meetingTime: '17:00',
+			meetingEndTime: '18:30'
 		});
 		// Vornamen sortiert, Dora (ausgetreten) fehlt
 		expect(w.leaders).toEqual([{ firstName: 'Anna' }, { firstName: 'Carla' }]);

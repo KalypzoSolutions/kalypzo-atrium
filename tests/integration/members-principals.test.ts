@@ -143,6 +143,7 @@ describe('listGroups', () => {
 			image: null,
 			meetingWeekday: 3,
 			meetingTime: '17:30',
+			meetingEndTime: null,
 			meetingPlace: 'Pfadiheim'
 		});
 		expect(list.find((g) => g.id === groupAdler)).toMatchObject({

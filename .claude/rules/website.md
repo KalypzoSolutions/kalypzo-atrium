@@ -18,6 +18,8 @@ vorerst** (`/download` → 308 auf `/`). API-Seite: `docs/api.md` → „Stammes
   Änderungen an `WebsiteEvent`, `WebsiteGallery*`, `WebsiteOffice`, `WebsiteGroup` immer auf **beiden** Seiten nachziehen.
 - Deutsch mit echten Umlauten; keine nativen Selects (Filter als Link-Chips `FilterChip`, Zustand in der URL); kein Dunkelmodus.
 - Nutzertexte nie per `{@html}` (Umbrüche per `whitespace-pre-line`); Farben aus der API in `style:` nur über `safeColor` (`format.ts`).
+- Optik wie die alte Website (weiß, eckige Karten `bg-white border border-gray-300`, Labels `text-gray-700`, Werte `text-sm text-gray-500`,
+  Inhaltsbreite `max-w-5xl`); Gruppenfarben-Varianten per `color-mix()` im `<style>` über CSS-Variable (`groupColor`, `ContactBox`).
 - Design-Tokens in `src/app.css` (`@theme`): `brand-50…950`, `ink`, `muted`, `canvas`, `surface`, `line`, `rounded-card`, `shadow-card`;
   Utilities `container-page`, `section-y`, `eyebrow`, `link`, `prose-site`, `btn btn-primary|btn-secondary|btn-ghost`.
 
@@ -47,8 +49,9 @@ vorerst** (`/download` → 308 auf `/`). API-Seite: `docs/api.md` → „Stammes
 | `/termine/[id]` (`?am=YYYY-MM-DD`) | `getEvent` + verknüpfte Galerien (`listGalleries({ eventId })`), Teilen, OSM-Link; 404/503 |
 | `/galerie` (`?jahr=`, `?seite=`) | alle öffentlichen Galerien (Seiten zu 24 auf der Seite), Datum = frühester verknüpfter Termin, sonst `updatedAt` |
 | `/galerie/[id]` (`?bild=<imageId>`) | Raster `thumb`, `Lightbox` (`web`, Tastatur/Wischen, Fokusfalle, Deep-Link serverseitig offen) |
-| `/gruppen`, `/gruppen/[slug]` | Übersicht Meute/Sippe; Steckbrief (Leitung Vornamen, `formatMeeting`, Ort, Alter), Bild (API, sonst statisches Altbild je Slug), Kontakt, 3 Termine (`group`), Karte |
-| `/kontakt` | Treffpunkt + Karte, Ämter aus `listOffices` (Avatar über Proxy, sonst Initialen), Formular an formsubmit.co (`FORM_RECIPIENT`) |
+| `/gruppen`, `/gruppen/[slug]` | Übersicht Meute/Sippe (`GroupGrid`); Steckbrief **im Aufbau der alten Meute-/Sippe-Seiten**: Typ-Überschrift in Gruppenfarbe, Karte `border-gray-300 p-8` mit Gruppenname/Gruppenleitung (Vornamen)/Uhrzeit (`formatMeeting(tag, beginn, ende)` → „Freitags 16:30 – 18:00 Uhr“)/Ort/Alter + Bild rechts (`md:w-1/3`; API, sonst statisches Altbild je Slug), „Das sind wir“, „Treffpunkt“ + Karte, Kontaktkasten (`ContactBox`), 3 Termine (`group`, `UpcomingEvents`) |
+| `/kontakt` | wie die alte Kontaktseite: Einleitung, Treffpunkt + Karte, Formular an formsubmit.co (`FORM_RECIPIENT`), Ansprechpartner*innen als `ContactBox` (Gruppen aus `data.groups` in Gruppenfarbe, danach Ämter `OfficeCard` in Rot), Link „Ganzes Team ansehen“ → `/team` |
+| `/team` | „Unser Team“: Ämter aus `listOffices` als Personenkarten (`PersonCard`: Profilbild über `/bilder/amt/<userId>`, sonst Initialen; Ämter mit „seit“, Bio aufklappbar). **Eine Karte je Person** mit allen Ämtern (`teamMembers` in `contact.ts`; Bio ist ohnehin eine je Person), unbesetzte Ämter als Hinweiszeile; Abschnitt „Gruppenleitungen“ je Gruppe (nur Vornamen, Gruppenfarbe, Link zur Gruppe) |
 | `/cpd`, `/impressum`, `/datenschutz` | statisch aus der alten Website |
 
 ## Bild-Proxys (`src/routes/bilder/…`, Helfer `$lib/images.ts`)
@@ -60,8 +63,8 @@ stale-while-revalidate=86400`, `nosniff`; 404 wird durchgereicht. Im HTML stehen
 `/download[/…]` → `/`. Ist der Ziel-Slug nicht auf der Website → `/gruppen` (bei API-Fehler trotzdem Ziel). Slugs im Gruppendialog → Reiter Website setzen.
 
 ## Pflege der Inhalte (Intern-Bereich)
-Termine: „Auf der Website“ + Gruppen-Zuordnung. Galerien: Sichtbarkeit „öffentlich“ + Termine. Gruppen: Gruppendialog → Website (Checkbox, Adresse,
-Text, Alter, Kontakt-E-Mail), Bild am Datensatz. Ämter: Ämterseite; Bio und Profilbild pflegt jede*r im Profil.
+Termine: „Auf der Website“ + Gruppen-Zuordnung. Galerien: Sichtbarkeit „öffentlich“ + Termine. Gruppen: Gruppendialog → Allgemein (Wochentag, Uhrzeit, **bis**,
+Treffpunkt) und Website (Checkbox, Adresse, Text, Alter, Kontakt-E-Mail), Bild am Datensatz. Ämter: Ämterseite; Bio und Profilbild pflegt jede*r im Profil.
 
 ## Demo
 ```bash
