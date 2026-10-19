@@ -4,6 +4,7 @@
 #   ./docker-compose.dokploy.yml, Compose-Typ "Docker Compose". Variablen im Reiter "Environment"
 #   setzen (Vorlage: .env.dokploy.example). Unter "Domains" die Domain auf Service `app`, Port 3000,
 #   HTTPS (Let's Encrypt) legen. Die App-Daten liegen in den Volumes `db-data` und `s3-data`.
+#   Stammeswebsite: zweite Domain auf Service `website`, Port 3001 (Variablen WEBSITE_ORIGIN, WEBSITE_API_KEY).
 #
 # Reihenfolge: db -> storage -> app. Migrationen und Modul-Sync laufen beim Start der App automatisch;
 # Storage/SMTP werden beim ersten Start aus S3_*/SMTP_* vorbelegt (spaeter in der Oberflaeche aenderbar).
@@ -83,6 +84,30 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
     expose: ['3000']
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    networks:
+      - internal
+      - dokploy-network
+
+  # Öffentliche Stammeswebsite (website/). Domain in Dokploy auf Service `website`, Port 3001 legen.
+  # Holt Inhalte serverseitig über das interne Netz (app:3000) mit WEBSITE_API_KEY; ohne Key startet sie
+  # trotzdem und zeigt Hinweise statt Inhalten (Key im Intern-Bereich anlegen, eintragen, neu deployen).
+  website:
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on: [app]
+    environment:
+      INTERN_API_URL: http://app:3000
+      INTERN_API_KEY: ${WEBSITE_API_KEY:-}
+      ORIGIN: ${WEBSITE_ORIGIN:-https://edelweisspiraten-bremen.de}
+      PUBLIC_SITE_URL: ${WEBSITE_ORIGIN:-https://edelweisspiraten-bremen.de}
+    expose: ['3001']
     read_only: true
     tmpfs:
       - /tmp
