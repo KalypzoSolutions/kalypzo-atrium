@@ -24,14 +24,16 @@ src/lib/modules/<id>/
 ```
 
 ## Manifest und Rechte
-- `id`: `[a-z][a-z0-9-]{1,30}`, nicht `core|api|auth|admin|system`. Neue Module starten **deaktiviert**; Aktivierung in `/modules`.
+- `id`: `[a-z][a-z0-9-]{1,30}`, nicht `core|api|auth|admin|system`. Neue Module starten **deaktiviert**; Aktivierung in `/admin/modules`.
 - Berechtigungen: `<id>.<ressource>.<aktion>`, je Segment `[a-z][a-z0-9-]*` (**kein `_`**). Alle im Manifest deklarieren,
   inkl. `<id>.storage.read|write|delete` bei Datei-Uploads. Neue Rechte erhält automatisch nur die Rolle „Administrator“.
 - **Jedes Recht braucht eine Beschreibung** in `manifest.permissionDescriptions` (`{ '<recht>': 'Was es erlaubt' }`, kurz, deutsch);
-  wird bei jedem Start übernommen (auch für bestehende Rechte) und unter Administration → Berechtigungen sowie bei API-Key-Scopes
+  wird bei jedem Start übernommen (auch für bestehende Rechte) und unter Administration → Rollen → Berechtigungen (`/admin/roles/permissions`) sowie bei API-Key-Scopes
   angezeigt. Test: `tests/integration/permission-descriptions.test.ts`.
 - Navigation: `{ label, icon, path:'/modules/<id>…', permission, group?, groupIcon? }`; gleiche `group` = aufklappbare Gruppe.
   Icons stehen in `components/layout/icons.ts` (unbekannt → Box) – neue dort ergänzen.
+  Eigene Einstellungsseite eines Moduls: Navigationseintrag mit `admin: true` → erscheint in der Verwaltung (Abschnitt „Module“, Befehlspalette)
+  und unter Einstellungen → Module als Link; Module ohne eigene Seite bekommen dort automatisch ein Formular aus `settings`.
 
 ## Endpoints
 ```ts

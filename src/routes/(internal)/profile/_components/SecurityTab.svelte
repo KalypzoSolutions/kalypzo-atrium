@@ -224,7 +224,7 @@
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<CardTitle class="font-semibold">API-Schlüssel</CardTitle>
 					<a
-						href="/api-keys"
+						href="/admin/api"
 						class="touch-link text-sm text-link underline-offset-4 hover:underline"
 					>
 						Alle verwalten →

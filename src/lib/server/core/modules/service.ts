@@ -275,6 +275,6 @@ export async function navigationFor(ctx: RequestContext) {
 						d.manifest.permissions.length === 0 ||
 						d.manifest.permissions.some((p) => ctx.permissions.has(p))
 				)
-				.map((n) => ({ ...n, moduleId: d.manifest.id }))
+				.map((n) => ({ ...n, moduleId: d.manifest.id, moduleName: d.manifest.name }))
 		);
 }

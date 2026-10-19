@@ -1,40 +1,24 @@
+import {
+	ADMIN_ENTRIES,
+	ADMIN_HOME,
+	ADMIN_SECTIONS,
+	visibleAdminEntries,
+	type AdminSectionId
+} from './admin-registry';
+
 export interface NavItem {
 	label: string;
 	href: string;
 	icon: string;
 	/** Ohne Angabe: für alle angemeldeten Benutzer sichtbar */
 	permission?: string;
+	/** Alternativ: eines dieser Rechte genügt */
+	anyPermission?: readonly string[];
 }
 
 /** Immer sichtbar (oben, zusammen mit den Modulen) */
 export const PRIMARY_NAV: NavItem[] = [
 	{ label: 'Dashboard', href: '/dashboard', icon: 'layout-dashboard' }
-];
-
-/** Verwaltungs-Einträge: in der Seitenleiste in einer einklappbaren Gruppe */
-export const ADMIN_NAV: NavItem[] = [
-	{ label: 'Benutzer', href: '/users', icon: 'users', permission: 'core.users.view' },
-	{ label: 'Rollen', href: '/roles', icon: 'shield', permission: 'core.roles.view' },
-	{
-		label: 'Berechtigungen',
-		href: '/permissions',
-		icon: 'key-round',
-		permission: 'core.roles.view'
-	},
-	{ label: 'Module', href: '/modules', icon: 'puzzle', permission: 'core.modules.view' },
-	{ label: 'API-Keys', href: '/api-keys', icon: 'terminal', permission: 'core.api.view' },
-	{ label: 'API-Übersicht', href: '/api-docs', icon: 'terminal', permission: 'core.api.view' },
-	{ label: 'Einstellungen', href: '/settings', icon: 'settings', permission: 'core.settings.view' },
-	{ label: 'KI', href: '/ai', icon: 'sparkles', permission: 'core.ai.view' },
-	{ label: 'Storage', href: '/storage', icon: 'hard-drive', permission: 'core.storage.manage' },
-	{ label: 'PDF', href: '/pdf', icon: 'file-text', permission: 'core.pdf.manage' },
-	{ label: 'Audit-Logs', href: '/audit', icon: 'scroll-text', permission: 'core.audit.view' },
-	{
-		label: 'Zurücksetzen',
-		href: '/system/reset',
-		icon: 'rotate-ccw',
-		permission: 'core.system.reset'
-	}
 ];
 
 /** Eintrag eines Moduls in der Seitenleiste (siehe ModuleNavigationItem). */
@@ -43,6 +27,8 @@ export interface ModuleNavEntry {
 	icon: string;
 	path: string;
 	moduleId: string;
+	/** Anzeigename des Moduls (für Modul-Einstellungen in der Verwaltung) */
+	moduleName?: string;
 	group?: string;
 	groupIcon?: string;
 	/** In der Gruppe „Administration“ anzeigen */
@@ -51,12 +37,79 @@ export interface ModuleNavEntry {
 
 export const ADMIN_GROUP = { label: 'Administration', icon: 'wrench' } as const;
 
-export const CORE_NAV: NavItem[] = [...PRIMARY_NAV, ...ADMIN_NAV];
+/** Alle Core-Seiten der Seitenleiste (Startseite, Verwaltungsseiten aus `admin-registry.ts`). */
+export const CORE_NAV: NavItem[] = [
+	...PRIMARY_NAV,
+	{ label: ADMIN_HOME.label, href: ADMIN_HOME.href, icon: ADMIN_HOME.icon },
+	...ADMIN_ENTRIES.filter((e) => e.nav).map((e) => ({
+		label: e.label,
+		href: e.href,
+		icon: e.icon,
+		permission: e.permission,
+		anyPermission: e.anyPermission
+	}))
+];
 
 export function hasPermission(permissions: readonly string[], key?: string | null): boolean {
 	return !key || permissions.includes(key);
 }
 
+/** Sichtbarkeit eines Eintrags: `anyPermission` (eines genügt) vor `permission`. */
+export function canSeeNavItem(permissions: readonly string[], item: NavItem): boolean {
+	if (item.anyPermission) return item.anyPermission.some((p) => permissions.includes(p));
+	return hasPermission(permissions, item.permission);
+}
+
 export function isActive(pathname: string, href: string): boolean {
 	return pathname === href || pathname.startsWith(href + '/');
+}
+
+/** Link der Verwaltungsgruppe; `hint` = kleine Zusatzzeile (z. B. „Einstellungen“ bei Modulen). */
+export interface AdminNavLink {
+	label: string;
+	href: string;
+	icon: string;
+	hint?: string;
+	/** Nur bei exakt gleichem Pfad aktiv (Übersicht `/admin`) */
+	exact?: boolean;
+}
+
+export interface AdminNavSection {
+	id: AdminSectionId;
+	label: string;
+	items: AdminNavLink[];
+}
+
+export interface AdminNav {
+	home: AdminNavLink;
+	sections: AdminNavSection[];
+}
+
+/**
+ * Verwaltungsgruppe der Seitenleiste: Abschnitte in Registry-Reihenfolge mit den sichtbaren
+ * `nav`-Einträgen (Modul-Einstellungsseiten im Abschnitt „Module“ nach dem Core-Eintrag).
+ * `null`, wenn außer der Übersicht nichts sichtbar wäre.
+ */
+export function buildAdminNav(
+	permissions: readonly string[],
+	navigation: readonly ModuleNavEntry[]
+): AdminNav | null {
+	const visible = visibleAdminEntries(permissions, navigation).filter((e) => e.nav);
+	const sections = ADMIN_SECTIONS.map((s) => ({
+		id: s.id,
+		label: s.label,
+		items: visible
+			.filter((e) => e.section === s.id)
+			.map((e): AdminNavLink => ({
+				label: e.label,
+				href: e.href,
+				icon: e.icon,
+				...(e.id.startsWith('module:') ? { hint: 'Einstellungen' } : {})
+			}))
+	})).filter((s) => s.items.length > 0);
+	if (!sections.length) return null;
+	return {
+		home: { label: ADMIN_HOME.label, href: ADMIN_HOME.href, icon: ADMIN_HOME.icon, exact: true },
+		sections
+	};
 }

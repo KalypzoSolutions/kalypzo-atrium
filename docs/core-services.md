@@ -122,7 +122,7 @@ Vorlagen mit festem Seitenlayout (Briefkopf, Falzmarken, Adressfeld, Fußzeile) 
 - Ausrichtung: `PdfTemplate.page.orientation?: 'portrait' | 'landscape'` (Standard hochkant). Bei Vorlagen mit festem Seitenlayout ignoriert `core.pdf.generate` die Ausrichtung des Aufrufers.
 - Stamm-Vorlagen entstehen über `createStammTemplate({ …, orientation })` in `parts/stamm.ts`; `landscape` mit `withAddress` wirft einen Fehler (Fensterumschlag nur hochkant). Exporte: `stammGeometry(orientation)`, `GEOMETRY_LANDSCAPE`, `PART_META_LANDSCAPE`, Typ `StammOrientation`.
 - Quer-Maße: Lilie und Vereinsname wie hochkant, Wappen bei x 263,7 mm (12,7 mm vom rechten Rand), Fußzeile mit Linie bei y 189,8 mm, x 25 mm, Breite 247 mm, Text als ein zentrierter Absatz; Textränder oben/rechts/unten/links 45/25/25/25 mm.
-- Admin-Ansicht „PDF-Vorlagen“: Vorlagen mit Seitenvorschau (`GET /pdf/preview?template=<id>[&only=<teil>]`, Recht `core.pdf.manage`) – nur Ansicht. `describeTemplates()` liefert `orientation`; Quer-Vorlagen werden mit 1123 × 794 px gerendert und als Karte mit Badge „Quer“ im Seitenverhältnis 297/210 gezeigt. `PreviewRenderer` hat die Signatur `(html, size)`.
+- Admin-Ansicht „PDF-Vorlagen“: Vorlagen mit Seitenvorschau (`/admin/settings/pdf`, Bild über `GET /admin/settings/pdf/preview?template=<id>[&only=<teil>]`, Recht `core.pdf.manage`) – nur Ansicht. `describeTemplates()` liefert `orientation`; Quer-Vorlagen werden mit 1123 × 794 px gerendert und als Karte mit Badge „Quer“ im Seitenverhältnis 297/210 gezeigt. `PreviewRenderer` hat die Signatur `(html, size)`.
 - Die Overlay-Elemente nutzen `position: fixed`; Chromium wiederholt sie im Druck auf jeder Seite.
 
 **Neue Vorlage hinzufügen**
@@ -174,9 +174,9 @@ Kopf mit Lilie, Vereinsname und Wappen, Inhalt, Signatur, Fußzeile mit Vereinsn
 - `text` wird escaped zu Absätzen/Links; `html` (optional) ist ein **Inhaltsfragment** und wird ins Layout gesetzt.
   Die Textfassung enthält Signatur und Fußzeile ebenfalls.
 - Bilder (`mail-assets/`, verkleinert) gehen als CID-Anhänge mit, nicht als `data:`-URL.
-- Verwaltung unter **Systemeinstellungen → E-Mail-Layout** (`core.mail.layoutEnabled`, `core.mail.showEmblem`,
+- Verwaltung unter **Einstellungen → E-Mail-Layout** (`/admin/settings/mail-layout`) (`core.mail.layoutEnabled`, `core.mail.showEmblem`,
   `core.mail.signature`, `core.mail.footerText`; Akzentfarbe aus `core.design.accentColor`) mit Live-Vorschau
-  (`GET /settings/mail-preview`, Recht `core.settings.view`).
+  (`GET /admin/settings/mail-preview`, Recht `core.settings.view`; einzige Seite mit `x-frame-options: SAMEORIGIN`).
 - Intern (`sendMail` in `core/mail.ts`) lässt sich das Layout per `layout: false` abschalten; Module nutzen es immer.
 
 ## Konten per Code anlegen (`core.users.registerWithRole`)

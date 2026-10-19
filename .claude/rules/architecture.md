@@ -64,7 +64,7 @@ Nutzereingaben nie als `{@html}` ausgeben; CSV-Exporte gegen Formel-Injection (`
 ## Öffentliches Multipart und Admin-Reset (2026-10-18)
 - `ApiEndpoint.multipart { maxBytes ≤ 12 MB, maxFiles ≤ 10 (Standard 1) }` nur für `public: true` + POST + `body`: Router verlangt
   `multipart/form-data` + `Content-Length` (413 bei Überschreitung), Textfelder → `body`-Zod (doppelte Felder/`__proto__` → 400), Dateien → `files`.
-- Reset (`core/system/reset.ts`, Recht `core.system.reset`, Seite `/system/reset`): `listResetAreas` → `previewReset` (Token 15 min, im Prozessspeicher)
+- Reset (`core/system/reset.ts`, Recht `core.system.reset`, Seite `/admin/reset`): `listResetAreas` → `previewReset` (Token 15 min, im Prozessspeicher)
   → `exportResetData` (Passwort + TOTP bei 2FA, JSON ohne Geheimnisse) → `executeReset` (Wort `ZURÜCKSETZEN`). Bereiche: Core (`core:audit|api-log|jobs|
   ai-usage|api-keys|users|roles|settings`) + `ModuleDefinition.resetAreas` (`<modul>:<id>`, `implies` transitiv, `rebuild` = Schema neu inkl. Startdaten)
   + `resetUsers(tx, keepUserId)`. Jobs pausiert; Reihenfolge Module → Benutzer → Core → Dateien (`core.storage.purge`) → Einstellungen (Storage/SMTP/Secrets
@@ -100,3 +100,24 @@ Nutzereingaben nie als `{@html}` ausgeben; CSV-Exporte gegen Formel-Injection (`
   (unbekannte Benutzer/Rollen still übersprungen, **keine** Rechteprüfung, nie in einer Modul-Transaktion), `listModuleGrants(moduleId, { userId? })`,
   `assertCanGrant(ctx, roleIds)` (403, wenn dem Aufrufer Rechte einer Rolle fehlen – vor dem Ersetzen aufrufen). `core.roles.directory` kennt `all: true` (≤ 200).
 - Reset: Core-Bereiche `users`/`roles` löschen passende Zeilen mit; ein Modul-`rebuild` löscht die Zeilen des Moduls. Details: `module-offices.md`.
+
+## Verwaltung unter `/admin` (2026-10-19)
+- Alle Verwaltungsseiten liegen unter `src/routes/(internal)/admin/`: `/admin` (Übersicht mit Abschnitten und Suche, `?q=`), `/admin/users`,
+  `/admin/roles` (+ Reiter `/admin/roles/permissions`), `/admin/settings` → Reiter `/admin/settings/{general,design,mail,mail-layout,storage,ai,pdf,modules}`
+  (`/admin/settings` leitet auf den **ersten erlaubten** Reiter), `/admin/modules`, `/admin/api` (API-Keys, + Reiter `/admin/api/docs` = API-Übersicht),
+  `/admin/audit`, `/admin/reset`. Gemeinsame Server-Helfer in `admin/_shared/` (`SettingsForm`, `group-form.server`, `server-utils`).
+- **Einzige Quelle**: `src/lib/components/layout/admin-registry.ts` (`ADMIN_SECTIONS`, `ADMIN_ENTRIES` mit `section`, `permission`/`anyPermission`,
+  `keywords`, `nav`, `parent`). Daraus entstehen Seitenleiste (`buildAdminNav` in `nav.ts`: Gruppe „Administration“ mit „Übersicht“ und den `nav`-Einträgen),
+  Übersicht, Befehlspalette und Reiter (`adminTabs(parent, perms)`). Helfer: `canSeeAdminEntry`, `visibleAdminEntries(perms, navigation)` (+ Modulseiten
+  mit `admin: true` als Abschnitt „Module“, Label = `moduleName`), `searchAdmin` (Umlaute/ß gefaltet, alle Wörter UND, Label vor Keyword vor Beschreibung).
+- Abschnitte: Personen & Rechte / Einstellungen / Module / Schnittstellen / Protokoll & Wartung.
+- **Alte URLs** (`/users`, `/roles`, `/permissions`, `/modules` **exakt**, `/api-keys`, `/api-docs`, `/settings[/…]`, `/ai`, `/storage`, `/pdf[/…]`, `/audit`,
+  `/system/reset[/…]`) → **308** per `legacyAdminRedirect` (`src/lib/server/core/admin-redirects.ts`) im `guard` von `hooks.server.ts`; Unterpfade und Query
+  wandern mit, `/modules/<id>/…` bleibt die Moduloberfläche.
+- Reiter als Links: `LinkTabs` (eigene URL je Reiter, `aria-current`, Optik wie `Tabs variant="line"`), Layouts in `admin/{settings,roles,api}/+layout.svelte`.
+- **Befehlspalette** `CommandPalette` (Strg/⌘+K, Topbar-Button „Suchen“): Dashboard, Modulseiten und alle sichtbaren Verwaltungseinträge.
+- Reiter **Einstellungen → Module** (`/admin/settings/modules`): generische Formulare aus `ModuleDefinition.settings` aktiver Module; Module mit eigener
+  Einstellungsseite (Navigation mit `admin: true`, z. B. Kasse) erscheinen nur als Link.
+- Header-Check: nur `/admin/settings/mail-preview` (E-Mail-Vorschau im iframe) bekommt `x-frame-options: SAMEORIGIN`, alles andere `DENY`.
+- Neue Verwaltungsseite = Route unter `admin/` **plus** Eintrag in `admin-registry.ts` (Tests: `tests/unit/admin-registry.test.ts`, `admin-redirects.test.ts`,
+  E2E `tests/e2e/admin-nav.spec.ts`).

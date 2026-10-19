@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.select({ n: count() })
 			.from(schema.user)
 			.where(eq(schema.user.active, true));
-		stats.push({ key: 'users', label: 'Aktive Benutzer', value: r?.n ?? 0, href: '/users' });
+		stats.push({ key: 'users', label: 'Aktive Benutzer', value: r?.n ?? 0, href: '/admin/users' });
 	}
 	if (perms.has('core.modules.view')) {
 		const mods = await listModules();
@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			key: 'modules',
 			label: 'Aktive Module',
 			value: mods.filter((m) => m.enabled).length,
-			href: '/modules'
+			href: '/admin/modules'
 		});
 	}
 	if (perms.has('core.api.view')) {
@@ -29,7 +29,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.select({ n: count() })
 			.from(schema.apiKey)
 			.where(isNull(schema.apiKey.revokedAt));
-		stats.push({ key: 'keys', label: 'Aktive API-Keys', value: r?.n ?? 0, href: '/api-keys' });
+		stats.push({ key: 'keys', label: 'Aktive API-Keys', value: r?.n ?? 0, href: '/admin/api' });
 	}
 
 	const recent = perms.has('core.audit.view')

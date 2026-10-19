@@ -1,5 +1,6 @@
 export { default as AppSidebar } from './AppSidebar.svelte';
 export { default as Topbar } from './Topbar.svelte';
+export { default as CommandPalette } from './CommandPalette.svelte';
 export { default as PageHeader } from './PageHeader.svelte';
 export { default as SearchInput } from './SearchInput.svelte';
 export { default as Pagination } from './Pagination.svelte';
@@ -18,6 +19,8 @@ export { default as ShareMenu } from './ShareMenu.svelte';
 export { default as SharePanel } from './SharePanel.svelte';
 export type { ShareCandidate, ShareEntry, ShareLevel, ShareOwner } from './share-types';
 export { CORE_NAV, hasPermission, isActive, type NavItem } from './nav';
+export { default as LinkTabs } from './LinkTabs.svelte';
+export * from './admin-registry';
 export { iconFor } from './icons';
 export { default as NumberStepper } from './NumberStepper.svelte';
 export { default as MoneyInput } from './MoneyInput.svelte';

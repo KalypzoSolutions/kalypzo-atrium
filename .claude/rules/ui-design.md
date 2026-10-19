@@ -46,7 +46,12 @@ wenn es nur ein Formular ist. Listen: Suche + Filter in der Toolbar der `DataTab
 | Profil-Abschnitt eines Moduls | `ui.ts` `profileSections` (Props `{ userId }`, Daten per `apiFetch`); Muster: `members/pages/ProfileMemberCard.svelte` (Entwurf + Speichern je Tab, kein Autosave, `beforeNavigate`-Warnung) |
 | Overlay | `ui/dialog`, `ui/popover`, `ui/sheet`, `ui/dropdown-menu`, `ui/tooltip` |
 | Monatskalender (Raster Mo–So, 6 Wochen; mobil Agenda-Liste) | `MonthCalendar` (`items: CalendarItem[]` mit `startsOn`/`endsOn`/`startsTime`/`endsTime`/`color`, optional `recurring` (Wiederhol-Symbol, Titel „(Serie)“ im Label) und `key` (eindeutiger Schlüssel je Vorkommen, sonst `id`), `bind:month` `YYYY-MM`, `today?`, `onselect(item)`, `onday?(date)` → „+“-Knopf je Tag, `loading`); mehrtägige Termine als durchgehende Balken (Spuren je Woche, max. 3, sonst „+n weitere“-Popover), Schriftfarbe per `contrastTextColor`; Logik in `layout/month-calendar.ts` |
-| Bestätigung per Eingabe eines Wortes (unumkehrbare Aktionen, z. B. `ZURÜCKSETZEN`) | `TypedConfirmField` (`$lib/components/layout/TypedConfirmField.svelte`; `word`, `bind:value`, `bind:confirmed` – true nur bei exakter, NFC-normalisierter Eingabe; `label?`, `hint?`, `id?`, `disabled?`). Danach destruktiver Button → `ConfirmDialog`; Muster: `/system/reset` |
+| Bestätigung per Eingabe eines Wortes (unumkehrbare Aktionen, z. B. `ZURÜCKSETZEN`) | `TypedConfirmField` (`$lib/components/layout/TypedConfirmField.svelte`; `word`, `bind:value`, `bind:confirmed` – true nur bei exakter, NFC-normalisierter Eingabe; `label?`, `hint?`, `id?`, `disabled?`). Danach destruktiver Button → `ConfirmDialog`; Muster: `/admin/reset` |
+| Reiterleiste aus Links (eigene URL je Reiter, aktiv = längster passender `href`, `aria-current`) | `LinkTabs` (`tabs: { label, href, icon? }[]`, `label` = zugänglicher Name der `nav`); Reiter der Verwaltung aus `adminTabs(parent, permissions)` |
+| Befehlspalette (Strg/⌘+K, Topbar-Button „Suchen“) | `CommandPalette` (`permissions`, `navigation`, `bind:open`; Combobox „Seite oder Einstellung suchen“, Treffer über `searchAdmin`) – nur einmal in der `Topbar` |
+**Neue Verwaltungsseite = Eintrag in `layout/admin-registry.ts`** (Abschnitt, Recht, Suchbegriffe, `nav` oder `parent` für Reiter) – Seitenleiste,
+Übersicht `/admin`, Befehlspalette und Reiter lesen nur dort; keine Links von Hand in `nav.ts` oder Seiten pflegen. Route unter `src/routes/(internal)/admin/`.
+
 Neue wiederverwendbare Bausteine kommen nach `components/layout` (fachlich) bzw. `components/ui` (generisch) und
 werden in `docs/module-development.md` (Tabelle) und hier ergänzt.
 

@@ -2,6 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Menu from '@lucide/svelte/icons/menu';
+	import SearchIcon from '@lucide/svelte/icons/search';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
@@ -18,6 +19,7 @@
 	} from '$lib/components/ui/dropdown-menu';
 	import { Sheet, SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
 	import { theme } from '$lib/theme.svelte';
+	import CommandPalette from './CommandPalette.svelte';
 	import SidebarNav from './SidebarNav.svelte';
 	import type { ModuleNavEntry } from './nav';
 
@@ -34,6 +36,7 @@
 	} = $props();
 
 	let menuOpen = $state(false);
+	let paletteOpen = $state(false);
 	/** Nur eigene Profilbilder (`/avatar/…`) anzeigen, keine fremden Adressen aus alten Daten */
 	const avatarSrc = $derived(user.image?.startsWith('/avatar/') ? user.image : null);
 	const initials = $derived(
@@ -76,6 +79,22 @@
 	</Sheet>
 
 	<div class="flex-1"></div>
+
+	<Button
+		variant="outline"
+		class="h-9 gap-2 px-2 text-muted-foreground sm:w-56 sm:justify-start sm:px-3"
+		aria-label="Suchen (Strg+K)"
+		aria-keyshortcuts="Control+K Meta+K"
+		onclick={() => (paletteOpen = true)}
+	>
+		<SearchIcon />
+		<span class="hidden flex-1 text-left sm:inline">Suchen</span>
+		<kbd
+			class="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] sm:inline"
+			aria-hidden="true">Strg K</kbd
+		>
+	</Button>
+	<CommandPalette {permissions} {navigation} bind:open={paletteOpen} />
 
 	<DropdownMenu>
 		<DropdownMenuTrigger>

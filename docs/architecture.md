@@ -23,7 +23,9 @@ Schichten:
 1. **Core-Services** (`src/lib/server/core`): auth, permissions, modules, settings, api, database, pdf, ai, storage, audit. Liegen unter `$lib/server`, SvelteKit verhindert damit Client-Bundles.
 2. **Modul-SDK** (`src/lib/sdk`): einzige erlaubte Schnittstelle für Module (`server`, `client`, `types`). Eine ESLint-Regel verbietet Modulen Importe aus `$lib/server/*`, `$lib/core/*` und `$lib/components/*`.
 3. **Module** (`src/lib/modules/<id>`): Manifest, Endpunkte, Migrationen, UI.
-4. **Administrationsoberfläche** (`src/routes/(internal)`): nutzt die Core-Services direkt in `+page.server.ts` (Load/Actions) mit `locals.ctx`.
+4. **Administrationsoberfläche** (`src/routes/(internal)/admin/…`, URLs unter `/admin`): nutzt die Core-Services direkt in `+page.server.ts` (Load/Actions) mit `locals.ctx`.
+   Seitenleiste, Übersicht `/admin`, Reiter und Befehlspalette (Strg+K) kommen aus `src/lib/components/layout/admin-registry.ts`; alte URLs
+   (`/users`, `/settings`, `/api-docs` …) leiten per 308 um (`src/lib/server/core/admin-redirects.ts`).
 
 Der Core kennt keine Fachmodule: er entdeckt sie nur über das Build-Zeit-Glob `src/lib/modules/*/module.ts`.
 

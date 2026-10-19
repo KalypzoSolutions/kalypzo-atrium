@@ -33,7 +33,7 @@
   Datei-Uploads in Tests über `tests/helpers/fake-storage.ts`; PDF über `setPdfRendererForTests`.
 
 - **Briefvorlagen (fertig)**: Stamm-Briefkopf fest im Code (`core/pdf/templates/stamm-briefkopf.ts`, `stamm-brief.ts`, Bausteine `parts/stamm.ts`,
-  Carlito eingebettet); Admin `/pdf` zeigt Vorlagen mit Vorschau/Bestandteilen (nur Ansicht); Abrechnungsbericht nutzt `stamm-briefkopf`.
+  Carlito eingebettet); Admin `/admin/settings/pdf` (früher `/pdf`) zeigt Vorlagen mit Vorschau/Bestandteilen (nur Ansicht); Abrechnungsbericht nutzt `stamm-briefkopf`.
   Neu (2026-10-17): Quer-Variante `stamm-briefkopf-quer` (A4 quer, ohne Adressfeld/Falzmarken, für breite Tabellen/Listen;
   `page.orientation`, `createStammTemplate({ orientation })`), Admin-Vorschau quer mit Badge „Quer“.
 
@@ -96,7 +96,7 @@
   Core: `toastWithUndo` jetzt in `components/layout`, `EntityAvatar` mit Fehler-Action statt `onerror` (CSP). Details: `rules/module-members.md`, `docs/security.md`.
 - **Zwischenabrechnungen, Kosten-Link, Admin-Reset (2026-10-18)**: Aktionen: „Zwischenabrechnung Nr. N“ als eingefrorenes Abbild des Gesamtstands (Migr. 0014/0016, unabhängig
   voneinander, keine Sperre, enthaltene Auslagen sofort in die Kasse, PDF-Download, Rücknahme jeder ZA mit Recht); Kosten-Link je Aktion (Migr. 0015, öffentliche Seite `/p/actions/auslagen/<token>`, Einreichung mit Beleg + IBAN, Prüfung vor Übernahme).
-  Core: öffentliches Multipart (`ApiEndpoint.multipart`), Admin-Seite **Zurücksetzen** (`/system/reset`, Bereiche je Modul + Core, Vorschau, Passwort/TOTP,
+  Core: öffentliches Multipart (`ApiEndpoint.multipart`), Admin-Seite **Zurücksetzen** (`/admin/reset`, früher `/system/reset`, Bereiche je Modul + Core, Vorschau, Passwort/TOTP,
   Pflicht-JSON-Export, Bestätigungswort, `ConfirmDialog`), `core.storage.purge`, Jobs pausierbar, Core-Migration 0005. Details: `architecture.md`,
   `module-actions.md`, `module-treasury.md`. Offen: Reset-Token nur bei einer Instanz; Buchungsbelege der Kasse bei Teil-Reset verwaist; ZA nicht im Export/Import.
 - **Platzhalter-Module (2026-10-18)**: `files` (Dateien, Cloud-Ablage) und `orders` (Bestellungen, seit 2026-10-19 umgesetzt) – nur Manifest, Navigation und eine Seite „In Planung“, keine Endpoints/Migrationen.
@@ -121,7 +121,7 @@
   Freigabe an Principals wie `events` plus Sichtbarkeit **öffentlich/privat**; öffentliche Galerien per API-Key (`galleries.website.read`)
   inkl. Bilddateien `thumb`/`web` für die Website (serverseitig). Core: `core.images.process` (sharp, Metadaten/GPS entfernt, Varianten).
   Details: `rules/module-galleries.md`.
-- **API-Übersicht (2026-10-18)**: Admin-Seite `/api-docs` (Recht `core.api.view`) mit allen REST-Endpunkten, automatisch aus der Registry
+- **API-Übersicht (2026-10-18)**: Admin-Seite `/admin/api/docs` (früher `/api-docs`, Recht `core.api.view`) mit allen REST-Endpunkten, automatisch aus der Registry
   (`core/api/catalog/`, Vertrag `src/lib/api-docs/types.ts`): Rechte, Rate-Limits, Schemas, abgeleitete Fehler, Beispiel-JSON, Konsole zum
   Ausprobieren mit eigener Session (Mutationen mit Bestätigung). Details: `docs/api.md`. Offen: viele Endpunkte haben kein `response`-Schema.
 - **Modul `offices` – Ämter (2026-10-19)**: Ämter mit Beschreibung, eigener Reihenfolge (neu am Ende, Umsortieren per Ziehen/Pfeilen), E-Mail-Adressen,
@@ -143,6 +143,12 @@
   Bestellvorschlag; Einkauf mit Teillieferung, Lieferantenrechnung als Auszahlung (`upsertOrderPayable`) mit Bezahlstatus. Amts-Vorlage „Kämmerer*in“
   (Benachrichtigungen neue Bestellung / Fehlmengen), Rolle „Kämmerer*in“ per `defaultRoleGrants`. Details: `rules/module-orders.md`.
   Bekannt (nicht durch `orders`): E2E `annual-fee.spec.ts` (sucht alten Kassen-Tab „Jahresbeitrag“) und `pdf-lists.spec.ts` (Auswahl leer) schlagen fehl.
+- **Verwaltung unter `/admin` (2026-10-19)**: alle Verwaltungsseiten unter `/admin` (Übersicht mit Abschnitten und Suche, Benutzer, Rollen + Reiter
+  Berechtigungen, Einstellungen mit Reitern Allgemein/Design/E-Mail-Versand/E-Mail-Layout/Speicher/KI/PDF/**Module**, Module, API-Keys + Reiter
+  API-Übersicht, Audit-Log, Zurücksetzen). Registry `layout/admin-registry.ts` als einzige Quelle für Seitenleiste (Gruppe „Administration“ mit
+  „Übersicht“), Übersicht, Reiter (`LinkTabs`) und **Befehlspalette** (Strg+K, Topbar „Suchen“). Alte URLs → 308 (`core/admin-redirects.ts`).
+  Neuer Reiter Einstellungen → Module (generische Modul-Einstellungen, Module mit eigener Seite wie Kasse als Link). Tests
+  `tests/unit/admin-{registry,redirects}.test.ts`, E2E `admin-nav.spec.ts` (+ `admin.spec.ts`/`api-docs.spec.ts` auf neue URLs). Details: `architecture.md`.
 - Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`, `rules/module-events.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)

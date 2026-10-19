@@ -14,7 +14,7 @@ paths: ["src/lib/server/core/pdf/**"]
 - Querformat: `page.orientation: 'landscape'` und `createStammTemplate({ …, orientation: 'landscape' })`; Maße aus
   `stammGeometry('landscape')`/`GEOMETRY_LANDSCAPE`, Bestandteile aus `PART_META_LANDSCAPE`. Kein Adressfeld im
   Querformat (`withAddress` wirft). Vorlagen mit festem Layout bestimmen die Ausrichtung selbst.
-- Admin-Vorschau (`/pdf`, `/pdf/preview?template=<id>&only=<teil>`) nach jeder Änderung ansehen.
+- Admin-Vorschau (`/admin/settings/pdf`, `/admin/settings/pdf/preview?template=<id>&only=<teil>`) nach jeder Änderung ansehen.
 - Tabellen (`renderGridTable`/`placeRows` in `templates.ts`): Linien nie als `border` unter 1 px (Chromium rundet auf 1 px auf),
   sondern als `box-shadow:0 0 0 0.5px` je Zelle (Außenrahmen 0,5 px, Innenlinien 1 px). Zellen zusammenfassen über
   `PdfTableCell` (`colspan`/`rowspan`) statt leerer Platzhalterzellen (`''`); Tests: `tests/unit/pdf-table.test.ts`.

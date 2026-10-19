@@ -12,6 +12,7 @@ import House from '@lucide/svelte/icons/house';
 import Images from '@lucide/svelte/icons/images';
 import KeyRound from '@lucide/svelte/icons/key-round';
 import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+import LayoutGrid from '@lucide/svelte/icons/layout-grid';
 import Mail from '@lucide/svelte/icons/mail';
 import Puzzle from '@lucide/svelte/icons/puzzle';
 import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
@@ -46,6 +47,7 @@ const ICONS: Record<string, Icon> = {
 	images: Images,
 	'key-round': KeyRound,
 	'layout-dashboard': LayoutDashboard,
+	'layout-grid': LayoutGrid,
 	mail: Mail,
 	offices: Briefcase,
 	puzzle: Puzzle,

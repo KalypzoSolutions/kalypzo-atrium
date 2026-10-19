@@ -3,6 +3,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { randomUUID } from 'node:crypto';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
+import { legacyAdminRedirect } from '$lib/server/core/admin-redirects';
 import { anonymousContext, resolveSession } from '$lib/server/core/auth/context';
 import { getAuth } from '$lib/server/core/auth';
 import { initCore } from '$lib/server/core/init';
@@ -65,6 +66,9 @@ const guard: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
 	const isApi = path.startsWith('/api/');
 	if (!isApi) {
+		// Alte Verwaltungs-URLs (Lesezeichen) auf `/admin/…` umleiten, Query bleibt erhalten
+		const moved = legacyAdminRedirect(path);
+		if (moved) throw redirect(308, moved + event.url.search);
 		const isPublic = PUBLIC_PAGES.includes(path) || PUBLIC_PREFIXES.some((p) => path.startsWith(p));
 		if (!event.locals.user && !isPublic) {
 			throw redirect(
@@ -110,7 +114,7 @@ const headers: Handle = async ({ event, resolve }) => {
 	response.headers.set('x-content-type-options', 'nosniff');
 	response.headers.set('referrer-policy', 'strict-origin-when-cross-origin');
 	// Nur die E-Mail-Vorschau darf von der eigenen Seite eingebettet werden (iframe in den Einstellungen)
-	const embeddable = event.url.pathname === '/settings/mail-preview';
+	const embeddable = event.url.pathname === '/admin/settings/mail-preview';
 	response.headers.set('x-frame-options', embeddable ? 'SAMEORIGIN' : 'DENY');
 	response.headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
 	if (event.url.protocol === 'https:') {

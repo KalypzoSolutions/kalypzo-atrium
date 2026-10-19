@@ -76,7 +76,8 @@ Hinter einem Reverse Proxy sieht die App nur dessen IP. `ADDRESS_HEADER=X-Forwar
 
 Beim Start laufen Migrationen und Synchronisation automatisch. Existiert noch kein Administrator und sind `INITIAL_ADMIN_*` gesetzt, wird er angelegt. Danach die Variablen aus der `.env` entfernen und das Passwort ändern.
 
-Anschließend in der Oberfläche konfigurieren: Einstellungen (Systemname, SMTP), Storage (S3), KI (OpenAI-Key), PDF.
+Anschließend in der Oberfläche unter **Administration → Einstellungen** (`/admin/settings/…`) konfigurieren: Allgemein (Systemname),
+E-Mail-Versand (SMTP), Speicher (S3), KI, PDF. Die Suche auf `/admin` bzw. Strg+K findet einzelne Felder (z. B. „smtp“, „logo“).
 
 ## S3 / MinIO
 

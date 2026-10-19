@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// API-Übersicht (/api-docs): Nav-Eintrag, Katalog, Suche, Sheet mit Tabs, Konsole (GET sendet,
+// API-Übersicht (/admin/api/docs, Reiter unter „API-Keys“): Nav-Eintrag, Katalog, Suche, Sheet mit Tabs, Konsole (GET sendet,
 // schreibende Methoden fragen erst nach), Zugriff ohne `core.api.view` wird verweigert.
 
 const ADMIN = { email: 'admin@example.test', password: 'e2e-admin-password-1' };
@@ -25,10 +25,12 @@ function mainNav(page: Page) {
 }
 
 function searchField(page: Page) {
-	return page
+	// Nur im Inhalt suchen: die Kopfzeile hat einen Button „Suchen (Strg+K)“
+	const main = page.getByRole('main');
+	return main
 		.getByRole('searchbox')
-		.or(page.getByPlaceholder(/Such/i))
-		.or(page.getByLabel(/Such/i))
+		.or(main.getByPlaceholder(/Such/i))
+		.or(main.getByRole('textbox', { name: /Such/i }))
 		.first();
 }
 
@@ -45,7 +47,7 @@ function endpointRow(page: Page, method: string, path: string) {
 }
 
 async function openEndpoint(page: Page, method: string, path: string) {
-	await page.goto('/api-docs');
+	await page.goto('/admin/api/docs');
 	await searchField(page).fill(path.replace('/api/v1', ''));
 	const row = endpointRow(page, method, path).first();
 	await expect(row).toBeVisible();
@@ -65,17 +67,16 @@ test('Admin: Nav-Eintrag, Seite und Suche', async ({ page }) => {
 	const nav = mainNav(page);
 	const adminToggle = nav.getByRole('button', { name: 'Administration' });
 	if ((await adminToggle.getAttribute('aria-expanded')) !== 'true') await adminToggle.click();
-	const link = nav.getByRole('link', { name: 'API-Übersicht' });
-	await expect(link).toBeVisible();
+	// Die API-Übersicht ist ein Reiter unter „API-Keys“, kein eigener Eintrag in der Seitenleiste
+	await expect(nav.getByRole('link', { name: 'API-Übersicht' })).toHaveCount(0);
+	const keysLink = nav.getByRole('link', { name: 'API-Keys' });
+	await expect(keysLink).toBeVisible();
+	await keysLink.click();
+	await expect(page).toHaveURL(/\/admin\/api$/);
 
-	// Reihenfolge: direkt nach „API-Keys“
-	const labels = (await nav.getByRole('link').allInnerTexts()).map((t) => t.trim());
-	const keysIndex = labels.indexOf('API-Keys');
-	expect(keysIndex).toBeGreaterThanOrEqual(0);
-	expect(labels[keysIndex + 1]).toBe('API-Übersicht');
-
-	await link.click();
-	await expect(page).toHaveURL(/\/api-docs/);
+	const tabs = page.getByRole('navigation', { name: 'Bereiche der Schnittstellen' });
+	await tabs.getByRole('link', { name: 'API-Übersicht' }).click();
+	await expect(page).toHaveURL(/\/admin\/api\/docs/);
 	await expect(page.getByRole('heading', { name: 'API-Übersicht' })).toBeVisible();
 	await expect.poll(() => endpointRows(page).count()).toBeGreaterThan(20);
 
@@ -96,10 +97,20 @@ test('GET /api/v1/me ausprobieren und Fehler ansehen', async ({ page }) => {
 	);
 	await sheet.getByRole('button', { name: 'Senden' }).click();
 	expect((await response).status()).toBe(200);
-	await expect(sheet.getByRole('tabpanel').getByText(/\b200\b/).first()).toBeVisible();
+	await expect(
+		sheet
+			.getByRole('tabpanel')
+			.getByText(/\b200\b/)
+			.first()
+	).toBeVisible();
 
 	await sheet.getByRole('tab', { name: 'Fehler' }).click();
-	await expect(sheet.getByRole('tabpanel').getByText(/\b401\b/).first()).toBeVisible();
+	await expect(
+		sheet
+			.getByRole('tabpanel')
+			.getByText(/\b401\b/)
+			.first()
+	).toBeVisible();
 	await expect(sheet.getByRole('tabpanel').getByText('unauthenticated').first()).toBeVisible();
 });
 
@@ -136,12 +147,18 @@ test('ohne core.api.view: kein Nav-Eintrag, Seite verweigert', async ({ page, br
 	const plain = await ctx.newPage();
 	try {
 		await login(plain, PLAIN.email, PLAIN.password);
-		await expect(plain.locator('a[href="/api-docs"]')).toHaveCount(0);
+		await expect(plain.locator('a[href="/admin/api"]')).toHaveCount(0);
+		await expect(plain.locator('a[href="/admin/api/docs"]')).toHaveCount(0);
 
-		const nav = await plain.request.get('/api-docs');
+		const nav = await plain.request.get('/admin/api/docs');
 		expect(nav.status()).toBe(403);
 
-		await plain.goto('/api-docs');
+		// Alte URL leitet dauerhaft um
+		const legacy = await plain.request.get('/api-docs', { maxRedirects: 0 });
+		expect(legacy.status()).toBe(308);
+		expect(legacy.headers()['location']).toBe('/admin/api/docs');
+
+		await plain.goto('/admin/api/docs');
 		await expect(plain.getByText('403').first()).toBeVisible();
 		await expect(plain.getByRole('heading', { name: 'API-Übersicht' })).toHaveCount(0);
 	} finally {

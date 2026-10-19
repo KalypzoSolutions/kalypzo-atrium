@@ -112,9 +112,9 @@ curl -X POST https://intern.example.org/api/v1/pdf -H "Authorization: Bearer $KE
   -d '{"title":"Liste","content":[{"type":"paragraph","text":"Hallo"}]}'
 ```
 
-## API-Übersicht im internen Bereich (`/api-docs`)
+## API-Übersicht im internen Bereich (`/admin/api/docs`)
 
-Admin-Seite (Recht `core.api.view`, Navigation „Administration → API-Übersicht“) mit allen Endpunkten von Core und Modulen.
+Admin-Seite (Recht `core.api.view`, Navigation „Administration → API-Keys“, Reiter „API-Übersicht“; alte URL `/api-docs` leitet um) mit allen Endpunkten von Core und Modulen.
 Sie wird **automatisch** aus der Registry erzeugt (`buildApiCatalog` in `src/lib/server/core/api/catalog/`): Schemas aus
 `buildOpenApiDocument()` (`$ref` aufgelöst), mögliche Fehler aus den Endpunkt-Eigenschaften (`deriveErrors`), Rate-Limits
 (`catalog/limits.ts` spiegelt die Router-Standards 120/60 bzw. anonym 30/60, ein Integrationstest prüft den Abgleich).

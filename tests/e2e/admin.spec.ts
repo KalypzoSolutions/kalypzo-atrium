@@ -16,7 +16,7 @@ async function login(page: Page, email = ADMIN.email, password = ADMIN.password)
 test.describe.configure({ mode: 'serial' });
 
 test('geschützte Seiten leiten auf den Login um', async ({ page }) => {
-	await page.goto('/users');
+	await page.goto('/admin/users');
 	await expect(page).toHaveURL(/\/login/);
 });
 
@@ -38,7 +38,7 @@ test('Login und Logout', async ({ page }) => {
 
 test('Benutzerverwaltung: anlegen, deaktivieren', async ({ page }) => {
 	await login(page);
-	await page.goto('/users');
+	await page.goto('/admin/users');
 	await page.getByRole('button', { name: 'Benutzer anlegen' }).click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Name').fill(`E2E ${run}`);
@@ -56,7 +56,7 @@ test('Benutzerverwaltung: anlegen, deaktivieren', async ({ page }) => {
 
 test('Rollenverwaltung: Rolle anlegen', async ({ page }) => {
 	await login(page);
-	await page.goto('/roles');
+	await page.goto('/admin/roles');
 	await page.getByRole('button', { name: 'Rolle anlegen' }).click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Name').fill(`Rolle ${run}`);
@@ -66,7 +66,7 @@ test('Rollenverwaltung: Rolle anlegen', async ({ page }) => {
 
 test('API-Key: erstellen, einmalig anzeigen, verwenden, widerrufen', async ({ page, request }) => {
 	await login(page);
-	await page.goto('/api-keys');
+	await page.goto('/admin/api');
 	await page
 		.getByRole('button', { name: /API-Key erstellen|Neuer API-Key|Erstellen/ })
 		.first()
@@ -104,15 +104,15 @@ test('API-Key: erstellen, einmalig anzeigen, verwenden, widerrufen', async ({ pa
 
 test('Modulverwaltung und Audit-Log sind erreichbar', async ({ page }) => {
 	await login(page);
-	await page.goto('/modules');
+	await page.goto('/admin/modules');
 	await expect(page.getByRole('heading', { name: 'Module' })).toBeVisible();
-	await page.goto('/audit');
+	await page.goto('/admin/audit');
 	await expect(page.getByText('core.auth.login').first()).toBeVisible();
 });
 
 test('Systemeinstellungen speichern', async ({ page }) => {
 	await login(page);
-	await page.goto('/settings');
+	await page.goto('/admin/settings/general');
 	const field = page.getByLabel('Systemname');
 	await field.fill(`EP ${run}`);
 	await page.getByRole('button', { name: 'Speichern' }).first().click();
