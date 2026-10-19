@@ -25,12 +25,23 @@ let admin: RequestContext;
 let adminKey: string;
 let websiteKey: string;
 let noScopeKey: string;
+let editorKey: string;
 
 async function get(path: string, key: string) {
+	return send('GET', path, key);
+}
+
+async function send(method: string, path: string, key: string, json?: unknown) {
 	resetAllForTests();
 	const url = new URL(`${BASE}${path}`);
+	const headers = new Headers({ authorization: `Bearer ${key}` });
+	if (json !== undefined) headers.set('content-type', 'application/json');
 	const res = await handleApiRequest({
-		request: new Request(url, { headers: { authorization: `Bearer ${key}` } }),
+		request: new Request(url, {
+			method,
+			headers,
+			body: json === undefined ? undefined : JSON.stringify(json)
+		}),
 		url,
 		ip: '127.0.0.1'
 	});
@@ -97,6 +108,12 @@ beforeAll(async () => {
 	await enableModule(admin, 'events');
 	admin = await ctxOf(u!.id);
 	adminKey = (await createApiKey(admin, { name: 'admin', scopes: ['events.event.view'] })).key;
+	editorKey = (
+		await createApiKey(admin, {
+			name: 'editor',
+			scopes: ['events.event.view', 'events.event.create', 'events.event.edit-all']
+		})
+	).key;
 
 	const roleId = await createRole(admin, {
 		name: 'Website',
@@ -164,6 +181,7 @@ describe('GET /website/events', () => {
 					'description',
 					'endsOn',
 					'endsTime',
+					'groupIds',
 					'groups',
 					'id',
 					'location',
@@ -179,6 +197,8 @@ describe('GET /website/events', () => {
 		const summer = items[2]!;
 		expect(summer.tags).toEqual(['Lager', 'Sommer']);
 		expect(summer.groups).toEqual([DEFAULT_STAMM_NAME, 'Sippe Falke']);
+		expect(summer.groupIds).toEqual(['stamm', groupId]);
+		expect(items[0]!.groupIds).toEqual([]);
 		expect(summer.endsOn).toBe(addDays(today, 37));
 		expect(items[1]!.startsTime).toBe('17:00');
 		expect(items[1]!.endsOn).toBeNull();
@@ -214,6 +234,199 @@ describe('GET /website/events', () => {
 	it('Website-Key darf keine internen Endpoints nutzen', async () => {
 		const { status } = await get('/groups', websiteKey);
 		expect(status).toBe(403);
+	});
+});
+
+describe('Website: Gruppenfilter und Detail', () => {
+	let weekly: string;
+	let past: string;
+	let single: string;
+	let hidden: string;
+
+	/** Termin über die API anlegen (Serien, Ausnahmen wie im echten Betrieb) */
+	async function create(over: Record<string, unknown>): Promise<string> {
+		const res = await send('POST', '/events', editorKey, {
+			title: 'Termin',
+			description: null,
+			location: 'Heim',
+			color: null,
+			startsOn: today,
+			startsTime: null,
+			endsOn: null,
+			endsTime: null,
+			tags: [],
+			groupIds: [],
+			shares: [],
+			onWebsite: true,
+			recurrence: null,
+			...over
+		});
+		expect(res.status, JSON.stringify(res.body)).toBe(201);
+		return res.body.data.id as string;
+	}
+
+	beforeAll(async () => {
+		// wöchentlich, offen, Start vor zwei Wochen am heutigen Wochentag → heute ist ein Vorkommen
+		weekly = await create({
+			title: 'Gruppenstunde Falke',
+			startsOn: addDays(today, -14),
+			startsTime: '16:30',
+			endsOn: addDays(today, -14),
+			endsTime: '18:00',
+			groupIds: [groupId],
+			recurrence: { freq: 'weekly', interval: 1, end: { type: 'never' } }
+		});
+		// abgeschlossene Serie in der Vergangenheit (3 Vorkommen im Wochenabstand)
+		past = await create({
+			title: 'Vergangene Reihe',
+			startsOn: addDays(today, -60),
+			recurrence: { freq: 'weekly', interval: 1, end: { type: 'count', count: 3 } }
+		});
+		single = await create({
+			title: 'Stammesversammlung',
+			startsOn: addDays(today, 9),
+			groupIds: ['stamm']
+		});
+		hidden = await create({ title: 'Nur intern', startsOn: addDays(today, 9), onWebsite: false });
+	});
+
+	it('group=<id> liefert nur Termine dieser Gruppe (inkl. Serienvorkommen)', async () => {
+		const { status, body } = await get(
+			`/website/events?group=${groupId}&to=${addDays(today, 40)}`,
+			websiteKey
+		);
+		expect(status, JSON.stringify(body)).toBe(200);
+		const items = body.data as { id: string; groupIds: string[]; groups: string[] }[];
+		expect(items.length).toBeGreaterThan(3);
+		for (const item of items) expect(item.groupIds).toContain(groupId);
+		const ids = new Set(items.map((i) => i.id));
+		expect(ids.has(weekly)).toBe(true);
+		expect(ids.has(single)).toBe(false);
+		const occ = items.find((i) => i.id === weekly)!;
+		expect(occ.groupIds).toEqual([groupId]);
+		expect(occ.groups).toEqual(['Sippe Falke']);
+	});
+
+	it('group=stamm liefert die Termine des ganzen Stamms', async () => {
+		const { status, body } = await get('/website/events?group=stamm', websiteKey);
+		expect(status).toBe(200);
+		const items = body.data as { id: string; title: string; groupIds: string[] }[];
+		expect(items.map((i) => i.title).sort()).toEqual(['Sommerlager', 'Stammesversammlung']);
+		for (const item of items) expect(item.groupIds[0]).toBe('stamm');
+	});
+
+	it('ungültige Gruppe → 422, unbekannte Gruppe → leere Liste', async () => {
+		const bad = await get('/website/events?group=woelflinge', websiteKey);
+		expect(bad.status).toBe(422);
+		expect(bad.body.error.code).toBe('validation_failed');
+		const unknown = await get(`/website/events?group=${crypto.randomUUID()}`, websiteKey);
+		expect(unknown.status).toBe(200);
+		expect(unknown.body.data).toEqual([]);
+	});
+
+	it('Detail: einmaliger Termin mit öffentlichen Feldern', async () => {
+		const { status, body } = await get(`/website/events/${single}`, websiteKey);
+		expect(status, JSON.stringify(body)).toBe(200);
+		expect(body.data).toEqual({
+			id: single,
+			title: 'Stammesversammlung',
+			description: null,
+			location: 'Heim',
+			color: null,
+			startsOn: addDays(today, 9),
+			startsTime: null,
+			endsOn: null,
+			endsTime: null,
+			tags: [],
+			groups: [DEFAULT_STAMM_NAME],
+			groupIds: ['stamm'],
+			recurring: false,
+			occurrenceDate: null
+		});
+		// einmaliger Termin mit `occurrence` → 404
+		const occ = await get(`/website/events/${single}?occurrence=${addDays(today, 9)}`, websiteKey);
+		expect(occ.status).toBe(404);
+	});
+
+	it('Detail: nicht auf der Website, unbekannt oder ungültige ID', async () => {
+		const notOnWeb = await get(`/website/events/${hidden}`, websiteKey);
+		expect(notOnWeb.status).toBe(404);
+		expect(notOnWeb.body.error.code).toBe('not_found');
+		const unknown = await get(`/website/events/${crypto.randomUUID()}`, websiteKey);
+		expect(unknown.status).toBe(404);
+		const bad = await get('/website/events/kein-uuid', websiteKey);
+		expect(bad.status).toBe(422);
+	});
+
+	it('Detail einer Serie: ohne occurrence nächstes Vorkommen ab heute, sonst das letzte', async () => {
+		const next = await get(`/website/events/${weekly}`, websiteKey);
+		expect(next.status, JSON.stringify(next.body)).toBe(200);
+		expect(next.body.data).toMatchObject({
+			id: weekly,
+			recurring: true,
+			occurrenceDate: today,
+			startsOn: today,
+			startsTime: '16:30',
+			endsTime: '18:00',
+			groupIds: [groupId]
+		});
+
+		const last = await get(`/website/events/${past}`, websiteKey);
+		expect(last.status).toBe(200);
+		expect(last.body.data).toMatchObject({
+			recurring: true,
+			occurrenceDate: addDays(today, -46),
+			startsOn: addDays(today, -46)
+		});
+	});
+
+	it('Detail mit occurrence: Änderungen angewendet, abgesagt/kein Vorkommen → 404', async () => {
+		const moved = addDays(today, 7);
+		const ov = await send('PUT', `/events/${weekly}/occurrences/${moved}`, editorKey, {
+			override: { title: 'Gruppenstunde draußen', location: 'Bürgerpark', startsTime: '15:00' }
+		});
+		expect(ov.status, JSON.stringify(ov.body)).toBe(200);
+		const detail = await get(`/website/events/${weekly}?occurrence=${moved}`, websiteKey);
+		expect(detail.status).toBe(200);
+		expect(detail.body.data).toMatchObject({
+			title: 'Gruppenstunde draußen',
+			location: 'Bürgerpark',
+			startsTime: '15:00',
+			occurrenceDate: moved,
+			startsOn: moved
+		});
+
+		const noOcc = await get(
+			`/website/events/${weekly}?occurrence=${addDays(today, 1)}`,
+			websiteKey
+		);
+		expect(noOcc.status).toBe(404);
+
+		// heutiges Vorkommen absagen → 404; ohne occurrence kommt das nächste (geänderte) Vorkommen
+		const cancel = await send('PUT', `/events/${weekly}/occurrences/${today}`, editorKey, {
+			cancelled: true
+		});
+		expect(cancel.status, JSON.stringify(cancel.body)).toBe(200);
+		const cancelled = await get(`/website/events/${weekly}?occurrence=${today}`, websiteKey);
+		expect(cancelled.status).toBe(404);
+		const next = await get(`/website/events/${weekly}`, websiteKey);
+		expect(next.body.data).toMatchObject({
+			occurrenceDate: moved,
+			title: 'Gruppenstunde draußen'
+		});
+		// abgesagtes Vorkommen fehlt auch in der Liste
+		const list = await get(`/website/events?group=${groupId}&to=${today}`, websiteKey);
+		expect(
+			list.body.data.filter((e: { id: string; occurrenceDate: string }) => e.id === weekly)
+		).toEqual([]);
+	});
+
+	it('Detail: Scope-only-Key darf, Key ohne Scope nicht; Website-Key nicht auf /events/:id', async () => {
+		expect((await get(`/website/events/${single}`, websiteKey)).status).toBe(200);
+		const noScope = await get(`/website/events/${single}`, noScopeKey);
+		expect(noScope.status).toBe(403);
+		expect(noScope.body.error.code).toBe('forbidden');
+		expect((await get(`/events/${single}`, websiteKey)).status).toBe(403);
 	});
 });
 

@@ -117,3 +117,49 @@ Vorher Backup erstellen. Modulmigrationen aktiver Module werden beim Start ebenf
 ## Betrieb mit mehreren Instanzen
 
 Rate Limiter und Login-Sperre sind prozesslokal. Für mehrere App-Instanzen ist ein gemeinsamer Store nötig (nicht Teil der ersten Version).
+
+## Stammeswebsite
+
+Die öffentliche Website liegt als eigene App in `website/` (SvelteKit, adapter-node, eigenes `package.json` und
+`Dockerfile`) und läuft als **eigener Dienst** neben dem Intern-Bereich. Sie hat keine Datenbank: Termine, Galerien,
+Ämter und Gruppen holt sie **serverseitig** über die Website-Endpunkte (`/api/v1/modules/<modul>/website/…`) mit einem
+API-Key. Der Key erreicht nie den Browser; Bilder liefert die Website über eigene Proxys unter `/bilder/…` aus.
+
+1. **API-Key anlegen**: im Intern-Bereich unter **Administration → API-Keys** einen Key nur mit den Scopes
+   `events.website.read galleries.website.read offices.website.read members.website.read` erstellen (ein Benutzerkonto,
+   das diese Rechte hat). Die Module müssen aktiv sein, sonst liefert die API `404 module_disabled` und die Website zeigt
+   an der Stelle einen Hinweis.
+2. **Umgebungsvariablen** (Vorlage `website/.env.example`):
+
+   | Variable | Bedeutung |
+   |---|---|
+   | `INTERN_API_URL` | Basis-URL des Intern-Bereichs, **intern** erreichbar (z. B. `http://app:3000` im selben Docker-Netz) |
+   | `INTERN_API_KEY` | der Key aus Schritt 1 (`epk_…`) |
+   | `PUBLIC_SITE_URL` | öffentliche Adresse der Website (Canonical-Links) |
+   | `ORIGIN` | ebenfalls die öffentliche Adresse – adapter-node braucht sie für den CSRF-Origin-Check |
+   | `INTERN_CACHE_TTL` | optional, Cache-Dauer der API-Antworten in Sekunden (Standard 60) |
+
+3. **Starten** (Docker):
+
+   ```bash
+   cd website
+   docker build -t ep-website .
+   docker run -d --name ep-website -p 127.0.0.1:3001:3001 --env-file .env ep-website
+   ```
+
+   Das Image läuft als Benutzer `node` auf Port 3001, Healthcheck auf `/`.
+4. **Reverse-Proxy/Domain**: die Website-Domain (z. B. `edelweisspiraten-bremen.de`) auf Port 3001 leiten, den
+   Intern-Bereich weiter auf seiner eigenen Domain. `INTERN_API_URL` sollte nicht über das Internet laufen, wenn beide auf
+   demselben Server stehen.
+
+Die Website speichert API-Antworten 60 s im Arbeitsspeicher und liefert bei Ausfall des Intern-Bereichs den letzten guten
+Stand weiter (Stale-on-Error); ohne gespeicherten Stand erscheinen Hinweise statt Inhalten, keine Fehlerseite.
+Rate-Limits je Key: 120 Anfragen/60 s für JSON, 600/60 s für Bilder – der Cache hält die Website darunter.
+
+Die bisherige Variante ohne Docker (PM2) funktioniert weiter:
+
+```bash
+cd website
+npm ci
+npm run build && PORT=3001 node build
+```

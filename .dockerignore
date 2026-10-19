@@ -10,3 +10,5 @@ playwright-report
 test-results
 .idea
 .vscode
+# Stammeswebsite: eigenes Image (website/Dockerfile)
+website

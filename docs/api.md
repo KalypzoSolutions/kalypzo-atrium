@@ -76,20 +76,96 @@ Eigenes Profil (Name, E-Mail-Wechsel, Profilbild, Darstellung) läuft **nicht** 
 
 Modul-Endpunkte: `/api/v1/modules/<id>/…`. Deaktivierte Module liefern `404 module_disabled`.
 
-Termine für die Stammeswebsite (Modul `events`): `GET /api/v1/modules/events/website/events?from=&to=&tag=&limit=` mit einem API-Key,
-der nur den Scope `events.website.read` hat (Besitzer*in muss das Recht haben). `from` Standard heute (Europe/Berlin), `limit` 1–200 (50),
-Rate-Limit 120/60 s; nur Termine mit „auf der Website“ und nur öffentliche Felder (Titel, Beschreibung, Ort, Farbe, Zeiten, Tags,
-Gruppennamen). Serverseitig abrufen – der Key gehört nicht in den Browser (kein CORS).
-
-```bash
-curl -H "Authorization: Bearer $WEBSITE_KEY" \
-  "https://intern.example.org/api/v1/modules/events/website/events?from=2026-10-01&to=2026-12-31&limit=20"
-```
+Website-Endpunkte von `events`, `galleries`, `offices` und `members` (API-Key mit `*.website.read`): siehe
+[Stammeswebsite](#stammeswebsite).
 
 Abrechnung im Modul `actions`: `POST …/actions/:id/accounting/entries` akzeptiert bei Auslagen (Ausgabe, bezahlt von Person) `reimbursed: true`
 („bereits erstattet“, nur beim Anlegen; `422` mit Pfad `reimbursed` bei Einnahmen/Stamm-Ausgaben). `PUT …/entries/:entryId` mit
 `reimbursed: true` liefert `422` („Die Erstattung kann nur beim Anlegen gesetzt werden“); `false`/fehlend ist wirkungslos.
 Erstattete Auslagen sind für `PUT`/`DELETE` gesperrt (`409`); die Erstattung einer Person nimmt `DELETE …/payees/:payeeId/reimburse` zurück.
+
+## Stammeswebsite
+
+Die öffentliche Stammeswebsite (eigene App `website/`, siehe `docs/deployment.md`) liest ihre Inhalte **serverseitig** aus vier
+Modulen. Alle Website-Endpunkte sind normale Modul-Endpunkte (`/api/v1/modules/<id>/website/…`), brauchen einen **API-Key** mit dem
+passenden Scope und liefern nur öffentliche Felder. Ein Key **nur** mit diesen Scopes bekommt auf alle internen Endpunkte `403`.
+
+| Modul | Scope | Inhalt |
+|---|---|---|
+| `events` | `events.website.read` | Termine mit „Auf der Stammeswebsite anzeigen“ |
+| `galleries` | `galleries.website.read` | Galerien mit Sichtbarkeit „öffentlich“ und deren Bilder (`thumb`/`web`) |
+| `offices` | `offices.website.read` | Ämter mit Beschreibung, Amts-E-Mails, Inhaber*innen (Name, Bio, Profilbild) |
+| `members` | `members.website.read` | Gruppen mit „Auf der Website zeigen“ (Steckbrief, Bild) |
+
+**Einrichtung:** Ein*e Benutzer*in, die alle vier Rechte hat (z. B. Administrator), legt unter Administration → API-Keys
+(`POST /api/v1/api-keys`, nur Session) **einen** Key mit genau diesen Scopes an:
+`events.website.read galleries.website.read offices.website.read members.website.read`. Rechte des Keys = Scopes ∩ Rechte der
+Besitzer*in – verliert die Besitzer*in ein Recht, antwortet der Endpunkt mit `403`. Der Key steht nur einmal in der Antwort und
+gehört in die Umgebung der Website (`INTERN_API_KEY`), **nie** in den Browser. Es gibt **kein CORS**; die Website ruft alles
+serverseitig ab und liefert Bilder über eigene Proxy-Routen aus. Deaktiviertes Modul → `404 module_disabled`.
+
+### Endpunkte
+
+| Methode + Pfad (`/api/v1/modules/…`) | Query | Antwort (`{ data }`) | Rate-Limit |
+|---|---|---|---|
+| GET `events/website/events` | `from` (Standard heute, Europe/Berlin), `to` (≥ `from`, sonst 422), `tag`, `group` (Gruppen-ID oder `stamm`), `limit` 1–200 (50) | `WebsiteEvent[]`, sortiert nach Beginn | 120/60 s |
+| GET `events/website/events/:id` | `occurrence` (`YYYY-MM-DD`, nur Serien) | `WebsiteEvent` | 120/60 s |
+| GET `galleries/website/galleries` | `eventId` (nur Galerien zu diesem Website-Termin), `limit` 1–200 (50), `offset` | `{ items: WebsiteGallery[], total }` | 120/60 s |
+| GET `galleries/website/galleries/:id` | – | `WebsiteGalleryDetail` (mit `images`) | 120/60 s |
+| GET `galleries/website/galleries/:id/images/:imageId/:variant` | `variant` = `thumb` \| `web` (`full` → 422) | Bild roh, `public, max-age=86400` | 600/60 s |
+| GET `offices/website/offices` | – | `WebsiteOffice[]` nach Reihenfolge der Ämter | 120/60 s |
+| GET `offices/website/offices/holders/:userId/avatar` | – | Profilbild roh, `private, max-age=300` | 600/60 s |
+| GET `members/website/groups` | – | `WebsiteGroup[]` (Meuten vor Sippen, dann nach Name) | 120/60 s |
+| GET `members/website/groups/:slug` | – | `WebsiteGroup` | 120/60 s |
+| GET `members/website/groups/:slug/image` | – | Gruppenbild roh, `public, max-age=86400` | 600/60 s |
+
+Rate-Limits gelten **je Key**. Bild-Endpunkte antworten mit `x-content-type-options: nosniff` und `404`, wenn es kein Bild gibt,
+das Objekt nicht (mehr) auf der Website steht oder kein Speicher eingerichtet ist.
+
+### Felder
+
+- **`WebsiteEvent`**: `id`, `title`, `description`, `location`, `color`, `startsOn`, `startsTime`, `endsOn`, `endsTime`, `tags`,
+  `groups` (Namen, „ganzer Stamm“ = Stammesname), `groupIds` (gleiche Reihenfolge wie `groups`, `stamm` für den ganzen Stamm),
+  `recurring`, `occurrenceDate`. Keine Freigaben, Eigentümer*innen, Zeitstempel, Gruppenstunden-Daten.
+  - **Serien** erscheinen in der Liste als einzelne Vorkommen mit gleicher `id`, `recurring: true` und `occurrenceDate`
+    (ursprüngliches Datum; stabiler Schlüssel `id` + `occurrenceDate`); Änderungen einzelner Vorkommen sind eingerechnet,
+    abgesagte fehlen. Ohne `to` höchstens 366 Tage voraus.
+  - **`group`**: nur Termine, die dieser Gruppe bzw. (`stamm`) dem ganzen Stamm zugeordnet sind. Keine UUID und nicht `stamm` → 422;
+    unbekannte Gruppe → leere Liste.
+  - **Detail `/:id`**: `404`, wenn unbekannt oder nicht auf der Website. Serie **mit** `occurrence`: genau dieses Vorkommen
+    (kein Vorkommen der Serie oder abgesagt → 404). Serie **ohne** `occurrence`: das nächste nicht abgesagte Vorkommen, das heute
+    (Europe/Berlin) noch nicht vorbei ist, sonst das letzte. Einmaliger Termin mit `occurrence` → 404.
+- **`WebsiteGallery`**: `id`, `title`, `description`, `imageCount`, `cover` (`imageId`, `width`, `height` oder `null`), `events`
+  (nur Termine, die selbst auf der Website stehen: `id`, `title`, `startsOn`, `endsOn`), `updatedAt`. Detail zusätzlich `images`
+  (`id`, `galleryId`, `description`, `width`, `height`, `position`). Keine Dateinamen, Uploader, Freigaben; `full` gibt es nie.
+- **`WebsiteOffice`**: `id`, `name`, `description`, `position`, `emails` (`label`, `email` – Adressen des **Amts**), `holders`
+  (`id`, `name`, `bio`, `since`, `avatarPath` = relativer API-Pfad oder `null`). Keine Konto-Mails, Rollen; deaktivierte Konten fehlen.
+- **`WebsiteGroup`**: `id`, `slug`, `name`, `type` (`meute` | `sippe`), `description` (Website-Text, sonst interne Beschreibung),
+  `ageRange`, `meetingPlace`, `meetingWeekday` (1 = Mo … 7 = So), `meetingTime`, `color`, `contactEmail` (Adresse der **Gruppe**),
+  `leaders` (nur `firstName`), `imagePath` (relativer API-Pfad mit `?v=…` oder `null`). Keine Nachnamen, Mitglieder-Mails,
+  Geburtsdaten, Mitgliederzahlen.
+
+### Bilder und Caching
+
+- `avatarPath` und `imagePath` sind **relative API-Pfade**; die Website ruft sie mit demselben Key ab. Galerie-Bilder baut sie aus
+  `id` + `imageId` + Variante. Im Browser landen nur die eigenen Proxy-URLs der Website (`/bilder/…`), nie der Key.
+- **Empfehlung:** JSON-Antworten auf dem Website-Server einige Minuten zwischenspeichern (z. B. 60 s mit „stale on error“, damit ein
+  kurzer Ausfall des Intern-Servers die Seite nicht leert), Bilder länger (Galerie/Gruppe bis 24 h, Profilbilder ≤ 5 min wie vom
+  Endpunkt vorgegeben). So bleibt die Website auch bei vielen Besucher*innen weit unter den Rate-Limits.
+- Termine sind öffentlich gemeint: Beschreibungen, Orte und Galerie-Texte ohne personenbezogene Daten pflegen.
+
+```bash
+KEY=epk_…   # Scopes: events.website.read galleries.website.read offices.website.read members.website.read
+BASE=https://intern.example.org/api/v1/modules
+
+curl -H "Authorization: Bearer $KEY" "$BASE/events/website/events?from=2026-10-01&to=2026-12-31&limit=20"
+curl -H "Authorization: Bearer $KEY" "$BASE/events/website/events?group=stamm&limit=3"
+curl -H "Authorization: Bearer $KEY" "$BASE/events/website/events/<id>?occurrence=2026-11-06"
+curl -H "Authorization: Bearer $KEY" "$BASE/galleries/website/galleries?eventId=<terminId>"
+curl -H "Authorization: Bearer $KEY" -o bild.webp "$BASE/galleries/website/galleries/<id>/images/<imageId>/web"
+curl -H "Authorization: Bearer $KEY" "$BASE/offices/website/offices"
+curl -H "Authorization: Bearer $KEY" "$BASE/members/website/groups/sportliche-panther"
+```
 
 ## API-Key-Lebenszyklus
 

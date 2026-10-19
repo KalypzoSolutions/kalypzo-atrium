@@ -654,6 +654,7 @@ describe('Website-API', () => {
 					'description',
 					'endsOn',
 					'endsTime',
+					'groupIds',
 					'groups',
 					'id',
 					'location',
@@ -679,6 +680,7 @@ describe('Website-API', () => {
 			endsTime: null,
 			tags: ['Fest', 'Öffentlich'],
 			groups: [DEFAULT_STAMM_NAME, 'Sippe Falke'],
+			groupIds: ['stamm', falke],
 			recurring: false,
 			occurrenceDate: null
 		});
