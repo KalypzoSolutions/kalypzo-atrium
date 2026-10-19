@@ -101,7 +101,7 @@ passenden Scope und liefern nur öffentliche Felder. Ein Key **nur** mit diesen 
 (`POST /api/v1/api-keys`, nur Session) **einen** Key mit genau diesen Scopes an:
 `events.website.read galleries.website.read offices.website.read members.website.read`. Rechte des Keys = Scopes ∩ Rechte der
 Besitzer*in – verliert die Besitzer*in ein Recht, antwortet der Endpunkt mit `403`. Der Key steht nur einmal in der Antwort und
-gehört in die Umgebung der Website (`INTERN_API_KEY`), **nie** in den Browser. Es gibt **kein CORS**; die Website ruft alles
+gehört in die Umgebung der Website (`WEBSITE_API_KEY`), **nie** in den Browser. Es gibt **kein CORS**; die Website ruft alles
 serverseitig ab und liefert Bilder über eigene Proxy-Routen aus. Deaktiviertes Modul → `404 module_disabled`.
 
 ### Endpunkte

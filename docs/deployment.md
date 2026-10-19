@@ -120,33 +120,32 @@ Rate Limiter und Login-Sperre sind prozesslokal. Für mehrere App-Instanzen ist 
 
 ## Stammeswebsite
 
-Die öffentliche Website liegt als eigene App in `website/` (SvelteKit, adapter-node, eigenes `package.json` und
-`Dockerfile`) und läuft als **eigener Dienst** neben dem Intern-Bereich. Sie hat keine Datenbank: Termine, Galerien,
-Ämter und Gruppen holt sie **serverseitig** über die Website-Endpunkte (`/api/v1/modules/<modul>/website/…`) mit einem
-API-Key. Der Key erreicht nie den Browser; Bilder liefert die Website über eigene Proxys unter `/bilder/…` aus.
+Die öffentliche Website liegt in `website/`: die **alte Website** (`CrayonGamerHD-Philipp/edelweisspiraten-website`, Ordner `web/`,
+SvelteKit, adapter-node, eigenes `package.json` und `Dockerfile`), bei der nur das Backend getauscht ist – statt PocketBase
+holt sie **Termine, Galerien und Gruppen serverseitig** über die Website-Endpunkte (`/api/v1/modules/<modul>/website/…`) mit einem API-Key
+(`website/src/lib/server/backend.ts`). Gruppen (Menü, Startseite, Gruppenseiten `/meute/<slug>`, `/sippe/<slug>`, Kontakt) kommen ebenfalls aus dem Backend; Ämter und CPD sind wie früher statisch, die häufigen Fragen stehen
+fest im Code (`website/src/lib/faqs.ts`), die Download-Seite entfällt (`/download` → 308 auf `/`). Der Key erreicht nie den
+Browser; Galeriebilder liefert die Website über `/bilder/galerie/…` aus, die Terminvorschau der Gruppenseiten über `/api/termine`.
 
-1. **API-Key anlegen**: im Intern-Bereich unter **Administration → API-Keys** einen Key nur mit den Scopes
-   `events.website.read galleries.website.read offices.website.read members.website.read` erstellen (ein Benutzerkonto,
-   das diese Rechte hat). Die Module müssen aktiv sein, sonst liefert die API `404 module_disabled` und die Website zeigt
-   an der Stelle einen Hinweis.
+1. **API-Key anlegen**: im Intern-Bereich unter **Administration → API-Keys** einen Key mit den Scopes
+   `events.website.read galleries.website.read members.website.read` erstellen (ein Benutzerkonto, das diese Rechte hat).
+   Die Module müssen aktiv sein, sonst liefert die API `404 module_disabled`.
 2. **Umgebungsvariablen** (Vorlage `website/.env.example`):
 
    | Variable | Bedeutung |
    |---|---|
-   | `INTERN_API_URL` | Basis-URL des Intern-Bereichs, **intern** erreichbar (z. B. `http://app:3000` im selben Docker-Netz) |
-   | `INTERN_API_KEY` | der Key aus Schritt 1 (`epk_…`) |
-   | `PUBLIC_SITE_URL` | öffentliche Adresse der Website (Canonical-Links) |
-   | `ORIGIN` | ebenfalls die öffentliche Adresse – adapter-node braucht sie für den CSRF-Origin-Check |
-   | `INTERN_CACHE_TTL` | optional, Cache-Dauer der API-Antworten in Sekunden (Standard 60) |
+   | `WEBSITE_API_URL` | Basis-URL des Intern-Bereichs, **intern** erreichbar (Standard `http://app:3000` im selben Docker-Netz) |
+   | `WEBSITE_API_KEY` | der Key aus Schritt 1 (`epk_…`) |
+   | `ORIGIN` | öffentliche Adresse der Website – adapter-node braucht sie für den CSRF-Origin-Check |
 
 3. **Starten**: Die Website ist als Dienst `website` in `docker-compose.yml` und `docker-compose.dokploy.yml` enthalten
    und startet mit dem Stack als **eigener Container** (Build aus `website/`, Port 3001, nur im internen Netz mit `app`
-   verbunden: `INTERN_API_URL=http://app:3000`). Variablen im Stack:
+   verbunden: `WEBSITE_API_URL=http://app:3000`). Variablen im Stack:
 
    | Variable | Bedeutung |
    |---|---|
-   | `WEBSITE_API_KEY` | Key aus Schritt 1; fehlt er, startet die Website trotzdem und zeigt Hinweise statt Inhalten |
-   | `WEBSITE_ORIGIN` | öffentliche Adresse der Website (Standard `https://edelweisspiraten-bremen.de`), setzt `ORIGIN` + `PUBLIC_SITE_URL` |
+   | `WEBSITE_API_KEY` | Key aus Schritt 1; fehlt er, laufen die statischen Seiten, Termine und Galerie zeigen eine Fehlerseite |
+   | `WEBSITE_ORIGIN` | öffentliche Adresse der Website (Standard `https://edelweisspiraten-bremen.de`), setzt `ORIGIN` |
    | `WEBSITE_PORT` | nur `docker-compose.yml`: Port-Bind auf 127.0.0.1 (Standard 3001) |
 
    Erstinstallation: Stack starten → im Intern-Bereich Key anlegen → `WEBSITE_API_KEY` setzen → `docker compose up -d website`
@@ -162,17 +161,17 @@ API-Key. Der Key erreicht nie den Browser; Bilder liefert die Website über eige
 
 4. **Reverse-Proxy/Domain**: die Website-Domain (z. B. `edelweisspiraten-bremen.de`) auf Port 3001 leiten (Dokploy: Domain auf
    Service `website`, Port 3001; nginx-Profil: Beispielblock am Ende von `deploy/nginx/nginx.conf`), den
-   Intern-Bereich weiter auf seiner eigenen Domain. `INTERN_API_URL` sollte nicht über das Internet laufen, wenn beide auf
+   Intern-Bereich weiter auf seiner eigenen Domain. `WEBSITE_API_URL` sollte nicht über das Internet laufen, wenn beide auf
    demselben Server stehen.
 
-Die Website speichert API-Antworten 60 s im Arbeitsspeicher und liefert bei Ausfall des Intern-Bereichs den letzten guten
-Stand weiter (Stale-on-Error); ohne gespeicherten Stand erscheinen Hinweise statt Inhalten, keine Fehlerseite.
-Rate-Limits je Key: 120 Anfragen/60 s für JSON, 600/60 s für Bilder – der Cache hält die Website darunter.
+Die Website speichert API-Antworten 60 s im Arbeitsspeicher und zeigt bei Ausfall des Intern-Bereichs den letzten guten Stand
+weiter; ohne gespeicherten Stand zeigen Termine und Galerie eine Fehlerseite. Rate-Limits je Key: 120 Anfragen/60 s für JSON,
+600/60 s für Bilder (Galeriebilder werden mit `max-age=3600` ausgeliefert).
 
-Die bisherige Variante ohne Docker (PM2) funktioniert weiter:
+Ohne Docker (PM2, `website/ecosystem.config.cjs`):
 
 ```bash
 cd website
 npm ci
-npm run build && PORT=3001 node build
+npm run build && WEBSITE_API_KEY=epk_… WEBSITE_API_URL=http://127.0.0.1:3000 PORT=3001 node build
 ```

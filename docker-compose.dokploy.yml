@@ -94,8 +94,8 @@ services:
       - dokploy-network
 
   # Öffentliche Stammeswebsite (website/). Domain in Dokploy auf Service `website`, Port 3001 legen.
-  # Holt Inhalte serverseitig über das interne Netz (app:3000) mit WEBSITE_API_KEY; ohne Key startet sie
-  # trotzdem und zeigt Hinweise statt Inhalten (Key im Intern-Bereich anlegen, eintragen, neu deployen).
+  # Holt Termine und Galerien serverseitig über das interne Netz (app:3000) mit WEBSITE_API_KEY; ohne Key laufen
+  # die statischen Seiten, Termine/Galerie zeigen eine Fehlerseite (Key im Intern-Bereich anlegen, eintragen, neu deployen).
   website:
     build:
       context: ./website
@@ -103,10 +103,9 @@ services:
     restart: unless-stopped
     depends_on: [app]
     environment:
-      INTERN_API_URL: http://app:3000
-      INTERN_API_KEY: ${WEBSITE_API_KEY:-}
+      WEBSITE_API_URL: http://app:3000
+      WEBSITE_API_KEY: ${WEBSITE_API_KEY:-}
       ORIGIN: ${WEBSITE_ORIGIN:-https://edelweisspiraten-bremen.de}
-      PUBLIC_SITE_URL: ${WEBSITE_ORIGIN:-https://edelweisspiraten-bremen.de}
     expose: ['3001']
     read_only: true
     tmpfs:

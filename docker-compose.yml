@@ -44,18 +44,18 @@ services:
     cap_drop: [ALL]
     security_opt: ['no-new-privileges:true']
 
-  # Öffentliche Stammeswebsite (website/): holt Inhalte serverseitig per API-Key über das interne Netz.
-  # Ohne WEBSITE_API_KEY startet sie trotzdem und zeigt Hinweise statt Inhalten (Key später anlegen,
-  # Administration → API-Keys, Scopes siehe docs/deployment.md, danach `docker compose up -d website`).
+  # Öffentliche Stammeswebsite (website/, die alte Website mit neuem Backend): holt Termine und Galerien
+  # serverseitig per WEBSITE_API_KEY über das interne Netz. Ohne Key laufen die statischen Seiten, Termine und
+  # Galerie zeigen eine Fehlerseite (Key unter Administration → API-Keys anlegen, Scopes siehe docs/deployment.md,
+  # danach `docker compose up -d website`).
   website:
     build: ./website
     restart: unless-stopped
     depends_on: [app]
     environment:
-      INTERN_API_URL: http://app:3000
-      INTERN_API_KEY: ${WEBSITE_API_KEY:-}
+      WEBSITE_API_URL: http://app:3000
+      WEBSITE_API_KEY: ${WEBSITE_API_KEY:-}
       ORIGIN: ${WEBSITE_ORIGIN:-https://edelweisspiraten-bremen.de}
-      PUBLIC_SITE_URL: ${WEBSITE_ORIGIN:-https://edelweisspiraten-bremen.de}
     expose: ['3001']
     ports:
       - '127.0.0.1:${WEBSITE_PORT:-3001}:3001'

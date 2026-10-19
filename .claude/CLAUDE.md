@@ -28,7 +28,7 @@ bei Widerspruch gewinnt der Code, danach `docs/`.
 | `rules/module-offices.md` | Modul Ämter: Reihenfolge, E-Mails, Inhaber*innen, Rollen aus Ämtern (`user_role_grant`), Bio, Website-API |
 | `rules/module-orders.md` | Modul Bestellungen: Artikel/Größen/Bilder, Bestellen mit Rechnung über die Kasse, Ausgabe, Lager, Einkauf mit Teillieferung |
 | `rules/module-files.md` | Modul Dateien: eine Ansicht (eigene + Freigegebenes), Upload/Drag & Drop, Rechtsklick, Vorschau, Freigabe an Principals/Stamm, öffentliche Ansicht-/Upload-Links, Papierkorb, Kontingent, Sicherheitsregeln |
-| `rules/website.md` | Stammeswebsite (eigene App `website/`): Datenquellen je Seite, API-Client/Cache, Bild-Proxys, Weiterleitungen, Demo |
+| `rules/website.md` | Stammeswebsite `website/` = alte Website mit neuem Backend (`WEBSITE_API_KEY`): Anbindung, Routen, Demo |
 | `rules/project-state.md` | Stand, getroffene Entscheidungen, offene Punkte |
 
 ## Befehle
@@ -42,7 +42,7 @@ bei Widerspruch gewinnt der Code, danach `docs/`.
 | `npx playwright test` | E2E (baut selbst und startet eigene PGlite-Instanz) |
 | `node scripts/demo-server.mjs` | Demo-App auf http://localhost:4300 (`admin@demo.test` / `Demo-Admin-2026!`) |
 | `node scripts/screenshots.mjs …` | Screenshots für visuelle Prüfung (siehe `rules/workflow.md`) |
-| `cd website && npm run check && npm run lint && npm test && npm run build` | Stammeswebsite prüfen/bauen (eigenes Projekt, siehe `rules/website.md`) |
+| `cd website && npm run check && npm run build` | Stammeswebsite prüfen/bauen (eigenes Projekt; 5 bekannte Altfehler, siehe `rules/website.md`) |
 | `node scripts/seed-demo-website.mjs` | Website-Demodaten + API-Key → `website/.env`; Start `cd website && node --env-file=.env build` (:3001) |
 
 ## Die zehn wichtigsten Regeln

@@ -161,13 +161,10 @@
   `files.shared.edit`-Rollen werden **nicht** übertragen). Link-URL **jederzeit** abrufbar (`token_enc`), Link-Arten Ansehen / Hochladen / Ansehen und
   hochladen (Upload nur für Ordner); **öffentlicher Upload** mit optionalem Namen (Eigentum/Kontingent der Ordner-Eigentümer*in, ≤ 10 Dateien/30 MB je
   Request, 20/600 s je IP); **Rechtsklick-Kontextmenü** über neue Core-Komponente `ui/context-menu`. Tests `files-upload-link.test.ts`, `files-migration.test.ts`.
-- **Stammeswebsite `website/` (2026-10-19)**: alte Website (`edelweisspiraten-website`, PocketBase) als **eigene SvelteKit-App** übernommen (Svelte 5, Tailwind 4,
-  adapter-node :3001, eigenes Projekt/Dockerfile), Daten **serverseitig per API-Key** aus den Website-Endpunkten (Cache, Stale-on-Error, Bild-Proxys mit LRU).
-  Seiten: Start, Termine (+ Detail, Serien zusammengefasst, Rückblick), Galerie (+ Lightbox), Gruppen (Steckbriefe), Kontakt (Ämter), CPD, Impressum,
-  Datenschutz; alte URLs `/meute`, `/sippe/*`, `/download` → 308. **FAQ und Downloads entfallen vorerst** (Nutzerentscheidung). Intern dazu: `members`
-  Migr. 0009 (v1.7.0) Website-Steckbrief je Gruppe + `members.website.read` + `/website/groups[/:slug[/image]]`, Gruppendialog Reiter „Website“;
-  `events` Website-Filter `group`, `groupIds`, Detail `GET /website/events/:id?occurrence=`. Demo `scripts/seed-demo-website.mjs`. Details: `rules/website.md`.
-  Offen: Datenschutztext überarbeiten, vermutete Tippfehler `kotakt@`/`info@edelweisspiaretn-…` (Nutzer entscheidet), Docker-Image/echtes S3 ungeprüft.
+- **Stammeswebsite `website/` (2026-10-19, neu entschieden)**: die **alte Website** (GitHub `edelweisspiraten-website`, Ordner `web/`)
+  unverändert übernommen, **nur das Backend getauscht**: Termine/Galerien serverseitig aus den Website-Endpunkten (`website/src/lib/server/backend.ts`,
+  `WEBSITE_API_URL` + `WEBSITE_API_KEY`), Bild-Proxy, Server-Route für die Gruppen-Terminvorschau; FAQ fest im Code, Download-Seite entfernt (308).
+  Die zuvor neu gestaltete Website (Figuren/Motive) ist verworfen (Git-Historie). Compose/Seed/Doku auf `WEBSITE_API_*` umgestellt. Details: `rules/website.md`.
 - Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`, `rules/module-events.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
