@@ -8,6 +8,7 @@ export { default as ConfirmDialog } from './ConfirmDialog.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
 export { default as FormField } from './FormField.svelte';
 export { default as DataTable } from './DataTable.svelte';
+export { default as DashboardCard } from './DashboardCard.svelte';
 export { default as MobileActionBar } from './MobileActionBar.svelte';
 export { default as PdfExportDialog } from './PdfExportDialog.svelte';
 export { default as ColorBadge } from './ColorBadge.svelte';

@@ -89,6 +89,12 @@ return result;
 - `manifest.optionalDependencies` + `core.modules.useOptional(provider, caller)` → `null`, wenn der Anbieter nicht aktiv ist
   (für Rückkanäle ohne Zyklus, z. B. `actions` liest Zahlungen aus `treasury`). Harte Abhängigkeiten bleiben `dependencies`.
 
+## Dashboard-Kacheln
+- `ui.ts` `dashboardWidgets: [{ id, title, description?, order?, size?: 'sm'|'md'|'lg', permission?, anyPermission?, defaultHidden?, component }]`
+  → Kachel auf `/dashboard` (nur aktive Module, nur mit Recht; Typen in `$lib/sdk/types/module-ui`). Komponente in `pages/widgets/`, nutzt
+  `DashboardCard`, lädt per `apiFetch`, meldet `onstatus('ready'|'empty'|'error')` – `empty` klappt die Kachel ein („nur Wichtiges“).
+- Persönliche Daten über eigene „meine“-Endpunkte (`/my/...`) mit eigenem Recht (`<id>.own.view`, `defaultRoleGrants` Mitglied); nie fremde Daten.
+
 ## Profil-Abschnitte und Standard-Rollenrechte
 - `ui.ts` `profileSections: [{ id, title, order?, permission?, component: () => import(…) }]` → Karte auf `/profile`
   (Komponente bekommt `{ userId }`, lädt Daten per `apiFetch`; Auswahl/Sortierung: `selectProfileSections` in

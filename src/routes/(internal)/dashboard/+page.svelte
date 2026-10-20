@@ -1,64 +1,334 @@
 <script lang="ts">
-	import { DataTable, EmptyState, PageHeader } from '$lib/components/layout';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { TableCell, TableHead, TableRow } from '$lib/components/ui/table';
+	import { page } from '$app/state';
+	import { toast } from 'svelte-sonner';
+	import ArrowDown from '@lucide/svelte/icons/arrow-down';
+	import ArrowUp from '@lucide/svelte/icons/arrow-up';
+	import GripVertical from '@lucide/svelte/icons/grip-vertical';
+	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+	import Settings2 from '@lucide/svelte/icons/settings-2';
+	import { DashboardCard, EmptyState, PageHeader } from '$lib/components/layout';
+	import type { ModuleNavEntry } from '$lib/components/layout/nav';
+	import { Button } from '$lib/components/ui/button';
+	import * as Sheet from '$lib/components/ui/sheet';
+	import { Switch } from '$lib/components/ui/switch';
+	import {
+		applyDashboardLayout,
+		toDashboardLayout,
+		type DashboardLayoutPref,
+		type ResolvedDashboardWidget
+	} from '$lib/sdk/client/dashboard-widgets';
+	import type { DashboardWidgetStatus } from '$lib/sdk/types/module-ui';
 
 	let { data } = $props();
-	const fmt = new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'medium' });
+
+	// --- Anordnung (lokal überschreibbar, Server-Wert nach jedem Laden) ---
+	let pref = $derived<DashboardLayoutPref | null>(data.layout);
+	/** Zuletzt erfolgreich gespeicherte Anordnung (Rücksetzpunkt bei Fehlern) */
+	let saved = $derived<DashboardLayoutPref | null>(data.layout);
+	const arranged = $derived(applyDashboardLayout(data.widgets, pref));
+
+	// --- Komponenten je Schlüssel nur einmal laden (neue Lader nach `invalidate` bauen nichts neu auf) ---
+	const loaded = new Map<string, ReturnType<ResolvedDashboardWidget['component']>>();
+	function widgetComponent(w: ResolvedDashboardWidget) {
+		let p = loaded.get(w.key);
+		if (!p) {
+			p = w.component();
+			loaded.set(w.key, p);
+		}
+		return p;
+	}
+
+	let statuses = $state<Record<string, DashboardWidgetStatus>>({});
+	const emptyWidgets = $derived(arranged.visible.filter((w) => statuses[w.key] === 'empty'));
+	const allEmpty = $derived(
+		arranged.visible.length > 0 && emptyWidgets.length === arranged.visible.length
+	);
+
+	const SPAN: Record<string, string> = {
+		sm: '',
+		md: 'md:col-span-2',
+		lg: 'md:col-span-2 xl:col-span-3'
+	};
+
+	// --- Kopf ---
+	const firstName = $derived((data.user?.name ?? '').trim().split(/\s+/)[0] ?? '');
+	const today = new Intl.DateTimeFormat('de-DE', {
+		weekday: 'long',
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric'
+	}).format(new Date());
+
+	const moduleLabels = $derived.by(() => {
+		const m = new Map<string, string>([['core', 'Allgemein']]);
+		for (const n of (page.data.navigation ?? []) as ModuleNavEntry[]) {
+			if (!m.has(n.moduleId)) m.set(n.moduleId, n.moduleName ?? n.label);
+		}
+		return m;
+	});
+
+	// --- Anpassen ---
+	let customizing = $state(false);
+	let liveMessage = $state('');
+	let saveState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
+	let queue: Promise<void> = Promise.resolve();
+
+	async function put(layout: DashboardLayoutPref | null) {
+		const res = await fetch('/dashboard/layout', {
+			method: 'PUT',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ layout })
+		});
+		if (!res.ok) {
+			const body = (await res.json().catch(() => null)) as { message?: string } | null;
+			throw new Error(body?.message ?? 'Die Anordnung konnte nicht gespeichert werden.');
+		}
+	}
+
+	/** Optimistisch übernehmen und nacheinander speichern; bei Fehler auf den letzten Stand zurück. */
+	function commit(next: DashboardLayoutPref | null) {
+		pref = next;
+		saveState = 'saving';
+		queue = queue.then(async () => {
+			try {
+				await put(next);
+				saved = next;
+				if (pref === next) saveState = 'saved';
+			} catch (e) {
+				pref = saved;
+				saveState = 'error';
+				toast.error(e instanceof Error ? e.message : 'Speichern fehlgeschlagen.');
+			}
+		});
+	}
+
+	function setVisible(w: ResolvedDashboardWidget, on: boolean) {
+		const hidden = new Set(arranged.hidden);
+		if (on) hidden.delete(w.key);
+		else hidden.add(w.key);
+		liveMessage = `${w.title} ${on ? 'eingeblendet' : 'ausgeblendet'}`;
+		commit(toDashboardLayout(arranged.all, hidden));
+	}
+
+	function reordered(from: number, to: number) {
+		const next = [...arranged.all];
+		const [item] = next.splice(from, 1);
+		next.splice(to, 0, item!);
+		return { next, item: item! };
+	}
+
+	function move(from: number, to: number, focusDir?: 'up' | 'down') {
+		if (to < 0 || to >= arranged.all.length || from === to) return;
+		const { next, item } = reordered(from, to);
+		liveMessage = `${item.title} jetzt an Position ${to + 1} von ${next.length}`;
+		commit(toDashboardLayout(next, arranged.hidden));
+		if (focusDir) {
+			queueMicrotask(() => {
+				const btn = document.getElementById(`dash-${focusDir}-${to}`) as HTMLButtonElement | null;
+				const other = document.getElementById(`dash-${focusDir === 'up' ? 'down' : 'up'}-${to}`);
+				(btn && !btn.disabled ? btn : other)?.focus();
+			});
+		}
+	}
+
+	function resetLayout() {
+		liveMessage = 'Standard wiederhergestellt';
+		commit(null);
+	}
+
+	// Ziehen nur am Griff: nur die Zeile mit gedrücktem Griff ist `draggable`
+	let armedKey = $state<string | null>(null);
+	let dragIndex = $state<number | null>(null);
+	let dragMoved = false;
+
+	function onDragStart(e: DragEvent, i: number) {
+		dragIndex = i;
+		dragMoved = false;
+		if (e.dataTransfer) {
+			e.dataTransfer.effectAllowed = 'move';
+			e.dataTransfer.setData('text/plain', String(i));
+		}
+	}
+
+	function onDragOver(e: DragEvent, i: number) {
+		if (dragIndex === null) return;
+		e.preventDefault();
+		if (i !== dragIndex) {
+			// Während des Ziehens nur lokal umstellen, gespeichert wird beim Loslassen
+			pref = toDashboardLayout(reordered(dragIndex, i).next, arranged.hidden);
+			dragIndex = i;
+			dragMoved = true;
+		}
+	}
+
+	function onDragEnd() {
+		if (dragMoved && dragIndex !== null) {
+			const w = arranged.all[dragIndex];
+			if (w)
+				liveMessage = `${w.title} jetzt an Position ${dragIndex + 1} von ${arranged.all.length}`;
+			commit(pref);
+		}
+		dragIndex = null;
+		armedKey = null;
+		dragMoved = false;
+	}
 </script>
 
 <svelte:head><title>Dashboard - {data.systemName}</title></svelte:head>
 
-<PageHeader title="Dashboard" description="Willkommen, {data.user?.name}." />
+<PageHeader title={firstName ? `Willkommen, ${firstName}` : 'Willkommen'} description={today}>
+	{#snippet actions()}
+		<Button variant="outline" onclick={() => (customizing = true)}>
+			<Settings2 /> Anpassen
+		</Button>
+	{/snippet}
+</PageHeader>
 
-{#if data.stats.length}
-	<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-		{#each data.stats as s (s.key)}
-			<Card>
-				<CardHeader class="pb-2">
-					<CardTitle class="text-sm font-medium text-muted-foreground">{s.label}</CardTitle>
-				</CardHeader>
-				<CardContent>
-					{#if s.href}
-						<a href={s.href} class="text-3xl font-semibold hover:underline">{s.value}</a>
-					{:else}
-						<p class="text-3xl font-semibold">{s.value}</p>
-					{/if}
-				</CardContent>
-			</Card>
+{#if arranged.visible.length === 0}
+	<EmptyState
+		title="Noch keine Kacheln"
+		description="Über „Anpassen“ kannst du Kacheln einblenden und anordnen."
+	>
+		{#if arranged.all.length}
+			<Button variant="outline" onclick={() => (customizing = true)}>
+				<Settings2 /> Anpassen
+			</Button>
+		{/if}
+	</EmptyState>
+{:else}
+	<div
+		class="grid grid-flow-row-dense gap-4 md:grid-cols-2 xl:grid-cols-3"
+		data-testid="dashboard-grid"
+	>
+		{#each arranged.visible as w (w.key)}
+			<section
+				class={[SPAN[w.size ?? 'sm'], statuses[w.key] === 'empty' && 'hidden', 'min-w-0']}
+				aria-label={w.title}
+				data-widget={w.key}
+			>
+				{#await widgetComponent(w)}
+					<DashboardCard title={w.title} loading />
+				{:then mod}
+					{@const Widget = mod.default}
+					<Widget
+						userId={data.user?.id ?? ''}
+						size={w.size ?? 'sm'}
+						onstatus={(s) => (statuses[w.key] = s)}
+					/>
+				{:catch}
+					<DashboardCard
+						title={w.title}
+						error="Diese Kachel konnte nicht geladen werden. Bitte lade die Seite neu."
+					/>
+				{/await}
+			</section>
 		{/each}
 	</div>
+	{#if emptyWidgets.length}
+		<p class="mt-4 text-sm text-muted-foreground" data-testid="dashboard-nothing-new">
+			{allEmpty ? 'Gerade gibt es nichts Neues' : 'Nichts Neues bei'}: {emptyWidgets
+				.map((w) => w.title)
+				.join(', ')}
+		</p>
+	{/if}
 {/if}
 
-{#if data.recent}
-	<div class="mt-6">
-		<DataTable
-			caption="Letzte Aktivitäten"
-			title="Letzte Aktivitäten"
-			empty={data.recent.length === 0}
-			emptyTitle="Noch keine Einträge"
-		>
-			{#snippet head()}
-				<TableRow>
-					<TableHead>Zeitpunkt</TableHead>
-					<TableHead>Aktion</TableHead>
-					<TableHead>Akteur</TableHead>
-					<TableHead class="hidden md:table-cell">Ziel</TableHead>
-				</TableRow>
-			{/snippet}
-			{#each data.recent as r (r.id)}
-				<TableRow>
-					<TableCell class="whitespace-nowrap">{fmt.format(new Date(r.createdAt))}</TableCell>
-					<TableCell class="font-mono text-xs">{r.action}</TableCell>
-					<TableCell>{r.actorName ?? '-'}</TableCell>
-					<TableCell class="hidden max-w-48 truncate md:table-cell">{r.target ?? ''}</TableCell>
-				</TableRow>
-			{/each}
-		</DataTable>
-	</div>
-{:else if data.stats.length === 0}
-	<EmptyState
-		title="Keine Übersicht verfügbar"
-		description="Ihre Rollen enthalten keine Berechtigungen für Dashboard-Kennzahlen."
-	/>
-{/if}
+<Sheet.Root bind:open={customizing}>
+	<Sheet.Content side="right" class="w-full overflow-y-auto sm:max-w-md">
+		<Sheet.Header class="border-b">
+			<Sheet.Title>Dashboard anpassen</Sheet.Title>
+			<Sheet.Description>
+				Kacheln ein- und ausblenden und die Reihenfolge ändern. Änderungen werden sofort
+				gespeichert.
+			</Sheet.Description>
+		</Sheet.Header>
+		<div class="space-y-4 p-4">
+			{#if !arranged.all.length}
+				<p class="text-sm text-muted-foreground">Für dich sind keine Kacheln verfügbar.</p>
+			{:else}
+				<ul class="space-y-2" aria-label="Kacheln">
+					{#each arranged.all as w, i (w.key)}
+						{@const on = !arranged.hidden.has(w.key)}
+						<li
+							draggable={armedKey === w.key}
+							ondragstart={(e) => onDragStart(e, i)}
+							ondragover={(e) => onDragOver(e, i)}
+							ondrop={(e) => e.preventDefault()}
+							ondragend={onDragEnd}
+							data-dashboard-row={w.key}
+							class={[
+								'flex items-center gap-2 rounded-md border bg-background p-2 transition-shadow',
+								dragIndex === i && 'opacity-60 shadow-md ring-2 ring-ring'
+							]}
+						>
+							<div
+								class="hidden h-9 w-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground sm:flex"
+								title="Ziehen zum Verschieben"
+								aria-hidden="true"
+								onpointerdown={() => (armedKey = w.key)}
+								onpointerup={() => (armedKey = null)}
+							>
+								<GripVertical class="size-4" />
+							</div>
+							<div class="min-w-0 flex-1">
+								<label for={`dash-switch-${i}`} class="block truncate text-sm font-medium">
+									{w.title}
+								</label>
+								<p class="truncate text-xs text-muted-foreground">
+									{moduleLabels.get(w.moduleId) ?? w.moduleId}{w.description
+										? ` · ${w.description}`
+										: ''}
+								</p>
+							</div>
+							<div class="flex shrink-0 items-center">
+								<Button
+									id={`dash-up-${i}`}
+									variant="ghost"
+									size="icon"
+									class="size-8"
+									disabled={i === 0}
+									aria-label={`${w.title} nach oben`}
+									onclick={() => move(i, i - 1, 'up')}
+								>
+									<ArrowUp />
+								</Button>
+								<Button
+									id={`dash-down-${i}`}
+									variant="ghost"
+									size="icon"
+									class="size-8"
+									disabled={i === arranged.all.length - 1}
+									aria-label={`${w.title} nach unten`}
+									onclick={() => move(i, i + 1, 'down')}
+								>
+									<ArrowDown />
+								</Button>
+							</div>
+							<Switch
+								id={`dash-switch-${i}`}
+								checked={on}
+								onCheckedChange={(v) => setVisible(w, v)}
+								aria-label={`${w.title} anzeigen`}
+							/>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<Button variant="outline" size="sm" onclick={resetLayout} disabled={pref === null}>
+					<RotateCcw /> Standard wiederherstellen
+				</Button>
+				<span class="text-xs text-muted-foreground" aria-hidden="true">
+					{saveState === 'saving'
+						? 'Speichert …'
+						: saveState === 'saved'
+							? 'Gespeichert'
+							: saveState === 'error'
+								? 'Nicht gespeichert'
+								: ''}
+				</span>
+			</div>
+			<p class="sr-only" aria-live="polite">{liveMessage}</p>
+		</div>
+	</Sheet.Content>
+</Sheet.Root>

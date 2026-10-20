@@ -55,6 +55,9 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
 - Theme: Cookie `theme` ist SSR-Quelle, `core.user.theme` (nur bei ausdrücklicher Wahl) gewinnt beim `(internal)`-Load;
   `theme.set()` schreibt zusätzlich per `POST /profile/theme`. `hooks.server.ts` ersetzt `%app.theme%`, `%app.density%`,
   `%app.style%` (`--accent-color`, nur validiertes `#rrggbb`) in `app.html`; Inline-Skript setzt `dark` bei „system“ (CSP-Nonce).
+- Dashboard (2026-10-20): `dashboard/+page.ts` sammelt `dashboardWidgets` aktiver Module + `CORE_DASHBOARD_WIDGETS` (Pseudo-Modul `core`),
+  `selectDashboardWidgets`/`applyDashboardLayout` (`$lib/sdk/client/dashboard-widgets`); Core-Daten `GET /dashboard/core` (je Recht), Anordnung
+  `PUT /dashboard/layout` (`core.user.dashboard`, Origin-Check, `null` = Standard). Tests `dashboard-widgets`, `dashboard-layout`, E2E `dashboard.spec.ts`.
 - `/` und Login ohne `redirectTo` leiten auf `core.user.startPage` (erlaubt: Dashboard, Profil, Modul-Navigation).
 
 ## Sicherheit

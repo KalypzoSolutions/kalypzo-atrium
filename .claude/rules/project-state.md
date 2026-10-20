@@ -170,6 +170,14 @@
   Recht `core.system.backup`, Reset-Suchbegriffe „Backup/Sicherung“ wandern hierher. Details: `architecture.md` → „Datensicherung“.
   Offen/Grenzen: kein Mehrinstanz-Betrieb, Dateien beim Import einzeln im RAM (≤ 2 GB je Datei), Merge ohne ID-Umschlüsselung/Duplikaterkennung,
   `onEnable` wird beim Übernehmen des Modulstatus nicht aufgerufen, `missingUserRefs` nur geschätzt, echtes S3 und große Sicherungen ungetestet.
+- **Modulares Dashboard (2026-10-20)**: `/dashboard` setzt sich aus Kacheln zusammen (`ui.ts` `dashboardWidgets` + Core-Kacheln
+  `src/lib/components/dashboard/`), nur aktive Module, nur mit Recht (Ämter wirken über ihre Rollen). Leere Kacheln (`onstatus('empty')`)
+  werden zu „Nichts Neues bei …“ eingeklappt. „Anpassen“: ein-/ausblenden, sortieren, Standard (`core.user.dashboard`, `PUT /dashboard/layout`).
+  Kacheln: Termine, Galerien, Ämter, Mitglieder (Geburtstage), Bestellungen (eigene + Kämmerer*in), Kassen-Aufgaben, **Meine offenen Rechnungen**
+  (`treasury GET /my/invoices`, Recht `treasury.own.view`), **Meine Anmeldungen** (`actions GET /my/registrations`, `actions.own.view`),
+  **Offene Abrechnungen** (`actions GET /accounting/open`), **Zuletzt geändert** (`files GET /recent`), Schnellzugriff, Kennzahlen, Aktivitäten.
+  Neue Rechte per `defaultRoleGrants` an „Mitglied“. Offen: Kassen-Aufgabentexte doppelt (`treasury/pages/task-view.ts` + `OverviewTab.svelte`),
+  ausgetretene verknüpfte Mitglieder fehlen in Rechnungen/Anmeldungen, Kacheln mit echten Daten nur per Integrationstest geprüft.
 - Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`, `rules/module-events.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)

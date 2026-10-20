@@ -264,6 +264,32 @@ filtert und sortiert mit `selectProfileSections` (`$lib/sdk/client/profile-secti
 (`{ key: '<moduleId>:<id>', moduleId, id, title, order, component }`) zurück. Die Komponente lädt ihre Daten selbst per
 `apiFetch`; Rechte werden serverseitig an den Endpoints durchgesetzt.
 
+### Dashboard-Kacheln
+
+**`dashboardWidgets`** (in `ui.ts`) fügen dem Dashboard `/dashboard` Kacheln hinzu. Das Dashboard zeigt nur Kacheln **aktiver**
+Module mit vorhandenem Recht – so passt es sich automatisch an Module, Rollen und Ämter (Ämter verleihen Rollen) an:
+
+```ts
+dashboardWidgets: [
+	{
+		id: 'upcoming', title: 'Nächste Termine', description: 'Kommende Termine, die du sehen darfst',
+		order: 10,                                   // Standard-Reihenfolge, Standard 100
+		size: 'sm',                                  // sm = 1 Spalte, md = 2, lg = volle Breite
+		permission: 'events.event.view',             // optional
+		anyPermission: ['a.b.c', 'a.b.d'],           // optional: mindestens eines
+		defaultHidden: false,                        // optional: erst unter „Anpassen“ einschalten
+		component: () => import('./pages/widgets/UpcomingWidget.svelte') // Props: DashboardWidgetProps
+	}
+]
+```
+
+Die Komponente (`DashboardWidgetProps { userId, size, onstatus? }`) lädt ihre Daten per `apiFetch`, nutzt `DashboardCard`
+(`$lib/components/layout`) und meldet nach dem Laden `onstatus('ready')` bzw. **`onstatus('empty')`**, wenn es nichts Wichtiges
+gibt – das Dashboard klappt die Kachel dann zu „Nichts Neues bei …“ ein. Auswahl/Anordnung: `selectDashboardWidgets`,
+`applyDashboardLayout` (`$lib/sdk/client/dashboard-widgets`); Core-Kacheln liegen als Pseudo-Modul `core` in
+`src/lib/components/dashboard/`. Jede Person kann Kacheln unter „Anpassen“ aus-/einblenden und sortieren
+(Einstellung `core.user.dashboard`, `PUT /dashboard/layout`).
+
 **`defaultRoleGrants`** (im Manifest oder auf `defineModule`): `{ 'Mitglied': ['members.own.view'] }`. Beim Start (`syncModules`)
 wird die Rolle per Name gesucht bzw. angelegt (kein System) und jedes Recht **einmalig je (Modul, Rolle, Recht)** vergeben
 (Tabelle `role_grant_applied`). Ein bewusst entzogenes Recht kommt daher nicht zurück; neue Rechte in einer späteren Version
@@ -271,7 +297,7 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 
 **Benutzer-Einstellungen** (Katalog `core/settings/catalog.ts`, Gruppe `user`): `core.user.theme`, `core.user.accentColor`
 (`''` oder `#rrggbb`), `core.user.density` (`comfortable|compact`), `core.user.startPage` (nur erlaubte Seiten, sonst
-`/dashboard`), `core.user.pageSize` (10–200). Listen-Loads nutzen `resolvePageSize(locals, fallback)`
+`/dashboard`), `core.user.pageSize` (10–200), `core.user.dashboard` (`{ order, hidden }` mit Kachel-Schlüsseln `<modul>:<id>`, `null` = Standard). Listen-Loads nutzen `resolvePageSize(locals, fallback)`
 (`core/settings/user-prefs`): ausdrücklich gespeicherter Wert, sonst die Standardgröße der Seite.
 
 ## 7. Tests

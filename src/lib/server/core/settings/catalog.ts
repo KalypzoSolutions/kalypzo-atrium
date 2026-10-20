@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { SettingScope } from '$lib/sdk/types';
+import { DASHBOARD_KEY_PATTERN, DASHBOARD_LAYOUT_MAX } from '$lib/sdk/client/dashboard-widgets';
 
 export interface SettingDefinition {
 	key: string;
@@ -17,6 +18,7 @@ const str = (max = 200) => z.string().trim().max(max);
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const cssLength = z.string().regex(/^\d+(\.\d+)?(mm|cm|in|px)$/);
 const urlOrEmpty = z.union([z.literal(''), z.string().url()]);
+const dashboardKey = z.string().max(80).regex(DASHBOARD_KEY_PATTERN);
 
 /** Vereinsnachweis wie in der PDF-Fußzeile */
 export const DEFAULT_MAIL_FOOTER =
@@ -385,6 +387,21 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		label: 'Einträge pro Seite',
 		schema: z.coerce.number().int().min(10).max(200),
 		default: 25,
+		scope: 'user',
+		group: 'user'
+	}),
+	g({
+		key: 'core.user.dashboard',
+		label: 'Dashboard-Anordnung',
+		description: 'Reihenfolge und ausgeblendete Kacheln (`<modul>:<kachel>`); leer = Standard.',
+		schema: z
+			.object({
+				order: z.array(dashboardKey).max(DASHBOARD_LAYOUT_MAX),
+				hidden: z.array(dashboardKey).max(DASHBOARD_LAYOUT_MAX)
+			})
+			.strict()
+			.nullable(),
+		default: null,
 		scope: 'user',
 		group: 'user'
 	})
