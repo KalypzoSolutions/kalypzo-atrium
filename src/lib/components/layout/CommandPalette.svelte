@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import { SEARCH_MIN_LENGTH, type SearchGroup, type SearchResponse } from '$lib/sdk/types/search';
 	import CornerDownLeft from '@lucide/svelte/icons/corner-down-left';
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import { Badge } from '$lib/components/ui/badge';
@@ -20,7 +22,21 @@
 		context: string;
 	}
 
-	const MAX_RESULTS = 12;
+	/** Höchstens so viele Seiten-Treffer (lokal); Datentreffer kommen gruppiert vom Server dazu */
+	const MAX_RESULTS = 8;
+	const DEBOUNCE_MS = 250;
+
+	/** Ein Eintrag der Ergebnisliste (Seite oder Datensatz) */
+	interface ResultRow {
+		id: string;
+		label: string;
+		context: string;
+		href: string;
+		icon: string;
+		badge: string;
+		/** Überschrift, wenn die Gruppe hier beginnt */
+		heading?: string;
+	}
 
 	let {
 		permissions,
@@ -82,20 +98,104 @@
 		return [...primary, ...modules, ...admin];
 	});
 
-	const results = $derived(searchAdmin(items, query).slice(0, MAX_RESULTS));
+	const pageResults = $derived(searchAdmin(items, query).slice(0, MAX_RESULTS));
+
+	// --- Datensuche (Server) -------------------------------------------------------
+	let dataGroups = $state<SearchGroup[]>([]);
+	let dataQuery = $state('');
+	let searching = $state(false);
+	let searchError = $state(false);
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	let controller: AbortController | undefined;
+
+	const trimmed = $derived(query.trim());
+
+	function scheduleSearch() {
+		clearTimeout(timer);
+		controller?.abort();
+		const q = trimmed;
+		if (q.length < SEARCH_MIN_LENGTH) {
+			dataGroups = [];
+			dataQuery = '';
+			searching = false;
+			searchError = false;
+			return;
+		}
+		searching = true;
+		timer = setTimeout(() => void runSearch(q), DEBOUNCE_MS);
+	}
+
+	async function runSearch(q: string) {
+		const ac = new AbortController();
+		controller = ac;
+		try {
+			const res = await fetch(`/search?q=${encodeURIComponent(q)}`, {
+				signal: ac.signal,
+				headers: { accept: 'application/json' }
+			});
+			if (!res.ok) throw new Error(String(res.status));
+			const body = (await res.json()) as { data: SearchResponse };
+			if (ac.signal.aborted) return;
+			dataGroups = body.data.groups;
+			dataQuery = q;
+			searchError = false;
+		} catch (e) {
+			if (ac.signal.aborted) return;
+			console.error('Suche fehlgeschlagen', e);
+			dataGroups = [];
+			searchError = true;
+		} finally {
+			if (controller === ac) searching = false;
+		}
+	}
+
+	/** Seiten zuerst, danach Datentreffer je Quelle (nur zum aktuellen Suchbegriff) */
+	const results = $derived.by((): ResultRow[] => {
+		const rows: ResultRow[] = pageResults.map((r, i) => ({
+			id: r.id,
+			label: r.label,
+			context: r.context,
+			href: r.href,
+			icon: r.icon,
+			badge: r.group,
+			heading: i === 0 && trimmed ? 'Seiten' : undefined
+		}));
+		if (dataQuery && dataQuery === trimmed) {
+			for (const g of dataGroups) {
+				g.hits.forEach((h, i) =>
+					rows.push({
+						id: `data:${g.source}:${h.id}:${i}`,
+						label: h.title,
+						context: h.subtitle ?? '',
+						href: h.href,
+						icon: h.icon ?? g.source,
+						badge: h.type,
+						heading: i === 0 ? g.label : undefined
+					})
+				);
+			}
+		}
+		return rows;
+	});
 	const activeIndex = $derived(Math.min(active, Math.max(results.length - 1, 0)));
 	const optionId = (i: number) => `${uid}-opt-${i}`;
 
 	function reset() {
 		query = '';
 		active = 0;
+		clearTimeout(timer);
+		controller?.abort();
+		dataGroups = [];
+		dataQuery = '';
+		searching = false;
+		searchError = false;
 	}
 
 	function onOpenChange(v: boolean) {
 		if (!v) reset();
 	}
 
-	function select(item: PaletteItem | undefined) {
+	function select(item: ResultRow | undefined) {
 		if (!item) return;
 		open = false;
 		reset();
@@ -168,14 +268,23 @@
 				aria-controls={listId}
 				aria-autocomplete="list"
 				aria-activedescendant={results.length ? optionId(activeIndex) : undefined}
-				aria-label="Seite oder Einstellung suchen"
-				placeholder="Seite oder Einstellung suchen …"
+				aria-label="Suchen: Seiten, Mitglieder, Aktionen, Termine …"
+				placeholder="Suchen: Seiten, Mitglieder, Aktionen …"
 				autocomplete="off"
 				spellcheck="false"
 				class="h-12 w-full min-w-0 bg-transparent text-base outline-none placeholder:text-muted-foreground md:text-sm"
-				oninput={() => (active = 0)}
+				oninput={() => {
+					active = 0;
+					scheduleSearch();
+				}}
 				{onkeydown}
 			/>
+			{#if searching}
+				<LoaderCircle
+					class="size-4 shrink-0 animate-spin text-muted-foreground"
+					aria-label="Sucht …"
+				/>
+			{/if}
 			<kbd
 				class="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline"
 				aria-hidden="true">Esc</kbd
@@ -190,6 +299,14 @@
 		>
 			{#each results as r, i (r.id)}
 				{@const Icon = iconFor(r.icon)}
+				{#if r.heading}
+					<li
+						class="px-2.5 pt-2 pb-1 text-xs font-medium text-muted-foreground first:pt-1"
+						role="presentation"
+					>
+						{r.heading}
+					</li>
+				{/if}
 				<!-- Tastatur über das Eingabefeld (aria-activedescendant), Klick hier nur für Maus/Touch -->
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<li
@@ -209,17 +326,29 @@
 							<span class="block truncate text-xs text-muted-foreground">{r.context}</span>
 						{/if}
 					</span>
-					<Badge variant="outline" class="hidden sm:inline-flex">{r.group}</Badge>
+					<Badge variant="outline" class="hidden sm:inline-flex">{r.badge}</Badge>
 					{#if i === activeIndex}
 						<CornerDownLeft class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
 					{/if}
 				</li>
 			{:else}
 				<li class="px-3 py-8 text-center text-sm text-muted-foreground" role="presentation">
-					Nichts gefunden. Versuch einen anderen Begriff.
+					{#if searching}
+						Sucht …
+					{:else}
+						Nichts gefunden. Versuch einen anderen Begriff.
+					{/if}
 				</li>
 			{/each}
 		</ul>
+		{#if searchError}
+			<p class="border-t px-3 py-2 text-xs text-destructive" role="alert">
+				Datensuche gerade nicht möglich – es werden nur Seiten angezeigt.
+			</p>
+		{/if}
+		<p class="sr-only" aria-live="polite">
+			{trimmed && !searching ? `${results.length} Treffer` : ''}
+		</p>
 		<p class="border-t px-3 py-2 text-xs text-muted-foreground">
 			<span class="hidden sm:inline">↑ ↓ zum Auswählen, Enter zum Öffnen, Esc zum Schließen</span>
 			<span class="sm:hidden">Tippe, um zu suchen</span>

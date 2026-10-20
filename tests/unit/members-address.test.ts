@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { memberInput } from '$lib/modules/members/schemas';
-import { placesForPostalCode, toSuggestion } from '$lib/modules/members/address.service';
+import {
+	directoryName,
+	normalizeStreet,
+	placesForPostalCode,
+	splitHouseNumber,
+	toSuggestion
+} from '$lib/modules/members/address.service';
+import { matchesStreetName, withHouseNumber } from '$lib/modules/members/address-utils';
 import { countryOptions } from '$lib/modules/members/pages/countries';
 
 const base = {
@@ -53,7 +60,8 @@ describe('Photon → Adressvorschlag', () => {
 			street: 'Rockwinkler Heerstraße 140',
 			postalCode: '28355',
 			city: 'Bremen',
-			country: 'DE'
+			country: 'DE',
+			source: 'photon'
 		});
 	});
 
@@ -92,5 +100,60 @@ describe('Länderliste', () => {
 		expect(o[0]).toEqual({ value: 'DE', label: 'Deutschland' });
 		expect(o.some((c) => c.value === 'BS')).toBe(true);
 		expect(o.some((c) => c.value === 'AT' && c.label === 'Österreich')).toBe(true);
+	});
+});
+
+describe('Hausnummer und Straßennamen', () => {
+	it('trennt die Hausnummer ab', () => {
+		expect(splitHouseNumber('Am Wall 12a')).toEqual({ name: 'Am Wall', number: '12a' });
+		expect(splitHouseNumber('Am Wall 12 a')).toEqual({ name: 'Am Wall', number: '12a' });
+		expect(splitHouseNumber('Hauptstr. 12-14')).toEqual({ name: 'Hauptstr.', number: '12-14' });
+		expect(splitHouseNumber('Weg 3/1')).toEqual({ name: 'Weg', number: '3/1' });
+		expect(splitHouseNumber('Schwachhauser')).toEqual({ name: 'Schwachhauser', number: '' });
+		// Zahl im Straßennamen bleibt, wenn keine Hausnummer folgt
+		expect(splitHouseNumber('Straße des 17. Juni')).toEqual({
+			name: 'Straße des 17. Juni',
+			number: ''
+		});
+	});
+
+	it('vergleicht „Straße“ und „Str.“ gleich', () => {
+		expect(normalizeStreet('Rockwinkler Heerstraße 140')).toBe('rockwinkler heerstr. 140');
+		expect(normalizeStreet('Rockwinkler  Heerstr. 140')).toBe('rockwinkler heerstr. 140');
+	});
+});
+
+describe('Suchname fürs Straßenverzeichnis', () => {
+	it('kürzt „straße“/„strasse“ auf „str“', () => {
+		expect(directoryName('Schwachhauser Heerstraße')).toBe('Schwachhauser Heerstr');
+		expect(directoryName('Hauptstrasse')).toBe('Hauptstr');
+		expect(directoryName('Rockwinkler  Heerstr.')).toBe('Rockwinkler Heerstr.');
+		expect(directoryName('Straße des 17. Juni')).toBe('str des 17. Juni');
+	});
+});
+
+describe('Weitertippen ohne neue Anfrage', () => {
+	it('formt angefangene „straße“ ebenfalls um, „Strand“ bleibt', () => {
+		expect(directoryName('Schwachhauser Heerstra')).toBe('Schwachhauser Heerstr');
+		expect(directoryName('Schwachhauser Heerstraß')).toBe('Schwachhauser Heerstr');
+		expect(directoryName('Hauptstrass')).toBe('Hauptstr');
+		expect(directoryName('Am Strand')).toBe('Am Strand');
+	});
+
+	it('tauscht die Hausnummer im Vorschlag', () => {
+		expect(withHouseNumber('Am Wall 1', '1', '12')).toBe('Am Wall 12');
+		expect(withHouseNumber('Am Wall', '', '12a')).toBe('Am Wall 12a');
+		expect(withHouseNumber('Am Wall 12', '12', '')).toBe('Am Wall');
+		// Straße endet zufällig nicht auf die alte Nummer → nur anhängen
+		expect(withHouseNumber('Weg 17', '3', '4')).toBe('Weg 17 4');
+	});
+});
+
+describe('Veraltete Vorschläge', () => {
+	it('prüft, ob ein Vorschlag noch zur getippten Straße passt', () => {
+		expect(matchesStreetName('Schwachhauser Heerstr. 12', 'Schwachhauser Heerstraße')).toBe(true);
+		expect(matchesStreetName('Am Walberberg 12', 'Am Wall')).toBe(false);
+		expect(matchesStreetName('Am Wall 12', 'am wall')).toBe(true);
+		expect(matchesStreetName('Aderkirchweg 3', 'Kirchweg')).toBe(true);
 	});
 });

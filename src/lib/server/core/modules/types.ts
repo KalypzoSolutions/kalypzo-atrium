@@ -61,6 +61,24 @@ export interface ModuleBackupHooks {
 	) => Promise<{ updated: number; unrecoverable: number }>;
 }
 
+/**
+ * Suchquelle eines Moduls für die globale Suche. Der Core ruft `run` nur bei aktivem Modul und
+ * vorhandenem Recht auf (`permission` und/oder mindestens eines aus `anyPermission`), nacheinander,
+ * nie in einer offenen Transaktion. `run` muss selbst objektbezogen filtern (Freigaben, eigene
+ * Datensätze) und darf nur Felder liefern, die die Person in der Moduloberfläche auch sieht.
+ * Fehler werden protokolliert und die Quelle übersprungen.
+ */
+export interface ModuleSearchProvider {
+	permission?: string;
+	anyPermission?: string[];
+	/** `query` ist getrimmt, 2–100 Zeichen; höchstens `limit` Treffer liefern */
+	run: (
+		ctx: RequestContext,
+		query: string,
+		limit: number
+	) => Promise<import('$lib/sdk/types/search').SearchHit[]>;
+}
+
 export interface ModuleDefinition {
 	manifest: ModuleManifest;
 	settings?: ModuleSettingDefinition[];
@@ -91,6 +109,8 @@ export interface ModuleDefinition {
 	resetUsers?: (tx: import('../database/client').Tx, keepUserId: string) => Promise<void>;
 	/** Datensicherung (siehe `core/backup`) */
 	backup?: ModuleBackupHooks;
+	/** Globale Suche (Befehlspalette): Datensätze des Moduls, die die Person sehen darf */
+	search?: ModuleSearchProvider;
 	onEnable?: (ctx: RequestContext) => Promise<void>;
 	onDisable?: (ctx: RequestContext) => Promise<void>;
 }

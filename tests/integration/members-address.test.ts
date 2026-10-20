@@ -75,12 +75,30 @@ const PHOTON = {
 	]
 };
 
+/** OpenPLZ-Antwort: nur für „Schwachh…“ Treffer, sonst leer (→ Photon als Ersatz) */
+const STREETS = [
+	{ name: 'Schwachhausen', postalCode: '27257', locality: 'Affinghausen' },
+	{ name: 'Schwachhauser Heerstr.', postalCode: '28203', locality: 'Bremen' },
+	{ name: 'Schwachhauser Heerstr.', postalCode: '28203', locality: 'Bremen' },
+	{ name: 'Schwachhauser Heerstr.', postalCode: '28209', locality: 'Bremen' }
+];
+function openPlzFor(url: URL) {
+	const name = (url.searchParams.get('name') ?? '').toLowerCase();
+	if (!name.startsWith('schwachh')) return [];
+	const plz = url.searchParams.get('postalCode');
+	return STREETS.filter((s) => !plz || s.postalCode.startsWith(plz));
+}
+const photonRequests = () => requested.filter((u) => u.pathname === '/api/');
+const openPlzRequests = () => requested.filter((u) => u.pathname.includes('/de/Streets'));
+
 beforeAll(async () => {
 	setAddressFetchForTests(async (input) => {
-		requested.push(new URL(String(input)));
+		const url = new URL(String(input));
+		requested.push(url);
 		if (mode === 'throw') throw new Error('Netz weg');
 		if (mode === 'error') return new Response('x', { status: 502 });
-		return new Response(JSON.stringify(PHOTON), {
+		const body = url.pathname.includes('/de/Streets') ? openPlzFor(url) : PHOTON;
+		return new Response(JSON.stringify(body), {
 			headers: { 'content-type': 'application/json' }
 		});
 	});
@@ -120,7 +138,9 @@ describe('Adress-Autovervollständigung', () => {
 			'Rockwinkler Heerstraße 140, 28355 Bremen',
 			'Rockwinkler Landstraße, 28355 Bremen'
 		]);
-		const u = requested[0]!;
+		// Straßenverzeichnis zuerst (leer) → Photon als Ersatz
+		expect(openPlzRequests()[0]!.origin).toBe('https://openplzapi.org');
+		const u = photonRequests()[0]!;
 		expect(u.origin).toBe('https://photon.komoot.io');
 		expect(u.pathname).toBe('/api/');
 		expect(u.searchParams.get('q')).toBe('Rockwinkler Heerstr 140');
@@ -140,8 +160,9 @@ describe('Adress-Autovervollständigung', () => {
 		mode = 'ok';
 	});
 
-	it('leere Einstellung schaltet den Dienst ab (keine Anfrage)', async () => {
+	it('leere Einstellungen schalten die Dienste ab (keine Anfrage)', async () => {
 		await setSetting(admin, 'members.address.photonUrl', '');
+		await setSetting(admin, 'members.address.openPlzUrl', '');
 		requested = [];
 		const res = await get('/address/suggest?q=Musterweg');
 		expect(((await res.json()) as { data: { unavailable: boolean } }).data.unavailable).toBe(true);
@@ -149,6 +170,55 @@ describe('Adress-Autovervollständigung', () => {
 		await setSetting(admin, 'members.address.photonUrl', 'https://photon.example.test');
 		await get('/address/suggest?q=Musterweg');
 		expect(requested[0]!.origin).toBe('https://photon.example.test');
+		await setSetting(admin, 'members.address.photonUrl', 'https://photon.komoot.io');
+		await setSetting(admin, 'members.address.openPlzUrl', 'https://openplzapi.org');
+	});
+
+	it('Straßenverzeichnis: Region der PLZ zuerst, Hausnummer übernommen, ohne Photon', async () => {
+		requested = [];
+		const res = await get(
+			`/address/suggest?q=${encodeURIComponent('Schwachh 12a')}&postalCode=28&country=DE`
+		);
+		const { data } = (await res.json()) as {
+			data: { items: { label: string; street: string; source: string }[]; unavailable: boolean };
+		};
+		expect(data.unavailable).toBe(false);
+		expect(data.items.map((i) => i.label)).toEqual([
+			'Schwachhauser Heerstr. 12a, 28203 Bremen',
+			'Schwachhauser Heerstr. 12a, 28209 Bremen',
+			'Schwachhausen 12a, 27257 Affinghausen'
+		]);
+		expect(data.items[0]!.source).toBe('directory');
+		const regional = openPlzRequests().find((u) => u.searchParams.get('postalCode') === '28');
+		expect(regional?.searchParams.get('name')).toBe('Schwachh');
+		expect(photonRequests()).toHaveLength(0);
+	});
+
+	it('Weitertippen (auch „straße“ statt „Str.“) filtert aus dem Zwischenspeicher', async () => {
+		requested = [];
+		const res = await get(
+			`/address/suggest?q=${encodeURIComponent('Schwachhauser Heerstraße 5')}&postalCode=28`
+		);
+		const { data } = (await res.json()) as { data: { items: { label: string }[] } };
+		expect(data.items[0]!.label).toBe('Schwachhauser Heerstr. 5, 28203 Bremen');
+		expect(data.items.some((i) => i.label.includes('Affinghausen'))).toBe(false);
+		// „schwachh“ war vollständig geladen → keine neue Anfrage
+		expect(requested).toHaveLength(0);
+	});
+
+	it('Zwischenspeicher: gleiche Anfrage fragt die Dienste nicht erneut', async () => {
+		await get('/address/suggest?q=Schwachhauser&postalCode=28203');
+		requested = [];
+		const res = await get('/address/suggest?q=Schwachhauser&postalCode=28209');
+		expect(res.status).toBe(200);
+		expect(requested).toHaveLength(0);
+	});
+
+	it('Ausland: kein Straßenverzeichnis, nur Photon', async () => {
+		requested = [];
+		await get('/address/suggest?q=Schwachhauser&country=AT');
+		expect(openPlzRequests()).toHaveLength(0);
+		expect(photonRequests()).toHaveLength(1);
 	});
 
 	it('validiert Suchtext (≥ 3 Zeichen) und braucht das Bearbeiten-Recht', async () => {
@@ -201,6 +271,25 @@ describe('Anschrift am Mitglied', () => {
 		expect(upd.status).toBe(200);
 		const u = ((await upd.json()) as { data: Record<string, unknown> }).data;
 		expect(u).toMatchObject({ country: 'AT', postalCode: '1010', city: 'Wien' });
+	});
+
+	it('Vorschläge enthalten vorhandene Mitglieder-Anschriften zuerst', async () => {
+		resetAllForTests();
+		await api(`${BASE}/members`, fullKey, {
+			method: 'POST',
+			json: body({ firstName: 'Lia', street: 'Schwachhauser Heerstr. 7', postalCode: '28209' })
+		});
+		const res = await get(`/address/suggest?q=${encodeURIComponent('Schwachhauser H')}`);
+		const { data } = (await res.json()) as {
+			data: { items: { label: string; source: string }[] };
+		};
+		expect(data.items[0]).toEqual(
+			expect.objectContaining({
+				label: 'Schwachhauser Heerstr. 7, 28209 Bremen',
+				source: 'members'
+			})
+		);
+		expect(data.items.some((i) => i.source === 'directory')).toBe(true);
 	});
 
 	it('lehnt ungültige Anschriften ab (422)', async () => {

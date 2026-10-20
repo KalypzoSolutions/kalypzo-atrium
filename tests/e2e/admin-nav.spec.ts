@@ -69,7 +69,7 @@ test('Strg+K öffnet die Befehlspalette, „logo“ + Enter → Design', async (
 	await page.keyboard.press('Control+k');
 	const palette = page.getByRole('dialog');
 	await expect(palette).toBeVisible();
-	const input = palette.getByRole('combobox', { name: 'Seite oder Einstellung suchen' });
+	const input = palette.getByRole('combobox', { name: /^Suchen/ });
 	await expect(input).toBeFocused();
 	await input.fill('logo');
 	await expect(palette.getByRole('option').first()).toContainText('Design');

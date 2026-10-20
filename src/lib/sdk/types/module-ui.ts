@@ -51,4 +51,48 @@ export interface ModuleUi {
 	>;
 	/** Abschnitte auf der Profilseite (`/profile`) */
 	profileSections?: ProfileSection[];
+	/** Kacheln auf dem Dashboard (`/dashboard`) */
+	dashboardWidgets?: DashboardWidget[];
+}
+
+/** Breite einer Dashboard-Kachel im Raster: `sm` = 1 Spalte, `md` = 2 Spalten, `lg` = volle Breite */
+export type DashboardWidgetSize = 'sm' | 'md' | 'lg';
+
+/**
+ * Zustand, den eine Kachel meldet. `empty` = nichts Wichtiges zu zeigen → das Dashboard klappt die
+ * Kachel zu einer Zeile „Nichts Neues“ am Ende ein (außer im Anpassen-Modus).
+ */
+export type DashboardWidgetStatus = 'loading' | 'ready' | 'empty' | 'error';
+
+/** Props der Komponente einer Dashboard-Kachel */
+export interface DashboardWidgetProps {
+	/** ID des angemeldeten Benutzers (Kacheln laden ihre Daten selbst per `apiFetch`) */
+	userId: string;
+	size: DashboardWidgetSize;
+	/** Zustand melden (nach dem Laden `ready` oder `empty`, bei Fehlern `error`) */
+	onstatus?: (status: DashboardWidgetStatus) => void;
+}
+
+/**
+ * Kachel, die ein Modul auf `/dashboard` beisteuert (nur für aktive Module, nur mit Recht). Die
+ * Komponente lädt ihre Daten selbst und nutzt `DashboardCard` aus `$lib/components/layout`; die
+ * Durchsetzung der Rechte bleibt serverseitig.
+ */
+export interface DashboardWidget {
+	/** `[a-z][a-z0-9-]*`, eindeutig im Modul (global: `<moduleId>:<id>`) */
+	id: string;
+	title: string;
+	/** Kurzbeschreibung für „Dashboard anpassen“ */
+	description?: string;
+	/** Standard-Reihenfolge aufsteigend (Standard 100) */
+	order?: number;
+	/** Standard `sm` */
+	size?: DashboardWidgetSize;
+	/** Nur sichtbar mit diesem Recht */
+	permission?: string;
+	/** Nur sichtbar mit mindestens einem dieser Rechte (zusätzlich zu `permission`) */
+	anyPermission?: string[];
+	/** Standardmäßig ausgeblendet (lässt sich unter „Anpassen“ einschalten) */
+	defaultHidden?: boolean;
+	component: () => Promise<{ default: Component<DashboardWidgetProps> }>;
 }

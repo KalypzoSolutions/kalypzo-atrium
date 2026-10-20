@@ -55,6 +55,9 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
 - Theme: Cookie `theme` ist SSR-Quelle, `core.user.theme` (nur bei ausdrücklicher Wahl) gewinnt beim `(internal)`-Load;
   `theme.set()` schreibt zusätzlich per `POST /profile/theme`. `hooks.server.ts` ersetzt `%app.theme%`, `%app.density%`,
   `%app.style%` (`--accent-color`, nur validiertes `#rrggbb`) in `app.html`; Inline-Skript setzt `dark` bei „system“ (CSP-Nonce).
+- Dashboard (2026-10-20): `dashboard/+page.ts` sammelt `dashboardWidgets` aktiver Module + `CORE_DASHBOARD_WIDGETS` (Pseudo-Modul `core`),
+  `selectDashboardWidgets`/`applyDashboardLayout` (`$lib/sdk/client/dashboard-widgets`); Core-Daten `GET /dashboard/core` (je Recht), Anordnung
+  `PUT /dashboard/layout` (`core.user.dashboard`, Origin-Check, `null` = Standard). Tests `dashboard-widgets`, `dashboard-layout`, E2E `dashboard.spec.ts`.
 - `/` und Login ohne `redirectTo` leiten auf `core.user.startPage` (erlaubt: Dashboard, Profil, Modul-Navigation).
 
 ## Sicherheit
@@ -117,7 +120,14 @@ Nutzereingaben nie als `{@html}` ausgeben; CSV-Exporte gegen Formel-Injection (`
   `/system/reset[/…]`) → **308** per `legacyAdminRedirect` (`src/lib/server/core/admin-redirects.ts`) im `guard` von `hooks.server.ts`; Unterpfade und Query
   wandern mit, `/modules/<id>/…` bleibt die Moduloberfläche.
 - Reiter als Links: `LinkTabs` (eigene URL je Reiter, `aria-current`, Optik wie `Tabs variant="line"`), Layouts in `admin/{settings,roles,api}/+layout.svelte`.
-- **Befehlspalette** `CommandPalette` (Strg/⌘+K, Topbar-Button „Suchen“): Dashboard, Modulseiten und alle sichtbaren Verwaltungseinträge.
+- **Befehlspalette** `CommandPalette` (Strg/⌘+K, Topbar-Button „Suchen“): Dashboard, Modulseiten und alle sichtbaren Verwaltungseinträge (lokal)
+  **plus Datensuche** (2026-10-20): ab 2 Zeichen, 250 ms verzögert `GET /search?q=` (`src/routes/(internal)/search/+server.ts` →
+  `core/search/service.ts` `searchEverything`): Core (Benutzer*innen `core.users.view`, Rollen `core.roles.view`) + `ModuleDefinition.search`
+  (`ModuleSearchProvider { permission?, anyPermission?, run(ctx, q, limit) }`) aktiver Module, nur mit Recht, nacheinander, je Quelle ≤ 5,
+  Fehler einer Quelle übersprungen, nur relative Links (`isSafeHref`). Typen `$lib/sdk/types/search`. Quellen: members (Mitglieder `?open=`, Gruppen),
+  actions, events (`?event=`), galleries, files, offices, orders, treasury (Rechnungen, Zahler `?payer=`, eigene Rechnungen mit `own.view`).
+  Tests `search-core`, `search-modules-a|b`, E2E `search.spec.ts`.
+- **Sidebar** scrollt eigenständig: Desktop `sticky top-0 h-dvh` mit eigenem Scrollbereich, mobil Sheet mit festem Kopf und scrollbarer Liste.
 - Reiter **Einstellungen → Module** (`/admin/settings/modules`): generische Formulare aus `ModuleDefinition.settings` aktiver Module; Module mit eigener
   Einstellungsseite (Navigation mit `admin: true`, z. B. Kasse) erscheinen nur als Link.
 - Header-Check: nur `/admin/settings/mail-preview` (E-Mail-Vorschau im iframe) bekommt `x-frame-options: SAMEORIGIN`, alles andere `DENY`.
