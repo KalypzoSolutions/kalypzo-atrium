@@ -164,5 +164,7 @@ test('Einkauf mit Teillieferung', async ({ page }) => {
 	await expect(row.getByText('Teilweise geliefert')).toBeVisible();
 
 	await page.goto('/modules/orders?tab=lager');
+	// Lager blättert ab 20 Artikeln – über die Suche finden
+	await page.getByLabel('Lager durchsuchen').fill(title);
 	await expect(page.getByText(title).first()).toBeVisible();
 });
