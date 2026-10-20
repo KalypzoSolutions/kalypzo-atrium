@@ -89,6 +89,12 @@ return result;
 - `manifest.optionalDependencies` + `core.modules.useOptional(provider, caller)` → `null`, wenn der Anbieter nicht aktiv ist
   (für Rückkanäle ohne Zyklus, z. B. `actions` liest Zahlungen aus `treasury`). Harte Abhängigkeiten bleiben `dependencies`.
 
+## Globale Suche
+- `defineModule({ search: { permission?, anyPermission?, run(ctx, query, limit) } })` (`ModuleSearchProvider`, Datei `search.ts`): Treffer
+  `SearchHit { id, title, subtitle?, href, icon?, type }` für die Befehlspalette. `run` filtert **objektbezogen** wie die Listen-Endpunkte,
+  Core-Services außerhalb der Transaktion, LIKE escapen, keine sensiblen Felder (Geburtsdatum, Kontakte, IBAN, Gesundheit). `href` relativ;
+  braucht die Seite einen Deep-Link, `?open=<id>` o. Ä. ergänzen und nach dem Öffnen per `replaceState` entfernen.
+
 ## Dashboard-Kacheln
 - `ui.ts` `dashboardWidgets: [{ id, title, description?, order?, size?: 'sm'|'md'|'lg', permission?, anyPermission?, defaultHidden?, component }]`
   → Kachel auf `/dashboard` (nur aktive Module, nur mit Recht; Typen in `$lib/sdk/types/module-ui`). Komponente in `pages/widgets/`, nutzt

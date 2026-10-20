@@ -258,3 +258,4 @@ export interface AiGenerateResult {
 	text: string;
 	usage: AiUsage;
 }
+export type * from './search';

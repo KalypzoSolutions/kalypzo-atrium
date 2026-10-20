@@ -70,11 +70,16 @@
 		<Menu />
 	</Button>
 	<Sheet bind:open={menuOpen}>
-		<SheetContent side="left" class="w-72 p-0">
-			<SheetHeader class="border-b p-4">
+		<!-- Volle Höhe, Kopf fest, Navigation scrollt (kleine Geräte, Querformat) -->
+		<SheetContent side="left" class="flex h-dvh w-72 max-w-[85vw] flex-col gap-0 p-0">
+			<SheetHeader class="shrink-0 border-b p-4">
 				<SheetTitle>{systemName}</SheetTitle>
 			</SheetHeader>
-			<SidebarNav {permissions} {navigation} onnavigate={() => (menuOpen = false)} />
+			<div
+				class="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]"
+			>
+				<SidebarNav {permissions} {navigation} onnavigate={() => (menuOpen = false)} />
+			</div>
 		</SheetContent>
 	</Sheet>
 

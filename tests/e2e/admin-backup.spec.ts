@@ -43,7 +43,7 @@ test('Seite über Befehlspalette und Seitenleiste erreichbar', async ({ page }) 
 	await login(page);
 	await page.keyboard.press('Control+k');
 	const palette = page.getByRole('dialog');
-	const input = palette.getByRole('combobox', { name: 'Seite oder Einstellung suchen' });
+	const input = palette.getByRole('combobox', { name: /^Suchen/ });
 	await input.fill('Sicherung');
 	await expect(palette.getByRole('option').first()).toContainText('Datensicherung');
 	await input.press('Enter');

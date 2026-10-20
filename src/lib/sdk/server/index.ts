@@ -15,6 +15,7 @@ export type {
 	ModuleDefinition,
 	ModuleJob,
 	ModuleMigration,
+	ModuleSearchProvider,
 	ResetArea
 } from '$lib/server/core/modules/types';
 export type { Db, Tx } from '$lib/server/core/database/client';
