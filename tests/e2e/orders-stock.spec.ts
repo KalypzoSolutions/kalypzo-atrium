@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// Lager: Artikel mit Größen als eine Zeile mit Summen (aufklappbar), Seitenwechsel ab 20 Artikeln.
+// Lager: Artikel mit Größen als eine Zeile mit Summen (aufklappbar), Seitenwechsel ab 20 Artikeln;
+// Größen im Bearbeiten-Dialog verschieben.
 
 const ADMIN = { email: 'admin@example.test', password: 'e2e-admin-password-1' };
 const ORIGIN = 'http://localhost:4173';
@@ -107,5 +108,35 @@ test('Lager fasst Größen zusammen und blättert', async ({ page }) => {
 	if (SHOTS) {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.screenshot({ path: `${SHOTS}/lager-mobil.png`, fullPage: true });
+		await page.setViewportSize({ width: 1280, height: 900 });
 	}
+
+	// Größen im Bearbeiten-Dialog verschieben: L nach ganz oben
+	await page.goto('/modules/orders?tab=artikel');
+	await page.getByLabel('Artikel durchsuchen').fill(kluft);
+	await page
+		.getByRole('row', { name: new RegExp(kluft) })
+		.first()
+		.click();
+	const dialog = page.getByRole('dialog');
+	await dialog.getByRole('tab', { name: /Größen/ }).click();
+	await dialog.getByRole('button', { name: 'Größe L nach oben' }).click();
+	await dialog.getByRole('button', { name: 'Größe L nach oben' }).click();
+	await expect(dialog.getByRole('button', { name: 'Größe L nach oben' })).toBeDisabled();
+	await expect(dialog.locator('#variant-label-0')).toHaveValue('L');
+	// Ziehen am Griff: M (Position 3) auf Position 2 → L, M, S
+	await dialog
+		.locator('[data-variant-row="2"] [title="Ziehen zum Verschieben"]')
+		.dragTo(dialog.locator('[data-variant-row="1"]'));
+	await expect(dialog.locator('#variant-label-1')).toHaveValue('M');
+	await dialog.getByRole('button', { name: 'Größe M nach unten' }).click();
+	await expect(dialog.locator('#variant-label-2')).toHaveValue('M');
+	if (SHOTS) await page.screenshot({ path: `${SHOTS}/groessen-verschieben.png` });
+	await dialog.getByRole('button', { name: 'Speichern' }).click();
+	await expect(dialog).toBeHidden();
+
+	const saved = await api<ArticleDto>(page, 'GET', `/modules/orders/articles/${article.id}`);
+	expect(saved.variants.map((v) => v.label)).toEqual(['L', 'S', 'M']);
+	// IDs bleiben erhalten (nur umsortiert, nichts archiviert)
+	expect(saved.variants.map((v) => v.id)).toEqual([l!.id, s!.id, m!.id]);
 });
