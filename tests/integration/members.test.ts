@@ -253,6 +253,21 @@ describe('Mitglieder-CRUD', () => {
 		expect(stage.status).toBe(422);
 	});
 
+	it('kennt den Stand „Jungpfadfinder“ (Migration 0011)', async () => {
+		const m = await data<{ id: string; stage: string }>(
+			await call('/members', {
+				method: 'POST',
+				json: memberBody({ firstName: 'Jana', stage: 'jungpfadfinder', emails: [], phones: [] })
+			}),
+			201
+		);
+		expect(m.stage).toBe('jungpfadfinder');
+		const list = await data<{ items: { id: string }[] }>(
+			await call('/members?stage=jungpfadfinder')
+		);
+		expect(list.items.map((i) => i.id)).toContain(m.id);
+	});
+
 	it('löscht ein Mitglied', async () => {
 		const res = await call(`/members/${memberId}`, { method: 'DELETE' });
 		expect([200, 204]).toContain(res.status);
