@@ -67,9 +67,10 @@ Die E-Mail-Adresse neuer Konten wird nicht verifiziert (`emailVerified: true` wi
 
 ## Adress-Autovervollständigung (Modul `members`)
 
-Beim Tippen einer Adresse sendet **unser Server** (nicht der Browser) den Suchtext an den in `members.address.photonUrl` konfigurierten
-Photon-Dienst (Standard: `photon.komoot.io`, OpenStreetMap). Es werden nur Straße/Ort-Fragmente übertragen, keine Namen oder Kontodaten.
-Timeout 3 s, Fehler brechen das Formular nicht. Zum Abschalten oder für eine eigene Instanz die Einstellung leeren bzw. ändern.
+Beim Tippen einer Adresse sendet **unser Server** (nicht der Browser) den Straßentext an das Straßenverzeichnis OpenPLZ
+(`members.address.openPlzUrl`, Standard `openplzapi.org`) und nur ersatzweise an Photon (`members.address.photonUrl`, Standard `photon.komoot.io`).
+Es werden nur Straße/PLZ-Fragmente übertragen, keine Namen oder Kontodaten. Vorschläge aus vorhandenen Mitglieder-Anschriften sieht nur, wer
+`members.member.edit` hat (diese Personen sehen die Anschriften ohnehin). Fehler brechen das Formular nicht. Zum Abschalten die Einstellungen leeren.
 
 ## Secrets
 
