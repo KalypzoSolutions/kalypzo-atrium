@@ -165,6 +165,11 @@
   unverändert übernommen, **nur das Backend getauscht**: Termine/Galerien serverseitig aus den Website-Endpunkten (`website/src/lib/server/backend.ts`,
   `WEBSITE_API_URL` + `WEBSITE_API_KEY`), Bild-Proxy, Server-Route für die Gruppen-Terminvorschau; FAQ fest im Code, Download-Seite entfernt (308).
   Die zuvor neu gestaltete Website (Figuren/Motive) ist verworfen (Git-Historie). Compose/Seed/Doku auf `WEBSITE_API_*` umgestellt. Details: `rules/website.md`.
+- **Datensicherung (2026-10-20)**: `/admin/backup` – verschlüsselter Gesamt-Export (alle oder einzelne Bereiche/Module, Dateien wählbar,
+  inkl. Zugangsdaten) und Import als **Wiederherstellen** oder **Zusammenführen**, auch auf neuem Server mit anderem `APP_SECRET`.
+  Recht `core.system.backup`, Reset-Suchbegriffe „Backup/Sicherung“ wandern hierher. Details: `architecture.md` → „Datensicherung“.
+  Offen/Grenzen: kein Mehrinstanz-Betrieb, Dateien beim Import einzeln im RAM (≤ 2 GB je Datei), Merge ohne ID-Umschlüsselung/Duplikaterkennung,
+  `onEnable` wird beim Übernehmen des Modulstatus nicht aufgerufen, `missingUserRefs` nur geschätzt, echtes S3 und große Sicherungen ungetestet.
 - Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`, `rules/module-events.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)

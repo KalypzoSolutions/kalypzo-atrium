@@ -64,7 +64,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
 		id: 'maintenance',
 		label: 'Protokoll & Wartung',
 		icon: 'scroll-text',
-		description: 'Audit-Log und Zurücksetzen von Daten.'
+		description: 'Audit-Log, Datensicherung und Zurücksetzen von Daten.'
 	}
 ];
 
@@ -274,7 +274,18 @@ export const ADMIN_ENTRIES: readonly AdminEntry[] = [
 		href: '/admin/reset',
 		icon: 'rotate-ccw',
 		permission: 'core.system.reset',
-		keywords: ['Reset', 'Löschen', 'Export', 'Sicherung', 'Backup'],
+		keywords: ['Reset', 'Löschen'],
+		nav: true
+	},
+	{
+		id: 'backup',
+		section: 'maintenance',
+		label: 'Datensicherung',
+		description: 'Alle Daten verschlüsselt sichern und wiederherstellen oder zusammenführen.',
+		href: '/admin/backup',
+		icon: 'database-backup',
+		permission: 'core.system.backup',
+		keywords: ['Sicherung', 'Backup', 'Export', 'Import', 'Wiederherstellen', 'Umzug'],
 		nav: true
 	}
 ];

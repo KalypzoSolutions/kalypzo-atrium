@@ -77,6 +77,8 @@ return result;
 - IDs: `crypto.randomUUID()`; in Zod `z.uuid()`. Listen mit `limit/offset` (Standard 50, max 200), `total` separat zählen.
 - Dateien: Pfad `<recordId>/<kind>-<uuid>-<bereinigterName>`, erst hochladen → DB aktualisieren → altes Objekt best-effort löschen.
 - Sensible Felder (IBAN …): `core.crypto.forModule(id).encrypt`, in Antworten maskieren, Zugriffe auditieren.
+- Schlüsselgebundene Hashes (`core.crypto.forModule(id).hash`, z. B. `iban_hash`) brauchen einen Hook `backup: { rehash }` in `defineModule`
+  (Datensicherung auf neuem Server, Muster `treasury/backup.ts`); immer auch die verschlüsselte Quelle (`*_enc`) speichern.
 - Mehrfachwerte (Telefone/E-Mails): eigene Tabelle mit `position`; Listen komplett ersetzen statt diffen.
 
 ## Hintergrundjobs und optionale Abhängigkeiten

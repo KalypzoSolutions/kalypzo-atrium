@@ -41,6 +41,26 @@ export interface ResetArea {
 	rebuild?: boolean;
 }
 
+/** Helfer für `ModuleBackupHooks.rehash` – Schlüssel des Zielservers für dieses Modul */
+export interface ModuleBackupRehashHelpers {
+	/** wie `core.crypto.forModule(id).hash` */
+	hash(value: string): string;
+	/** wie `core.crypto.forModule(id).decrypt` (wirft bei nicht entschlüsselbaren Werten) */
+	decrypt(value: string): string;
+}
+
+export interface ModuleBackupHooks {
+	/**
+	 * Nach Wiederherstellen/Zusammenführen in derselben Transaktion (`search_path` = Modulschema):
+	 * schlüsselgebundene Hashes (`core.crypto.forModule(id).hash`) mit dem Schlüssel des Zielservers neu
+	 * berechnen. Muss idempotent sein; keine Core-Service-Aufrufe.
+	 */
+	rehash?: (
+		tx: import('../database/client').Tx,
+		helpers: ModuleBackupRehashHelpers
+	) => Promise<{ updated: number; unrecoverable: number }>;
+}
+
 export interface ModuleDefinition {
 	manifest: ModuleManifest;
 	settings?: ModuleSettingDefinition[];
@@ -69,6 +89,8 @@ export interface ModuleDefinition {
 	 * Modul-Transaktion mit `search_path` auf das Modulschema; `keepUserId` = ausführende*r Admin).
 	 */
 	resetUsers?: (tx: import('../database/client').Tx, keepUserId: string) => Promise<void>;
+	/** Datensicherung (siehe `core/backup`) */
+	backup?: ModuleBackupHooks;
 	onEnable?: (ctx: RequestContext) => Promise<void>;
 	onDisable?: (ctx: RequestContext) => Promise<void>;
 }

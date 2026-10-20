@@ -186,9 +186,17 @@ export async function assertModuleEnabled(id: string): Promise<void> {
 	if (!(await isModuleEnabled(id))) throw errors.moduleDisabled(id);
 }
 
-export async function runModuleMigrations(moduleId: string, tx?: DbOrTx): Promise<string[]> {
+/**
+ * Führt ausstehende Migrationen aus. `opts.only`: nur diese Namen (Datensicherung: Schema auf den
+ * Stand der Sicherung bringen, danach ein zweiter Aufruf ohne `only` für neuere Migrationen).
+ */
+export async function runModuleMigrations(
+	moduleId: string,
+	tx?: DbOrTx,
+	opts: { only?: ReadonlySet<string> } = {}
+): Promise<string[]> {
 	const def = requireDefinition(moduleId);
-	const migrations = def.migrations ?? [];
+	const migrations = (def.migrations ?? []).filter((m) => !opts.only || opts.only.has(m.name));
 	const schemaName = moduleSchemaName(moduleId);
 	const run = async (t: DbOrTx): Promise<string[]> => {
 		await t.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`));

@@ -123,3 +123,24 @@ Nutzereingaben nie als `{@html}` ausgeben; CSV-Exporte gegen Formel-Injection (`
 - Header-Check: nur `/admin/settings/mail-preview` (E-Mail-Vorschau im iframe) bekommt `x-frame-options: SAMEORIGIN`, alles andere `DENY`.
 - Neue Verwaltungsseite = Route unter `admin/` **plus** Eintrag in `admin-registry.ts` (Tests: `tests/unit/admin-registry.test.ts`, `admin-redirects.test.ts`,
   E2E `tests/e2e/admin-nav.spec.ts`).
+
+## Datensicherung (2026-10-20)
+- Seite `/admin/backup` (Recht `core.system.backup`, Reiter Export | Import), Code in `src/lib/server/core/backup/`, Vertrag
+  `src/lib/backup/contract.ts` (Client+Server: Zod-Eingaben, DTOs, Bestätigungswörter) + `core/backup/types.ts` (Format, Grenzen).
+- Datei `.epbackup` = `envelope.ts` (EPBK-Header, scrypt, AES-256-GCM in 1-MiB-Chunks mit Final-Flag) um ZIP (`archive.ts`, eigener
+  Streaming-Leser, Pfad-Whitelist): `backup.json` (zuerst) → `data/<schema>.<tabelle>.ndjson` (`row_to_json`, je Tabelle EIN Eintrag, Bereiche
+  zusammengelegt) → `files/<objectKey>` → `checksums.json`. Secrets als Marker `{"$secret":{p,v}}` (`secrets.ts`, Zwecke `settings`,
+  `module:<id>`, `better-auth`), beim Import IMMER mit dem Ziel-Schlüssel neu verschlüsselt; Quell-`APP_SECRET` nie in der Datei.
+- Bereiche (`scopes.ts`): `core:users|roles|api-keys|settings|audit|api-log|jobs|ai-usage` + je Modul alle Tabellen in `mod_<id>` + `public.file`
+  des Moduls. Nie: `session`, `verification`, `permission`, `module_state`, `module_migration`. `core.storage.*` nie wiederhergestellt, `core.smtp.*` nur per Option.
+- Export (`export.ts`): Re-Auth (`system/maintenance.ts` `verifyReauth`), Sperre `acquireMaintenanceLock` (gemeinsam mit Reset), eine
+  `repeatable read`-Transaktion (Cursor-Batches), Dateien danach (`readObjectUnchecked`), Temp-Datei → Einmal-Download (15 min).
+- Import (`uploads.ts`, `restore.ts`): Upload in 8-MB-Stücken → `analyzeBackup` (Prüflauf, `compat.ts`: Core-Migrationen ⊆ Ziel, Modul-Migrationen
+  = Präfix; Kontoschutz `account-guard.ts`) → `executeRestore` asynchron (`runId`, Status-Polling), Jobs pausiert. **Wiederherstellen**: Module
+  `DROP SCHEMA` + `runModuleMigrations(id, tx, { only })`, Core-Bereiche löschen (Audit mit `app.audit_reset`), Einfügen in FK-Reihenfolge
+  (`insert.ts`, `json_populate_recordset`, Zeilen als Rohtext → bigint verlustfrei, FK-Zyklen über nullbare Kante + späteres UPDATE), danach
+  restliche Migrationen. **Zusammenführen**: nichts löschen, `ON CONFLICT DO NOTHING`, Benutzer nur neu bei unbekannter ID **und** E-Mail.
+- Modul-Hook `ModuleDefinition.backup.rehash(tx, { hash, decrypt })` für schlüsselgebundene Hashes, läuft nur bei Schlüsselwechsel
+  (`treasury`: IBAN-Hashes, `files`: Link-Token-Hash). **Neue `*_hash`-Spalte mit `core.crypto.forModule(id).hash` → Hook ergänzen.**
+- Storage-Rohzugriff nur Core-intern: `readObjectUnchecked`, `putObjectUnchecked`, `objectExistsUnchecked`, `deleteObjectUnchecked`.
+- Tests: `tests/unit/backup-*.test.ts`, `tests/integration/backup-*.test.ts`, `core-backup*.test.ts` (Seed `tests/helpers/backup-seed.ts`), E2E `admin-backup.spec.ts`.

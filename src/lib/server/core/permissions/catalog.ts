@@ -27,7 +27,9 @@ export const CORE_PERMISSIONS: Record<string, string> = {
 	'core.ai.view': 'KI-Nutzung ansehen',
 	'core.audit.view': 'Audit-Logs ansehen',
 	'core.system.reset':
-		'Datenbereiche zurücksetzen (Vorschau, Passwort, Pflicht-Export und Bestätigungswort)'
+		'Datenbereiche zurücksetzen (Vorschau, Passwort, Pflicht-Export und Bestätigungswort)',
+	'core.system.backup':
+		'Datensicherung: Gesamt-Export (verschlüsselt, inkl. Zugangsdaten) und Import (Wiederherstellen/Zusammenführen)'
 };
 
 export const PERMISSION_PATTERN = /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/;

@@ -22,7 +22,8 @@ const ALL_PERMISSIONS = [
 	'core.modules.view',
 	'core.api.view',
 	'core.audit.view',
-	'core.system.reset'
+	'core.system.reset',
+	'core.system.backup'
 ];
 
 const ids = (entries: readonly AdminEntry[]) => entries.map((e) => e.id);
@@ -191,6 +192,12 @@ describe('searchAdmin', () => {
 
 	it('„logo“ findet Design', () => {
 		expect(searchAdmin(entries, 'logo')[0]!.href).toBe('/admin/settings/design');
+	});
+
+	it('Sicherung/Backup führen zuerst zur Datensicherung', () => {
+		for (const q of ['backup', 'sicherung', 'wiederherstellen']) {
+			expect(ids(searchAdmin(entries, q))[0]).toBe('backup');
+		}
 	});
 
 	it('Label-Treffer vor Keyword-Treffer', () => {

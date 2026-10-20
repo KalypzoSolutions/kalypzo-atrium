@@ -7,6 +7,7 @@ import Cloud from '@lucide/svelte/icons/cloud';
 import ChartBar from '@lucide/svelte/icons/chart-bar';
 import FileText from '@lucide/svelte/icons/file-text';
 import Folder from '@lucide/svelte/icons/folder';
+import DatabaseBackup from '@lucide/svelte/icons/database-backup';
 import HardDrive from '@lucide/svelte/icons/hard-drive';
 import House from '@lucide/svelte/icons/house';
 import Images from '@lucide/svelte/icons/images';
@@ -41,6 +42,7 @@ const ICONS: Record<string, Icon> = {
 	'file-text': FileText,
 	file: FileText,
 	folder: Folder,
+	'database-backup': DatabaseBackup,
 	'hard-drive': HardDrive,
 	home: House,
 	house: House,

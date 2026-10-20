@@ -62,6 +62,7 @@ Hinweise:
 | `POSTGRES_DB/USER/PASSWORD` | Datenbank-Container (Passwort Pflicht) |
 | `APP_SECRET` | Pflicht, ≥ 32 Zeichen. **Nicht ändern**, ohne Secrets neu einzugeben (siehe [Sicherheit](security.md)) |
 | `ORIGIN` | Pflicht, öffentliche URL |
+| `BACKUP_MAX_BYTES` | optional: größte hochladbare Sicherungsdatei in Byte (Standard 4 GB) |
 | `APP_PORT` | Host-Port (Bind 127.0.0.1) |
 | `INITIAL_ADMIN_EMAIL/PASSWORD` | Bootstrap; Passwort ≥ 12 Zeichen |
 | `S3_ENDPOINT/REGION/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY/FORCE_PATH_STYLE` | optional: Vorbelegung der Storage-Einstellungen beim ersten Start |
@@ -100,6 +101,12 @@ Der PDF-Service startet Chromium mit `--no-sandbox` (im Container ohne User-Name
 
 ## Backups
 
+- **Datensicherung in der App** (Verwaltung → Datensicherung, Recht `core.system.backup`): verschlüsselte Datei `.epbackup`
+  (Sicherungs-Passwort, AES-256-GCM, scrypt) mit allen oder ausgewählten Bereichen, optional inkl. Dateien aus S3 und inkl. Zugangsdaten.
+  Wiederherstellen oder Zusammenführen auch auf einem **neuen Server mit anderem `APP_SECRET`** (Werte werden neu verschlüsselt).
+  Upload in 8-MB-Stücken (passt zu `BODY_SIZE_LIMIT`), Grenze `BACKUP_MAX_BYTES` (Standard 4 GB). Temp-Dateien liegen in
+  `$TMPDIR/ep-backup` (Platz in Archivgröße nötig, Aufräumen nach 1 h). Während einer Wiederherstellung pausieren Hintergrundjobs;
+  nur ein Wartungsvorgang je Prozess, nicht für mehrere Instanzen ausgelegt.
 - PostgreSQL: `docker compose exec db pg_dump -U $POSTGRES_USER $POSTGRES_DB | gzip > backup.sql.gz`
 - Objektspeicher separat sichern (Bucket-Versionierung/Replikation).
 - `APP_SECRET` getrennt und sicher aufbewahren – ohne ihn sind verschlüsselte Einstellungen nicht lesbar.

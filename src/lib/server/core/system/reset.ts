@@ -29,6 +29,7 @@ import { getUserPermissions, requirePermission } from '../permissions/service';
 import { hit, peek, reset as resetRateLimit } from '../rate-limit';
 import { listDefinitions } from '../settings/service';
 import { listPurgeCandidates, purgeUnchecked, type PurgeInput } from '../storage';
+import { acquireMaintenanceLock, releaseMaintenanceLock } from './maintenance';
 import {
 	areasFingerprint,
 	effectiveImplies,
@@ -316,7 +317,6 @@ interface TokenEntry {
 
 const tokens = new Map<string, TokenEntry>();
 let clock: () => number = () => Date.now();
-let executing = false;
 
 /** Nur für Tests: verschobene Uhr (Token-Ablauf) */
 export function setResetClockForTests(fn: (() => number) | undefined): void {
@@ -520,7 +520,7 @@ export function totpCode(secret: string, atMs: number = Date.now(), offset = 0):
 	return String(n % 1_000_000).padStart(6, '0');
 }
 
-async function verifyTotp(userId: string, code: string): Promise<boolean> {
+export async function verifyTotp(userId: string, code: string): Promise<boolean> {
 	if (!/^\d{6}$/.test(code)) return false;
 	const [tf] = await getDb()
 		.select({ secret: schema.twoFactor.secret })
@@ -687,11 +687,10 @@ export async function executeReset(
 			{ path: ['confirmWord'], message: `Bitte genau "${RESET_CONFIRM_WORD}" eingeben` }
 		]);
 	}
-	if (executing) throw errors.conflict('Ein Zurücksetzen läuft bereits');
 	const resolved = await reresolve(entry, input.token);
+	acquireMaintenanceLock('Zurücksetzen');
 	tokens.delete(hashToken(input.token));
 
-	executing = true;
 	pauseJobs();
 	const result: ResetResult = {
 		areas: resolved.areas,
@@ -706,7 +705,7 @@ export async function executeReset(
 		failure = e;
 	} finally {
 		resumeJobs();
-		executing = false;
+		releaseMaintenanceLock();
 	}
 	await auditFromContext(ctx, 'core.system.reset', {
 		metadata: {

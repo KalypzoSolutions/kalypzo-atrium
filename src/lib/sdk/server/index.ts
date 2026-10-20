@@ -10,6 +10,8 @@ export type { Core } from '$lib/server/core';
 export { defineEndpoint } from '$lib/server/core/api/registry';
 export { CoreError, errors, isCoreError } from '$lib/server/core/errors';
 export type {
+	ModuleBackupHooks,
+	ModuleBackupRehashHelpers,
 	ModuleDefinition,
 	ModuleJob,
 	ModuleMigration,

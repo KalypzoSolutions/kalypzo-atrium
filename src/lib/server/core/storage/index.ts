@@ -653,6 +653,95 @@ export async function readFileByIdUnchecked(
 }
 
 // ---------------------------------------------------------------------------
+// Rohzugriff per Objektschlüssel (Datensicherung, nur Core-intern, ohne Rechteprüfung)
+// ---------------------------------------------------------------------------
+
+const OBJECT_KEY = /^[a-z][a-z0-9-]*\/[A-Za-z0-9-]{1,64}$/;
+
+function checkObjectKey(objectKey: string): void {
+	if (!OBJECT_KEY.test(objectKey)) throw errors.badRequest('Ungültiger Objektschlüssel');
+}
+
+/** Objekt lesen; `null`, wenn es fehlt. Nie direkt an Clients durchreichen. */
+export async function readObjectUnchecked(objectKey: string): Promise<Uint8Array | null> {
+	checkObjectKey(objectKey);
+	const { s3 } = await connect();
+	try {
+		const res = (await s3.send(new GetObjectCommand({ Bucket: s3.bucket, Key: objectKey }))) as {
+			Body?: { transformToByteArray(): Promise<Uint8Array> };
+		};
+		return res.Body ? await res.Body.transformToByteArray() : null;
+	} catch (e) {
+		const err = e as { name?: string; $metadata?: { httpStatusCode?: number } };
+		if (
+			err.name === 'NoSuchKey' ||
+			err.name === 'NotFound' ||
+			err.$metadata?.httpStatusCode === 404
+		)
+			return null;
+		mapS3Error(e);
+	}
+}
+
+/** Prüft, ob ein Objekt existiert. */
+export async function objectExistsUnchecked(objectKey: string): Promise<boolean> {
+	checkObjectKey(objectKey);
+	const { s3 } = await connect();
+	try {
+		await s3.send(new HeadObjectCommand({ Bucket: s3.bucket, Key: objectKey }));
+		return true;
+	} catch (e) {
+		const err = e as { name?: string; $metadata?: { httpStatusCode?: number } };
+		if (
+			err.name === 'NoSuchKey' ||
+			err.name === 'NotFound' ||
+			err.$metadata?.httpStatusCode === 404
+		)
+			return false;
+		mapS3Error(e);
+	}
+}
+
+/** Schreibt ein Objekt unter genau diesem Schlüssel (keine Metadatenzeile, keine Typ-/Größenprüfung). */
+export async function putObjectUnchecked(
+	objectKey: string,
+	body: Uint8Array,
+	contentType: string
+): Promise<void> {
+	checkObjectKey(objectKey);
+	const { s3 } = await connect();
+	try {
+		if (body.byteLength > MULTIPART_THRESHOLD && s3.putLarge) {
+			await s3.putLarge(objectKey, body, contentType);
+		} else {
+			await s3.send(
+				new PutObjectCommand({
+					Bucket: s3.bucket,
+					Key: objectKey,
+					Body: body,
+					ContentType: contentType,
+					ContentLength: body.byteLength
+				})
+			);
+		}
+	} catch (e) {
+		mapS3Error(e);
+	}
+}
+
+/** Löscht ein Objekt best-effort (Fehler → `false`). */
+export async function deleteObjectUnchecked(objectKey: string): Promise<boolean> {
+	checkObjectKey(objectKey);
+	try {
+		const { s3 } = await connect();
+		await s3.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key: objectKey }));
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Bereinigung (Purge)
 // ---------------------------------------------------------------------------
 

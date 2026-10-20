@@ -75,7 +75,13 @@ Timeout 3 s, Fehler brechen das Formular nicht. Zum Abschalten oder für eine ei
 
 - Reversibel benötigte Secrets (SMTP-Passwort, S3-Zugangsdaten, OpenAI-Key) werden mit **AES-256-GCM** verschlüsselt (Schlüssel per HKDF-SHA-256 aus `APP_SECRET`, zufälliger 96-Bit-IV, Format `enc:v1:…`).
 - Secrets werden nie an Clients oder in Logs ausgegeben (`listPublic` liefert nur `isSet`); Audit-Einträge enthalten nur `{ secret: true }`.
-- **Rotation**: Ein neuer `APP_SECRET` macht gespeicherte Secrets unlesbar (auch Better-Auth-Signaturen ändern sich → Sessions ungültig). Vorgehen: Secrets notieren, `APP_SECRET` ändern, Werte in der Oberfläche neu eingeben. Eine automatische Re-Encryption ist nicht implementiert.
+- **Rotation**: Ein neuer `APP_SECRET` macht gespeicherte Secrets unlesbar (auch Better-Auth-Signaturen ändern sich → Sessions ungültig). Vorgehen: Secrets notieren, `APP_SECRET` ändern, Werte in der Oberfläche neu eingeben. Eine automatische Re-Encryption ist nicht implementiert. Alternativ: Datensicherung erstellen und auf dem Server mit neuem
+  `APP_SECRET` wiederherstellen – dabei werden alle Secrets, 2FA-Daten und Modul-Felder neu verschlüsselt und schlüsselgebundene Hashes
+  (Modul-Hook `backup.rehash`) neu berechnet.
+- **Datensicherung** (`.epbackup`): enthält Secrets **im Klartext innerhalb der verschlüsselten Datei** (Passwort-Hashes, 2FA, IBANs,
+  SMTP-Zugang); das Quell-`APP_SECRET` ist nicht enthalten. Datei + Sicherungs-Passwort = Zugriff auf alle Daten. Export/Import nur mit
+  Konto-Passwort + 2FA, Rate-Limits für Konto- und Sicherungs-Passwort, eigener Origin-Check (JSON/Octet-Stream), Pfad-Whitelist,
+  Zip-Bomb-Grenzen, Prüfsummen je Eintrag, Kontoschutz der ausführenden Person, Audit `core.system.backup_exported|backup_restored`.
 - API-Keys: 256 Bit Zufall, nur als SHA-256-Hash gespeichert, Klartext einmalig sichtbar, Ablauf und Widerruf.
 
 ## Audit
