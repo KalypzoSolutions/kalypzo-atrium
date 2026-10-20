@@ -1,6 +1,6 @@
 /**
- * Zerlegt ein SQL-Skript an Semikolons in einzelne Statements. Beruecksichtigt Zeichenketten,
- * quotierte Bezeichner, Zeilen-/Blockkommentare und Dollar-Quoting. Noetig, weil manche Treiber
+ * Zerlegt ein SQL-Skript an Semikolons in einzelne Statements. Berücksichtigt Zeichenketten,
+ * quotierte Bezeichner, Zeilen-/Blockkommentare und Dollar-Quoting. Nötig, weil manche Treiber
  * (PGlite) pro Aufruf nur ein Statement erlauben.
  */
 export function splitSqlStatements(script: string): string[] {

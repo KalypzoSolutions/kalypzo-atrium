@@ -16,7 +16,7 @@
 	let loading = $state(false);
 </script>
 
-<svelte:head><title>Passwort zuruecksetzen</title></svelte:head>
+<svelte:head><title>Passwort zurücksetzen</title></svelte:head>
 
 <main class="flex min-h-screen items-center justify-center bg-muted/40 p-4">
 	<Card class="w-full max-w-sm">
@@ -26,7 +26,7 @@
 		</CardHeader>
 		<CardContent>
 			{#if form?.done}
-				<Alert><AlertDescription>Ihr Passwort wurde geaendert.</AlertDescription></Alert>
+				<Alert><AlertDescription>Ihr Passwort wurde geändert.</AlertDescription></Alert>
 				<Button href="/login" class="mt-4 w-full">Zur Anmeldung</Button>
 			{:else}
 				{#if form?.error}
@@ -56,7 +56,7 @@
 							required
 						/>
 					</FormField>
-					<FormField label="Passwort bestaetigen" id="confirm">
+					<FormField label="Passwort bestätigen" id="confirm">
 						<Input
 							id="confirm"
 							name="confirm"

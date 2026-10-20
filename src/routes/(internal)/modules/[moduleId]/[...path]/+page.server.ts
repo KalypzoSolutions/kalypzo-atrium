@@ -4,7 +4,7 @@ import { isModuleEnabled } from '$lib/server/core/modules/service';
 import type { PageServerLoad } from './$types';
 
 /**
- * Guard fuer die Modul-Oberflaeche: Modul muss im Build vorhanden, laufzeitseitig aktiv und
+ * Guard für die Modul-Oberfläche: Modul muss im Build vorhanden, laufzeitseitig aktiv und
  * der Benutzer mindestens einer Modulberechtigung berechtigt sein.
  */
 export const load: PageServerLoad = async ({ params, locals }) => {

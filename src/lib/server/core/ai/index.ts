@@ -15,7 +15,7 @@ import { download } from '../storage';
 import { newId } from '../util';
 
 // ---------------------------------------------------------------------------
-// Abstraktionen (austauschbar fuer Tests)
+// Abstraktionen (austauschbar für Tests)
 // ---------------------------------------------------------------------------
 
 export interface AiChatParams {
@@ -107,7 +107,7 @@ export interface UsageRow {
 
 export interface UsageRepo {
 	record(row: UsageRow): Promise<void>;
-	/** Summe seit `since` fuer ein Modul */
+	/** Summe seit `since` für ein Modul */
 	totals(moduleId: string, since: Date): Promise<{ tokens: number; costUsd: number }>;
 	summary(from: Date, to: Date): Promise<UsageSummaryRow[]>;
 }
@@ -172,7 +172,7 @@ export function setUsageRepoForTests(r: UsageRepo | undefined): void {
 }
 
 // ---------------------------------------------------------------------------
-// Konfiguration und Pruefungen
+// Konfiguration und Prüfungen
 // ---------------------------------------------------------------------------
 
 const MODULE_PATTERN = /^[a-z][a-z0-9-]{1,30}$/;
@@ -240,7 +240,7 @@ interface Prepared {
 async function prepare(ctx: RequestContext, input: AiGenerateInput): Promise<Prepared> {
 	if (ctx.actor.type !== 'system' && !ctx.userId) throw errors.unauthenticated();
 	if (!MODULE_PATTERN.test(input.module) && input.module !== 'core') {
-		throw errors.badRequest('Ungueltige Modul-ID');
+		throw errors.badRequest('Ungültige Modul-ID');
 	}
 	if (
 		ctx.actor.type !== 'system' &&
@@ -271,10 +271,10 @@ async function prepare(ctx: RequestContext, input: AiGenerateInput): Promise<Pre
 	if (config.monthlyTokenLimit > 0 || config.monthlyCostLimitUsd > 0) {
 		const totals = await usage().totals(input.module, monthStart());
 		if (config.monthlyTokenLimit > 0 && totals.tokens >= config.monthlyTokenLimit) {
-			throw errors.rateLimited(`Monatliches Token-Limit fuer Modul "${input.module}" erreicht`);
+			throw errors.rateLimited(`Monatliches Token-Limit für Modul "${input.module}" erreicht`);
 		}
 		if (config.monthlyCostLimitUsd > 0 && totals.costUsd >= config.monthlyCostLimitUsd) {
-			throw errors.rateLimited(`Monatliches Kostenlimit fuer Modul "${input.module}" erreicht`);
+			throw errors.rateLimited(`Monatliches Kostenlimit für Modul "${input.module}" erreicht`);
 		}
 	}
 	return {
@@ -292,7 +292,7 @@ async function buildMessages(
 	const parts: ChatCompletionContentPart[] = [{ type: 'text', text: input.prompt }];
 	for (const img of input.images ?? []) {
 		if (!/^data:image\/(png|jpeg|gif|webp);base64,/.test(img) && !/^https:\/\//.test(img)) {
-			throw errors.badRequest('Bilder muessen als Data-URL oder https-URL uebergeben werden');
+			throw errors.badRequest('Bilder müssen als Data-URL oder https-URL übergeben werden');
 		}
 		parts.push({ type: 'image_url', image_url: { url: img } });
 	}
@@ -314,7 +314,7 @@ async function buildMessages(
 				}
 			});
 		} else {
-			throw errors.badRequest(`Dateityp wird vom KI-Dienst nicht unterstuetzt: ${ct}`);
+			throw errors.badRequest(`Dateityp wird vom KI-Dienst nicht unterstützt: ${ct}`);
 		}
 	}
 	const system = [input.system, extraSystem].filter(Boolean).join('\n\n');
@@ -332,7 +332,7 @@ function mapError(e: unknown): never {
 		throw errors.unavailable('KI-Zugangsdaten wurden abgelehnt');
 	if (status === 400 || status === 404 || status === 422) {
 		throw errors.badRequest(
-			'Die KI-Anfrage wurde vom Anbieter abgelehnt (Modell oder Eingabe pruefen)'
+			'Die KI-Anfrage wurde vom Anbieter abgelehnt (Modell oder Eingabe prüfen)'
 		);
 	}
 	throw errors.unavailable('KI-Dienst ist nicht erreichbar');
@@ -346,7 +346,7 @@ async function account(
 	outputTokens: number
 ): Promise<AiUsage> {
 	const costUsd = estimateCost(p.config.pricing, p.model, inputTokens, outputTokens);
-	// Es werden ausschliesslich Zaehler gespeichert, keine Prompts oder Antworten
+	// Es werden ausschließlich Zähler gespeichert, keine Prompts oder Antworten
 	await usage().record({
 		id: newId(),
 		moduleId: module,
@@ -360,7 +360,7 @@ async function account(
 }
 
 // ---------------------------------------------------------------------------
-// Oeffentliche API
+// Öffentliche API
 // ---------------------------------------------------------------------------
 
 export interface GenerateOptions {
@@ -397,7 +397,7 @@ export async function generateJson<T>(
 ): Promise<{ data: T; usage: AiUsage }> {
 	const { schema: zodSchema, ...base } = input;
 	const jsonSchema = JSON.stringify(z.toJSONSchema(zodSchema));
-	const extraSystem = `Antworte ausschliesslich mit einem gueltigen JSON-Objekt, das diesem JSON-Schema entspricht:\n${jsonSchema}`;
+	const extraSystem = `Antworte ausschließlich mit einem gültigen JSON-Objekt, das diesem JSON-Schema entspricht:\n${jsonSchema}`;
 	let total: AiUsage | undefined;
 	for (let attempt = 0; attempt < 2; attempt++) {
 		const res = await generate(ctx, base, { json: true, extraSystem });
@@ -413,13 +413,13 @@ export async function generateJson<T>(
 			const parsed = zodSchema.safeParse(JSON.parse(res.text));
 			if (parsed.success) return { data: parsed.data, usage: total };
 		} catch {
-			// ungueltiges JSON: ein weiterer Versuch
+			// ungültiges JSON: ein weiterer Versuch
 		}
 	}
 	throw errors.badRequest('Die KI-Antwort entsprach nicht dem erwarteten Format');
 }
 
-/** Streamt Textfragmente; der Rueckgabewert des Generators sind die Nutzungsdaten. */
+/** Streamt Textfragmente; der Rückgabewert des Generators sind die Nutzungsdaten. */
 export async function* stream(
 	ctx: RequestContext,
 	input: AiGenerateInput
@@ -448,7 +448,7 @@ export async function* stream(
 	} catch (e) {
 		mapError(e);
 	}
-	// Anbieter ohne Usage-Angabe: grobe Schaetzung (~4 Zeichen je Token)
+	// Anbieter ohne Usage-Angabe: grobe Schätzung (~4 Zeichen je Token)
 	if (!inputTokens && !outputTokens && streamed) {
 		inputTokens = Math.ceil(input.prompt.length / 4);
 		outputTokens = Math.ceil(streamed / 4);

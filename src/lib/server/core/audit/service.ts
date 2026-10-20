@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from 'drizzle-orm';
 import type { Actor, RequestContext } from '$lib/sdk/types';
 import { getDb, schema, type DbOrTx } from '../database/client';
 import { newId } from '../util';
@@ -7,7 +7,7 @@ const SENSITIVE_KEY = /pass(word)?|secret|token|api[-_]?key|authorization|cookie
 const MAX_STRING = 500;
 const MAX_DEPTH = 4;
 
-/** Entfernt Geheimnisse und begrenzt die Groesse von Audit-Metadaten. */
+/** Entfernt Geheimnisse und begrenzt die Größe von Audit-Metadaten. */
 export function sanitizeMetadata(value: unknown, depth = 0): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value === 'string') {
@@ -52,7 +52,7 @@ export async function logAudit(entry: AuditEntry, tx?: DbOrTx): Promise<void> {
 	});
 }
 
-/** Komfortvariante: Akteur, IP und Request-ID aus dem Kontext uebernehmen. */
+/** Komfortvariante: Akteur, IP und Request-ID aus dem Kontext übernehmen. */
 export function auditFromContext(
 	ctx: RequestContext,
 	action: string,
@@ -66,6 +66,10 @@ export interface AuditFilter {
 	search?: string;
 	action?: string;
 	actorId?: string;
+	/** Exakter Treffer auf `target` (Entitäts-ID) */
+	target?: string;
+	/** Exakte Treffer auf mehrere `target`-IDs (max. 50) */
+	targets?: string[];
 	from?: Date;
 	to?: Date;
 	limit?: number;
@@ -78,6 +82,11 @@ export async function listAudit(filter: AuditFilter = {}) {
 	const conds = [];
 	if (filter.action) conds.push(ilike(t.action, `${filter.action.replace(/[%_]/g, '')}%`));
 	if (filter.actorId) conds.push(eq(t.actorId, filter.actorId));
+	if (filter.target) conds.push(eq(t.target, filter.target));
+	if (filter.targets) {
+		// leere Liste → nichts finden (statt alles)
+		conds.push(filter.targets.length ? inArray(t.target, filter.targets.slice(0, 50)) : sql`false`);
+	}
 	if (filter.from) conds.push(gte(t.createdAt, filter.from));
 	if (filter.to) conds.push(lte(t.createdAt, filter.to));
 	if (filter.search) {

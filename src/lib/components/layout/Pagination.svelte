@@ -45,7 +45,7 @@
 	<span aria-live="polite">{from} - {to} von {total}</span>
 	<div class="flex gap-2">
 		<Button variant="outline" size="sm" disabled={offset <= 0} onclick={() => go(offset - limit)}>
-			<ChevronLeft /> Zurueck
+			<ChevronLeft /> Zurück
 		</Button>
 		<Button
 			variant="outline"

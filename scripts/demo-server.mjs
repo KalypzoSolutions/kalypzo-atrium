@@ -16,7 +16,7 @@ const env = {
 	ORIGIN: 'http://localhost:4300',
 	INITIAL_ADMIN_EMAIL: 'admin@demo.test',
 	INITIAL_ADMIN_PASSWORD: 'Demo-Admin-2026!',
-	// PGlite hat nur eine Sitzung: parallele Transaktionen wuerden sich sonst vermischen
+	// PGlite hat nur eine Sitzung: parallele Transaktionen würden sich sonst vermischen
 	DATABASE_POOL_MAX: '1',
 	PORT: '4300',
 	HOST: '127.0.0.1'
@@ -30,7 +30,7 @@ const stop = async (code) => {
 };
 child.on('exit', (code) => stop(code ?? 1));
 // Windows kann keine Signale an Kindprozesse senden: Wer die Datei `.data/stop` anlegt, beendet den
-// Server sauber (verhindert eine beschaedigte PGlite-Datenbank durch hartes Beenden).
+// Server sauber (verhindert eine beschädigte PGlite-Datenbank durch hartes Beenden).
 const stopFile = './.data/stop';
 setInterval(() => {
 	if (existsSync(stopFile)) {

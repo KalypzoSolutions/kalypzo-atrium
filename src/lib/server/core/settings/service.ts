@@ -40,12 +40,11 @@ export function listDefinitions(): SettingDefinition[] {
 
 function scopeIdFor(def: SettingDefinition, userId?: string | null): string {
 	if (def.scope === 'global') return '';
-	if (!userId)
-		throw errors.badRequest('Benutzerspezifische Einstellung benoetigt eine Benutzer-ID');
+	if (!userId) throw errors.badRequest('Benutzerspezifische Einstellung benötigt eine Benutzer-ID');
 	return userId;
 }
 
-/** Serverseitiges Lesen. Secrets werden entschluesselt – niemals an Clients weiterreichen. */
+/** Serverseitiges Lesen. Secrets werden entschlüsselt – niemals an Clients weiterreichen. */
 export async function getSetting<T = unknown>(key: string, userId?: string | null): Promise<T> {
 	const def = getDefinition(key);
 	const [row] = await getDb()
@@ -79,7 +78,7 @@ export interface PublicSettingValue {
 	isSet: boolean;
 }
 
-/** Fuer UI/API: Secrets werden nie ausgeliefert. */
+/** Für UI/API: Secrets werden nie ausgeliefert. */
 export async function getPublicSettings(
 	filter: { group?: string; userId?: string | null; scope?: 'global' | 'user' } = {}
 ): Promise<PublicSettingValue[]> {
@@ -117,8 +116,8 @@ export async function getPublicSettings(
 
 /**
  * Setzt eine Einstellung. Globale Einstellungen erfordern `core.settings.manage`,
- * benutzerspezifische duerfen nur fuer den eigenen Benutzer gesetzt werden.
- * Secrets: `undefined`/leerer String behaelt den bisherigen Wert; `null` loescht.
+ * benutzerspezifische dürfen nur für den eigenen Benutzer gesetzt werden.
+ * Secrets: `undefined`/leerer String behält den bisherigen Wert; `null` löscht.
  */
 export async function setSetting(
 	ctx: RequestContext,
@@ -135,7 +134,7 @@ export async function setSetting(
 	} else {
 		if (!ctx.userId) throw errors.unauthenticated();
 		const target = opts.userId ?? ctx.userId;
-		if (target !== ctx.userId) throw errors.forbidden('Nur eigene Einstellungen aenderbar');
+		if (target !== ctx.userId) throw errors.forbidden('Nur eigene Einstellungen änderbar');
 		scopeId = target;
 	}
 	if (def.secret && (value === undefined || value === '')) return;
@@ -147,7 +146,7 @@ export async function setSetting(
 	} else {
 		const parsed = def.schema.safeParse(value);
 		if (!parsed.success) {
-			throw errors.validation(parsed.error.issues, `Ungueltiger Wert fuer ${key}`);
+			throw errors.validation(parsed.error.issues, `Ungültiger Wert für ${key}`);
 		}
 		const stored = def.secret ? encryptSecret(String(parsed.data)) : parsed.data;
 		await db

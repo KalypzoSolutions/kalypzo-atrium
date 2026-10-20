@@ -14,7 +14,7 @@
 		param?: string;
 		placeholder?: string;
 		label?: string;
-		/** URL-Parameter, die bei geaenderter Suche entfernt werden (z. B. Seite/Offset) */
+		/** URL-Parameter, die bei geänderter Suche entfernt werden (z. B. Seite/Offset) */
 		resetParams?: string[];
 	} = $props();
 

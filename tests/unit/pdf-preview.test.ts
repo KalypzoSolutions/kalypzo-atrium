@@ -15,6 +15,7 @@ import type { RenderOptions } from '$lib/server/core/pdf';
 
 let rendered: { html: string; options: RenderOptions } | undefined;
 let previewHtml: string | undefined;
+let previewSize: { width: number; height: number } | undefined;
 
 const letter = {
 	id: 'testbrief',
@@ -35,6 +36,7 @@ const letter = {
 beforeEach(() => {
 	rendered = undefined;
 	previewHtml = undefined;
+	previewSize = undefined;
 	Object.assign(settingsStore, {
 		'core.organization.name': 'Muster',
 		'core.organization.address': '',
@@ -57,8 +59,9 @@ beforeEach(() => {
 		rendered = { html, options };
 		return new Uint8Array([1]);
 	});
-	pdf.setPreviewRendererForTests(async (html) => {
+	pdf.setPreviewRendererForTests(async (html, size) => {
 		previewHtml = html;
+		previewSize = size;
 		return new Uint8Array([0x89, 0x50]);
 	});
 });
@@ -80,14 +83,14 @@ describe('Empfaengervalidierung', () => {
 		await expect(gen(['Ma\nx'])).rejects.toMatchObject({ code: 'bad_request' });
 	});
 
-	it('akzeptiert gueltige Zeilen und trimmt sie', async () => {
+	it('akzeptiert gültige Zeilen und trimmt sie', async () => {
 		await gen(['  Max <Mustermann>  ', 'Weg 1']);
 		expect(rendered!.html).toContain('Max &lt;Mustermann&gt;|Weg 1');
 	});
 });
 
 describe('Vorlagen mit festem Seitenlayout', () => {
-	it('ueberschreibt Format, Raender und Kopf/Fuss; Reihenfolge overlay, titleBlock, Inhalt', async () => {
+	it('überschreibt Format, Ränder und Kopf/Fuß; Reihenfolge overlay, titleBlock, Inhalt', async () => {
 		await pdf.generate(ctxWith(), {
 			title: 'T',
 			template: 'testbrief',
@@ -110,7 +113,7 @@ describe('Vorlagen mit festem Seitenlayout', () => {
 		expect(h.indexOf('class="tb"')).toBeLessThan(h.indexOf('INHALT'));
 	});
 
-	it('Vorlagen ohne page bleiben unveraendert', async () => {
+	it('Vorlagen ohne page bleiben unverändert', async () => {
 		await pdf.generate(ctxWith(), { title: 'T', content: [], template: 'default' });
 		expect(rendered!.options).toMatchObject({
 			format: 'A3',
@@ -148,7 +151,7 @@ describe('renderTemplatePreview', () => {
 		});
 	});
 
-	it('ungueltiges only -> 400', async () => {
+	it('ungültiges only -> 400', async () => {
 		await expect(
 			pdf.renderTemplatePreview({ template: 'testbrief', only: 'unbekannt' })
 		).rejects.toMatchObject({ code: 'bad_request' });
@@ -160,6 +163,37 @@ describe('renderTemplatePreview', () => {
 		expect(previewHtml).toContain('Max Mustermann');
 		expect(previewHtml).toContain('padding:10mm 20mm 30mm 40mm');
 		expect(previewHtml).toContain('html,body{margin:0}');
+		expect(previewSize).toEqual({ width: 794, height: 1123 });
+	});
+
+	it('hochkant-Vorlage -> 794x1123 und width:210mm', async () => {
+		await pdf.renderTemplatePreview({ template: 'stamm-brief' });
+		expect(previewSize).toEqual({ width: 794, height: 1123 });
+		expect(previewHtml).toContain('width:210mm');
+		expect(previewHtml).not.toContain('width:297mm');
+	});
+
+	it('Quer-Vorlage stamm-briefkopf-quer -> 1123x794 und width:297mm', async () => {
+		await pdf.renderTemplatePreview({ template: 'stamm-briefkopf-quer' });
+		expect(previewSize).toEqual({ width: 1123, height: 794 });
+		expect(previewHtml).toContain('width:297mm');
+		expect(previewHtml).not.toContain('width:210mm');
+	});
+
+	it('Quer-Vorlage hat kein Adressfeld -> only adressfeld ist 400', async () => {
+		await expect(
+			pdf.renderTemplatePreview({ template: 'stamm-briefkopf-quer', only: 'adressfeld' })
+		).rejects.toMatchObject({ code: 'bad_request' });
+	});
+
+	it('describeTemplates liefert die Ausrichtung', () => {
+		const all = pdf.describeTemplates();
+		const quer = all.find((t) => t.id === 'stamm-briefkopf-quer');
+		expect(quer).toBeDefined();
+		expect(quer!.orientation).toBe('landscape');
+		expect(quer!.parts.map((p) => p.id)).toEqual(['briefkopf', 'fusszeile']);
+		expect(all.find((t) => t.id === 'stamm-brief')?.orientation).toBe('portrait');
+		expect(all.find((t) => t.id === 'testbrief')?.orientation).toBe('portrait');
 	});
 
 	it('stamm-Vorlagen sind registriert und renderbar', async () => {

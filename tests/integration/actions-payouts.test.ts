@@ -15,6 +15,7 @@ import { setPdfRendererForTests } from '$lib/server/core/pdf';
 import { core } from '$lib/sdk/server';
 import { eq, sql } from 'drizzle-orm';
 import actionsModule from '$lib/modules/actions/module';
+import membersModule from '$lib/modules/members/module';
 import type { RequestContext } from '$lib/sdk/types';
 import type { AccountingPayee } from '$lib/modules/actions/schemas';
 
@@ -72,7 +73,7 @@ const USERS: [string, string][] = [
 
 const ctxOf = async (userId: string) => {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 };
 
@@ -151,6 +152,7 @@ const nextAction = () => createAction(`Lager ${++seq}`);
 beforeAll(async () => {
 	await useTestDatabase();
 	registerCoreApi();
+	registerModule(membersModule);
 	registerModule(actionsModule);
 	await syncModules();
 	await bootstrapAdmin('admin@example.test', 'correct-horse-battery');
@@ -159,6 +161,7 @@ beforeAll(async () => {
 		.from(schema.user)
 		.where(eq(schema.user.email, 'admin@example.test'));
 	admin = await ctxOf(u!.id);
+	await enableModule(admin, 'members');
 	await enableModule(admin, 'actions');
 	admin = await ctxOf(u!.id);
 
@@ -180,8 +183,8 @@ beforeAll(async () => {
 
 afterAll(() => setPdfRendererForTests(undefined));
 
-describe('Empfaenger', () => {
-	it('legt an, speichert verschluesselt und liefert nur die Maske', async () => {
+describe('Empfänger', () => {
+	it('legt an, speichert verschlüsselt und liefert nur die Maske', async () => {
 		const id = await nextAction();
 		const res = await as('owner', `/actions/${id}/accounting/payees`, {
 			method: 'POST',
@@ -205,7 +208,7 @@ describe('Empfaenger', () => {
 		expect(String(row!.iban_enc)).not.toContain('3704');
 	});
 
-	it('lehnt ungueltige IBAN mit 422 ab', async () => {
+	it('lehnt ungültige IBAN mit 422 ab', async () => {
 		const id = await nextAction();
 		const res = await as('owner', `/actions/${id}/accounting/payees`, {
 			method: 'POST',
@@ -230,7 +233,7 @@ describe('Empfaenger', () => {
 		expect((await as('editor', url, { method: 'POST', json: body })).status).toBe(201);
 	});
 
-	it('Update ohne IBAN laesst sie unveraendert; IBAN-Abruf ist no-store und auditiert', async () => {
+	it('Update ohne IBAN lässt sie unverändert; IBAN-Abruf ist no-store und auditiert', async () => {
 		const id = await nextAction();
 		const p = await newPayee(id);
 		const upd = await data<AccountingPayee>(
@@ -262,7 +265,7 @@ describe('Empfaenger', () => {
 		expect(changed.ibanMasked).not.toBe(p.ibanMasked);
 	});
 
-	it('Loeschen: mit Buchungen 409, ohne Buchungen ok', async () => {
+	it('Löschen: mit Buchungen 409, ohne Buchungen ok', async () => {
 		const id = await nextAction();
 		const used = await newPayee(id, 'Mit');
 		const free = await newPayee(id, 'Ohne');
@@ -280,7 +283,7 @@ describe('Empfaenger', () => {
 });
 
 describe('Auszahlung', () => {
-	it('reimburse und Rueckname mit Summen; payouts.csv nur offene, ohne IBAN im Audit', async () => {
+	it('reimburse und Rückname mit Summen; payouts.csv nur offene, ohne IBAN im Audit', async () => {
 		const id = await nextAction();
 		const a = await newPayee(id, 'Anna');
 		const b = await newPayee(id, 'Berta');
@@ -367,7 +370,7 @@ describe('Abschluss', () => {
 				.status
 		).toBe(409);
 
-		// Editor (nur Freigabe) darf nicht wieder oeffnen
+		// Editor (nur Freigabe) darf nicht wieder öffnen
 		expect(
 			(await as('editor', `/actions/${id}/accounting/reopen`, { method: 'POST' })).status
 		).toBe(403);
@@ -383,14 +386,14 @@ describe('Abschluss', () => {
 			).status
 		).toBe(201);
 
-		// edit-all darf ebenfalls wieder oeffnen
+		// edit-all darf ebenfalls wieder öffnen
 		await data(await as('owner', close, { method: 'POST', json: { acceptMissingReceipts: true } }));
 		expect((await as('boss', `/actions/${id}/accounting/reopen`, { method: 'POST' })).status).toBe(
 			201
 		);
 	});
 
-	it('schliesst ohne fehlende Belege direkt', async () => {
+	it('schließt ohne fehlende Belege direkt', async () => {
 		const id = await nextAction();
 		await addEntry(id, { cents: 500, receipt: true });
 		await data(await as('owner', `/actions/${id}/accounting/close`, { method: 'POST', json: {} }));
@@ -447,7 +450,7 @@ describe('Bericht', () => {
 		expect(html).toContain('•');
 	});
 
-	it('haengt Belege in Nummernreihenfolge an, nur mit storage.read', async () => {
+	it('hängt Belege in Nummernreihenfolge an, nur mit storage.read', async () => {
 		await installFakeStorage(admin);
 		try {
 			const id = await nextAction();

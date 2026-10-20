@@ -59,15 +59,61 @@ function sameOrigin(request: Request): boolean {
 
 async function readBody(request: Request): Promise<unknown> {
 	const length = Number(request.headers.get('content-length') ?? 0);
-	if (length > MAX_BODY_BYTES) throw errors.tooLarge('Anfrage ist zu gross');
+	if (length > MAX_BODY_BYTES) throw errors.tooLarge('Anfrage ist zu groß');
 	const text = await request.text();
-	if (text.length > MAX_BODY_BYTES) throw errors.tooLarge('Anfrage ist zu gross');
+	if (text.length > MAX_BODY_BYTES) throw errors.tooLarge('Anfrage ist zu groß');
 	if (!text.trim()) return undefined;
 	try {
 		return JSON.parse(text);
 	} catch {
-		throw errors.badRequest('Ungueltiges JSON');
+		throw errors.badRequest('Ungültiges JSON');
 	}
+}
+
+const MULTIPART_RE = /^multipart\/form-data\s*;\s*boundary=/;
+
+/**
+ * Liest einen multipart-Request (nur Endpunkte mit `multipart`): Content-Length ist Pflicht und
+ * darf `maxBytes` nicht überschreiten (auch die tatsächlich gelesene Größe wird geprüft).
+ * Textfelder → Objekt (für das `body`-Schema), Dateien → `files`.
+ */
+async function readMultipart(
+	request: Request,
+	limits: { maxBytes: number; maxFiles?: number }
+): Promise<{ fields: Record<string, string>; files: File[] }> {
+	const raw = request.headers.get('content-length');
+	if (raw === null || !/^\d+$/.test(raw.trim())) {
+		throw errors.badRequest('Content-Length erforderlich');
+	}
+	const tooLarge = () =>
+		errors.tooLarge(
+			`Anfrage ist zu groß (höchstens ${Math.floor(limits.maxBytes / (1024 * 1024))} MB)`
+		);
+	if (Number(raw) > limits.maxBytes) throw tooLarge();
+	const buffer = await request.arrayBuffer();
+	if (buffer.byteLength > limits.maxBytes) throw tooLarge();
+	let form: FormData;
+	try {
+		form = await new Response(buffer, {
+			headers: { 'content-type': request.headers.get('content-type') ?? '' }
+		}).formData();
+	} catch {
+		throw errors.badRequest('Ungültige Formulardaten');
+	}
+	const fields: Record<string, string> = {};
+	const files: File[] = [];
+	const maxFiles = limits.maxFiles ?? 1;
+	for (const [key, value] of form.entries()) {
+		if (typeof value === 'string') {
+			if (key === '__proto__') throw errors.badRequest('Ungültiger Feldname');
+			if (Object.hasOwn(fields, key)) throw errors.badRequest(`Feld "${key}" ist doppelt`);
+			fields[key] = value;
+		} else {
+			if (files.length >= maxFiles) throw errors.badRequest('Zu viele Dateien');
+			files.push(value);
+		}
+	}
+	return { fields, files };
 }
 
 async function logAccess(row: typeof schema.apiLog.$inferInsert): Promise<void> {
@@ -108,9 +154,9 @@ async function execute(
 	let viaSession = false;
 	if (authz) {
 		const m = /^Bearer\s+(\S+)$/i.exec(authz);
-		if (!m) throw errors.unauthenticated('Ungueltiger Authorization-Header');
+		if (!m) throw errors.unauthenticated('Ungültiger Authorization-Header');
 		const r = await resolveApiKey(m[1] as string, meta);
-		if (!r) throw errors.unauthenticated('Ungueltiger, abgelaufener oder widerrufener API-Key');
+		if (!r) throw errors.unauthenticated('Ungültiger, abgelaufener oder widerrufener API-Key');
 		state.ctx = r.ctx;
 		state.apiKeyId = r.keyId;
 	} else {
@@ -124,7 +170,7 @@ async function execute(
 	}
 	const ctx = state.ctx;
 
-	// CSRF: Session-Cookies nur mit gleicher Origin fuer schreibende Methoden
+	// CSRF: Session-Cookies nur mit gleicher Origin für schreibende Methoden
 	const mutating = request.method !== 'GET' && request.method !== 'HEAD';
 	if (viaSession && mutating && !sameOrigin(request)) {
 		throw errors.forbidden('Anfrage von fremder Origin abgelehnt');
@@ -150,7 +196,7 @@ async function execute(
 		return r;
 	}
 
-	// Oeffentliche Endpunkte: Gesamt-Bucket (IP-unabhaengig) und nur JSON bei Mutationen
+	// Öffentliche Endpunkte: Gesamt-Bucket (IP-unabhängig) und nur JSON bei Mutationen
 	if (endpoint.public) {
 		const total = hit(
 			`api:public:${endpoint.method}:${endpoint.fullPath}`,
@@ -162,11 +208,18 @@ async function execute(
 			r.headers.set('retry-after', String(total.retryAfterSec));
 			return r;
 		}
-		if (mutating) {
+		if (mutating && !endpoint.multipart) {
 			const ct = (request.headers.get('content-type') ?? '').toLowerCase();
 			if (!/^application\/json\s*(;|$)/.test(ct)) {
 				throw errors.badRequest('Content-Type application/json erforderlich');
 			}
+		}
+	}
+	// multipart-Endpunkte (nur öffentliche POSTs, siehe Registry): nur multipart/form-data
+	if (endpoint.multipart && mutating) {
+		const ct = (request.headers.get('content-type') ?? '').toLowerCase();
+		if (!MULTIPART_RE.test(ct)) {
+			throw errors.badRequest('Content-Type multipart/form-data erforderlich');
 		}
 	}
 
@@ -190,14 +243,23 @@ async function execute(
 	const parsedParams = endpoint.params ? endpoint.params.parse(params) : params;
 	const rawQuery = Object.fromEntries(url.searchParams);
 	const parsedQuery = endpoint.query ? endpoint.query.parse(rawQuery) : rawQuery;
-	const body = endpoint.body ? endpoint.body.parse(await readBody(request)) : undefined;
+	let body: unknown;
+	let files: File[] | undefined;
+	if (endpoint.multipart && mutating) {
+		const parsed = await readMultipart(request, endpoint.multipart);
+		files = parsed.files;
+		body = endpoint.body ? endpoint.body.parse(parsed.fields) : undefined;
+	} else {
+		body = endpoint.body ? endpoint.body.parse(await readBody(request)) : undefined;
+	}
 
 	const result = await endpoint.handler({
 		ctx,
 		params: parsedParams as never,
 		query: parsedQuery as never,
 		body: body as never,
-		request
+		request,
+		...(files ? { files } : {})
 	});
 	const response =
 		result instanceof Response

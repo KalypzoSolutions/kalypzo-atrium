@@ -6,8 +6,8 @@ export interface ModuleDatabase {
 	/** PostgreSQL-Schema des Moduls (`mod_<id>`) */
 	readonly schemaName: string;
 	/**
-	 * Transaktion mit `search_path` = Modulschema. Unqualifizierte Tabellen loesen
-	 * ausschliesslich im eigenen Schema auf; Core- und Fremdtabellen sind nicht erreichbar.
+	 * Transaktion mit `search_path` = Modulschema. Unqualifizierte Tabellen lösen
+	 * ausschließlich im eigenen Schema auf; Core- und Fremdtabellen sind nicht erreichbar.
 	 */
 	transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T>;
 }
@@ -24,7 +24,7 @@ export function forModule(moduleId: string): ModuleDatabase {
 	};
 }
 
-/** Core-interne Transaktion (nicht fuer Module gedacht, siehe `core.database.forModule`). */
+/** Core-interne Transaktion (nicht für Module gedacht, siehe `core.database.forModule`). */
 export function transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
 	return getDb().transaction(fn);
 }

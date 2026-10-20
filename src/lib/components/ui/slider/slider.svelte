@@ -17,7 +17,7 @@
 		max?: number;
 		step?: number;
 		disabled?: boolean;
-		/** Zugaengliche Bezeichnung (aria-label), Pflicht */
+		/** Zugängliche Bezeichnung (aria-label), Pflicht */
 		label: string;
 		onchange?: (value: number) => void;
 		class?: string;

@@ -3,7 +3,7 @@ import { matchModuleRoute } from '$lib/sdk/client/routes';
 import type { ModuleUi } from '$lib/sdk/types/module-ui';
 import type { PageLoad } from './$types';
 
-/** Build-Zeit-Registry der Modul-Oberflaechen; nur `publicRoutes` sind hier erreichbar. */
+/** Build-Zeit-Registry der Modul-Oberflächen; nur `publicRoutes` sind hier erreichbar. */
 const uis = import.meta.glob<{ default: ModuleUi }>('/src/lib/modules/*/ui.ts');
 
 export const load: PageLoad = async ({ data }) => {

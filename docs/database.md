@@ -8,8 +8,8 @@ PostgreSQL mit Drizzle ORM. Schema: `src/lib/server/core/database/schema.ts`; Ve
 |---|---|
 | Better Auth | `user` (inkl. `active`, `two_factor_enabled`), `session`, `account`, `verification`, `two_factor` |
 | RBAC | `permission`, `role`, `role_permission`, `user_role` |
-| Module | `module_state` (aktiv/Version), `module_migration` (angewendete Modulmigrationen + Prüfsumme) |
-| Einstellungen | `setting` (`key`, `scope_id`, `value` jsonb; Secrets als `enc:v1:…`) |
+| Module | `module_state` (aktiv/Version), `module_migration` (angewendete Modulmigrationen + Prüfsumme), `role_grant_applied` (Marker für einmalig vergebene `defaultRoleGrants`; PK `module_id`+`role_name`+`permission_key`, Migration `0004_role_grant_applied.sql`) |
+| Einstellungen | `setting` (`key`, `scope_id`, `value` jsonb; Secrets als `enc:v1:…`; Benutzereinstellungen `core.user.*` mit `scope_id` = Benutzer-ID) |
 | API | `api_key` (Hash, Scopes, Ablauf, Widerruf), `api_log` |
 | Audit | `audit_log` (append-only) |
 | Storage | `file` (Metadaten, Objektschlüssel, Status `pending`/`ready`) |
@@ -44,3 +44,4 @@ Core-intern: `core.database.transaction`. Services reichen `tx` an `auditFromCon
 - Bereits angewendete Migrationen werden per SHA-256 geprüft; Änderung führt zu einem Fehler. Korrekturen immer als neue Migration.
 - Deaktivieren löscht **keine** Daten; Rückbau erfolgt manuell.
 - Zugriff nur über `forModule(id)` (siehe [Modulentwicklung](module-development.md)).
+- Beispiel `members`: Migration `0008_member_mail_prefs.sql` legt `member_mail_prefs` an (`member_id` → `members` ON DELETE CASCADE, `category` ∈ `payment-confirmation|action-info`, `enabled`, `updated_at`, `updated_by`; PK `member_id`+`category`). Gespeichert werden nur Abwahlen. `0007` ist in `members` unbenutzt.

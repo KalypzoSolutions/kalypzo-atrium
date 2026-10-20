@@ -16,6 +16,10 @@ const entry = (p: Partial<AccountingEntry>): AccountingEntry => ({
 	payee: null,
 	receipt: { name: 'a.pdf', contentType: 'application/pdf' },
 	reimbursedAt: null,
+	recipient: null,
+	purpose: null,
+	clubPaidAt: '2026-07-03T10:00:00.000Z',
+	clubPaidVia: 'manual',
 	createdAt: '2026-07-03T10:00:00.000Z',
 	updatedAt: '',
 	...p
@@ -66,7 +70,7 @@ describe('numberExpenses', () => {
 		expect(m.has('i')).toBe(false);
 	});
 
-	it('ist stabil gegenueber der Eingabereihenfolge', () => {
+	it('ist stabil gegenüber der Eingabereihenfolge', () => {
 		const a = numberExpenses(list);
 		const b = numberExpenses([...list].reverse());
 		expect([...a.entries()].sort()).toEqual([...b.entries()].sort());
@@ -106,7 +110,7 @@ describe('buildReportBlocks', () => {
 		).toContain('\nStand: 01.08.2026');
 	});
 
-	it('Einnahmen nach Gruppen, leere Gruppe entfaellt, Summen stimmen', () => {
+	it('Einnahmen nach Gruppen, leere Gruppe entfällt, Summen stimmen', () => {
 		const b = buildReportBlocks(make(entries));
 		const contrib = byCaption(b, 'Teilnehmerbeiträge')!;
 		expect(contrib.variant).toBe('grid');
@@ -139,7 +143,7 @@ describe('buildReportBlocks', () => {
 		expect(label([entries[2]!, entry({ amountCents: 60000, receipt: null })])).toBe('Ausgeglichen');
 	});
 
-	it('Erstattungen: IBAN wie uebergeben, Verwendungszweck gekuerzt, Summe', () => {
+	it('Erstattungen: IBAN wie übergeben, Verwendungszweck gekürzt, Summe', () => {
 		const payees = [
 			{
 				name: 'Anna',
@@ -159,7 +163,8 @@ describe('buildReportBlocks', () => {
 		expect(t.rows[0]![3]).toBe('offen');
 		expect(t.rows[1]![3]).toBe('ausgezahlt');
 		expect(t.rows[1]![1]).toBe('–');
-		expect(t.totalRow![2]).toContain('15,00');
+		expect(t.totalRow![0]).toEqual({ text: 'Summe', colspan: 2 });
+		expect(t.totalRow![1]).toContain('15,00');
 		const purpose = b
 			.filter((x) => x.type === 'paragraph')
 			.map((x) => (x as { text: string }).text)
@@ -193,7 +198,7 @@ describe('buildReportBlocks', () => {
 		expect(byCaption(withPlan, 'Einnahmen und Ausgaben je Kategorie')!.columns).toContain('Soll');
 	});
 
-	it('Rueckzahlung: Block, Hinweis, Ueberschuss vor Rueckzahlung, nicht in Nummerierung', () => {
+	it('Rückzahlung: Block, Hinweis, Überschuss vor Rückzahlung, nicht in Nummerierung', () => {
 		const refundEntry = entry({
 			id: 'r1',
 			category: 'refund',
@@ -231,7 +236,7 @@ describe('buildReportBlocks', () => {
 		expect(
 			tables(b)
 				.filter((t) => t.columns.includes('Beleg-Nr.'))
-				.every((t) => !t.rows.some((r) => r[1]!.startsWith('Rückzahlung')))
+				.every((t) => !t.rows.some((r) => String(r[1]).startsWith('Rückzahlung')))
 		).toBe(true);
 		// Reihenfolge: Ergebnis < Kategorien < Rückzahlung < Buchungsanweisung
 		const order = tables(b)
@@ -253,7 +258,7 @@ describe('buildReportBlocks', () => {
 		expect(dir.rows[0]![1]).toContain('nicht angehängt');
 	});
 
-	it('Abschluss ist eine Zwischenueberschrift ohne harten Seitenumbruch', () => {
+	it('Abschluss ist eine Zwischenüberschrift ohne harten Seitenumbruch', () => {
 		const b = buildReportBlocks(make(entries));
 		expect(b.some((x) => x.type === 'pageBreak')).toBe(false);
 		expect(b.find((x) => x.type === 'heading' && x.text === 'Abschluss')).toMatchObject({
@@ -265,5 +270,68 @@ describe('buildReportBlocks', () => {
 		const b = buildReportBlocks(make([]));
 		expect(JSON.stringify(b)).toContain('Keine Einnahmen.');
 		expect(JSON.stringify(b)).toContain('Keine Ausgaben.');
+	});
+});
+
+describe('buildReportBlocks: Zwischenabrechnungen', () => {
+	const za = { id: 'za1', number: 1 };
+	const list = [
+		entry({ id: 'a', description: 'Brot', interim: za }),
+		entry({ id: 'b', description: 'Zelt', category: 'materials', interim: null }),
+		entry({ id: 'i', type: 'income', category: 'misc', description: 'Spende', interim: za })
+	];
+	const refund = {
+		items: [{ name: 'Kind', amountCents: 500 }],
+		totalCents: 500,
+		remainderCents: 0,
+		bookedAt: '2026-07-20T00:00:00.000Z'
+	};
+
+	it('Zwischenbericht: Titel, Hinweis, Stichtag, keine Rückzahlung, keine ZA-Vermerke', () => {
+		// 22:30 UTC = 00:30 in Berlin → Stichtag 06.07.2026
+		const b = buildReportBlocks(
+			make(list, { interim: { number: 1, takenAt: '2026-07-05T22:30:00.000Z' }, refund })
+		);
+		const text = JSON.stringify(b);
+		expect(text).toContain('Zwischenabrechnung Nr. 1 – Stand 06.07.2026');
+		expect(text).toContain(
+			'Vorläufiger Stand zum 06.07.2026 – spätere Buchungen sind nicht enthalten.'
+		);
+		// gesamter Stand: alle Buchungen, ohne Vermerk
+		expect(text).toContain('Brot');
+		expect(text).toContain('Zelt');
+		expect(text).not.toContain('(ZA');
+		expect(text).not.toContain('Rückzahlung an Teilnehmende');
+		expect(text).not.toContain('Stand bis einschließlich');
+		expect(byCaption(b, 'Zwischenabrechnungen')).toBeUndefined();
+		expect(b.find((x) => x.type === 'heading' && x.text === 'Ergebnis zum Stichtag')).toBeTruthy();
+		expect(b.find((x) => x.type === 'heading' && x.text === 'Abschluss')).toBeUndefined();
+		// Einnahmen 10 − Ausgaben 20 = −10
+		const result = byCaption(b, 'Ergebnis zum Stichtag')!;
+		expect(result.totalRow![0]).toBe('Fehlbetrag');
+		const instr = byCaption(b, 'Buchungsanweisung für die Kasse')!;
+		expect(instr.totalRow![0]).toBe('Saldo zum Stichtag');
+		expect(instr.rows.some((r) => r[0] === 'Rückzahlung an Teilnehmende')).toBe(false);
+	});
+
+	it('Zwischenbericht: reines Datum als Stichtag', () => {
+		const text = JSON.stringify(
+			buildReportBlocks(make(list, { interim: { number: 2, takenAt: '2026-07-05' } }))
+		);
+		expect(text).toContain('Zwischenabrechnung Nr. 2 – Stand 05.07.2026');
+	});
+
+	it('Endbericht: keine ZA-Vermerke, keine ZA-Übersicht, Rückzahlung bleibt', () => {
+		const b = buildReportBlocks(make(list, { refund }));
+		const text = JSON.stringify(b);
+		expect(text).toContain('Brot');
+		expect(text).toContain('Spende');
+		expect(text).not.toContain('(ZA');
+		expect(text).not.toContain('Vorläufig');
+		expect(byCaption(b, 'Zwischenabrechnungen')).toBeUndefined();
+		expect(byCaption(b, 'Rückzahlung an Teilnehmende')).toBeDefined();
+		expect(byCaption(b, 'Buchungsanweisung für die Kasse')!.totalRow![0]).toBe(
+			'Verbleibt in der Stammkasse'
+		);
 	});
 });

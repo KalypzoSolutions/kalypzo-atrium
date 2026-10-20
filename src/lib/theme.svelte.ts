@@ -22,9 +22,17 @@ class ThemeState {
 		this.choice = choice;
 		document.cookie = `theme=${choice}; path=/; max-age=31536000; SameSite=Lax`;
 		this.apply();
+		// Optimistisch auch in der Datenbank speichern (`core.user.theme`); ohne Anmeldung/Netz: Cookie genügt
+		void fetch('/profile/theme', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ theme: choice }),
+			credentials: 'same-origin'
+		}).catch(() => undefined);
 	}
 
-	private apply(): void {
+	/** Klassen am `<html>` neu setzen (auch von außen nutzbar, wenn Cookie/Datenbank schon gespeichert sind) */
+	apply(): void {
 		const dark =
 			this.choice === 'dark' ||
 			(this.choice === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);

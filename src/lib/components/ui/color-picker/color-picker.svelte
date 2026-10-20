@@ -96,7 +96,7 @@
 		else hexError = 'Ungültiger Hex-Code, z. B. #2f855a oder #3a7';
 	}
 
-	// --- Flaeche (Saettigung / Helligkeit) ---
+	// --- Fläche (Sättigung / Helligkeit) ---
 	function pointToSv(e: PointerEvent) {
 		if (!areaEl) return;
 		const rect = areaEl.getBoundingClientRect();

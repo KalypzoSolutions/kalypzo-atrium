@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import { getDb, schema, type DbOrTx } from '../database/client';
 import { errors } from '../errors';
@@ -7,7 +7,7 @@ import { ADMIN_ROLE_ID, PERMISSION_PATTERN } from './catalog';
 
 export function assertPermissionKey(key: string): void {
 	if (!PERMISSION_PATTERN.test(key)) {
-		throw errors.badRequest(`Ungueltiger Berechtigungsschluessel: ${key}`);
+		throw errors.badRequest(`Ungültiger Berechtigungsschlüssel: ${key}`);
 	}
 }
 
@@ -23,9 +23,22 @@ export async function getUserPermissions(userId: string, tx?: DbOrTx): Promise<S
 		.innerJoin(schema.rolePermission, eq(schema.rolePermission.roleId, schema.userRole.roleId))
 		.innerJoin(schema.permission, eq(schema.permission.key, schema.rolePermission.permissionKey))
 		.where(eq(schema.userRole.userId, userId));
+	// Rollen, die Module verleihen (z. B. Ämter) – nur solange das verleihende Modul aktiv ist
+	const granted = await db
+		.select({
+			key: schema.permission.key,
+			moduleId: schema.permission.moduleId,
+			grantModuleId: schema.userRoleGrant.moduleId
+		})
+		.from(schema.userRoleGrant)
+		.innerJoin(schema.rolePermission, eq(schema.rolePermission.roleId, schema.userRoleGrant.roleId))
+		.innerJoin(schema.permission, eq(schema.permission.key, schema.rolePermission.permissionKey))
+		.where(eq(schema.userRoleGrant.userId, userId));
 	const enabled = await enabledModuleIds(db);
 	return new Set(
-		rows.filter((r) => r.moduleId === 'core' || enabled.has(r.moduleId)).map((r) => r.key)
+		[...rows, ...granted.filter((g) => enabled.has(g.grantModuleId))]
+			.filter((r) => r.moduleId === 'core' || enabled.has(r.moduleId))
+			.map((r) => r.key)
 	);
 }
 
@@ -49,7 +62,7 @@ export async function requireAny(ctx: RequestContext, keys: string[]): Promise<v
 	if (!hasAny(ctx, keys)) throw errors.forbidden(`Berechtigung fehlt: ${keys.join(' | ')}`);
 }
 
-/** Schutz vor Rechteausweitung: nur eigene Berechtigungen duerfen vergeben werden. */
+/** Schutz vor Rechteausweitung: nur eigene Berechtigungen dürfen vergeben werden. */
 export function assertCanGrant(ctx: RequestContext, keys: Iterable<string>): void {
 	if (ctx.actor.type === 'system') return;
 	const missing = [...keys].filter((k) => !ctx.permissions.has(k));
@@ -66,7 +79,7 @@ export async function listPermissions(tx?: DbOrTx) {
 }
 
 /**
- * Gleicht die Berechtigungstabelle mit Core und registrierten Modulen ab und haengt neue
+ * Gleicht die Berechtigungstabelle mit Core und registrierten Modulen ab und hängt neue
  * Berechtigungen an die Systemrolle `Administrator`.
  */
 export async function syncPermissions(
@@ -81,7 +94,11 @@ export async function syncPermissions(
 		.values(
 			defs.map((d) => ({ key: d.key, moduleId: d.moduleId, description: d.description ?? null }))
 		)
-		.onConflictDoNothing();
+		// Beschreibungen aus dem Code nachziehen; ohne neue Beschreibung bleibt die bisherige
+		.onConflictDoUpdate({
+			target: schema.permission.key,
+			set: { description: sql`coalesce(excluded.description, ${schema.permission.description})` }
+		});
 	await db
 		.insert(schema.role)
 		.values({

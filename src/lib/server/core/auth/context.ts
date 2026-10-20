@@ -60,7 +60,7 @@ export async function contextForUser(
 	};
 }
 
-/** Loest die Session aus den Request-Headern auf. Deaktivierte Benutzer werden abgelehnt. */
+/** Löst die Session aus den Request-Headern auf. Deaktivierte Benutzer werden abgelehnt. */
 export async function resolveSession(
 	headers: Headers,
 	meta: { ip?: string | null; requestId?: string } = {}
@@ -75,7 +75,7 @@ export async function resolveSession(
 export const API_KEY_PREFIX = 'epk_';
 
 /**
- * Loest einen API-Key auf. Wirksame Rechte = Scopes ∩ aktuelle Rechte des Eigentuemers,
+ * Löst einen API-Key auf. Wirksame Rechte = Scopes ∩ aktuelle Rechte des Eigentümers,
  * dadurch kann ein Key nie mehr als sein Besitzer.
  */
 export async function resolveApiKey(
@@ -93,7 +93,7 @@ export async function resolveApiKey(
 	const owner = await contextForUser(key.ownerId, meta);
 	if (!owner) return null;
 	const permissions = new Set(key.scopes.filter((s) => owner.ctx.permissions.has(s)));
-	// lastUsedAt ohne Rueckwirkung auf die Anfrage aktualisieren
+	// lastUsedAt ohne Rückwirkung auf die Anfrage aktualisieren
 	void db
 		.update(schema.apiKey)
 		.set({ lastUsedAt: new Date() })

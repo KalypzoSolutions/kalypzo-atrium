@@ -112,7 +112,7 @@ describe('AI-Service', () => {
 		await expect(ai.generate(ctx(), base)).rejects.toMatchObject({ code: 'rate_limited' });
 	});
 
-	it('gibt strukturierte JSON-Ausgaben validiert zurueck und wiederholt einmal', async () => {
+	it('gibt strukturierte JSON-Ausgaben validiert zurück und wiederholt einmal', async () => {
 		responses = ['kein json', '{"name":"Max","age":30}'];
 		const res = await ai.generateJson(ctx(), {
 			...base,
@@ -151,7 +151,7 @@ describe('AI-Service', () => {
 		expect((err as Error).message).not.toContain('sk-test');
 	});
 
-	it('verarbeitet Storage-Dateien ueber den berechtigungspruefenden Storage-Service', async () => {
+	it('verarbeitet Storage-Dateien über den berechtigungsprüfenden Storage-Service', async () => {
 		download.mockResolvedValueOnce({
 			buffer: new TextEncoder().encode('Inhalt'),
 			file: { name: 'a.txt', contentType: 'text/plain' }

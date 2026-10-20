@@ -2,11 +2,12 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Menu from '@lucide/svelte/icons/menu';
+	import SearchIcon from '@lucide/svelte/icons/search';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
 	import UserIcon from '@lucide/svelte/icons/user';
-	import { Avatar, AvatarFallback } from '$lib/components/ui/avatar';
+	import { Avatar, AvatarFallback, AvatarImage } from '$lib/components/ui/avatar';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		DropdownMenu,
@@ -18,6 +19,7 @@
 	} from '$lib/components/ui/dropdown-menu';
 	import { Sheet, SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
 	import { theme } from '$lib/theme.svelte';
+	import CommandPalette from './CommandPalette.svelte';
 	import SidebarNav from './SidebarNav.svelte';
 	import type { ModuleNavEntry } from './nav';
 
@@ -27,13 +29,16 @@
 		permissions,
 		navigation
 	}: {
-		user: { name: string; email: string };
+		user: { name: string; email: string; image?: string | null };
 		systemName: string;
 		permissions: string[];
 		navigation: ModuleNavEntry[];
 	} = $props();
 
 	let menuOpen = $state(false);
+	let paletteOpen = $state(false);
+	/** Nur eigene Profilbilder (`/avatar/…`) anzeigen, keine fremden Adressen aus alten Daten */
+	const avatarSrc = $derived(user.image?.startsWith('/avatar/') ? user.image : null);
 	const initials = $derived(
 		user.name
 			.split(/\s+/)
@@ -59,7 +64,7 @@
 		variant="ghost"
 		size="icon"
 		class="lg:hidden"
-		aria-label="Navigation oeffnen"
+		aria-label="Navigation öffnen"
 		onclick={() => (menuOpen = true)}
 	>
 		<Menu />
@@ -75,10 +80,26 @@
 
 	<div class="flex-1"></div>
 
+	<Button
+		variant="outline"
+		class="h-9 gap-2 px-2 text-muted-foreground sm:w-56 sm:justify-start sm:px-3"
+		aria-label="Suchen (Strg+K)"
+		aria-keyshortcuts="Control+K Meta+K"
+		onclick={() => (paletteOpen = true)}
+	>
+		<SearchIcon />
+		<span class="hidden flex-1 text-left sm:inline">Suchen</span>
+		<kbd
+			class="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] sm:inline"
+			aria-hidden="true">Strg K</kbd
+		>
+	</Button>
+	<CommandPalette {permissions} {navigation} bind:open={paletteOpen} />
+
 	<DropdownMenu>
 		<DropdownMenuTrigger>
 			{#snippet child({ props })}
-				<Button {...props} variant="ghost" size="icon" aria-label="Darstellung waehlen">
+				<Button {...props} variant="ghost" size="icon" aria-label="Darstellung wählen">
 					{#if theme.dark}<Moon />{:else}<Sun />{/if}
 				</Button>
 			{/snippet}
@@ -93,8 +114,11 @@
 	<DropdownMenu>
 		<DropdownMenuTrigger>
 			{#snippet child({ props })}
-				<Button {...props} variant="ghost" class="h-9 gap-2 px-2" aria-label="Benutzermenue">
-					<Avatar class="size-7"><AvatarFallback>{initials}</AvatarFallback></Avatar>
+				<Button {...props} variant="ghost" class="h-9 gap-2 px-2" aria-label="Benutzermenü">
+					<Avatar class="size-7">
+						{#if avatarSrc}<AvatarImage src={avatarSrc} alt="" />{/if}
+						<AvatarFallback>{initials}</AvatarFallback>
+					</Avatar>
 					<span class="hidden max-w-40 truncate text-sm sm:inline">{user.name}</span>
 				</Button>
 			{/snippet}

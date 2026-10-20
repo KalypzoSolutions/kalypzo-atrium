@@ -19,7 +19,7 @@ describe('matchModuleRoute', () => {
 		});
 		expect(matchModuleRoute(keys, 'a/1/2')?.params).toEqual({ x: '1', y: '2' });
 	});
-	it('gibt bei unbekannten Pfaden null zurueck', () => {
+	it('gibt bei unbekannten Pfaden null zurück', () => {
 		expect(matchModuleRoute(keys, 'actions')).toBeNull();
 		expect(matchModuleRoute(keys, 'actions/1/2/3')).toBeNull();
 		expect(matchModuleRoute(keys, 'nope')).toBeNull();

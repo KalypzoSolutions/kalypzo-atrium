@@ -40,11 +40,48 @@ Modul-Endpoints verlangen standardmäßig eine Berechtigung (`permission: null` 
 - **Datenschutz**: Öffentliche Formulare erheben personenbezogene Daten ohne Anmeldung. Nur erforderliche Felder abfragen, Zweck und Aufbewahrung festlegen, Hinweistext anzeigen und Daten nicht in Logs/Audit-Metadaten schreiben.
 - **Öffentliche Seiten** (`/p/<moduleId>/<pfad>`) brauchen keine Session, setzen `noindex,nofollow` und zeigen nur Routen aus `ui.publicRoutes`. Alle Sicherheits-Header und die CSP (`frame-ancestors 'none'`) gelten unverändert.
 
+## Konto-Verknüpfung per Code (Modul `members`)
+
+Die Selbstregistrierung ist weiterhin aus. Ausnahme: Wer **Link-Token und 6-stelligen Code** aus dem Brief hat, kann über
+`/p/members/verknuepfen/<token>` ein Konto (Rolle „Mitglied“, ohne Rechte) anlegen oder ein vorhandenes verknüpfen.
+Schutz: Token (128 Bit) identifiziert das Mitglied, Code (6 Ziffern, verschlüsselt gespeichert, zeitkonstanter Vergleich) belegt den Besitz;
+je Mitglied nach 10 Fehlversuchen 60 Minuten Sperre, dazu Rate-Limits je IP/Gesamt; Gültigkeit 90 Tage; „Code neu erzeugen“ macht Link und Code ungültig.
+Die E-Mail-Adresse neuer Konten wird nicht verifiziert (`emailVerified: true` wie bei Admin-Anlage).
+
+## E-Mail-Wechsel, Profilbild und Kontaktänderung
+
+- **E-Mail-Wechsel**: Der Better-Auth-Endpoint `POST /api/auth/change-email` (und `/update-user`) ist für
+  HTTP-Aufrufe im `before`-Hook gesperrt (403). Erlaubt ist nur die Profil-Action (`requestEmailChange`, serverseitiger
+  `auth.api`-Aufruf ohne `request`): Passwortprüfung (5 Fehlversuche je 10 min), eigenes Rate-Limit (3 Anfragen je Stunde
+  und Benutzer), Bestätigungslink an die **neue** Adresse (Session im selben Browser nötig), Hinweismail an die **alte**
+  Adresse (erst nach erfolgreichem Aufruf, nur maskierte neue Adresse). Nach der Bestätigung werden alle **anderen**
+  Sessions beendet; Audit `core.auth.email_changed` (maskiert).
+- **Profilbild**: Upload prüft Typ, Größe und Magic-Bytes (PNG/JPEG/WebP). `GET /avatar/<id>` verlangt Login (alle
+  angemeldeten Benutzer dürfen Avatare sehen, gewollt), liefert nichts für deaktivierte Benutzer und nur, wenn
+  `user.image` auf den eigenen Pfad `/avatar/<id>` zeigt (keine Imitation per fremder ID). Antwort mit
+  `nosniff` und `sandbox`-CSP.
+- **Kontaktänderung durch verknüpfte Konten** (`PUT /my/members/:id/contacts`): Ändert sich die E-Mail-Liste, geht eine
+  Info-Mail an die **bisherigen** Adressen des Mitglieds (ohne die neuen zu nennen, höchstens eine Mail je Adresse,
+  Mailfehler brechen das Speichern nicht ab). Das Audit enthält nur Zähler.
+- Startseite (`core.user.startPage`): nur interne Pfade (`^/(?!/)[a-z0-9\-/]*$`, kein `//`).
+
+## Adress-Autovervollständigung (Modul `members`)
+
+Beim Tippen einer Adresse sendet **unser Server** (nicht der Browser) den Suchtext an den in `members.address.photonUrl` konfigurierten
+Photon-Dienst (Standard: `photon.komoot.io`, OpenStreetMap). Es werden nur Straße/Ort-Fragmente übertragen, keine Namen oder Kontodaten.
+Timeout 3 s, Fehler brechen das Formular nicht. Zum Abschalten oder für eine eigene Instanz die Einstellung leeren bzw. ändern.
+
 ## Secrets
 
 - Reversibel benötigte Secrets (SMTP-Passwort, S3-Zugangsdaten, OpenAI-Key) werden mit **AES-256-GCM** verschlüsselt (Schlüssel per HKDF-SHA-256 aus `APP_SECRET`, zufälliger 96-Bit-IV, Format `enc:v1:…`).
 - Secrets werden nie an Clients oder in Logs ausgegeben (`listPublic` liefert nur `isSet`); Audit-Einträge enthalten nur `{ secret: true }`.
-- **Rotation**: Ein neuer `APP_SECRET` macht gespeicherte Secrets unlesbar (auch Better-Auth-Signaturen ändern sich → Sessions ungültig). Vorgehen: Secrets notieren, `APP_SECRET` ändern, Werte in der Oberfläche neu eingeben. Eine automatische Re-Encryption ist nicht implementiert.
+- **Rotation**: Ein neuer `APP_SECRET` macht gespeicherte Secrets unlesbar (auch Better-Auth-Signaturen ändern sich → Sessions ungültig). Vorgehen: Secrets notieren, `APP_SECRET` ändern, Werte in der Oberfläche neu eingeben. Eine automatische Re-Encryption ist nicht implementiert. Alternativ: Datensicherung erstellen und auf dem Server mit neuem
+  `APP_SECRET` wiederherstellen – dabei werden alle Secrets, 2FA-Daten und Modul-Felder neu verschlüsselt und schlüsselgebundene Hashes
+  (Modul-Hook `backup.rehash`) neu berechnet.
+- **Datensicherung** (`.epbackup`): enthält Secrets **im Klartext innerhalb der verschlüsselten Datei** (Passwort-Hashes, 2FA, IBANs,
+  SMTP-Zugang); das Quell-`APP_SECRET` ist nicht enthalten. Datei + Sicherungs-Passwort = Zugriff auf alle Daten. Export/Import nur mit
+  Konto-Passwort + 2FA, Rate-Limits für Konto- und Sicherungs-Passwort, eigener Origin-Check (JSON/Octet-Stream), Pfad-Whitelist,
+  Zip-Bomb-Grenzen, Prüfsummen je Eintrag, Kontoschutz der ausführenden Person, Audit `core.system.backup_exported|backup_restored`.
 - API-Keys: 256 Bit Zufall, nur als SHA-256-Hash gespeichert, Klartext einmalig sichtbar, Ablauf und Widerruf.
 
 ## Audit

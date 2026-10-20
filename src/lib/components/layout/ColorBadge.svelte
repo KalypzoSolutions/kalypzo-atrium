@@ -3,7 +3,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { contrastTextColor } from '$lib/components/ui/color-picker/color';
 
-	/** Badge in frei waehlbarer Farbe (`#rrggbb`) mit automatisch lesbarer Textfarbe. */
+	/** Badge in frei wählbarer Farbe (`#rrggbb`) mit automatisch lesbarer Textfarbe. */
 	let {
 		color,
 		class: className,

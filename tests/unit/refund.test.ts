@@ -9,7 +9,7 @@ import {
 const payer = (id: string, feeCents: number) => ({ id, name: `P${id}`, feeCents });
 
 describe('computeRefund', () => {
-	it('gleiche Beitraege: gleicher Betrag, ganze Euro abgerundet', () => {
+	it('gleiche Beiträge: gleicher Betrag, ganze Euro abgerundet', () => {
 		// 1000,00 EUR / 3 = 333,33 -> 333 EUR je Person, Rest 1,00 EUR
 		const r = computeRefund({
 			surplusCents: 100000,
@@ -22,13 +22,13 @@ describe('computeRefund', () => {
 		expect(r.payingCount).toBe(3);
 	});
 
-	it('unterschiedliche Beitraege (Team-Prozent): anteilig, abgerundet', () => {
-		// Beitraege 200 + 100 = 300; Ueberschuss 90 EUR -> 60 EUR und 30 EUR
+	it('unterschiedliche Beiträge (Team-Prozent): anteilig, abgerundet', () => {
+		// Beiträge 200 + 100 = 300; Überschuss 90 EUR -> 60 EUR und 30 EUR
 		const r = computeRefund({ surplusCents: 9000, payers: [payer('a', 20000), payer('t', 10000)] });
 		expect(r.items.map((i) => i.amountCents)).toEqual([6000, 3000]);
 		expect(r.perHeadCents).toBe(6000);
 		expect(r.remainderCents).toBe(0);
-		// Ueberschuss 100 EUR: 66,66 -> 66, 33,33 -> 33; Rest 1 EUR
+		// Überschuss 100 EUR: 66,66 -> 66, 33,33 -> 33; Rest 1 EUR
 		const r2 = computeRefund({
 			surplusCents: 10000,
 			payers: [payer('a', 20000), payer('t', 10000)]
@@ -37,7 +37,7 @@ describe('computeRefund', () => {
 		expect(r2.remainderCents).toBe(100);
 	});
 
-	it('Betraege unter 1 EUR entfallen', () => {
+	it('Beträge unter 1 EUR entfallen', () => {
 		const r = computeRefund({ surplusCents: 99, payers: [payer('a', 100)] });
 		expect(r.items).toEqual([]);
 		expect(r.totalCents).toBe(0);
@@ -45,7 +45,7 @@ describe('computeRefund', () => {
 		expect(r.perHeadCents).toBe(0);
 	});
 
-	it('Ueberschuss 0/negativ/NaN, keine Zahlenden', () => {
+	it('Überschuss 0/negativ/NaN, keine Zahlenden', () => {
 		for (const surplusCents of [0, -500, NaN, Infinity]) {
 			const r = computeRefund({ surplusCents, payers: [payer('a', 100)] });
 			expect(r.items).toEqual([]);
@@ -58,7 +58,7 @@ describe('computeRefund', () => {
 		expect(none.remainderCents).toBe(5000);
 	});
 
-	it('grosse Zahlen bleiben exakt', () => {
+	it('große Zahlen bleiben exakt', () => {
 		const r = computeRefund({
 			surplusCents: 100000000,
 			payers: Array.from({ length: 7 }, (_, i) => payer(String(i), 1234567))
@@ -71,7 +71,7 @@ describe('computeRefund', () => {
 });
 
 describe('computeManualRefund', () => {
-	it('Ueberschuss / Anzahl, ganze Euro abgerundet, Rest', () => {
+	it('Überschuss / Anzahl, ganze Euro abgerundet, Rest', () => {
 		// 1000,00 EUR / 7 = 142,857 -> 142 EUR je Person; 7 x 142 = 994; Rest 6 EUR
 		const r = computeManualRefund({ surplusCents: 100000, count: 7 });
 		expect(r.perHeadCents).toBe(14200);
@@ -80,7 +80,7 @@ describe('computeManualRefund', () => {
 		expect(r.count).toBe(7);
 	});
 
-	it('ungueltige Eingaben ergeben 0', () => {
+	it('ungültige Eingaben ergeben 0', () => {
 		for (const [surplusCents, count] of [
 			[0, 5],
 			[-100, 5],

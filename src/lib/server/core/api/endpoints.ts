@@ -14,6 +14,7 @@ import {
 	updateUser
 } from '../auth/users';
 import { disableModule, enableModule, listModules } from '../modules/service';
+import { listJobs, runJobNow } from '../jobs';
 import { createRole, deleteRole, listRoles, updateRole } from '../permissions/roles';
 import { listPermissions } from '../permissions/service';
 import { getPublicSettings, setSetting } from '../settings/service';
@@ -28,7 +29,7 @@ const paging = z.object({
 });
 const password = z.string().min(12).max(128);
 
-/** Ausdrueckliche Freigabe: Nur diese Core-Funktionen sind ueber die externe API erreichbar. */
+/** Ausdrückliche Freigabe: Nur diese Core-Funktionen sind über die externe API erreichbar. */
 export function registerCoreApi(): void {
 	registerCoreEndpoints([
 		defineEndpoint({
@@ -54,7 +55,7 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/me',
-			summary: 'Eigene Identitaet und wirksame Berechtigungen',
+			summary: 'Eigene Identität und wirksame Berechtigungen',
 			tags: ['System'],
 			permission: null,
 			authenticated: true,
@@ -122,7 +123,7 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'DELETE',
 			path: '/users/:id',
-			summary: 'Benutzer loeschen',
+			summary: 'Benutzer löschen',
 			tags: ['Benutzer'],
 			permission: 'core.users.delete',
 			params: id,
@@ -174,7 +175,7 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'DELETE',
 			path: '/roles/:id',
-			summary: 'Rolle loeschen',
+			summary: 'Rolle löschen',
 			tags: ['Rollen'],
 			permission: 'core.roles.delete',
 			params: id,
@@ -224,6 +225,25 @@ export function registerCoreApi(): void {
 				await disableModule(ctx, params.id);
 				return null;
 			}
+		}),
+
+		// Hintergrundjobs
+		defineEndpoint({
+			method: 'GET',
+			path: '/jobs',
+			summary: 'Hintergrundjobs mit letztem Lauf',
+			tags: ['Module'],
+			permission: 'core.jobs.manage',
+			handler: () => listJobs()
+		}),
+		defineEndpoint({
+			method: 'POST',
+			path: '/jobs/:key/run',
+			summary: 'Hintergrundjob sofort ausführen',
+			tags: ['Module'],
+			permission: 'core.jobs.manage',
+			params: z.object({ key: z.string().regex(/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/) }),
+			handler: ({ ctx, params }) => runJobNow(ctx, params.key)
 		}),
 
 		// Einstellungen (Secrets werden nie ausgeliefert)
@@ -321,7 +341,12 @@ export function registerCoreApi(): void {
 					)
 					.max(2000),
 				format: z.enum(['A3', 'A4', 'A5', 'Letter', 'Legal']).optional(),
-				orientation: z.enum(['portrait', 'landscape']).optional()
+				orientation: z
+					.enum(['portrait', 'landscape'])
+					.optional()
+					.describe(
+						'Seitenausrichtung. Wird bei Vorlagen mit festem Seitenlayout (Briefvorlagen wie stamm-brief, stamm-briefkopf, stamm-briefkopf-quer) ignoriert; dort bestimmt die Vorlage die Ausrichtung.'
+					)
 			}),
 			rateLimit: { limit: 20, windowSec: 60 },
 			handler: async ({ ctx, body }) => {
@@ -364,7 +389,7 @@ export function registerCoreApi(): void {
 			handler: ({ ctx, query }) => ai.usageSummary(ctx, query)
 		}),
 
-		// Storage (Berechtigung je Modul wird im Service geprueft: <modul>.storage.*)
+		// Storage (Berechtigung je Modul wird im Service geprüft: <modul>.storage.*)
 		defineEndpoint({
 			method: 'GET',
 			path: '/storage/files',
@@ -396,7 +421,7 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/storage/files/:id/confirm',
-			summary: 'Signierten Upload bestaetigen',
+			summary: 'Signierten Upload bestätigen',
 			tags: ['Storage'],
 			permission: null,
 			authenticated: true,
@@ -416,7 +441,7 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'DELETE',
 			path: '/storage/files',
-			summary: 'Datei loeschen',
+			summary: 'Datei löschen',
 			tags: ['Storage'],
 			permission: null,
 			authenticated: true,

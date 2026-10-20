@@ -35,6 +35,8 @@ interface BaseField {
 	locked?: boolean;
 	/** Nicht anzeigen und nicht abfragen (z. B. deaktiviertes Standardfeld) */
 	hidden?: boolean;
+	/** Bindung an ein Zusatzfeld des Mitglieds (Modul `members`): vorausgefüllt, Änderungen werden dort gespeichert */
+	memberKey?: string;
 }
 
 export interface TextField extends BaseField {

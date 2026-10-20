@@ -10,7 +10,7 @@ import { seedSettingsFromEnv } from './settings/env-seed';
 let started: Promise<void> | undefined;
 let apiRegistered = false;
 
-/** Fuehrt die Startsequenz genau einmal aus. */
+/** Führt die Startsequenz genau einmal aus. */
 export function initCore(opts: { migrate?: boolean } = {}): Promise<void> {
 	started ??= (async () => {
 		const e = env();

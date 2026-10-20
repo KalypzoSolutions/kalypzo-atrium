@@ -1,8 +1,20 @@
 <!doctype html>
-<html lang="de" class="%app.theme%">
+<html lang="de" class="%app.theme%" data-density="%app.density%" style="%app.style%">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script nonce="%sveltekit.nonce%">
+			// Darstellung "system": dark-Klasse vor dem ersten Rendern setzen (kein Flackern)
+			try {
+				var t = /(?:^|; )theme=(light|dark|system)/.exec(document.cookie);
+				if (
+					(!t || t[1] === 'system') &&
+					window.matchMedia('(prefers-color-scheme: dark)').matches
+				) {
+					document.documentElement.classList.add('dark');
+				}
+			} catch (e) {}
+		</script>
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
 		%sveltekit.head%
 	</head>

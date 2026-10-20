@@ -31,6 +31,76 @@ export const GEOMETRY = {
 	footer: { lineY: 276.8, x: 25, width: 160, textY: 278.8, sizePt: 7 }
 } as const;
 
+export type StammOrientation = 'portrait' | 'landscape';
+
+/** Geometrie der Bausteine, die beide Ausrichtungen gemeinsam haben (ohne Falzmarken/Adressfeld). */
+export interface StammGeometry {
+	readonly lilie: {
+		readonly x: number;
+		readonly y: number;
+		readonly width: number;
+		readonly height: number;
+	};
+	readonly title: {
+		readonly x: number;
+		readonly y: number;
+		readonly lineHeight: number;
+		readonly sizePt: number;
+	};
+	readonly wappen: {
+		readonly x: number;
+		readonly y: number;
+		readonly width: number;
+		readonly height: number;
+	};
+	readonly footer: {
+		readonly lineY: number;
+		readonly x: number;
+		readonly width: number;
+		readonly textY: number;
+		readonly sizePt: number;
+	};
+	/** `true`: Fußzeilentext als ein zentrierter Absatz statt der festen zwei Zeilen. */
+	readonly footerFlow: boolean;
+	/** Textränder in mm (Tabelle in `flowOpen` und Zellabstand). */
+	readonly textMargin: {
+		readonly top: number;
+		readonly right: number;
+		readonly bottom: number;
+		readonly left: number;
+	};
+}
+
+/** Textränder in mm, in beiden Ausrichtungen gleich. */
+const TEXT_MARGIN = { top: 45, right: 25, bottom: 25, left: 25 } as const;
+
+/**
+ * Quer (A4 297 × 210 mm): Lilie und Vereinsname wie hochkant; Wappen mit demselben Abstand zum
+ * rechten Rand (12,7 mm); Fußzeile 25 mm Rand links/rechts, 20,2 mm über der Unterkante.
+ */
+export const GEOMETRY_LANDSCAPE = {
+	lilie: GEOMETRY.lilie,
+	title: GEOMETRY.title,
+	wappen: { x: 263.7, y: 10.9, width: 20.6, height: 30.5 },
+	footer: { lineY: 189.8, x: 25, width: 247, textY: 191.8, sizePt: 7 },
+	footerFlow: true,
+	textMargin: TEXT_MARGIN
+} as const satisfies StammGeometry;
+
+const GEOMETRY_PORTRAIT = {
+	lilie: GEOMETRY.lilie,
+	title: GEOMETRY.title,
+	wappen: GEOMETRY.wappen,
+	footer: GEOMETRY.footer,
+	footerFlow: false,
+	textMargin: TEXT_MARGIN
+} as const satisfies StammGeometry;
+
+/** Geometrie je Ausrichtung (hochkant = `GEOMETRY`). */
+export function stammGeometry(orientation: StammOrientation = 'portrait'): StammGeometry {
+	return orientation === 'landscape' ? GEOMETRY_LANDSCAPE : GEOMETRY_PORTRAIT;
+}
+
 export const FOOTER_TEXT_LINES = [
 	'Die Christliche Pfadfinderschaft Deutschland ist Mitglied der AEJ (Arbeitsgemeinschaft der Evangelischen Jugend in Deutschland e.V.), anerkannt nach §75 SGB',
 	'VIII und in das Vereinsregister Heilbad Heiligenstadt unter Nr. 400532 eingetragen.'
@@ -39,8 +109,7 @@ export const FOOTER_TEXT_LINES = [
 const mm = (v: number) => `${v}mm`;
 
 /** Briefkopf oben: Lilie, dreizeiliger Vereinsname, Wappen. */
-export function letterheadTop(): string {
-	const g = GEOMETRY;
+export function letterheadTop(g: StammGeometry = GEOMETRY_PORTRAIT): string {
 	return `<div class="stamm-part" data-part="briefkopf">
 <img alt="" src="${lilieUrl}" style="position:absolute;left:${mm(g.lilie.x)};top:${mm(g.lilie.y)};width:${mm(g.lilie.width)};height:${mm(g.lilie.height)};" />
 <div style="position:absolute;left:${mm(g.title.x)};top:${mm(g.title.y)};font-family:${CARLITO_STACK};font-size:${g.title.sizePt}pt;line-height:${mm(g.title.lineHeight)};color:#000;white-space:nowrap;">Christliche<br/>Pfadfinderschaft<br/>Deutschlands e.V.</div>
@@ -73,11 +142,15 @@ export function addressField(lines: string[] = []): string {
 }
 
 /** Fußzeile: Trennlinie und zentrierter Vereinsnachweis (auf jeder Seite). */
-export function letterFooter(): string {
-	const g = GEOMETRY.footer;
+export function letterFooter(geo: StammGeometry = GEOMETRY_PORTRAIT): string {
+	const g = geo.footer;
+	// Quer: ein Absatz, den der Browser zentriert umbricht; hochkant: feste zwei Zeilen.
+	const text = geo.footerFlow
+		? escapeHtml(FOOTER_TEXT_LINES.join(' '))
+		: FOOTER_TEXT_LINES.map(escapeHtml).join('<br/>');
 	return `<div class="stamm-part" data-part="fusszeile">
 <div style="position:absolute;left:${mm(g.x - 1)};top:${mm(g.lineY)};width:${mm(g.width + 0.3)};border-top:0.5pt solid #333;height:0;"></div>
-<div style="position:absolute;left:${mm(g.x)};top:${mm(g.textY)};width:${mm(g.width)};text-align:center;font-family:${CARLITO_STACK};font-size:${g.sizePt}pt;line-height:3.05mm;color:#222;">${FOOTER_TEXT_LINES.map(escapeHtml).join('<br/>')}</div>
+<div style="position:absolute;left:${mm(g.x)};top:${mm(g.textY)};width:${mm(g.width)};text-align:center;font-family:${CARLITO_STACK};font-size:${g.sizePt}pt;line-height:3.05mm;color:#222;">${text}</div>
 </div>`;
 }
 
@@ -96,16 +169,41 @@ export function pageLayer(
 	return `<div class="stamm-layer" data-repeat="${repeat}" style="position:${repeat ? 'fixed' : 'absolute'};left:${mm(-margins.left)};top:${mm(-margins.top)};width:0;height:0;overflow:visible;pointer-events:none;">${inner}</div>`;
 }
 
+/** Bestandteile, die beide Ausrichtungen haben. */
+type SharedPartId = 'briefkopf' | 'fusszeile';
+const SHARED_PART_IDS = ['briefkopf', 'fusszeile'] as const satisfies readonly SharedPartId[];
+
+/** Briefkopf und Fußzeile als Bestandteile (Maße je Ausrichtung). */
+function sharedParts(g: StammGeometry): Record<SharedPartId, PdfTemplatePart> {
+	return {
+		briefkopf: {
+			id: 'briefkopf',
+			label: 'Briefkopf',
+			description: 'Lilie, Vereinsname und Wappen',
+			x: g.lilie.x,
+			y: g.lilie.y,
+			width: g.wappen.x + g.wappen.width - g.lilie.x,
+			height: g.wappen.y + g.wappen.height - g.lilie.y
+		},
+		fusszeile: {
+			id: 'fusszeile',
+			label: 'Fußzeile',
+			description: 'Trennlinie und Vereinsnachweis, auf jeder Seite',
+			x: g.footer.x,
+			y: g.footer.lineY,
+			width: g.footer.width,
+			height: 9
+		}
+	};
+}
+
+/** Bestandteile quer (nur Briefkopf und Fußzeile; Fensterumschlag gibt es nur hochkant). */
+export const PART_META_LANDSCAPE = sharedParts(GEOMETRY_LANDSCAPE);
+
+const PORTRAIT_SHARED = sharedParts(GEOMETRY_PORTRAIT);
+
 export const PART_META: Record<StammPartId, PdfTemplatePart> = {
-	briefkopf: {
-		id: 'briefkopf',
-		label: 'Briefkopf',
-		description: 'Lilie, Vereinsname und Wappen',
-		x: GEOMETRY.lilie.x,
-		y: GEOMETRY.lilie.y,
-		width: GEOMETRY.wappen.x + GEOMETRY.wappen.width - GEOMETRY.lilie.x,
-		height: GEOMETRY.wappen.y + GEOMETRY.wappen.height - GEOMETRY.lilie.y
-	},
+	briefkopf: PORTRAIT_SHARED.briefkopf,
 	falzmarken: {
 		id: 'falzmarken',
 		label: 'Falzmarken',
@@ -126,15 +224,7 @@ export const PART_META: Record<StammPartId, PdfTemplatePart> = {
 		width: GEOMETRY.address.width,
 		height: GEOMETRY.address.height
 	},
-	fusszeile: {
-		id: 'fusszeile',
-		label: 'Fußzeile',
-		description: 'Trennlinie und Vereinsnachweis, auf jeder Seite',
-		x: GEOMETRY.footer.x,
-		y: GEOMETRY.footer.lineY,
-		width: GEOMETRY.footer.width,
-		height: 9
-	}
+	fusszeile: PORTRAIT_SHARED.fusszeile
 };
 
 /**
@@ -144,44 +234,56 @@ export const PART_META: Record<StammPartId, PdfTemplatePart> = {
  */
 const STAMM_MARGINS = { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' };
 const ORIGIN_MM = { left: 0, top: 0 };
-const TEXT_MARGIN_MM = { top: 45, right: 25, bottom: 25, left: 25 };
 
 /**
  * Öffnet den Textfluss: Tabelle, deren `thead`/`tfoot` auf jeder Seite den oberen/unteren Rand
  * reservieren. Bewusst nicht geschlossen; der HTML-Parser schließt sie am Dokumentende.
  */
-function flowOpen(): string {
-	const m = TEXT_MARGIN_MM;
-	return `<table class="stamm-flow"><thead><tr><td style="height:${mm(m.top)}"></td></tr></thead><tfoot><tr><td style="height:${mm(m.bottom)}"></td></tr></tfoot><tbody><tr><td class="stamm-text">`;
+function flowOpen(m: StammGeometry['textMargin']): string {
+	return `<table class="stamm-flow"><thead><tr><td class="stamm-gap" style="height:${mm(m.top)}"></td></tr></thead><tfoot><tr><td class="stamm-gap" style="height:${mm(m.bottom)}"></td></tr></tfoot><tbody><tr><td class="stamm-text">`;
 }
 /** Der Text beginnt auf Seite 1 bei ca. 108 mm (Seitenrand oben 45 mm). */
 const TEXT_START_MM = 108;
 
-/** Gemeinsamer Aufbau der Stamm-Vorlagen; `withAddress` schaltet Falzmarken und Adressfeld zu. */
+/**
+ * Gemeinsamer Aufbau der Stamm-Vorlagen; `withAddress` schaltet Falzmarken und Adressfeld zu,
+ * `orientation` wählt hochkant (Standard) oder quer. Quer gibt es nur ohne Adressfeld.
+ */
 export function createStammTemplate(options: {
 	id: string;
 	label: string;
 	description: string;
 	source: string;
 	withAddress: boolean;
+	orientation?: StammOrientation;
 }): PdfTemplate {
-	const ids: StammPartId[] = options.withAddress
-		? ['briefkopf', 'falzmarken', 'adressfeld', 'fusszeile']
-		: ['briefkopf', 'fusszeile'];
+	const orientation = options.orientation ?? 'portrait';
+	if (orientation === 'landscape' && options.withAddress) {
+		throw new Error('Stamm-Vorlage: Adressfeld (Fensterumschlag) gibt es nur hochkant.');
+	}
+	const geo = stammGeometry(orientation);
+	const margin = geo.textMargin;
+	const ids: readonly StammPartId[] = options.withAddress ? PART_IDS : SHARED_PART_IDS;
+	const parts =
+		orientation === 'landscape'
+			? SHARED_PART_IDS.map((id) => PART_META_LANDSCAPE[id])
+			: ids.map((id) => PART_META[id]);
 	return {
 		id: options.id,
 		label: options.label,
 		description: options.description,
 		source: options.source,
-		parts: ids.map((id) => PART_META[id]),
-		page: { format: 'A4', margins: STAMM_MARGINS },
+		parts,
+		page: { format: 'A4', orientation, margins: STAMM_MARGINS },
 		css: (d: PdfLayoutData) =>
 			carlitoFontFaceCss() +
 			baseCss(d, '11pt') +
 			`body { font-family: ${CARLITO_STACK}; }
 			.stamm-flow { border-collapse: collapse; width: 100%; margin: 0; }
-			.stamm-flow td { border: 0; background: none; padding: 0; }
-			.stamm-flow td.stamm-text { padding: 0 ${mm(TEXT_MARGIN_MM.right)} 0 ${mm(TEXT_MARGIN_MM.left)}; }
+			.stamm-flow > thead > tr > td.stamm-gap,
+			.stamm-flow > tfoot > tr > td.stamm-gap,
+			.stamm-flow > tbody > tr > td.stamm-text { border: 0; background: none; padding: 0; }
+			.stamm-flow > tbody > tr > td.stamm-text { padding: 0 ${mm(margin.right)} 0 ${mm(margin.left)}; }
 			h1, h2, h3 { color: #111827; }
 			h1 { font-size: 1.3em; font-weight: 700; margin: 1.4em 0 .7em; }
 				h1.doc-title { margin: 0 0 .9em; }
@@ -195,17 +297,19 @@ export function createStammTemplate(options: {
 			// Kopf und Fußzeile auf jeder Seite; Falzmarken und Adressfeld nur auf Seite 1.
 			let everyPage = '';
 			let firstPage = '';
-			if (show('briefkopf')) everyPage += letterheadTop();
-			if (show('fusszeile')) everyPage += letterFooter();
+			if (show('briefkopf')) everyPage += letterheadTop(geo);
+			if (show('fusszeile')) everyPage += letterFooter(geo);
 			if (show('falzmarken')) firstPage += foldMarks();
 			if (show('adressfeld')) firstPage += addressField(input?.recipient ?? []);
 			return (
-				flowOpen() + pageLayer(everyPage, ORIGIN_MM, true) + pageLayer(firstPage, ORIGIN_MM, false)
+				flowOpen(margin) +
+				pageLayer(everyPage, ORIGIN_MM, true) +
+				pageLayer(firstPage, ORIGIN_MM, false)
 			);
 		},
 		titleBlock: (d: PdfLayoutData) => {
 			const spacer = options.withAddress
-				? `<div style="height:${TEXT_START_MM - TEXT_MARGIN_MM.top}mm;"></div>`
+				? `<div style="height:${TEXT_START_MM - margin.top}mm;"></div>`
 				: '';
 			return `${spacer}<h1 class="doc-title">${escapeHtml(d.title)}</h1>`;
 		}

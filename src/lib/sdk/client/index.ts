@@ -1,6 +1,6 @@
 /**
- * Client-SDK: darf im Browser verwendet werden. Enthaelt keine Secrets und keine
- * privilegierten Services – alle Operationen laufen ueber die REST-API.
+ * Client-SDK: darf im Browser verwendet werden. Enthält keine Secrets und keine
+ * privilegierten Services – alle Operationen laufen über die REST-API.
  */
 import type { ApiErrorBody } from '$lib/sdk/types';
 

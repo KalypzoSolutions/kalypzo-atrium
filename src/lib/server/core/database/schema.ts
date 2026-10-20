@@ -17,7 +17,7 @@ const id = () => text('id').primaryKey();
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 
 // ---------------------------------------------------------------------------
-// Better Auth (Tabellennamen/Felder gemaess Better-Auth-Schema)
+// Better Auth (Tabellennamen/Felder gemäß Better-Auth-Schema)
 // ---------------------------------------------------------------------------
 
 export const user = pgTable('user', {
@@ -26,7 +26,7 @@ export const user = pgTable('user', {
 	email: text('email').notNull().unique(),
 	emailVerified: boolean('email_verified').notNull().default(false),
 	image: text('image'),
-	/** Deaktivierte Benutzer koennen sich nicht anmelden; Sessions werden widerrufen. */
+	/** Deaktivierte Benutzer können sich nicht anmelden; Sessions werden widerrufen. */
 	active: boolean('active').notNull().default(true),
 	twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
 	createdAt: createdAt(),
@@ -109,7 +109,7 @@ export const role = pgTable('role', {
 	id: id(),
 	name: text('name').notNull().unique(),
 	description: text('description'),
-	/** Systemrollen (z. B. Administrator) sind nicht loesch- und nicht umbenennbar. */
+	/** Systemrollen (z. B. Administrator) sind nicht lösch- und nicht umbenennbar. */
 	isSystem: boolean('is_system').notNull().default(false),
 	createdAt: createdAt(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
@@ -141,6 +141,40 @@ export const userRole = pgTable(
 	(t) => [primaryKey({ columns: [t.userId, t.roleId] })]
 );
 
+/**
+ * Rollen, die ein Modul verleiht (z. B. `offices` über Ämter). Getrennt von `user_role`,
+ * damit manuelle Zuweisungen unberührt bleiben; wirksam nur bei aktivem Modul.
+ */
+export const userRoleGrant = pgTable(
+	'user_role_grant',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		roleId: text('role_id')
+			.notNull()
+			.references(() => role.id, { onDelete: 'cascade' }),
+		moduleId: text('module_id').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.roleId, t.moduleId] })]
+);
+
+/**
+ * Marker für einmalig nachgezogene Standard-Rechte (`ModuleDefinition.defaultRoleGrants`):
+ * bewusst entzogene Rechte kommen dadurch nicht zurück.
+ */
+export const roleGrantApplied = pgTable(
+	'role_grant_applied',
+	{
+		moduleId: text('module_id').notNull(),
+		roleName: text('role_name').notNull(),
+		permissionKey: text('permission_key').notNull(),
+		appliedAt: timestamp('applied_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [primaryKey({ columns: [t.moduleId, t.roleName, t.permissionKey] })]
+);
+
 // ---------------------------------------------------------------------------
 // Module
 // ---------------------------------------------------------------------------
@@ -163,6 +197,15 @@ export const moduleMigration = pgTable(
 	(t) => [primaryKey({ columns: [t.moduleId, t.name] })]
 );
 
+/** Letzter Lauf je Hintergrundjob (`<modul>.<job>`); dient zugleich als Sperre gegen Doppel-Läufe */
+export const jobRun = pgTable('job_run', {
+	key: text('key').primaryKey(),
+	lastStartedAt: timestamp('last_started_at', { withTimezone: true }).notNull(),
+	lastFinishedAt: timestamp('last_finished_at', { withTimezone: true }),
+	lastStatus: text('last_status'),
+	lastMessage: text('last_message')
+});
+
 // ---------------------------------------------------------------------------
 // Einstellungen
 // ---------------------------------------------------------------------------
@@ -171,7 +214,7 @@ export const setting = pgTable(
 	'setting',
 	{
 		key: text('key').notNull(),
-		/** '' fuer globale Einstellungen, sonst Benutzer-ID */
+		/** '' für globale Einstellungen, sonst Benutzer-ID */
 		scopeId: text('scope_id').notNull().default(''),
 		/** JSON-Wert; Secrets liegen als `enc:v1:`-String vor */
 		value: jsonb('value').notNull(),
@@ -192,7 +235,7 @@ export const apiKey = pgTable(
 		name: text('name').notNull(),
 		/** Erste Zeichen zur Identifikation, z. B. `epk_ab12cd34` */
 		prefix: text('prefix').notNull(),
-		/** SHA-256 des vollstaendigen Schluessels (Schluessel hat hohe Entropie) */
+		/** SHA-256 des vollständigen Schlüssels (Schlüssel hat hohe Entropie) */
 		hash: text('hash').notNull(),
 		scopes: text('scopes')
 			.array()
@@ -268,7 +311,7 @@ export const file = pgTable(
 		size: bigint('size', { mode: 'number' }).notNull(),
 		contentType: text('content_type').notNull(),
 		checksum: text('checksum'),
-		/** Pending = signierter Upload ausgegeben, noch nicht bestaetigt */
+		/** Pending = signierter Upload ausgegeben, noch nicht bestätigt */
 		status: text('status', { enum: ['pending', 'ready'] })
 			.notNull()
 			.default('ready'),

@@ -9,7 +9,7 @@ beforeAll(async () => {
 });
 
 describe('Einstellungen aus der Umgebung', () => {
-	it('setzt nur fehlende Einstellungen und ueberschreibt keine Aenderungen', async () => {
+	it('setzt nur fehlende Einstellungen und überschreibt keine Änderungen', async () => {
 		const env = {
 			S3_ENDPOINT: 'http://minio:9000',
 			S3_BUCKET: 'ep-intern',
@@ -28,14 +28,14 @@ describe('Einstellungen aus der Umgebung', () => {
 		expect(await getSetting('core.storage.secretAccessKey')).toBe('secret-value');
 		expect(await getSetting('core.smtp.port')).toBe(2525);
 
-		// Aenderung in der Oberflaeche bleibt beim naechsten Start erhalten
+		// Änderung in der Oberfläche bleibt beim nächsten Start erhalten
 		await setSetting(systemContext('test'), 'core.storage.bucket', 'anderer-bucket');
 		const second = await seedSettingsFromEnv(env);
 		expect(second).toEqual([]);
 		expect(await getSetting('core.storage.bucket')).toBe('anderer-bucket');
 	});
 
-	it('ignoriert ungueltige Werte, ohne zu werfen', async () => {
+	it('ignoriert ungültige Werte, ohne zu werfen', async () => {
 		const applied = await seedSettingsFromEnv({ S3_ENDPOINT: 'kein-url' });
 		expect(applied).not.toContain('core.storage.endpoint');
 	});

@@ -57,7 +57,7 @@ describe('PDF-Service', () => {
 	it('erzeugt ein PDF mit Standardwerten aus den Einstellungen', async () => {
 		const res = await pdf.generate(ctxWith(), {
 			title: 'Mitgliederliste',
-			content: [{ type: 'heading', text: 'Ueberschrift' }]
+			content: [{ type: 'heading', text: 'Überschrift' }]
 		});
 		expect(res.fileName).toBe('Mitgliederliste.pdf');
 		expect(res.contentType).toBe('application/pdf');
@@ -72,7 +72,7 @@ describe('PDF-Service', () => {
 		expect(rendered?.options.headerTemplate).toContain('Muster &lt;e.V.&gt;');
 	});
 
-	it('uebersteuert Format, Ausrichtung und Raender', async () => {
+	it('übersteuert Format, Ausrichtung und Ränder', async () => {
 		await pdf.generate(ctxWith(), {
 			title: 'T',
 			content: [],
@@ -119,7 +119,7 @@ describe('PDF-Service', () => {
 		expect(rendered!.options.headerTemplate).toBe('<i>h</i>');
 	});
 
-	it('validiert Eingaben und Identitaet', async () => {
+	it('validiert Eingaben und Identität', async () => {
 		await expect(
 			pdf.generate({ ...ctxWith(), userId: null }, { title: 'T', content: [] })
 		).rejects.toMatchObject({ code: 'unauthenticated' });

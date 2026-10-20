@@ -83,7 +83,7 @@ export function hsvToHex(hsv: Hsv): string {
 	return rgbToHex(hsvToRgb(hsv));
 }
 
-/** Lesbare Textfarbe (schwarz/weiss) auf der Hintergrundfarbe `hex` (WCAG-Kontrast). */
+/** Lesbare Textfarbe (schwarz/weiß) auf der Hintergrundfarbe `hex` (WCAG-Kontrast). */
 export function contrastTextColor(hex: string): '#000000' | '#ffffff' {
 	const rgb = hexToRgb(hex);
 	if (!rgb) return '#000000';
@@ -92,6 +92,6 @@ export function contrastTextColor(hex: string): '#000000' | '#ffffff' {
 		return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
 	};
 	const L = 0.2126 * lin(rgb.r) + 0.7152 * lin(rgb.g) + 0.0722 * lin(rgb.b);
-	// Kontrast zu Schwarz ((L + 0.05) / 0.05) vs. Weiss (1.05 / (L + 0.05))
+	// Kontrast zu Schwarz ((L + 0.05) / 0.05) vs. Weiß (1.05 / (L + 0.05))
 	return (L + 0.05) / 0.05 >= 1.05 / (L + 0.05) ? '#000000' : '#ffffff';
 }

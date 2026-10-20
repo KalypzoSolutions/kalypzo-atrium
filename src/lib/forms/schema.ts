@@ -47,7 +47,8 @@ const baseShape = {
 	help: z.string().max(500, 'Höchstens 500 Zeichen').optional(),
 	required: z.boolean().optional(),
 	locked: z.boolean().optional(),
-	hidden: z.boolean().optional()
+	hidden: z.boolean().optional(),
+	memberKey: z.string().regex(KEY_RE, 'Ungültiger Schlüssel').optional()
 };
 
 const lengthSchema = z.number().int().min(1).max(10000).optional();

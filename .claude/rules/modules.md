@@ -24,11 +24,16 @@ src/lib/modules/<id>/
 ```
 
 ## Manifest und Rechte
-- `id`: `[a-z][a-z0-9-]{1,30}`, nicht `core|api|auth|admin|system`. Neue Module starten **deaktiviert**; Aktivierung in `/modules`.
+- `id`: `[a-z][a-z0-9-]{1,30}`, nicht `core|api|auth|admin|system`. Neue Module starten **deaktiviert**; Aktivierung in `/admin/modules`.
 - Berechtigungen: `<id>.<ressource>.<aktion>`, je Segment `[a-z][a-z0-9-]*` (**kein `_`**). Alle im Manifest deklarieren,
   inkl. `<id>.storage.read|write|delete` bei Datei-Uploads. Neue Rechte erhält automatisch nur die Rolle „Administrator“.
+- **Jedes Recht braucht eine Beschreibung** in `manifest.permissionDescriptions` (`{ '<recht>': 'Was es erlaubt' }`, kurz, deutsch);
+  wird bei jedem Start übernommen (auch für bestehende Rechte) und unter Administration → Rollen → Berechtigungen (`/admin/roles/permissions`) sowie bei API-Key-Scopes
+  angezeigt. Test: `tests/integration/permission-descriptions.test.ts`.
 - Navigation: `{ label, icon, path:'/modules/<id>…', permission, group?, groupIcon? }`; gleiche `group` = aufklappbare Gruppe.
   Icons stehen in `components/layout/icons.ts` (unbekannt → Box) – neue dort ergänzen.
+  Eigene Einstellungsseite eines Moduls: Navigationseintrag mit `admin: true` → erscheint in der Verwaltung (Abschnitt „Module“, Befehlspalette)
+  und unter Einstellungen → Module als Link; Module ohne eigene Seite bekommen dort automatisch ein Formular aus `settings`.
 
 ## Endpoints
 ```ts
@@ -63,7 +68,7 @@ return result;
 - Seite: `ui.ts` → `publicRoutes: { 'anmeldung/:token': () => import(...) }`, erreichbar unter `/p/<id>/<pfad>` ohne Login.
 - Antworten identisch für „nicht vorhanden“ und „deaktiviert“ (keine Existenz verraten), keine internen Zahlen/Tokens ausgeben.
 - Honeypot-Treffer wie Erfolg beantworten, aber nichts speichern. Audit mit `core.audit.log` (actor `system`), ohne personenbezogene Daten.
-- Texte, die Besucher sehen (z. B. 409-Meldungen), dürfen echte Umlaute haben; interne API-Fehler bleiben ASCII.
+- Alle Texte (auch interne API-Fehler und Kommentare) mit echten Umlauten; ASCII nur in Schlüsseln, Pfaden, Dateinamen.
 - Mail nach der Transaktion über `core.mail.send`, Fehler abfangen (`emailSent=false`), nie Nutzereingaben in Header.
 
 ## Daten- und Formatregeln
@@ -72,7 +77,34 @@ return result;
 - IDs: `crypto.randomUUID()`; in Zod `z.uuid()`. Listen mit `limit/offset` (Standard 50, max 200), `total` separat zählen.
 - Dateien: Pfad `<recordId>/<kind>-<uuid>-<bereinigterName>`, erst hochladen → DB aktualisieren → altes Objekt best-effort löschen.
 - Sensible Felder (IBAN …): `core.crypto.forModule(id).encrypt`, in Antworten maskieren, Zugriffe auditieren.
+- Schlüsselgebundene Hashes (`core.crypto.forModule(id).hash`, z. B. `iban_hash`) brauchen einen Hook `backup: { rehash }` in `defineModule`
+  (Datensicherung auf neuem Server, Muster `treasury/backup.ts`); immer auch die verschlüsselte Quelle (`*_enc`) speichern.
 - Mehrfachwerte (Telefone/E-Mails): eigene Tabelle mit `position`; Listen komplett ersetzen statt diffen.
+
+## Hintergrundjobs und optionale Abhängigkeiten
+- `defineModule({ jobs: [{ id, summary, schedule: 'hourly'|'daily', run(ctx) }] })`: Runner in `core/jobs` (Start in
+  `hooks.server.ts`, Tick 5 min, nicht bei `JOBS_DISABLED=1`), nur für aktive Module, Systemkontext, Sperre per atomarem
+  Upsert auf `job_run` (keine offene Transaktion). Rückgabe = Statusmeldung. Admin: `GET /api/v1/jobs`,
+  `POST /api/v1/jobs/<modul>.<job>/run` (`core.jobs.manage`). Tests: `runDueJobs`, `runJobNow`, `setJobClockForTests`.
+- `manifest.optionalDependencies` + `core.modules.useOptional(provider, caller)` → `null`, wenn der Anbieter nicht aktiv ist
+  (für Rückkanäle ohne Zyklus, z. B. `actions` liest Zahlungen aus `treasury`). Harte Abhängigkeiten bleiben `dependencies`.
+
+## Profil-Abschnitte und Standard-Rollenrechte
+- `ui.ts` `profileSections: [{ id, title, order?, permission?, component: () => import(…) }]` → Karte auf `/profile`
+  (Komponente bekommt `{ userId }`, lädt Daten per `apiFetch`; Auswahl/Sortierung: `selectProfileSections` in
+  `$lib/sdk/client/profile-sections`). Typ `ProfileSection` in `$lib/sdk/types/module-ui`.
+- `defaultRoleGrants: { Rollenname: [Rechte] }` (Manifest oder `defineModule`): Rolle per Name suchen/anlegen, Rechte
+  **einmalig** je (Modul, Rolle, Recht) vergeben (Marker `role_grant_applied`, Core-Migration 0004) – entzogene Rechte
+  kommen nicht zurück. Rechte müssen im Manifest stehen.
+
+## Ämter als Vorlage mitbringen (Modul `offices`, optional)
+- Manifest: `offices: [{ key, name, description?, notifications: [{ key, label, description? }] }]` (`ModuleOfficeTemplate`, Schlüssel
+  `[a-z][a-z0-9-]*`) + `optionalDependencies: ['offices']`. `offices` legt das Amt **einmal** an (nur Vorlage, Marker); danach ist es ein normales,
+  löschbares Amt – gelöscht wird es **nicht** neu angelegt.
+- Auslösen **nach** der Transaktion: `(await core.modules.useOptional<OfficesService>('offices', MODULE_ID))?.notify(ctx, [{ module, office, event,
+  subject, text, link? }])` (Typen aus `$lib/modules/offices/contract`, `import type`). Ereignisse eines Vorgangs in **einem** Aufruf (eine Mail je
+  Person), keine IBAN o. Ä. im Text, Aufruf in `try/catch`. Modus (Sofort/Täglich/Aus) wählen die Inhaber*innen im Profil. Muster:
+  `treasury/office-notify.ts`; Details `module-offices.md`.
 
 ## Migrationen
 - Nummeriert (`0001_init.sql`, `0002_…`), in `module.ts` per `import m from './migrations/…sql?raw'` und `{ name, sql }` registrieren.

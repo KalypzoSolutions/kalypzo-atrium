@@ -18,5 +18,5 @@ export const systemCtx: RequestContext = {
 	requestId: 'sys'
 };
 
-/** Veraenderlicher Einstellungsspeicher fuer vi.mock('settings/service'). */
+/** Veränderlicher Einstellungsspeicher für vi.mock('settings/service'). */
 export const settingsStore: Record<string, unknown> = {};

@@ -4,7 +4,7 @@ import { isModuleEnabled } from '$lib/server/core/modules/service';
 import type { PageServerLoad } from './$types';
 
 /**
- * Oeffentliche Modulseiten: kein Login noetig. Das Modul muss registriert und aktiv sein;
+ * Öffentliche Modulseiten: kein Login nötig. Das Modul muss registriert und aktiv sein;
  * welche Pfade existieren, bestimmt `ui.publicRoutes` (Opt-in des Moduls).
  */
 export const load: PageServerLoad = async ({ params }) => {

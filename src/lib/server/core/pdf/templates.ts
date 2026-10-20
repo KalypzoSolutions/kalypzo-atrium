@@ -1,4 +1,5 @@
-import type { PdfBlock, PdfFormat, PdfMargins } from '$lib/sdk/types';
+import type { PdfBlock, PdfFormat, PdfMargins, PdfOrientation, PdfTableCell } from '$lib/sdk/types';
+import { errors } from '../errors';
 
 export function escapeHtml(value: string): string {
 	return value
@@ -9,7 +10,7 @@ export function escapeHtml(value: string): string {
 		.replace(/'/g, '&#39;');
 }
 
-/** Daten, die der Core fuer Header, Footer und Layout bereitstellt. */
+/** Daten, die der Core für Header, Footer und Layout bereitstellt. */
 export interface PdfLayoutData {
 	title: string;
 	organization: { name: string; address: string; email: string; phone: string };
@@ -24,8 +25,8 @@ export interface PdfLayoutData {
 
 /**
  * Ein Template definiert Aussehen des Dokumentinhalts sowie Header und Footer.
- * Header und Footer sind unabhaengig vom Inhalt und werden als Chromium-Templates
- * ausgegeben (nur Inline-Styles; `pageNumber`/`totalPages` werden von Chromium befuellt).
+ * Header und Footer sind unabhängig vom Inhalt und werden als Chromium-Templates
+ * ausgegeben (nur Inline-Styles; `pageNumber`/`totalPages` werden von Chromium befüllt).
  */
 export interface PdfTemplate {
 	id: string;
@@ -38,17 +39,18 @@ export interface PdfTemplate {
 
 	// --- Briefvorlagen (feste Seitenelemente, Datei im Ordner `pdf/templates/`) -------------------
 
-	/** Kurzbeschreibung fuer die Admin-Ansicht */
+	/** Kurzbeschreibung für die Admin-Ansicht */
 	description?: string;
 	/** Quelldatei (nur Anzeige in der Admin-Ansicht), z. B. `templates/stamm-brief.ts` */
 	source?: string;
 	/**
-	 * Festes Seitenlayout: ueberschreibt Format und Raender der Einstellungen und schaltet den
-	 * Chromium-Kopf/-Fuss ab (die Vorlage zeichnet alles selbst ueber `overlay`).
+	 * Festes Seitenlayout: überschreibt Format, Ausrichtung (Standard hochkant) und Ränder der
+	 * Einstellungen und schaltet den Chromium-Kopf/-Fuß ab (die Vorlage zeichnet alles selbst über
+	 * `overlay`). Die Ausrichtung des Aufrufers wird bei festem Layout ignoriert.
 	 */
-	page?: { format?: PdfFormat; margins: PdfMargins };
+	page?: { format?: PdfFormat; orientation?: PdfOrientation; margins: PdfMargins };
 	/**
-	 * Absolut positionierte Seitenelemente (Kopf, Falzmarken, Adressfeld, Fusszeile). Werden vor dem
+	 * Absolut positionierte Seitenelemente (Kopf, Falzmarken, Adressfeld, Fußzeile). Werden vor dem
 	 * Inhalt ausgegeben; `position: fixed` wiederholt sich im Druck auf jeder Seite.
 	 */
 	overlay?(data: PdfLayoutData, input?: PdfTemplateInput): string;
@@ -56,15 +58,15 @@ export interface PdfTemplate {
 	parts?: PdfTemplatePart[];
 }
 
-/** Eingaben fuer Briefvorlagen (z. B. Empfaengeradresse); von `core.pdf.generate` durchgereicht. */
+/** Eingaben für Briefvorlagen (z. B. Empfängeradresse); von `core.pdf.generate` durchgereicht. */
 export interface PdfTemplateInput {
-	/** Adresszeilen fuer das Adressfeld (bereits validiert, noch nicht escaped) */
+	/** Adresszeilen für das Adressfeld (bereits validiert, noch nicht escaped) */
 	recipient?: string[];
 	/** Nur diesen Bestandteil hervorgehoben/allein zeigen (Vorschau in der Admin-Ansicht) */
 	only?: string;
 }
 
-/** Bestandteil einer Vorlage; Position/Groesse in mm von der oberen linken Seitenecke. */
+/** Bestandteil einer Vorlage; Position/Größe in mm von der oberen linken Seitenecke. */
 export interface PdfTemplatePart {
 	id: string;
 	label: string;
@@ -81,7 +83,7 @@ const registry = new Map<string, PdfTemplate>();
 
 export function registerTemplate(template: PdfTemplate): void {
 	if (!/^[a-z][a-z0-9-]{0,40}$/.test(template.id))
-		throw new Error(`Ungueltige Template-ID: ${template.id}`);
+		throw new Error(`Ungültige Template-ID: ${template.id}`);
 	registry.set(template.id, template);
 }
 
@@ -100,6 +102,7 @@ export function describeTemplates(): {
 	description: string | null;
 	source: string | null;
 	letterhead: boolean;
+	orientation: PdfOrientation;
 	parts: PdfTemplatePart[];
 }[] {
 	return [...registry.values()].map((t) => ({
@@ -108,6 +111,7 @@ export function describeTemplates(): {
 		description: t.description ?? null,
 		source: t.source ?? null,
 		letterhead: !!t.overlay,
+		orientation: t.page?.orientation ?? 'portrait',
 		parts: t.parts ?? []
 	}));
 }
@@ -116,24 +120,91 @@ type TableBlock = Extract<PdfBlock, { type: 'table' }>;
 
 const ALIGNS = new Set(['left', 'right', 'center']);
 
-/** Tabellen bis zu dieser Zeilenzahl werden nie ueber eine Seitengrenze geteilt. */
+/** Tabellen bis zu dieser Zeilenzahl werden nie über eine Seitengrenze geteilt. */
 export const KEEP_TOGETHER_ROWS = 12;
 
 /** Gemeinsamer vertikaler Abstand vor/nach Tabellen (px). */
 const TABLE_GAP = '16px';
 
 interface BlockFlow {
-	/** Der naechste Block ist eine Summentabelle: nicht zwischen beiden umbrechen */
+	/** Der nächste Block ist eine Summentabelle: nicht zwischen beiden umbrechen */
 	keepWithNext: boolean;
-	/** Reine Summentabelle direkt unter einer Tabelle: kleiner Abstand davor */
+	/** Reine Summentabelle direkt unter einer Tabelle: ohne Abstand davor (hängt wie eine letzte Zeile an) */
 	attachedToPrevious: boolean;
+	/** Der nächste Block ist eine angehängte Gitter-Summentabelle: ohne Abstand danach */
+	attachedBelow: boolean;
 }
 
-/** Formular-Gitter: schwarze 1-px-Linien, nur feste Inline-Styles (CSP erlaubt keine Style-Tags im Block). */
+/** Eine auf dem Spaltenraster platzierte Zelle (nach Klemmen von `colspan`/`rowspan`). */
+interface PlacedCell {
+	col: number;
+	colspan: number;
+	rowspan: number;
+	text: string;
+	align?: 'left' | 'right' | 'center';
+	bold: boolean;
+}
+
+const clampSpan = (v: unknown, max: number): number => {
+	const n = typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : 1;
+	return Math.min(Math.max(n, 1), Math.max(max, 1));
+};
+
+/**
+ * Verteilt die Zellen jeder Zeile auf das Raster von `n` Spalten: `colspan`/`rowspan` werden auf gültige
+ * Werte geklemmt (nie über den Rand oder in belegte Spalten, `rowspan` nicht über die letzte Zeile des
+ * Abschnitts hinaus), von oben belegte Spalten übersprungen, überzählige Zellen verworfen und fehlende
+ * Zellen am Zeilenende leer aufgefüllt – so bleibt das Gitter geschlossen.
+ */
+export function placeRows(rows: PdfTableCell[][], n: number): PlacedCell[][] {
+	const busy = new Array<number>(n).fill(0);
+	return rows.map((row, ri) => {
+		const out: PlacedCell[] = [];
+		let col = 0;
+		const push = (cell: PlacedCell) => {
+			out.push(cell);
+			for (let k = 0; k < cell.colspan; k++) busy[cell.col + k] = cell.rowspan;
+			col = cell.col + cell.colspan;
+		};
+		for (const raw of row) {
+			while (col < n && busy[col]! > 0) col++;
+			if (col >= n) break;
+			const spec = typeof raw === 'string' ? { text: raw } : raw;
+			let colspan = clampSpan(spec.colspan, n - col);
+			for (let k = 1; k < colspan; k++) {
+				if (busy[col + k]! > 0) {
+					colspan = k;
+					break;
+				}
+			}
+			push({
+				col,
+				colspan,
+				rowspan: clampSpan(spec.rowspan, rows.length - ri),
+				text: String(spec.text ?? ''),
+				align: ALIGNS.has(String(spec.align)) ? spec.align : undefined,
+				bold: spec.bold === true
+			});
+		}
+		for (col = 0; col < n;) {
+			if (busy[col]! > 0) col++;
+			else push({ col, colspan: 1, rowspan: 1, text: '', bold: false });
+		}
+		for (let k = 0; k < n; k++) if (busy[k]! > 0) busy[k]!--;
+		return out;
+	});
+}
+
+/**
+ * Tabellen-Gitter für Formulare und Berichte: Linien als 0,5-px-Schatten je Zelle (Rahmen unter 1 px
+ * rundet Chromium auf 1 px auf, ein Schatten wird im PDF als echte Haarlinie gezeichnet). Zwei
+ * benachbarte Zellen ergeben 1 px Innenlinie, der äußere Rahmen bleibt 0,5 px dünn.
+ * Nur feste Inline-Styles (CSP erlaubt keine Style-Tags im Block).
+ */
 function renderGridTable(b: TableBlock, flow: BlockFlow): string {
 	const n = b.columns.length;
-	const line = '1px solid #000';
-	const cell = `border:${line};padding:6px 8px;vertical-align:top;line-height:1.4;overflow-wrap:anywhere;word-break:break-word;`;
+	const ring = 'box-shadow:0 0 0 0.5px #000;';
+	const cell = `border:0;${ring}padding:6px 8px;vertical-align:top;line-height:1.4;overflow-wrap:anywhere;word-break:break-word;`;
 	const align = (i: number): string => {
 		const a = b.align?.[i];
 		return a && ALIGNS.has(a) ? a : 'left';
@@ -147,8 +218,13 @@ function renderGridTable(b: TableBlock, flow: BlockFlow): string {
 			'</colgroup>'
 		: '';
 	const tr = (inner: string, extra = '') => `<tr style="break-inside:avoid;${extra}">${inner}</tr>`;
-	const td = (i: number, text: string, extra = '') =>
-		`<td style="${cell}text-align:${align(i)};${extra}">${escapeHtml(String(text)).replace(/\n/g, '<br/>')}</td>`;
+	const td = (c: PlacedCell, extra = '') => {
+		const span =
+			(c.colspan > 1 ? ` colspan="${c.colspan}"` : '') +
+			(c.rowspan > 1 ? ` rowspan="${c.rowspan}"` : '');
+		const bold = c.bold ? 'font-weight:bold;' : '';
+		return `<td${span} style="${cell}text-align:${c.align ?? align(c.col)};${bold}${extra}">${escapeHtml(c.text).replace(/\n/g, '<br/>')}</td>`;
+	};
 
 	// Reine Summentabelle (nur Summenzeile): keine leere Spaltenkopfzeile
 	const summaryOnly = isSummaryOnly(b);
@@ -173,28 +249,34 @@ function renderGridTable(b: TableBlock, flow: BlockFlow): string {
 			'break-after:avoid;'
 		);
 	}
-	// Letzte Datenzeile haengt an der Summenzeile (Summe nie allein auf einer Seite)
+	// Letzte Datenzeile hängt an der Summenzeile (Summe nie allein auf einer Seite)
 	const lastIdx = b.rows.length - 1;
-	const body = b.rows
+	const body = placeRows(b.rows, n)
 		.map((r, ri) =>
-			tr(
-				r.map((c, i) => td(i, c)).join(''),
-				ri === lastIdx && b.totalRow ? 'break-after:avoid;' : ''
-			)
+			tr(r.map((c) => td(c)).join(''), ri === lastIdx && b.totalRow ? 'break-after:avoid;' : '')
 		)
 		.join('');
+	// Summenzeile: fett, einfache Linie darüber (die frühere 3-px-Doppellinie wirkte zu schwer)
 	const total = b.totalRow
 		? tr(
-				b.totalRow.map((c, i) => td(i, c, 'font-weight:bold;border-top:3px double #000;')).join(''),
+				placeRows([b.totalRow], n)[0]!
+					.map((c) => td(c, 'font-weight:bold;border-top:1px solid #000;'))
+					.join(''),
 				'break-before:avoid;'
 			)
 		: '';
 	const keep = b.rows.length <= KEEP_TOGETHER_ROWS ? 'break-inside:avoid;' : '';
-	const top = flow.attachedToPrevious ? '6px' : TABLE_GAP;
+	// Nahtstelle zur angehängten Summentabelle ohne Abstand: Der untere 0,5-px-Schatten der Tabelle und
+	// der obere Schatten plus `border-top` der Summenzeile liegen dann genau wie bei einer Summenzeile
+	// innerhalb derselben Tabelle übereinander (keine Lücke, keine zusätzliche Linie). Die Tabelle
+	// selbst hat `margin:0`, sonst kollabiert der `table`-Rand aus `baseCss` (16px) durch den Container.
+	const top = flow.attachedToPrevious ? '0' : TABLE_GAP;
+	const bottom = flow.attachedBelow ? '0' : TABLE_GAP;
 	const after = flow.keepWithNext ? 'break-after:avoid;' : '';
+	const before = flow.attachedToPrevious ? 'break-before:avoid;' : '';
 	return (
-		`<div class="grid-table" style="margin:${top} 0 ${TABLE_GAP};${keep}${after}">` +
-		`<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:${line};">` +
+		`<div class="grid-table" style="margin:${top} 0 ${bottom};${keep}${before}${after}">` +
+		`<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:0;margin:0;">` +
 		colHtml +
 		`<thead style="display:table-header-group;">${head}</thead><tbody>${body}${total}</tbody></table></div>`
 	);
@@ -207,9 +289,89 @@ function isSummaryOnly(b: PdfBlock | undefined): boolean {
 	return !!b && b.type === 'table' && b.rows.length === 0 && !!b.totalRow && !b.caption;
 }
 
+const IMAGE_DATA_URL = /^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/;
+const MAX_IMAGE_DATA_URL = 2 * 1024 * 1024;
+
+/** Prüft eingebettete Bilder (nur PNG/JPEG-Data-URL, Breite 5–150 mm). */
+function assertImage(dataUrl: string, widthMm: number): void {
+	if (!IMAGE_DATA_URL.test(dataUrl) || dataUrl.length > MAX_IMAGE_DATA_URL) {
+		throw errors.badRequest('Ungültiges Bild im Dokument');
+	}
+	if (!Number.isFinite(widthMm) || widthMm < 5 || widthMm > 150) {
+		throw errors.badRequest('Ungültige Bildbreite');
+	}
+}
+
+type BoxBlock = Extract<PdfBlock, { type: 'box' }>;
+
+const SAFE_HREF = /^https?:\/\/[^\s"<>]+$/;
+
+/** Link für das PDF (in Chromium-PDFs anklickbar); nur http(s). */
+function linkHtml(href: string, text: string): string {
+	if (!SAFE_HREF.test(href)) throw errors.badRequest('Ungültiger Link im Dokument');
+	return `<a href="${escapeHtml(href)}" style="color:inherit;text-decoration:underline;">${escapeHtml(text)}</a>`;
+}
+
+/**
+ * Macht http(s)-Adressen in bereits escaptem Text anklickbar. Endet an Leerraum oder escapten
+ * Zeichen (`&lt;` usw.); Satzzeichen am Ende bleiben außerhalb des Links.
+ */
+const URL_IN_TEXT =
+	/https?:\/\/(?:(?!&lt;|&gt;|&quot;|&#39;)[^\s<])+?(?=[.,;:!?)]*(?:\s|<|&lt;|&gt;|&quot;|&#39;|$))/g;
+
+function linkify(escaped: string): string {
+	return escaped.replace(
+		URL_IN_TEXT,
+		(url) => `<a href="${url}" style="color:inherit;">${url}</a>`
+	);
+}
+
+/** Bild links, Text rechts (ohne Rahmen); zweispaltige Tabelle, nur Inline-Styles. */
+function renderBox(b: BoxBlock): string {
+	const parts: string[] = [];
+	if (b.label) {
+		parts.push(`<div style="font-size:10pt;color:#4b5563;">${escapeHtml(b.label)}</div>`);
+	}
+	if (b.value) {
+		parts.push(
+			`<div style="font-size:24pt;font-weight:700;letter-spacing:.05em;line-height:1.15;margin:.5mm 0 1mm;">${escapeHtml(b.value)}</div>`
+		);
+	}
+	for (const line of b.lines ?? []) {
+		parts.push(`<div style="font-size:10pt;color:#4b5563;">${escapeHtml(line)}</div>`);
+	}
+	if (b.linkLabel) {
+		parts.push(
+			`<div style="font-size:10pt;color:#4b5563;margin-top:4mm;">${escapeHtml(b.linkLabel)}</div>`
+		);
+	}
+	if (b.link) {
+		parts.push(
+			`<div style="font-size:10pt;overflow-wrap:anywhere;word-break:break-all;${b.linkLabel ? '' : 'margin-top:4mm;'}">${linkHtml(b.link.href, b.link.text ?? b.link.href)}</div>`
+		);
+	}
+	const cell = 'border:0;padding:0;vertical-align:middle;background:none;';
+	let image = '';
+	if (b.image) {
+		assertImage(b.image.dataUrl, b.image.widthMm);
+		const img = `<img src="${b.image.dataUrl}" alt="${escapeHtml(b.image.alt ?? '')}" style="display:block;width:${b.image.widthMm}mm;height:auto;" />`;
+		// Bild verlinkt, wenn ein Link angegeben ist (QR-Code im PDF anklickbar)
+		const inner =
+			b.link && SAFE_HREF.test(b.link.href)
+				? `<a href="${escapeHtml(b.link.href)}">${img}</a>`
+				: img;
+		image = `<td style="${cell}width:${b.image.widthMm}mm;padding-right:6mm;">${inner}</td>`;
+	}
+	return (
+		'<table class="pdf-box" style="width:100%;border-collapse:collapse;margin:5mm 0 6mm;table-layout:auto;break-inside:avoid;"><tr style="break-inside:avoid;">' +
+		image +
+		`<td style="${cell}">${parts.join('')}</td></tr></table>`
+	);
+}
+
 export function renderBlocks(blocks: PdfBlock[]): string {
 	const out: string[] = [];
-	// Harte Seitenumbrueche: nie am Anfang oder Ende, aufeinanderfolgende werden zu einem
+	// Harte Seitenumbrüche: nie am Anfang oder Ende, aufeinanderfolgende werden zu einem
 	let pendingBreak = false;
 	blocks.forEach((b, idx) => {
 		if (b.type === 'pageBreak') {
@@ -219,7 +381,8 @@ export function renderBlocks(blocks: PdfBlock[]): string {
 		const next = blocks[idx + 1];
 		const flow: BlockFlow = {
 			keepWithNext: isGrid(b) && isSummaryOnly(next),
-			attachedToPrevious: isSummaryOnly(b) && isGrid(blocks[idx - 1])
+			attachedToPrevious: isSummaryOnly(b) && isGrid(blocks[idx - 1]),
+			attachedBelow: isGrid(b) && isGrid(next) && isSummaryOnly(next)
 		};
 		if (pendingBreak) {
 			out.push('<div class="page-break" style="break-before:page;height:0;"></div>');
@@ -234,14 +397,27 @@ export function renderBlocks(blocks: PdfBlock[]): string {
 			case 'paragraph': {
 				// Absatz direkt vor einer Tabelle bleibt mit ihr zusammen
 				const keep = next?.type === 'table' ? ' style="break-after:avoid;"' : '';
-				out.push(`<p${keep}>${escapeHtml(b.text).replace(/\n/g, '<br/>')}</p>`);
+				out.push(`<p${keep}>${linkify(escapeHtml(b.text)).replace(/\n/g, '<br/>')}</p>`);
 				break;
 			}
 			case 'list': {
 				const tag = b.ordered ? 'ol' : 'ul';
-				out.push(`<${tag}>${b.items.map((i) => `<li>${escapeHtml(i)}</li>`).join('')}</${tag}>`);
+				out.push(
+					`<${tag}>${b.items.map((i) => `<li>${linkify(escapeHtml(i))}</li>`).join('')}</${tag}>`
+				);
 				break;
 			}
+			case 'image': {
+				assertImage(b.dataUrl, b.widthMm);
+				const align = b.align === 'center' ? 'margin:0 auto;' : '';
+				out.push(
+					`<img src="${b.dataUrl}" alt="${escapeHtml(b.alt ?? '')}" style="display:block;width:${b.widthMm}mm;height:auto;${align}break-inside:avoid;" />`
+				);
+				break;
+			}
+			case 'box':
+				out.push(renderBox(b));
+				break;
 			case 'table':
 				if (b.variant === 'grid') {
 					out.push(renderGridTable(b, flow));
@@ -251,8 +427,21 @@ export function renderBlocks(blocks: PdfBlock[]): string {
 					`<table${b.rows.length <= KEEP_TOGETHER_ROWS ? ' class="keep"' : ''}><thead><tr>` +
 						b.columns.map((c) => `<th>${escapeHtml(c)}</th>`).join('') +
 						'</tr></thead><tbody>' +
-						b.rows
-							.map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(String(c))}</td>`).join('')}</tr>`)
+						placeRows(b.rows, b.columns.length)
+							.map(
+								(r) =>
+									`<tr>${r
+										.map((c) => {
+											const span =
+												(c.colspan > 1 ? ` colspan="${c.colspan}"` : '') +
+												(c.rowspan > 1 ? ` rowspan="${c.rowspan}"` : '');
+											const style =
+												(c.align ? `text-align:${c.align};` : '') +
+												(c.bold ? 'font-weight:bold;' : '');
+											return `<td${span}${style ? ` style="${style}"` : ''}>${escapeHtml(c.text)}</td>`;
+										})
+										.join('')}</tr>`
+							)
 							.join('') +
 						'</tbody></table>'
 				);

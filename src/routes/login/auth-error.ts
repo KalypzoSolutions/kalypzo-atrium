@@ -8,14 +8,14 @@ export function authErrorMessage(e: unknown, fallback = 'Aktion fehlgeschlagen.'
 	const status = err?.statusCode ?? err?.status;
 	const code = err?.body?.code ?? '';
 	if (status === 429 || status === 'TOO_MANY_REQUESTS') {
-		return 'Zu viele Versuche. Bitte spaeter erneut versuchen.';
+		return 'Zu viele Versuche. Bitte später erneut versuchen.';
 	}
 	if (code === 'INVALID_EMAIL_OR_PASSWORD' || code === 'INVALID_PASSWORD') {
 		return 'E-Mail oder Passwort ist falsch.';
 	}
-	if (code === 'INVALID_TOKEN') return 'Der Link ist ungueltig oder abgelaufen.';
+	if (code === 'INVALID_TOKEN') return 'Der Link ist ungültig oder abgelaufen.';
 	if (code === 'INVALID_TWO_FACTOR_COOKIE' || code === 'INVALID_CODE') {
-		return 'Der Code ist ungueltig oder abgelaufen.';
+		return 'Der Code ist ungültig oder abgelaufen.';
 	}
 	if (status === 403 || status === 'FORBIDDEN')
 		return 'Zugriff nicht erlaubt (Konto deaktiviert?).';

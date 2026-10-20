@@ -14,7 +14,7 @@
 		open = $bindable(false),
 		title,
 		description,
-		confirmLabel = 'Bestaetigen',
+		confirmLabel = 'Bestätigen',
 		cancelLabel = 'Abbrechen',
 		destructive = false,
 		onconfirm
@@ -27,6 +27,12 @@
 		destructive?: boolean;
 		onconfirm: () => void | Promise<void>;
 	} = $props();
+
+	/** Schließt immer selbst (auch wenn der Dialog in einem anderen Dialog liegt), dann die Aktion. */
+	async function confirm() {
+		open = false;
+		await onconfirm();
+	}
 </script>
 
 <AlertDialog bind:open>
@@ -39,7 +45,7 @@
 			<AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
 			<AlertDialogAction
 				class={destructive ? 'bg-destructive text-white hover:bg-destructive/90' : ''}
-				onclick={onconfirm}
+				onclick={confirm}
 			>
 				{confirmLabel}
 			</AlertDialogAction>

@@ -9,9 +9,11 @@ export interface ApiHandlerArgs<P, Q, B> {
 	query: Q;
 	body: B;
 	request: Request;
+	/** Nur bei `multipart`: hochgeladene Dateien (Textfelder stehen validiert in `body`) */
+	files?: File[];
 }
 
-/** Rueckgabe eines Handlers: Daten (=> `{ data }`) oder eine fertige Response. */
+/** Rückgabe eines Handlers: Daten (=> `{ data }`) oder eine fertige Response. */
 export type ApiHandlerResult = unknown | Response;
 
 export interface ApiEndpoint<P = Record<string, string>, Q = Record<string, unknown>, B = unknown> {
@@ -22,25 +24,30 @@ export interface ApiEndpoint<P = Record<string, string>, Q = Record<string, unkn
 	description?: string;
 	tags?: string[];
 	/**
-	 * Erforderliche Berechtigung. `null` nur fuer bewusst oeffentliche Endpunkte (z. B. Health);
-	 * Endpunkte, die nur eine angemeldete Identitaet brauchen, setzen `authenticated`.
+	 * Erforderliche Berechtigung. `null` nur für bewusst öffentliche Endpunkte (z. B. Health);
+	 * Endpunkte, die nur eine angemeldete Identität brauchen, setzen `authenticated`.
 	 */
 	permission: string | null;
 	/**
-	 * Bewusst oeffentlicher, anonym erreichbarer Modul-Endpunkt (Opt-in). Nur mit `permission: null`,
+	 * Bewusst öffentlicher, anonym erreichbarer Modul-Endpunkt (Opt-in). Nur mit `permission: null`,
 	 * `rateLimit` ist Pflicht, Methoden nur GET/POST, POST braucht ein `body`-Schema.
 	 */
 	public?: boolean;
-	/** Nur Anmeldung noetig (z. B. eigenes Profil) */
+	/** Nur Anmeldung nötig (z. B. eigenes Profil) */
 	authenticated?: boolean;
 	/** Nur mit Session erreichbar, nie per API-Key (z. B. API-Key-Verwaltung selbst) */
 	sessionOnly?: boolean;
 	params?: z.ZodType<P>;
 	query?: z.ZodType<Q>;
 	body?: z.ZodType<B>;
-	/** Schema der `data`-Nutzlast (fuer OpenAPI) */
+	/** Schema der `data`-Nutzlast (für OpenAPI) */
 	response?: z.ZodType;
 	rateLimit?: { limit: number; windowSec: number };
+	/**
+	 * Nur für `public: true` + POST: `multipart/form-data` statt JSON. Textfelder werden mit `body`
+	 * validiert, Dateien landen in `files`. `maxBytes` = Obergrenze des gesamten Requests (max. 30 MB).
+	 */
+	multipart?: { maxBytes: number; maxFiles?: number };
 	handler: (args: ApiHandlerArgs<P, Q, B>) => Promise<ApiHandlerResult> | ApiHandlerResult;
 }
 

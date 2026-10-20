@@ -22,7 +22,7 @@
 	<Card class="w-full max-w-sm">
 		<CardHeader>
 			<CardTitle class="text-xl">Passwort vergessen</CardTitle>
-			<CardDescription>Wir senden Ihnen einen Link zum Zuruecksetzen.</CardDescription>
+			<CardDescription>Wir senden Ihnen einen Link zum Zurücksetzen.</CardDescription>
 		</CardHeader>
 		<CardContent>
 			{#if form?.sent}
@@ -55,7 +55,7 @@
 				</form>
 			{/if}
 			<a href="/login" class="mt-4 block text-center text-sm text-muted-foreground hover:underline">
-				Zurueck zur Anmeldung
+				Zurück zur Anmeldung
 			</a>
 		</CardContent>
 	</Card>

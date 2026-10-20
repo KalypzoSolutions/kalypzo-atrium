@@ -15,7 +15,7 @@ describe('normalizeHex', () => {
 		expect(normalizeHex('#ABC')).toBe('#aabbcc');
 		expect(normalizeHex(' #2F855A ')).toBe('#2f855a');
 	});
-	it('lehnt Ungueltiges ab', () => {
+	it('lehnt Ungültiges ab', () => {
 		for (const v of ['', 'abc', '#abcd', '#12345', '#gggggg', 'red', '#1234567'])
 			expect(normalizeHex(v)).toBeNull();
 	});
@@ -29,7 +29,7 @@ describe('Konvertierungen', () => {
 		expect(rgbToHex({ r: 255, g: 128, b: 0 })).toBe('#ff8000');
 		expect(rgbToHex({ r: -5, g: 300, b: 0.4 })).toBe('#00ff00');
 	});
-	it('Primaerfarben in HSV', () => {
+	it('Primärfarben in HSV', () => {
 		expect(rgbToHsv({ r: 255, g: 0, b: 0 })).toEqual({ h: 0, s: 1, v: 1 });
 		expect(rgbToHsv({ r: 0, g: 255, b: 0 })).toEqual({ h: 120, s: 1, v: 1 });
 		expect(rgbToHsv({ r: 0, g: 0, b: 255 })).toEqual({ h: 240, s: 1, v: 1 });
@@ -54,7 +54,7 @@ describe('Konvertierungen', () => {
 		}
 		expect(hexToHsv('xyz')).toBeNull();
 	});
-	it('Round-Trip ueber viele Farben', () => {
+	it('Round-Trip über viele Farben', () => {
 		for (let r = 0; r < 256; r += 51)
 			for (let g = 0; g < 256; g += 51)
 				for (let b = 0; b < 256; b += 51) {
@@ -65,13 +65,13 @@ describe('Konvertierungen', () => {
 });
 
 describe('contrastTextColor', () => {
-	it('liefert Weiss auf dunklen und Schwarz auf hellen Farben', () => {
+	it('liefert Weiß auf dunklen und Schwarz auf hellen Farben', () => {
 		expect(contrastTextColor('#000000')).toBe('#ffffff');
 		expect(contrastTextColor('#276749')).toBe('#ffffff');
 		expect(contrastTextColor('#ffffff')).toBe('#000000');
 		expect(contrastTextColor('#ecc94b')).toBe('#000000');
 	});
-	it('faellt bei ungueltiger Eingabe auf Schwarz zurueck', () => {
+	it('fällt bei ungültiger Eingabe auf Schwarz zurück', () => {
 		expect(contrastTextColor('kaputt')).toBe('#000000');
 	});
 });

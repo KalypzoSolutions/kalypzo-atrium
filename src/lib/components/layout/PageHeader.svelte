@@ -10,5 +10,7 @@
 		<h1 class="text-2xl font-semibold tracking-tight">{title}</h1>
 		{#if description}<p class="mt-1 text-sm text-muted-foreground">{description}</p>{/if}
 	</div>
-	{#if actions}<div class="flex items-center gap-2">{@render actions()}</div>{/if}
+	{#if actions}<div class="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+			{@render actions()}
+		</div>{/if}
 </div>

@@ -62,6 +62,7 @@ Hinweise:
 | `POSTGRES_DB/USER/PASSWORD` | Datenbank-Container (Passwort Pflicht) |
 | `APP_SECRET` | Pflicht, ≥ 32 Zeichen. **Nicht ändern**, ohne Secrets neu einzugeben (siehe [Sicherheit](security.md)) |
 | `ORIGIN` | Pflicht, öffentliche URL |
+| `BACKUP_MAX_BYTES` | optional: größte hochladbare Sicherungsdatei in Byte (Standard 4 GB) |
 | `APP_PORT` | Host-Port (Bind 127.0.0.1) |
 | `INITIAL_ADMIN_EMAIL/PASSWORD` | Bootstrap; Passwort ≥ 12 Zeichen |
 | `S3_ENDPOINT/REGION/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY/FORCE_PATH_STYLE` | optional: Vorbelegung der Storage-Einstellungen beim ersten Start |
@@ -76,7 +77,8 @@ Hinter einem Reverse Proxy sieht die App nur dessen IP. `ADDRESS_HEADER=X-Forwar
 
 Beim Start laufen Migrationen und Synchronisation automatisch. Existiert noch kein Administrator und sind `INITIAL_ADMIN_*` gesetzt, wird er angelegt. Danach die Variablen aus der `.env` entfernen und das Passwort ändern.
 
-Anschließend in der Oberfläche konfigurieren: Einstellungen (Systemname, SMTP), Storage (S3), KI (OpenAI-Key), PDF.
+Anschließend in der Oberfläche unter **Administration → Einstellungen** (`/admin/settings/…`) konfigurieren: Allgemein (Systemname),
+E-Mail-Versand (SMTP), Speicher (S3), KI, PDF. Die Suche auf `/admin` bzw. Strg+K findet einzelne Felder (z. B. „smtp“, „logo“).
 
 ## S3 / MinIO
 
@@ -88,6 +90,10 @@ Anschließend in der Oberfläche konfigurieren: Einstellungen (Systemname, SMTP)
 
 Der PDF-Service startet Chromium mit `--no-sandbox` (im Container ohne User-Namespaces üblich). Seiten werden ohne JavaScript gerendert, externe Requests blockiert. Das Image enthält Chromium (~400 MB). Für lokale Läufe: `npx playwright install chromium`.
 
+## Bildverarbeitung (sharp)
+
+`core.images` nutzt die native Bibliothek `sharp` (libvips). Sie kommt als **vorgebaute** Optionalpakete `@img/sharp-<plattform>` und `@img/sharp-libvips-<plattform>` und braucht deshalb kein Install-Skript: `npm ci --ignore-scripts` im `bookworm-slim`-Image funktioniert ohne Compiler oder Systempakete. Voraussetzung: `package-lock.json` enthält die Pakete für `linux-x64` (`@img/sharp-linux-x64`, `@img/sharp-libvips-linux-x64`) – bei einem Lockfile, das nur unter Windows/macOS erzeugt wurde, prüfen (`grep sharp-linux-x64 package-lock.json`); für ARM-Server entsprechend `linux-arm64`. `sharp` steht in `dependencies` (wird mit `--omit=dev` installiert). HEIC/HEIF unterstützt der Prebuild nicht.
+
 ## Healthchecks
 
 - App: `GET /api/v1/health` (Docker-Healthcheck).
@@ -95,6 +101,12 @@ Der PDF-Service startet Chromium mit `--no-sandbox` (im Container ohne User-Name
 
 ## Backups
 
+- **Datensicherung in der App** (Verwaltung → Datensicherung, Recht `core.system.backup`): verschlüsselte Datei `.epbackup`
+  (Sicherungs-Passwort, AES-256-GCM, scrypt) mit allen oder ausgewählten Bereichen, optional inkl. Dateien aus S3 und inkl. Zugangsdaten.
+  Wiederherstellen oder Zusammenführen auch auf einem **neuen Server mit anderem `APP_SECRET`** (Werte werden neu verschlüsselt).
+  Upload in 8-MB-Stücken (passt zu `BODY_SIZE_LIMIT`), Grenze `BACKUP_MAX_BYTES` (Standard 4 GB). Temp-Dateien liegen in
+  `$TMPDIR/ep-backup` (Platz in Archivgröße nötig, Aufräumen nach 1 h). Während einer Wiederherstellung pausieren Hintergrundjobs;
+  nur ein Wartungsvorgang je Prozess, nicht für mehrere Instanzen ausgelegt.
 - PostgreSQL: `docker compose exec db pg_dump -U $POSTGRES_USER $POSTGRES_DB | gzip > backup.sql.gz`
 - Objektspeicher separat sichern (Bucket-Versionierung/Replikation).
 - `APP_SECRET` getrennt und sicher aufbewahren – ohne ihn sind verschlüsselte Einstellungen nicht lesbar.
@@ -112,3 +124,61 @@ Vorher Backup erstellen. Modulmigrationen aktiver Module werden beim Start ebenf
 ## Betrieb mit mehreren Instanzen
 
 Rate Limiter und Login-Sperre sind prozesslokal. Für mehrere App-Instanzen ist ein gemeinsamer Store nötig (nicht Teil der ersten Version).
+
+## Stammeswebsite
+
+Die öffentliche Website liegt in `website/`: die **alte Website** (`CrayonGamerHD-Philipp/edelweisspiraten-website`, Ordner `web/`,
+SvelteKit, adapter-node, eigenes `package.json` und `Dockerfile`), bei der nur das Backend getauscht ist – statt PocketBase
+holt sie **Termine, Galerien und Gruppen serverseitig** über die Website-Endpunkte (`/api/v1/modules/<modul>/website/…`) mit einem API-Key
+(`website/src/lib/server/backend.ts`). Gruppen (Menü, Startseite, Gruppenseiten `/meute/<slug>`, `/sippe/<slug>`, Kontakt) kommen ebenfalls aus dem Backend; Ämter und CPD sind wie früher statisch, die häufigen Fragen stehen
+fest im Code (`website/src/lib/faqs.ts`), die Download-Seite entfällt (`/download` → 308 auf `/`). Der Key erreicht nie den
+Browser; Galeriebilder liefert die Website über `/bilder/galerie/…` aus, die Terminvorschau der Gruppenseiten über `/api/termine`.
+
+1. **API-Key anlegen**: im Intern-Bereich unter **Administration → API-Keys** einen Key mit den Scopes
+   `events.website.read galleries.website.read members.website.read` erstellen (ein Benutzerkonto, das diese Rechte hat).
+   Die Module müssen aktiv sein, sonst liefert die API `404 module_disabled`.
+2. **Umgebungsvariablen** (Vorlage `website/.env.example`):
+
+   | Variable | Bedeutung |
+   |---|---|
+   | `WEBSITE_API_URL` | Basis-URL des Intern-Bereichs, **intern** erreichbar (Standard `http://app:3000` im selben Docker-Netz) |
+   | `WEBSITE_API_KEY` | der Key aus Schritt 1 (`epk_…`) |
+   | `ORIGIN` | öffentliche Adresse der Website – adapter-node braucht sie für den CSRF-Origin-Check |
+
+3. **Starten**: Die Website ist als Dienst `website` in `docker-compose.yml` und `docker-compose.dokploy.yml` enthalten
+   und startet mit dem Stack als **eigener Container** (Build aus `website/`, Port 3001, nur im internen Netz mit `app`
+   verbunden: `WEBSITE_API_URL=http://app:3000`). Variablen im Stack:
+
+   | Variable | Bedeutung |
+   |---|---|
+   | `WEBSITE_API_KEY` | Key aus Schritt 1; fehlt er, laufen die statischen Seiten, Termine und Galerie zeigen eine Fehlerseite |
+   | `WEBSITE_ORIGIN` | öffentliche Adresse der Website (Standard `https://edelweisspiraten-bremen.de`), setzt `ORIGIN` |
+   | `WEBSITE_PORT` | nur `docker-compose.yml`: Port-Bind auf 127.0.0.1 (Standard 3001) |
+
+   Erstinstallation: Stack starten → im Intern-Bereich Key anlegen → `WEBSITE_API_KEY` setzen → `docker compose up -d website`
+   (Dokploy: Variable eintragen, neu deployen). Der Container läuft als Benutzer `node`, schreibgeschützt, Healthcheck auf `/`.
+
+   Einzeln ohne Compose:
+
+   ```bash
+   cd website
+   docker build -t ep-website .
+   docker run -d --name ep-website -p 127.0.0.1:3001:3001 --env-file .env ep-website
+   ```
+
+4. **Reverse-Proxy/Domain**: die Website-Domain (z. B. `edelweisspiraten-bremen.de`) auf Port 3001 leiten (Dokploy: Domain auf
+   Service `website`, Port 3001; nginx-Profil: Beispielblock am Ende von `deploy/nginx/nginx.conf`), den
+   Intern-Bereich weiter auf seiner eigenen Domain. `WEBSITE_API_URL` sollte nicht über das Internet laufen, wenn beide auf
+   demselben Server stehen.
+
+Die Website speichert API-Antworten 60 s im Arbeitsspeicher und zeigt bei Ausfall des Intern-Bereichs den letzten guten Stand
+weiter; ohne gespeicherten Stand zeigen Termine und Galerie eine Fehlerseite. Rate-Limits je Key: 120 Anfragen/60 s für JSON,
+600/60 s für Bilder (Galeriebilder werden mit `max-age=3600` ausgeliefert).
+
+Ohne Docker (PM2, `website/ecosystem.config.cjs`):
+
+```bash
+cd website
+npm ci
+npm run build && WEBSITE_API_KEY=epk_… WEBSITE_API_URL=http://127.0.0.1:3000 PORT=3001 node build
+```

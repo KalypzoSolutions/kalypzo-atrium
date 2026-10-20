@@ -12,23 +12,22 @@ export const actions: Actions = {
 		const token = String(form.get('token') ?? '');
 		const password = String(form.get('password') ?? '');
 		const confirm = String(form.get('confirm') ?? '');
-		if (!token) return fail(400, { error: 'Der Link ist ungueltig oder abgelaufen.' });
+		if (!token) return fail(400, { error: 'Der Link ist ungültig oder abgelaufen.' });
 		const parsed = z
 			.string()
 			.min(12, 'Das Passwort muss mindestens 12 Zeichen lang sein.')
 			.max(128)
 			.safeParse(password);
 		if (!parsed.success)
-			return fail(400, { error: parsed.error.issues[0]?.message ?? 'Ungueltiges Passwort.' });
-		if (password !== confirm)
-			return fail(400, { error: 'Die Passwoerter stimmen nicht ueberein.' });
+			return fail(400, { error: parsed.error.issues[0]?.message ?? 'Ungültiges Passwort.' });
+		if (password !== confirm) return fail(400, { error: 'Die Passwörter stimmen nicht überein.' });
 		try {
 			await getAuth().api.resetPassword({
 				body: { newPassword: password, token },
 				headers: request.headers
 			});
 		} catch (e) {
-			return fail(400, { error: authErrorMessage(e, 'Zuruecksetzen fehlgeschlagen.') });
+			return fail(400, { error: authErrorMessage(e, 'Zurücksetzen fehlgeschlagen.') });
 		}
 		return { done: true };
 	}

@@ -17,22 +17,22 @@ describe('isValidIban', () => {
 		expect(isValidIban(iban)).toBe(true);
 	});
 
-	it('akzeptiert Kleinbuchstaben und fehlende/zusaetzliche Leerzeichen', () => {
+	it('akzeptiert Kleinbuchstaben und fehlende/zusätzliche Leerzeichen', () => {
 		expect(isValidIban('de89370400440532013000')).toBe(true);
 		expect(isValidIban('  de89 3704 0044 0532 0130 00 ')).toBe(true);
 	});
 
-	it('lehnt falsche Pruefsumme ab', () => {
+	it('lehnt falsche Prüfsumme ab', () => {
 		expect(isValidIban('DE88 3704 0044 0532 0130 00')).toBe(false);
 		expect(isValidIban('DE89 3704 0044 0532 0130 01')).toBe(false);
 	});
 
-	it('lehnt falsche Laenge ab', () => {
+	it('lehnt falsche Länge ab', () => {
 		expect(isValidIban('DE89 3704 0044 0532 0130 0')).toBe(false);
 		expect(isValidIban('DE89 3704 0044 0532 0130 000')).toBe(false);
 	});
 
-	it('lehnt Muell ab', () => {
+	it('lehnt Müll ab', () => {
 		for (const v of ['', 'abc', '1234567890', 'DE', 'DE89!!!!', '%%%%%%%%%%%%%%%%%%%%%%']) {
 			expect(isValidIban(v)).toBe(false);
 		}
@@ -40,13 +40,13 @@ describe('isValidIban', () => {
 });
 
 describe('normalizeIban', () => {
-	it('entfernt Trenner und macht gross', () => {
+	it('entfernt Trenner und macht groß', () => {
 		expect(normalizeIban(' de89 3704-0044.0532 0130 00 ')).toBe('DE89370400440532013000');
 	});
 });
 
 describe('Maskierung', () => {
-	it('maskIban: Land+Pruefziffer, Punkte in 4er-Gruppen, letzte 6 als 4+2', () => {
+	it('maskIban: Land+Prüfziffer, Punkte in 4er-Gruppen, letzte 6 als 4+2', () => {
 		expect(maskIban('DE89 3704 0044 0532 0130 00')).toBe('DE89 •••• •••• •••• 0130 00');
 	});
 

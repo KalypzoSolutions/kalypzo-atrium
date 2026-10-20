@@ -100,7 +100,7 @@ describe('summarize', () => {
 		});
 	});
 
-	it('Einnahmen ohne Beleg zaehlen nicht als fehlend', () => {
+	it('Einnahmen ohne Beleg zählen nicht als fehlend', () => {
 		const s = summarize([e({ type: 'income', category: 'misc', hasReceipt: false })], null);
 		expect(s.missingReceipts).toBe(0);
 	});
@@ -144,12 +144,12 @@ describe('toPayoutCsv', () => {
 		expect(csv).not.toMatch(/(?<!\r)\n/);
 	});
 
-	it('kleine Betraege und fehlende BIC', () => {
+	it('kleine Beträge und fehlende BIC', () => {
 		const csv = toPayoutCsv([row({ amountCents: 5, bic: null })]);
 		expect(csv).toContain(';;0,05;');
 	});
 
-	it('Escaping von Semikolon, Anfuehrungszeichen, Zeilenumbruch', () => {
+	it('Escaping von Semikolon, Anführungszeichen, Zeilenumbruch', () => {
 		const csv = toPayoutCsv([row({ name: 'A; "B"', purpose: 'x\ny' })]);
 		expect(csv).toContain('"A; ""B"""');
 		expect(csv).toContain('"x\ny"');

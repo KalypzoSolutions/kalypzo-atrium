@@ -6,8 +6,8 @@
 
 	/**
 	 * Freigabe als Dialog: Benutzer suchen, mit einer Stufe (z. B. Lesen/Bearbeiten)
-	 * hinzufuegen, Stufe aendern oder entfernen. Die Persistenz liegt bei der aufrufenden Seite
-	 * (`onadd`/`onchange`/`onremove`). Siehe `ShareMenu` fuer die Popover-Variante.
+	 * hinzufügen, Stufe ändern oder entfernen. Die Persistenz liegt bei der aufrufenden Seite
+	 * (`onadd`/`onchange`/`onremove`). Siehe `ShareMenu` für die Popover-Variante.
 	 */
 	let {
 		open = $bindable(false),
@@ -21,7 +21,11 @@
 		search,
 		onadd,
 		onchange,
-		onremove
+		onremove,
+		everyoneLabel,
+		placeholder,
+		searchLabel,
+		emptyResultText
 	}: {
 		open?: boolean;
 		title?: string;
@@ -33,8 +37,15 @@
 		canManage?: boolean;
 		search: (query: string) => Promise<ShareCandidate[]>;
 		onadd: (user: ShareCandidate, level: string) => Promise<void>;
-		onchange: (userId: string, level: string) => Promise<void>;
-		onremove: (userId: string) => Promise<void>;
+		/** `key` = `shareKey(entry)` (ohne `type`: Benutzer-ID) */
+		onchange: (key: string, level: string) => Promise<void>;
+		/** `key` = `shareKey(entry)` (ohne `type`: Benutzer-ID) */
+		onremove: (key: string) => Promise<void>;
+		/** Siehe `SharePanel` */
+		everyoneLabel?: string;
+		placeholder?: string;
+		searchLabel?: string;
+		emptyResultText?: string;
 	} = $props();
 </script>
 
@@ -55,6 +66,10 @@
 			{onadd}
 			{onchange}
 			{onremove}
+			{everyoneLabel}
+			{placeholder}
+			{searchLabel}
+			{emptyResultText}
 		/>
 
 		<Dialog.Footer>

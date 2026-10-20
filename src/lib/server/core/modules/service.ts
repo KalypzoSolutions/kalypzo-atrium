@@ -4,6 +4,7 @@ import { auditFromContext } from '../audit/service';
 import { getDb, schema, type DbOrTx } from '../database/client';
 import { sha256 } from '../crypto';
 import { errors } from '../errors';
+import { newId } from '../util';
 import { CORE_PERMISSIONS } from '../permissions/catalog';
 import { syncPermissions } from '../permissions/service';
 import {
@@ -20,7 +21,7 @@ export interface ModuleInfo {
 	manifest: ModuleManifest;
 	enabled: boolean;
 	installedVersion: string | null;
-	/** Aktive Module, die von diesem abhaengen */
+	/** Aktive Module, die von diesem abhängen */
 	dependents: string[];
 	missingDependencies: string[];
 }
@@ -45,12 +46,77 @@ export async function syncModules(): Promise<void> {
 			moduleId: 'core',
 			description
 		})),
-		...defs.flatMap((d) => d.manifest.permissions.map((key) => ({ key, moduleId: d.manifest.id })))
+		...defs.flatMap((d) =>
+			d.manifest.permissions.map((key) => ({
+				key,
+				moduleId: d.manifest.id,
+				description: d.manifest.permissionDescriptions?.[key]
+			}))
+		)
 	]);
+	await applyDefaultRoleGrants(defs);
 	invalidateModuleStateCache();
 	// Bereits aktive Module: ausstehende Migrationen anwenden (Update-Szenario)
 	const enabled = await enabledModuleIds(db);
 	for (const d of defs) if (enabled.has(d.manifest.id)) await runModuleMigrations(d.manifest.id);
+}
+
+/**
+ * Vergibt `defaultRoleGrants` einmalig je (Modul, Rolle, Recht). Rollen werden per Name gesucht oder
+ * angelegt (kein System). Unbekannte Rechte (nicht im Manifest) werden übersprungen.
+ */
+async function applyDefaultRoleGrants(defs: ReturnType<typeof allDefinitions>): Promise<void> {
+	const db = getDb();
+	for (const d of defs) {
+		const moduleId = d.manifest.id;
+		for (const [roleName, perms] of Object.entries(
+			d.defaultRoleGrants ?? d.manifest.defaultRoleGrants ?? {}
+		)) {
+			const wanted = [...new Set(perms)].filter((p) => d.manifest.permissions.includes(p));
+			if (!wanted.length) continue;
+			const done = await db
+				.select({ key: schema.roleGrantApplied.permissionKey })
+				.from(schema.roleGrantApplied)
+				.where(
+					and(
+						eq(schema.roleGrantApplied.moduleId, moduleId),
+						eq(schema.roleGrantApplied.roleName, roleName)
+					)
+				);
+			const doneKeys = new Set(done.map((r) => r.key));
+			const todo = wanted.filter((p) => !doneKeys.has(p));
+			if (!todo.length) continue;
+			let [role] = await db
+				.select({ id: schema.role.id })
+				.from(schema.role)
+				.where(eq(schema.role.name, roleName));
+			if (!role) {
+				await db
+					.insert(schema.role)
+					.values({
+						id: newId(),
+						name: roleName,
+						description: 'Automatisch angelegt',
+						isSystem: false
+					})
+					.onConflictDoNothing();
+				[role] = await db
+					.select({ id: schema.role.id })
+					.from(schema.role)
+					.where(eq(schema.role.name, roleName));
+			}
+			if (!role) continue;
+			const roleId = role.id;
+			await db
+				.insert(schema.rolePermission)
+				.values(todo.map((permissionKey) => ({ roleId, permissionKey })))
+				.onConflictDoNothing();
+			await db
+				.insert(schema.roleGrantApplied)
+				.values(todo.map((permissionKey) => ({ moduleId, roleName, permissionKey })))
+				.onConflictDoNothing();
+		}
+	}
 }
 
 export async function listModules(): Promise<ModuleInfo[]> {
@@ -77,14 +143,60 @@ export async function isModuleEnabled(id: string): Promise<boolean> {
 	return (await enabledModuleIds()).has(id) && !!getDefinition(id);
 }
 
-/** Wirft `module_disabled`; verhindert Zugriff ueber UI und API. */
+/**
+ * Dienste eines anderen Moduls abrufen (`ModuleDefinition.provides`). Der Aufrufer muss den Anbieter in
+ * `manifest.dependencies` führen, der Anbieter muss registriert und aktiv sein. Der Aufruf erfolgt
+ * AUSSERHALB offener Modul-Transaktionen (PGlite).
+ */
+export async function useModuleService<T>(providerId: string, callerId: string): Promise<T> {
+	const caller = getDefinition(callerId);
+	if (!caller?.manifest.dependencies.includes(providerId)) {
+		throw new Error(`Modul ${callerId} deklariert keine Abhängigkeit von "${providerId}"`);
+	}
+	const provider = getDefinition(providerId);
+	if (!provider?.provides) {
+		throw new Error(`Modul ${providerId} stellt keine Dienste bereit`);
+	}
+	await assertModuleEnabled(providerId);
+	return provider.provides as T;
+}
+
+/**
+ * Wie `useModuleService`, aber für `manifest.optionalDependencies`: liefert `null`, wenn der Anbieter
+ * nicht registriert oder nicht aktiv ist. Ebenfalls nur AUSSERHALB offener Modul-Transaktionen aufrufen.
+ */
+export async function useOptionalModuleService<T>(
+	providerId: string,
+	callerId: string
+): Promise<T | null> {
+	const caller = getDefinition(callerId);
+	if (!caller?.manifest.optionalDependencies?.includes(providerId)) {
+		throw new Error(
+			`Modul ${callerId} deklariert keine optionale Abhängigkeit von "${providerId}"`
+		);
+	}
+	const provider = getDefinition(providerId);
+	if (!provider?.provides) return null;
+	if (!(await isModuleEnabled(providerId))) return null;
+	return provider.provides as T;
+}
+
+/** Wirft `module_disabled`; verhindert Zugriff über UI und API. */
 export async function assertModuleEnabled(id: string): Promise<void> {
 	if (!(await isModuleEnabled(id))) throw errors.moduleDisabled(id);
 }
 
-export async function runModuleMigrations(moduleId: string, tx?: DbOrTx): Promise<string[]> {
+/**
+ * Führt ausstehende Migrationen aus. `opts.only`: nur diese Namen (Datensicherung: Schema auf den
+ * Stand der Sicherung bringen, danach ein zweiter Aufruf ohne `only` für neuere Migrationen).
+ */
+export async function runModuleMigrations(
+	moduleId: string,
+	tx?: DbOrTx,
+	opts: { only?: ReadonlySet<string> } = {}
+): Promise<string[]> {
 	const def = requireDefinition(moduleId);
-	const migrations = def.migrations ?? [];
+	const migrations = (def.migrations ?? []).filter((m) => !opts.only || opts.only.has(m.name));
 	const schemaName = moduleSchemaName(moduleId);
 	const run = async (t: DbOrTx): Promise<string[]> => {
 		await t.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`));
@@ -99,12 +211,12 @@ export async function runModuleMigrations(moduleId: string, tx?: DbOrTx): Promis
 			const prev = byName.get(m.name);
 			if (prev) {
 				if (prev.checksum !== checksum) {
-					throw new Error(`Migration ${moduleId}/${m.name} wurde nach Anwendung veraendert`);
+					throw new Error(`Migration ${moduleId}/${m.name} wurde nach Anwendung verändert`);
 				}
 				continue;
 			}
 			await t.execute(sql.raw(`SET LOCAL search_path TO "${schemaName}", public`));
-			// Einzeln ausfuehren: manche Treiber (PGlite) erlauben pro Aufruf nur ein Statement
+			// Einzeln ausführen: manche Treiber (PGlite) erlauben pro Aufruf nur ein Statement
 			for (const statement of splitSqlStatements(m.sql)) await t.execute(sql.raw(statement));
 			await t.insert(schema.moduleMigration).values({ moduleId, name: m.name, checksum });
 			newlyApplied.push(m.name);
@@ -122,7 +234,7 @@ export async function enableModule(ctx: RequestContext, id: string): Promise<voi
 		const enabled = await enabledModuleIds(tx);
 		const missing = def.manifest.dependencies.filter((d) => !enabled.has(d));
 		if (missing.length) {
-			throw errors.conflict(`Abhaengigkeiten nicht aktiv: ${missing.join(', ')}`);
+			throw errors.conflict(`Abhängigkeiten nicht aktiv: ${missing.join(', ')}`);
 		}
 		await runModuleMigrations(id, tx);
 		await tx
@@ -144,7 +256,7 @@ export async function disableModule(ctx: RequestContext, id: string): Promise<vo
 			.filter((d) => d.manifest.dependencies.includes(id) && enabled.has(d.manifest.id))
 			.map((d) => d.manifest.id);
 		if (dependents.length) {
-			throw errors.conflict(`Wird von aktiven Modulen benoetigt: ${dependents.join(', ')}`);
+			throw errors.conflict(`Wird von aktiven Modulen benötigt: ${dependents.join(', ')}`);
 		}
 		await tx
 			.update(schema.moduleState)
@@ -156,7 +268,7 @@ export async function disableModule(ctx: RequestContext, id: string): Promise<vo
 	await def.onDisable?.(ctx);
 }
 
-/** Navigation fuer aktive Module, gefiltert nach Berechtigungen des Kontexts. */
+/** Navigation für aktive Module, gefiltert nach Berechtigungen des Kontexts. */
 export async function navigationFor(ctx: RequestContext) {
 	const enabled = await enabledModuleIds();
 	return allDefinitions()
@@ -164,13 +276,13 @@ export async function navigationFor(ctx: RequestContext) {
 		.flatMap((d) =>
 			d.manifest.navigation
 				.filter((n) => !n.permission || ctx.permissions.has(n.permission))
-				// Ohne explizite Berechtigung: mindestens eine Modulberechtigung noetig
+				// Ohne explizite Berechtigung: mindestens eine Modulberechtigung nötig
 				.filter(
 					(n) =>
 						n.permission ||
 						d.manifest.permissions.length === 0 ||
 						d.manifest.permissions.some((p) => ctx.permissions.has(p))
 				)
-				.map((n) => ({ ...n, moduleId: d.manifest.id }))
+				.map((n) => ({ ...n, moduleId: d.manifest.id, moduleName: d.manifest.name }))
 		);
 }

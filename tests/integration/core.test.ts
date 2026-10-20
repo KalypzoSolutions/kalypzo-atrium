@@ -39,7 +39,7 @@ let adminId: string;
 
 async function ctxOf(userId: string): Promise<RequestContext> {
 	const r = await contextForUser(userId);
-	if (!r) throw new Error('Kontext nicht aufloesbar');
+	if (!r) throw new Error('Kontext nicht auflösbar');
 	return r.ctx;
 }
 
@@ -162,7 +162,7 @@ describe('Rechte und Rollen', () => {
 		});
 	});
 
-	it('verhindert Rechteausweitung ueber Rollen', async () => {
+	it('verhindert Rechteausweitung über Rollen', async () => {
 		const limitedRole = await createRole(admin, {
 			name: 'Rollenpfleger',
 			permissions: [
@@ -192,7 +192,7 @@ describe('Rechte und Rollen', () => {
 		await expect(updateRole(ctx, ADMIN_ROLE_ID, { description: 'x' })).rejects.toBeTruthy();
 	});
 
-	it('schuetzt den letzten Administrator', async () => {
+	it('schützt den letzten Administrator', async () => {
 		await expect(setUserActive(admin, adminId, false)).rejects.toMatchObject({ code: 'conflict' });
 		await expect(deleteUser(admin, adminId)).rejects.toMatchObject({ code: 'conflict' });
 	});
@@ -206,9 +206,9 @@ describe('Module', () => {
 		expect((await res.json()).error.code).toBe('module_disabled');
 	});
 
-	it('aktivierte Module liefern Daten, Rechte werden geprueft', async () => {
+	it('aktivierte Module liefern Daten, Rechte werden geprüft', async () => {
 		await enableModule(admin, 'demo');
-		admin = await ctxOf(adminId); // Kontext neu aufloesen: Modulrechte sind jetzt wirksam
+		admin = await ctxOf(adminId); // Kontext neu auflösen: Modulrechte sind jetzt wirksam
 		const { key } = await createApiKey(admin, { name: 'k2', scopes: ['demo.items.view'] });
 		const ok = await api('/modules/demo/items', { token: key });
 		expect(ok.status).toBe(200);
@@ -219,7 +219,7 @@ describe('Module', () => {
 		expect(denied.status).toBe(403);
 	});
 
-	it('Navigation enthaelt aktive Module nach Berechtigung', async () => {
+	it('Navigation enthält aktive Module nach Berechtigung', async () => {
 		const nav = await navigationFor(admin);
 		expect(nav.map((n) => n.moduleId)).toContain('demo');
 		const id = await createUser(admin, {
@@ -230,7 +230,7 @@ describe('Module', () => {
 		expect(await navigationFor(await ctxOf(id))).toEqual([]);
 	});
 
-	it('beachtet Abhaengigkeiten', async () => {
+	it('beachtet Abhängigkeiten', async () => {
 		await expect(disableModule(admin, 'demo')).resolves.toBeUndefined();
 		await expect(enableModule(admin, 'child')).rejects.toMatchObject({ code: 'conflict' });
 		await enableModule(admin, 'demo');
@@ -258,7 +258,7 @@ describe('API und API-Keys', () => {
 		expect(res.status).toBe(200);
 	});
 
-	it('Scopes werden mit Eigentuemerrechten geschnitten', async () => {
+	it('Scopes werden mit Eigentümerrechten geschnitten', async () => {
 		const limitedRole = await createRole(admin, {
 			name: 'Nur-Lesen',
 			permissions: ['core.api.manage', 'core.api.view', 'core.users.view']
@@ -298,7 +298,7 @@ describe('API und API-Keys', () => {
 		expect((await api('/users', { token: exp.key })).status).toBe(401);
 	});
 
-	it('API-Keys koennen keine API-Keys verwalten (sessionOnly)', async () => {
+	it('API-Keys können keine API-Keys verwalten (sessionOnly)', async () => {
 		const { key } = await createApiKey(admin, {
 			name: 'adm',
 			scopes: ['core.api.manage', 'core.api.view']
@@ -325,7 +325,7 @@ describe('API und API-Keys', () => {
 });
 
 describe('Einstellungen und Audit', () => {
-	it('verschluesselt Secrets und liefert sie nie an Clients', async () => {
+	it('verschlüsselt Secrets und liefert sie nie an Clients', async () => {
 		await setSetting(admin, 'core.smtp.password', 'geheim-123');
 		const [raw] = await getDb()
 			.select()
@@ -348,7 +348,7 @@ describe('Einstellungen und Audit', () => {
 		});
 	});
 
-	it('schwaerzt sensible Metadaten im Audit-Log', async () => {
+	it('schwärzt sensible Metadaten im Audit-Log', async () => {
 		const { logAudit } = await import('$lib/server/core/audit/service');
 		await logAudit({
 			action: 'test.audit.sanitize',

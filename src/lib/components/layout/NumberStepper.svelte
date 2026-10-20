@@ -20,7 +20,7 @@
 		min?: number;
 		max?: number;
 		step?: number;
-		/** Zugaengliche Bezeichnung (aria-label) */
+		/** Zugängliche Bezeichnung (aria-label) */
 		label: string;
 		/** Einheit als Suffix, z. B. „Nächte“ */
 		unit?: string;
@@ -88,6 +88,7 @@
 </script>
 
 <div
+	data-slot="number-stepper"
 	class={cn(
 		'border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 inline-flex h-8 w-fit items-center rounded-lg border bg-transparent transition-colors focus-within:ring-3',
 		invalid && 'border-destructive ring-destructive/20 ring-3',
@@ -97,6 +98,7 @@
 >
 	<button
 		type="button"
+		data-slot="number-stepper-button"
 		class={btn}
 		aria-label="{label} verringern"
 		disabled={disabled || value <= min}
@@ -124,6 +126,7 @@
 	{/if}
 	<button
 		type="button"
+		data-slot="number-stepper-button"
 		class={btn}
 		aria-label="{label} erhöhen"
 		disabled={disabled || value >= max}

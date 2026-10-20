@@ -1,14 +1,15 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { APIError, createAuthMiddleware } from 'better-auth/api';
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { logAudit } from '../audit/service';
 import { getDb, schema } from '../database/client';
 import { env } from '../env';
 import { sendMail } from '../mail';
+import { maskEmail } from './mask-email';
 import { peek, reset, hit } from '../rate-limit';
 import { getSetting } from '../settings/service';
 
@@ -40,7 +41,7 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 		}),
 		emailAndPassword: {
 			enabled: true,
-			disableSignUp: true, // Benutzer werden ausschliesslich administrativ angelegt
+			disableSignUp: true, // Benutzer werden ausschließlich administrativ angelegt
 			minPasswordLength: 12,
 			maxPasswordLength: 128,
 			revokeSessionsOnPasswordReset: true,
@@ -49,13 +50,69 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 				// Fire-and-forget (Timing-Angleich); Fehler werden nicht an den Client gegeben
 				void sendMail({
 					to: user.email,
-					subject: `${name}: Passwort zuruecksetzen`,
-					text: `Hallo ${user.name},\n\nueber den folgenden Link koennen Sie Ihr Passwort zuruecksetzen (1 Stunde gueltig):\n${url}\n\nWenn Sie das nicht angefordert haben, ignorieren Sie diese Nachricht.`
+					subject: `${name}: Passwort zurücksetzen`,
+					text: `Hallo ${user.name},\n\nueber den folgenden Link können Sie Ihr Passwort zurücksetzen (1 Stunde gültig):\n${url}\n\nWenn Sie das nicht angefordert haben, ignorieren Sie diese Nachricht.`
 				}).catch((err) => console.error('[mail] Passwort-Reset fehlgeschlagen:', err?.message));
 			},
 			resetPasswordTokenExpiresIn: 60 * 60
 		},
+		emailVerification: {
+			// Wird ausschließlich für den E-Mail-Wechsel genutzt (Link geht an die NEUE Adresse);
+			// `requireEmailVerification` bleibt aus, Konten werden administrativ als verifiziert angelegt.
+			expiresIn: 60 * 60,
+			afterEmailVerification: async (user, request) => {
+				// Alte Adresse aus dem (bereits geprüften) Token lesen; nur maskiert protokollieren
+				let from = '';
+				try {
+					const token = new URL(request?.url ?? '', 'http://x').searchParams.get('token') ?? '';
+					const payload = JSON.parse(
+						Buffer.from(token.split('.')[1] ?? '', 'base64url').toString()
+					);
+					from = typeof payload.email === 'string' ? maskEmail(payload.email) : '';
+				} catch {
+					/* ohne Angabe */
+				}
+				// Nach dem Wechsel alle ANDEREN Sessions beenden (wie beim Admin-Pfad)
+				let revoked = 0;
+				try {
+					const current = request
+						? await getAuth().api.getSession({ headers: request.headers })
+						: null;
+					if (current?.session && current.user.id === user.id) {
+						const gone = await getDb()
+							.delete(schema.session)
+							.where(
+								and(eq(schema.session.userId, user.id), ne(schema.session.id, current.session.id))
+							)
+							.returning({ id: schema.session.id });
+						revoked = gone.length;
+					}
+				} catch (err) {
+					console.error('[auth] Sessions nach E-Mail-Wechsel nicht widerrufen:', err);
+				}
+				await logAudit({
+					action: 'core.auth.email_changed',
+					actor: { type: 'user', id: user.id, name: maskEmail(user.email) },
+					target: user.id,
+					metadata: { from, to: maskEmail(user.email), otherSessionsRevoked: revoked }
+				});
+			},
+			sendVerificationEmail: async ({ user, url }) => {
+				const name = await getSetting<string>('core.system.name');
+				void sendMail({
+					to: user.email,
+					subject: `${name}: Neue E-Mail-Adresse bestätigen`,
+					text: `Hallo ${user.name},
+
+bitte bestätige mit dem folgenden Link, dass diese Adresse künftig für dein Konto gelten soll (1 Stunde gültig). Du musst dazu in diesem Browser angemeldet sein:
+${url}
+
+Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
+				}).catch((err) => console.error('[mail] E-Mail-Bestätigung fehlgeschlagen:', err?.message));
+			}
+		},
 		user: {
+			changeEmail: { enabled: true },
 			additionalFields: {
 				active: { type: 'boolean', defaultValue: true, input: false }
 			}
@@ -72,7 +129,9 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 			customRules: {
 				'/sign-in/email': { window: 60, max: 10 },
 				'/request-password-reset': { window: 300, max: 5 },
-				'/two-factor/verify-totp': { window: 60, max: 10 }
+				'/two-factor/verify-totp': { window: 60, max: 10 },
+				'/change-email': { window: 300, max: 5 },
+				'/update-user': { window: 300, max: 20 }
 			}
 		},
 		advanced: {
@@ -97,6 +156,20 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 		},
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
+				// Profil-Änderungen laufen nur über die Server-Actions (`auth.api.*` ohne `request`):
+				// E-Mail-Wechsel braucht dort Passwortprüfung, Rate-Limit und Hinweismail; Name/Bild
+				// haben eigene Prüfungen. Der direkte HTTP-Weg würde das alles umgehen.
+				if ((ctx.path === '/change-email' || ctx.path === '/update-user') && ctx.request) {
+					throw new APIError('FORBIDDEN', {
+						message: 'Diese Änderung ist nur über das Profil möglich.'
+					});
+				}
+				// Bestätigungslink ohne gültige Session: keine Anmeldung über den Link (2FA-Umgehung)
+				if (ctx.path === '/verify-email') {
+					const session = await getSessionFromCtx(ctx);
+					if (!session) throw ctx.redirect('/login');
+					return;
+				}
 				if (ctx.path !== '/sign-in/email') return;
 				const email = String((ctx.body as { email?: string } | undefined)?.email ?? '')
 					.trim()
@@ -108,7 +181,7 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 						metadata: { reason: 'too_many_failures' }
 					});
 					throw new APIError('TOO_MANY_REQUESTS', {
-						message: 'Zu viele fehlgeschlagene Anmeldeversuche. Bitte spaeter erneut versuchen.'
+						message: 'Zu viele fehlgeschlagene Anmeldeversuche. Bitte später erneut versuchen.'
 					});
 				}
 			}),

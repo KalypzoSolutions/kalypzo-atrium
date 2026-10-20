@@ -1,4 +1,4 @@
-// Legt Demo-Daten ueber die echte API an (idempotent). Voraussetzung: demo-server laeuft.
+// Legt Demo-Daten über die echte API an (idempotent). Voraussetzung: demo-server läuft.
 const BASE = 'http://localhost:4300';
 const ORIGIN = 'http://localhost:4300';
 const PW = 'Demo-Passwort-2026!';
@@ -26,14 +26,14 @@ await call(
 	{ email: 'admin@demo.test', password: 'Demo-Admin-2026!' },
 	'/api/auth'
 );
-if (!cookie) throw new Error('Login fehlgeschlagen - laeuft der Demo-Server?');
+if (!cookie) throw new Error('Login fehlgeschlagen - läuft der Demo-Server?');
 
 // Einstellungen
 await call('PUT', '/settings', {
 	values: {
 		'core.system.name': 'EP Intern Demo',
 		'core.organization.name': 'Beispiel Verein e. V.',
-		'core.organization.address': 'Musterstrasse 1\n12345 Musterstadt',
+		'core.organization.address': 'Musterstraße 1\n12345 Musterstadt',
 		'core.organization.email': 'kontakt@beispiel-verein.test',
 		'core.organization.phone': '+49 123 456789',
 		'core.design.accentColor': '#0f766e',
@@ -129,7 +129,7 @@ for (const [name, scopes] of [
 	});
 	if (r.status === 201) out.push(`${name}: ${r.json.data.key}`);
 }
-// Etwas API-Verkehr fuer Zugriffsprotokoll und Audit
+// Etwas API-Verkehr für Zugriffsprotokoll und Audit
 const k = out[0]?.split(': ')[1];
 if (k)
 	for (let i = 0; i < 5; i++)

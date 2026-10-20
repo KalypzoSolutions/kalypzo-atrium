@@ -7,7 +7,7 @@ export interface SettingDefinition {
 	description?: string;
 	schema: z.ZodType;
 	default?: unknown;
-	/** Wird verschluesselt gespeichert und niemals an Clients uebertragen */
+	/** Wird verschlüsselt gespeichert und niemals an Clients übertragen */
 	secret?: boolean;
 	scope: SettingScope;
 	group: string;
@@ -17,6 +17,10 @@ const str = (max = 200) => z.string().trim().max(max);
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const cssLength = z.string().regex(/^\d+(\.\d+)?(mm|cm|in|px)$/);
 const urlOrEmpty = z.union([z.literal(''), z.string().url()]);
+
+/** Vereinsnachweis wie in der PDF-Fußzeile */
+export const DEFAULT_MAIL_FOOTER =
+	'Die Christliche Pfadfinderschaft Deutschland ist Mitglied der AEJ (Arbeitsgemeinschaft der Evangelischen Jugend in Deutschland e.V.), anerkannt nach §75 SGB VIII und in das Vereinsregister Heilbad Heiligenstadt unter Nr. 400532 eingetragen.';
 
 type Def = Omit<SettingDefinition, 'scope'> & { scope?: SettingScope };
 const g = (d: Def): SettingDefinition => ({ scope: 'global', ...d });
@@ -112,6 +116,41 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		group: 'smtp'
 	}),
 
+	// E-Mail-Layout
+	g({
+		key: 'core.mail.layoutEnabled',
+		label: 'Stamm-Layout für E-Mails verwenden',
+		description:
+			'Kopf mit Lilie und Vereinsname, Signatur und Fußzeile für alle ausgehenden E-Mails.',
+		schema: z.boolean(),
+		default: true,
+		group: 'mail'
+	}),
+	g({
+		key: 'core.mail.showEmblem',
+		label: 'Wappen im Kopf anzeigen',
+		schema: z.boolean(),
+		default: true,
+		group: 'mail'
+	}),
+	g({
+		key: 'core.mail.signature',
+		label: 'Signatur',
+		description:
+			'Wird unter jeden Nachrichtentext gesetzt, z. B. „Gut Pfad!“. Leer = keine Signatur.',
+		schema: str(400),
+		default: '',
+		group: 'mail'
+	}),
+	g({
+		key: 'core.mail.footerText',
+		label: 'Fußzeile',
+		description: 'Kleingedruckter Vereinsnachweis unter jeder E-Mail. Leer = keine Fußzeile.',
+		schema: str(800),
+		default: DEFAULT_MAIL_FOOTER,
+		group: 'mail'
+	}),
+
 	// Storage
 	g({
 		key: 'core.storage.endpoint',
@@ -159,7 +198,7 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 	}),
 	g({
 		key: 'core.storage.maxFileSizeMb',
-		label: 'Max. Dateigroesse (MB)',
+		label: 'Max. Dateigröße (MB)',
 		schema: z.coerce.number().int().min(1).max(5000),
 		default: 50,
 		group: 'storage'
@@ -290,7 +329,7 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 	}),
 	g({
 		key: 'core.pdf.footerText',
-		label: 'Fusszeile (Mitte)',
+		label: 'Fußzeile (Mitte)',
 		schema: str(200),
 		default: '',
 		group: 'pdf'
@@ -313,8 +352,37 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		group: 'user'
 	}),
 	g({
+		key: 'core.user.accentColor',
+		label: 'Eigene Akzentfarbe',
+		description: 'Leer = Akzentfarbe des Systems.',
+		schema: z.union([z.literal(''), hexColor]),
+		default: '',
+		scope: 'user',
+		group: 'user'
+	}),
+	g({
+		key: 'core.user.density',
+		label: 'Dichte',
+		schema: z.enum(['comfortable', 'compact']),
+		default: 'comfortable',
+		scope: 'user',
+		group: 'user'
+	}),
+	g({
+		key: 'core.user.startPage',
+		label: 'Startseite',
+		description: 'Seite nach der Anmeldung (nur erlaubte Seiten werden verwendet).',
+		schema: z
+			.string()
+			.max(200)
+			.regex(/^\/(?!\/)[a-z0-9\-/]*$/),
+		default: '/dashboard',
+		scope: 'user',
+		group: 'user'
+	}),
+	g({
 		key: 'core.user.pageSize',
-		label: 'Eintraege pro Seite',
+		label: 'Einträge pro Seite',
 		schema: z.coerce.number().int().min(10).max(200),
 		default: 25,
 		scope: 'user',

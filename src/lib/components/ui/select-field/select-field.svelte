@@ -7,7 +7,7 @@
 		label: string;
 	}
 
-	/** Interner Wert fuer den "leer"-Eintrag (bits-ui kennt keinen leeren Wert) */
+	/** Interner Wert für den "leer"-Eintrag (bits-ui kennt keinen leeren Wert) */
 	const NONE = '__none__';
 
 	let {
@@ -30,12 +30,12 @@
 		value?: string | null;
 		onchange?: (value: string | null) => void;
 		placeholder?: string;
-		/** Wenn gesetzt, gibt es einen Eintrag zum Zuruecksetzen (z. B. "Alle Stände") */
+		/** Wenn gesetzt, gibt es einen Eintrag zum Zurücksetzen (z. B. "Alle Stände") */
 		emptyLabel?: string;
-		/** Zugaengliche Bezeichnung (aria-label) */
+		/** Zugängliche Bezeichnung (aria-label) */
 		label: string;
 		id?: string;
-		/** Feldname fuer native Formular-Submits (SvelteKit-Actions); leer = kein Wert */
+		/** Feldname für native Formular-Submits (SvelteKit-Actions); leer = kein Wert */
 		name?: string;
 		required?: boolean;
 		disabled?: boolean;

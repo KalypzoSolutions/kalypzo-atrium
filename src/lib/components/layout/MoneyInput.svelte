@@ -15,7 +15,7 @@
 	}: {
 		/** Betrag in Cent (Integer) */
 		cents?: number;
-		/** Zugaengliche Bezeichnung (aria-label) */
+		/** Zugängliche Bezeichnung (aria-label) */
 		label: string;
 		id?: string;
 		disabled?: boolean;
@@ -30,7 +30,7 @@
 	let focused = $state(false);
 	let text = $state('');
 
-	// Externe Aenderungen uebernehmen, solange nicht getippt wird
+	// Externe Änderungen übernehmen, solange nicht getippt wird
 	$effect(() => {
 		const c = cents;
 		if (!focused) text = formatCents(c);

@@ -11,6 +11,7 @@ import { handleApiRequest } from '$lib/server/core/api/router';
 import { createApiKey } from '$lib/server/core/api/keys';
 import { listAudit } from '$lib/server/core/audit/service';
 import membersModule from '$lib/modules/members/module';
+import { membersService } from '$lib/modules/members/fields.service';
 import type { RequestContext } from '$lib/sdk/types';
 
 const ADMIN_EMAIL = 'admin@example.test';
@@ -52,7 +53,10 @@ const memberBody = (over: Record<string, unknown> = {}) => ({
 	lastName: 'Muster',
 	scoutName: 'Fuchs',
 	birthDate: '2012-05-17',
-	address: 'Musterweg 1, 12345 Musterstadt',
+	street: 'Musterweg 1',
+	postalCode: '12345',
+	city: 'Musterstadt',
+	country: 'DE',
 	phones: [
 		{ name: 'Mutter', value: '0123 456' },
 		{ name: null, value: '0987 654' }
@@ -87,7 +91,7 @@ interface GroupDto {
 	memberCount: number;
 }
 
-// Gemeinsamer Zustand ueber die Tests hinweg (Bootstrap-Fluss)
+// Gemeinsamer Zustand über die Tests hinweg (Bootstrap-Fluss)
 let leader: MemberDto;
 let group: GroupDto;
 
@@ -101,7 +105,7 @@ beforeAll(async () => {
 	adminId = u!.id;
 	const ctxOf = async () => {
 		const r = await contextForUser(adminId);
-		if (!r) throw new Error('Kontext nicht aufloesbar');
+		if (!r) throw new Error('Kontext nicht auflösbar');
 		return r.ctx;
 	};
 	admin = await ctxOf();
@@ -153,12 +157,18 @@ describe('Bootstrap: Mitglieder und Gruppen', () => {
 		expect(list.some((g) => g.id === group.id)).toBe(true);
 	});
 
-	it('verlangt danach mindestens eine Gruppe pro Mitglied (422)', async () => {
+	it('Gruppen sind optional (auch wenn bereits Gruppen existieren)', async () => {
 		const res = await call('/members', {
 			method: 'POST',
 			json: memberBody({ firstName: 'Ohne', groupIds: [] })
 		});
-		expect(res.status).toBe(422);
+		expect(res.status).toBe(201);
+		expect((await data<MemberDto>(res, 201)).groups).toEqual([]);
+		const unknown = await call('/members', {
+			method: 'POST',
+			json: memberBody({ firstName: 'X', groupIds: [crypto.randomUUID()] })
+		});
+		expect(unknown.status).toBe(422);
 	});
 });
 
@@ -212,7 +222,7 @@ describe('Mitglieder-CRUD', () => {
 			json: memberBody({ groupIds: [group.id], ...over })
 		});
 
-	it('lehnt ungueltige Telefonnummern ab (422)', async () => {
+	it('lehnt ungültige Telefonnummern ab (422)', async () => {
 		expect((await post({ phones: [{ name: null, value: 'abc' }] })).status).toBe(422);
 		expect((await post({ phones: [{ name: null, value: '12' }] })).status).toBe(422);
 	});
@@ -230,7 +240,7 @@ describe('Mitglieder-CRUD', () => {
 		expect((await post({ birthDate: '2012-02-30' })).status).toBe(422);
 	});
 
-	it('validiert Eingaben (ungueltige E-Mail, Stufe) mit 422', async () => {
+	it('validiert Eingaben (ungültige E-Mail, Stufe) mit 422', async () => {
 		const bad = await call('/members', {
 			method: 'POST',
 			json: memberBody({ emails: [{ name: null, value: 'kaputt' }], groupIds: [group.id] })
@@ -243,7 +253,22 @@ describe('Mitglieder-CRUD', () => {
 		expect(stage.status).toBe(422);
 	});
 
-	it('loescht ein Mitglied', async () => {
+	it('kennt den Stand „Jungpfadfinder“ (Migration 0011)', async () => {
+		const m = await data<{ id: string; stage: string }>(
+			await call('/members', {
+				method: 'POST',
+				json: memberBody({ firstName: 'Jana', stage: 'jungpfadfinder', emails: [], phones: [] })
+			}),
+			201
+		);
+		expect(m.stage).toBe('jungpfadfinder');
+		const list = await data<{ items: { id: string }[] }>(
+			await call('/members?stage=jungpfadfinder')
+		);
+		expect(list.items.map((i) => i.id)).toContain(m.id);
+	});
+
+	it('löscht ein Mitglied', async () => {
 		const res = await call(`/members/${memberId}`, { method: 'DELETE' });
 		expect([200, 204]).toContain(res.status);
 		expect((await call(`/members/${memberId}`)).status).toBe(404);
@@ -269,12 +294,12 @@ describe('Gruppen-Regeln', () => {
 		expect(g.name).toBe('Wolfsrudel Nord');
 	});
 
-	it('sperrt das Loeschen des einzigen Leiters (409)', async () => {
+	it('sperrt das Löschen des einzigen Leiters (409)', async () => {
 		const res = await call(`/members/${leader.id}`, { method: 'DELETE' });
 		expect(res.status).toBe(409);
 	});
 
-	it('sperrt das Loeschen einer Gruppe mit Mitgliedern (409)', async () => {
+	it('sperrt das Löschen einer Gruppe mit Mitgliedern (409)', async () => {
 		const m = await data<MemberDto>(
 			await call('/members', {
 				method: 'POST',
@@ -283,11 +308,11 @@ describe('Gruppen-Regeln', () => {
 			201
 		);
 		expect((await call(`/groups/${group.id}`, { method: 'DELETE' })).status).toBe(409);
-		// Mitglied entfernen, dann ist die Gruppe loeschbar sofern keine Mitglieder uebrig sind
+		// Mitglied entfernen, dann ist die Gruppe löschbar sofern keine Mitglieder übrig sind
 		await call(`/members/${m.id}`, { method: 'DELETE' });
 	});
 
-	it('loescht eine leere Gruppe', async () => {
+	it('löscht eine leere Gruppe', async () => {
 		const g = await data<GroupDto>(
 			await call('/groups', {
 				method: 'POST',
@@ -328,7 +353,7 @@ describe('Gruppen: Wochentag, Farbe, Bild', () => {
 		expect(listed!.color).toBe('#aabbcc');
 	});
 
-	it('lehnt ungueltige Farbe und Wochentag ab (422)', async () => {
+	it('lehnt ungültige Farbe und Wochentag ab (422)', async () => {
 		const base = { name: 'Farbe', type: 'sippe', leaderIds: [leader.id] };
 		expect(
 			(await call('/groups', { method: 'POST', json: { ...base, color: 'rot' } })).status
@@ -350,7 +375,7 @@ describe('Gruppen: Wochentag, Farbe, Bild', () => {
 		await call(`/members/${m.id}`, { method: 'DELETE' });
 	});
 
-	it('Bild-Upload ohne verfuegbaren Storage schlaegt kontrolliert fehl', async () => {
+	it('Bild-Upload ohne verfügbaren Storage schlägt kontrolliert fehl', async () => {
 		const form = new FormData();
 		form.set('file', new File([new Uint8Array([1, 2, 3])], 'a.png', { type: 'image/png' }));
 		const res = await call(`/groups/${g.id}/image`, { method: 'POST', body: form });
@@ -384,7 +409,7 @@ describe('Dokumente (ohne Storage)', () => {
 		expect(res.ok).toBe(false);
 	});
 
-	it('Upload ohne verfuegbaren Storage schlaegt kontrolliert fehl', async () => {
+	it('Upload ohne verfügbaren Storage schlägt kontrolliert fehl', async () => {
 		const form = new FormData();
 		form.set('file', new File(['%PDF-1.4'], 'a.pdf', { type: 'application/pdf' }));
 		const res = await call(`/members/${leader.id}/documents/privacy`, {
@@ -393,6 +418,153 @@ describe('Dokumente (ohne Storage)', () => {
 		});
 		expect(res.ok).toBe(false);
 		expect(res.status).toBeLessThan(600);
+	});
+});
+
+describe('Mitgliedschaft: Eintritt, Austritt, Zweitmitglied', () => {
+	interface Membership extends MemberDto {
+		entryDate: string | null;
+		exitDate: string | null;
+		secondaryMember: boolean;
+		feeLevels: string[];
+	}
+	const today = new Date().toISOString().slice(0, 10);
+	let regular: Membership;
+	let secondary: Membership;
+	let left: Membership;
+
+	it('legt Mitglieder mit Eintritt/Austritt und Zweitmitgliedschaft an', async () => {
+		regular = await data<Membership>(
+			await call('/members', {
+				method: 'POST',
+				json: memberBody({
+					firstName: 'Regula',
+					emails: [],
+					phones: [],
+					entryDate: '2020-09-01',
+					// Nicht-Zweitmitglieder speichern immer alle Ebenen
+					feeLevels: ['stamm']
+				})
+			}),
+			201
+		);
+		expect(regular.entryDate).toBe('2020-09-01');
+		expect(regular.exitDate).toBeNull();
+		expect(regular.secondaryMember).toBe(false);
+		expect(regular.feeLevels).toEqual(['stamm', 'gau', 'landesmark', 'bund']);
+
+		secondary = await data<Membership>(
+			await call('/members', {
+				method: 'POST',
+				json: memberBody({
+					firstName: 'Zweita',
+					emails: [{ name: null, value: 'zweita@example.test' }],
+					phones: [],
+					secondaryMember: true,
+					feeLevels: ['bund', 'stamm']
+				})
+			}),
+			201
+		);
+		expect(secondary.secondaryMember).toBe(true);
+		expect(secondary.feeLevels).toEqual(['stamm', 'bund']);
+
+		left = await data<Membership>(
+			await call('/members', {
+				method: 'POST',
+				json: memberBody({
+					firstName: 'Ausgetreten',
+					emails: [],
+					phones: [],
+					entryDate: '2019-01-01',
+					exitDate: today
+				})
+			}),
+			201
+		);
+		expect(left.exitDate).toBe(today);
+	});
+
+	it('aktualisiert Austritt und Ebenen', async () => {
+		const updated = await data<Membership>(
+			await call(`/members/${secondary.id}`, {
+				method: 'PUT',
+				json: memberBody({
+					firstName: 'Zweita',
+					emails: [],
+					phones: [],
+					entryDate: '2021-03-01',
+					exitDate: '2099-12-31',
+					secondaryMember: true,
+					feeLevels: ['gau']
+				})
+			})
+		);
+		expect(updated.entryDate).toBe('2021-03-01');
+		expect(updated.exitDate).toBe('2099-12-31');
+		expect(updated.feeLevels).toEqual(['gau']);
+		const detail = await data<Membership>(await call(`/members/${secondary.id}`));
+		expect(detail.feeLevels).toEqual(['gau']);
+		expect(detail.secondaryMember).toBe(true);
+	});
+
+	it('lehnt Austritt vor Eintritt ab (422)', async () => {
+		const res = await call('/members', {
+			method: 'POST',
+			json: memberBody({ emails: [], phones: [], entryDate: '2020-05-01', exitDate: '2020-04-30' })
+		});
+		expect(res.status).toBe(422);
+		const body = await res.json();
+		expect(body.error.code).toBe('validation_failed');
+		expect(JSON.stringify(body.error.details)).toContain('exitDate');
+	});
+
+	it('lehnt Zweitmitglied ohne Ebene ab (422)', async () => {
+		const res = await call('/members', {
+			method: 'POST',
+			json: memberBody({ emails: [], phones: [], secondaryMember: true, feeLevels: [] })
+		});
+		expect(res.status).toBe(422);
+		const body = await res.json();
+		expect(body.error.code).toBe('validation_failed');
+		expect(JSON.stringify(body.error.details)).toContain('feeLevels');
+	});
+
+	it('filtert die Liste nach Status (Standard aktiv)', async () => {
+		const ids = async (q: string) =>
+			(await data<{ items: MemberDto[] }>(await call(`/members?limit=200${q}`))).items.map(
+				(m) => m.id
+			);
+		const active = await ids('');
+		expect(active).toContain(regular.id);
+		expect(active).toContain(secondary.id); // Austritt liegt in der Zukunft
+		expect(active).not.toContain(left.id);
+		expect(await ids('&status=left')).toEqual([left.id]);
+		expect(await ids('&status=all')).toEqual(
+			expect.arrayContaining([regular.id, secondary.id, left.id])
+		);
+		expect((await call('/members?status=weg')).status).toBe(422);
+	});
+
+	it('listMemberContacts liefert Mitgliedschaftsfelder für alle (auch Ausgetretene)', async () => {
+		const list = await membersService.listMemberContacts({
+			ids: [regular.id, secondary.id, left.id]
+		});
+		const byId = new Map(list.map((c) => [c.id, c]));
+		expect(byId.get(regular.id)).toMatchObject({
+			entryDate: '2020-09-01',
+			exitDate: null,
+			secondaryMember: false,
+			feeLevels: ['stamm', 'gau', 'landesmark', 'bund']
+		});
+		expect(byId.get(secondary.id)).toMatchObject({
+			entryDate: '2021-03-01',
+			exitDate: '2099-12-31',
+			secondaryMember: true,
+			feeLevels: ['gau'],
+			emails: []
+		});
+		expect(byId.get(left.id)?.exitDate).toBe(today);
 	});
 });
 
@@ -411,7 +583,7 @@ describe('Berechtigungen und Modulstatus', () => {
 		expect((await api(`${BASE}/groups`)).status).toBe(401);
 	});
 
-	it('schreibt Audit-Eintraege', async () => {
+	it('schreibt Audit-Einträge', async () => {
 		for (const action of [
 			'members.member.created',
 			'members.member.updated',
