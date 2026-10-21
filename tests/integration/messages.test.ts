@@ -28,6 +28,7 @@ import { deliveriesIdleForTests } from '$lib/modules/messages/delivery.service';
 import type {
 	MessageDetail,
 	MessageSummary,
+	MessagePreview,
 	RecipientsResult,
 	SendersResponse
 } from '$lib/modules/messages/schemas';
@@ -389,6 +390,36 @@ describe('Empfänger', () => {
 		).toBe('not_found');
 	});
 
+	it('freie Adressen: ohne Mitglieder-Recht erlaubt, normalisiert, Dublette zu Mitglied behält den Namen', async () => {
+		const only = await created<RecipientsResult>(
+			await M('viewer', '/recipients/resolve', {
+				method: 'POST',
+				json: { addresses: ['Gast@Extern.test', 'gast@extern.test'] }
+			})
+		);
+		expect(only.recipients).toEqual([{ memberId: null, name: null, address: 'gast@extern.test' }]);
+		expect(only.external).toBe(1);
+		expect(only.members).toBe(0);
+
+		const mixed = await created<RecipientsResult>(
+			await M('sender', '/recipients/resolve', {
+				method: 'POST',
+				json: { memberIds: [bert.id], addresses: ['BERT@example.test', 'neu@extern.test'] }
+			})
+		);
+		expect(mixed.recipients).toEqual([
+			{ memberId: bert.id, name: 'Bert Blau', address: 'bert@example.test' },
+			{ memberId: null, name: null, address: 'neu@extern.test' }
+		]);
+		expect(mixed.external).toBe(1);
+
+		const bad = await M('viewer', '/recipients/resolve', {
+			method: 'POST',
+			json: { addresses: ['keine-adresse'] }
+		});
+		expect(await errCode(bad, 422)).toBe('validation_failed');
+	});
+
 	it('ohne Mitglieder-Recht (nur Nachrichten-Recht) → 403', async () => {
 		expect(
 			await errCode(
@@ -573,6 +604,57 @@ describe('Senden', () => {
 			)
 		).toBe('payload_too_large');
 		await deliveriesIdleForTests();
+		expect(mails).toHaveLength(0);
+	});
+
+	it('an freie Adressen: eigene Mail, Empfänger ohne Mitglied im Verlauf', async () => {
+		const res = await data<MessageDetail>(
+			await send(
+				'viewer',
+				validBody({ senderKey: 'stamm', groupIds: [], addresses: ['gast@extern.test'] })
+			),
+			201
+		);
+		await deliveriesIdleForTests();
+		expect(mails.map((m) => String(m.to))).toEqual(['gast@extern.test']);
+		const detail = await data<MessageDetail>(await M('viewer', `/messages/${res.id}`));
+		expect(detail.recipients).toMatchObject([
+			{ name: null, address: 'gast@extern.test', status: 'sent' }
+		]);
+	});
+
+	it('Vorschau: bereinigt, Layout wie beim Versand, nichts gesendet; fremder Absender 403', async () => {
+		const body = {
+			senderKey: 'personal',
+			subject: ' Hallo ',
+			bodyHtml: '<p>Hallo <strong>Welt</strong></p><script>alert(1)</script>'
+		};
+		const stamm = await created<MessagePreview>(
+			await M('sender', '/preview', { method: 'POST', json: { ...body, layout: 'stamm' } })
+		);
+		expect(stamm.html).toContain('<strong>Welt</strong>');
+		expect(stamm.html).not.toMatch(/<script|cid:/);
+		expect(stamm.html).toMatch(/data:image/);
+		expect(stamm.subject).toBe('Hallo');
+		expect(stamm.from).toBe('Anna Müller <anna.mueller@pfadfinder.test>');
+
+		const plain = await created<MessagePreview>(
+			await M('sender', '/preview', { method: 'POST', json: { ...body, layout: 'plain' } })
+		);
+		expect(plain.html).toContain('<strong>Welt</strong>');
+		expect(plain.html).not.toMatch(/<table|data:image|Pfadfinderschaft/);
+
+		// leerer Entwurf geht auch
+		await created<MessagePreview>(await M('sender', '/preview', { method: 'POST', json: {} }));
+		expect(
+			await errCode(
+				await M('sender', '/preview', { method: 'POST', json: { senderKey: 'group:fremd' } }),
+				403
+			)
+		).toBe('forbidden');
+		expect(await errCode(await M('noperm', '/preview', { method: 'POST', json: body }), 403)).toBe(
+			'forbidden'
+		);
 		expect(mails).toHaveLength(0);
 	});
 

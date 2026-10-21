@@ -78,3 +78,24 @@ test('Neue Nachricht: ein Empfängerfeld, Gruppe als Chip, Aussehen wählbar', a
 	await expect(page.getByLabel('Aussehen')).toBeVisible();
 	await expect(page.getByLabel('Gruppen', { exact: true })).toHaveCount(0);
 });
+
+test('Neue Nachricht: freie Adresse als Chip, Vorschau zeigt die Mail', async ({ page }) => {
+	await login(page);
+	await ensureModules(page, ['members', 'messages']);
+	await page.goto('/modules/messages/new');
+	const to = page.getByRole('combobox', { name: 'An' });
+	await to.fill('Gast@Extern.test');
+	await expect(page.getByRole('option', { name: /gast@extern\.test/ })).toBeVisible();
+	await to.press('Enter');
+	const chips = page.getByRole('list', { name: 'Empfänger' });
+	await expect(chips.getByText('gast@extern.test')).toBeVisible();
+	await expect(page.getByText(/1\s+einzelne Adresse/)).toBeVisible();
+
+	await page.getByLabel('Betreff').fill('Hallo Gäste');
+	await page.getByRole('tab', { name: 'Vorschau' }).click();
+	const frame = page.frameLocator('iframe[title="Vorschau der E-Mail"]');
+	await expect(page.getByText('Hallo Gäste', { exact: true })).toBeVisible();
+	await expect(frame.locator('body')).toBeVisible();
+	await page.getByRole('tab', { name: 'Schreiben' }).click();
+	await expect(page.getByLabel('Betreff')).toHaveValue('Hallo Gäste');
+});

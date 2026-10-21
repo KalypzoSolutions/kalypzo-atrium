@@ -41,7 +41,7 @@
 	});
 </script>
 
-<div class="grid gap-1.5">
+<div class="grid content-start gap-1.5">
 	<Label for={id}>
 		{#if required}
 			<span>{label}<span class="ml-0.5 text-destructive" aria-hidden="true">*</span></span>

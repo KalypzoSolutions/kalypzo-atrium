@@ -47,7 +47,7 @@ import {
 } from './permissions/grants';
 import { readAvatar } from './auth/profile';
 import * as pdf from './pdf';
-import { sendMail } from './mail';
+import { previewMailHtml, sendMail } from './mail';
 import { errors } from './errors';
 import { env } from './env';
 import { qrDataUrl } from './qr';
@@ -361,7 +361,9 @@ export const core = {
 		/** Sendet eine E-Mail an eine einzelne Adresse; SMTP-Fehler werden weitergereicht */
 		send: sendModuleMail,
 		/** Wie `send`, aber mit gewähltem Absender/Antwortadresse und bis zu 10 beliebigen Anhängen (20 MB) */
-		sendMessage: sendModuleMessage
+		sendMessage: sendModuleMessage,
+		/** HTML-Dokument, wie `sendMessage` es senden würde (Layout, Bilder als `data:`) – nur für Vorschauen */
+		preview: previewMailHtml
 	},
 	qr: {
 		/** QR-Code als PNG-`data:`-URL (z. B. für den PDF-Bildblock) */

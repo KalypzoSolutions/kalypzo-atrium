@@ -221,6 +221,20 @@ export function sendMail(msg: MailMessage): Promise<void> {
 	return p;
 }
 
+/**
+ * HTML einer Mail, wie sie beim Versand aussähe (Stamm-Layout mit den gespeicherten Einstellungen,
+ * Bilder als `data:`-URLs statt CID) – für Vorschauen, ohne etwas zu senden.
+ */
+export async function previewMailHtml(msg: {
+	text: string;
+	html: string;
+	layout?: boolean;
+}): Promise<string> {
+	const options = await loadMailLayoutOptions();
+	if (msg.layout === false || !options.enabled) return msg.html;
+	return renderMailLayout({ text: msg.text, html: msg.html }, options, 'data').html;
+}
+
 const SENDER_ADDRESS = /^[^\s@,;<>()"\x5c]+@[^\s@,;<>()"\x5c]+\.[^\s@,;<>()"\x5c]+$/;
 
 /** Absender-Kopfzeile `"Name" <adresse>`; ungültige Adressen/Namen mit Steuerzeichen werden abgewiesen (Header-Injection). */
