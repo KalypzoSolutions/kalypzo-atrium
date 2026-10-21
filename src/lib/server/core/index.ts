@@ -146,6 +146,10 @@ async function sendModuleMessage(msg: {
 	from?: string;
 	fromName?: string;
 	replyTo?: string;
+	/** Kein Stamm-Layout (Kopf, Signatur, Fußzeile): einfache Mail */
+	layout?: boolean;
+	/** Adresse für den `List-Unsubscribe`-Header (`mailto:`) – senkt den Spam-Wert */
+	unsubscribe?: string;
 	attachments?: { filename: string; contentType: string; data: Uint8Array }[];
 }): Promise<void> {
 	const bad = (path: string, message: string) => errors.validation([{ path: [path], message }]);
@@ -168,7 +172,8 @@ async function sendModuleMessage(msg: {
 	}
 	for (const [k, v] of [
 		['from', msg.from],
-		['replyTo', msg.replyTo]
+		['replyTo', msg.replyTo],
+		['unsubscribe', msg.unsubscribe]
 	] as const) {
 		if (v !== undefined && (typeof v !== 'string' || v.length > 254 || !EMAIL_RE.test(v))) {
 			throw bad(k, 'Ungültige E-Mail-Adresse');
@@ -198,9 +203,13 @@ async function sendModuleMessage(msg: {
 			: 'application/octet-stream',
 		content: Buffer.from(a.data)
 	}));
-	const { attachments: _a, ...rest } = msg;
+	const { attachments: _a, unsubscribe, ...rest } = msg;
 	void _a;
-	await sendMail({ ...rest, files });
+	await sendMail({
+		...rest,
+		files,
+		...(unsubscribe ? { headers: { 'List-Unsubscribe': `<mailto:${unsubscribe}>` } } : {})
+	});
 }
 
 export const core = {

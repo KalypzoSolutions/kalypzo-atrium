@@ -99,6 +99,8 @@ export function renderMailLayout(
 	const lilieSrc = images === 'cid' ? `cid:${CID.lilie}` : lilieUrl;
 	const wappenSrc = images === 'cid' ? `cid:${CID.wappen}` : wappenUrl;
 	const body = input.html ?? textToHtml(input.text, o.accentColor);
+	// Erste Zeile des Textes als Titel (Mailclients ohne Betreff-Vorschau, wenig Spam-Punkte für leere Titel)
+	const title = input.text.trim().split(/\r?\n/)[0]?.slice(0, 80) ?? '';
 	const signature = o.signature.trim();
 	const footer = o.footerText.trim();
 
@@ -106,19 +108,19 @@ export function renderMailLayout(
 		? `<p style="margin:24px 0 0;">${escapeHtml(signature).replace(/\r?\n/g, '<br/>')}</p>`
 		: '';
 	const emblem = o.showEmblem
-		? `<td align="right" valign="top" style="padding:0 0 0 12px;"><img src="${wappenSrc}" alt="" height="66" style="display:block;height:66px;width:auto;border:0;" /></td>`
+		? `<td align="right" valign="top" style="padding:0 0 0 12px;"><img src="${wappenSrc}" alt="Wappen" height="66" style="display:block;height:66px;width:auto;border:0;" /></td>`
 		: '';
 	const footerHtml = footer
 		? `<tr><td style="padding:16px 32px 24px;font-size:11px;line-height:15px;color:#6b7280;text-align:center;border-top:1px solid #e5e7eb;">${escapeHtml(footer)}</td></tr>`
 		: '';
 
 	const html = `<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="color-scheme" content="light"/></head>
+<html lang="de"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="color-scheme" content="light"/><title>${escapeHtml(title)}</title></head>
 <body style="margin:0;padding:0;background:#f3f4f6;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:8px;border-top:4px solid ${o.accentColor};font-family:${FONT};color:#111827;">
 <tr><td style="padding:24px 32px 16px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td valign="middle" width="40" style="width:40px;padding:0 12px 0 0;"><img src="${lilieSrc}" alt="" height="48" style="display:block;height:48px;width:auto;border:0;" /></td>
+<td valign="middle" width="40" style="width:40px;padding:0 12px 0 0;"><img src="${lilieSrc}" alt="Pfadfinder-Lilie" height="48" style="display:block;height:48px;width:auto;border:0;" /></td>
 <td valign="middle" style="font-size:17px;line-height:22px;font-weight:bold;color:#000000;">Christliche<br/>Pfadfinderschaft<br/>Deutschlands e.V.</td>
 ${emblem}
 </tr></table></td></tr>

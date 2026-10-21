@@ -40,6 +40,7 @@ src/lib/modules/<id>/
   wird bei jedem Start übernommen (auch für bestehende Rechte) und unter Administration → Rollen → Berechtigungen (`/admin/roles/permissions`) sowie bei API-Key-Scopes
   angezeigt. Test: `tests/integration/permission-descriptions.test.ts`.
 - Navigation: `{ label, icon, path:'/modules/<id>…', permission, anyPermission?, group?, groupIcon? }`; gleiche `group` = aufklappbare Gruppe.
+  Gleiche `group` wird **modulübergreifend** zu einer Gruppe (z. B. „Stamm“ mit `members` und `messages`, `SidebarNav`); das erste gesetzte `groupIcon` gilt.
   `anyPermission` (eines genügt, ersetzt `permission`) für Seiten mit eingeschränktem Modus (z. B. `members` für Gruppenleitungen).
   Icons stehen in `components/layout/icons.ts` (unbekannt → Box) – neue dort ergänzen.
   Eigene Einstellungsseite eines Moduls: Navigationseintrag mit `admin: true` → erscheint in der Verwaltung (Abschnitt „Module“, Befehlspalette)

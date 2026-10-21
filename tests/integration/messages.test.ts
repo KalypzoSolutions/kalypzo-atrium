@@ -274,6 +274,19 @@ describe('Absender', () => {
 		expect(res.replyToDefault).toBe('account');
 	});
 
+	it('Hinweis zur Zustellbarkeit, wenn Absender-Domain und Mailserver-Domain abweichen', async () => {
+		await setSetting(admin, 'core.smtp.from', 'intern@mailserver.example');
+		try {
+			const res = await data<SendersResponse>(await M('sender', '/senders'));
+			expect(res.deliverabilityHint).toMatch(/pfadfinder\.test.*mailserver\.example.*SPF/s);
+			expect(res.layoutDefault).toBe('stamm');
+		} finally {
+			await setSetting(admin, 'core.smtp.from', 'intern@pfadfinder.test');
+		}
+		const same = await data<SendersResponse>(await M('sender', '/senders'));
+		expect(same.deliverabilityHint).toBeNull();
+	});
+
 	it('ohne Domain keine persönliche Adresse, aber ein Hinweis', async () => {
 		await setSetting(admin, 'messages.domain', '');
 		try {
@@ -424,6 +437,58 @@ describe('Senden', () => {
 		expect(detail.recipients.every((r) => r.status === 'sent')).toBe(true);
 		expect(detail.attachments.map((a) => a.filename).sort()).toEqual(['Einladung.txt', 'Plan.pdf']);
 		expect(detail.bodyHtml).not.toMatch(/<script|onclick|javascript:/i);
+	});
+
+	it('Aussehen „Einfach“: kein Stamm-Layout, keine Bilder; „Stamm“: Layout mit Anhängen (Logo)', async () => {
+		const only = { groupIds: [], memberIds: [bert.id] };
+		await data<MessageDetail>(
+			await send(
+				'sender',
+				validBody({ ...only, layout: 'plain', bodyHtml: '<p>Hallo <strong>Bert</strong></p>' })
+			),
+			201
+		);
+		await deliveriesIdleForTests();
+		expect(mails).toHaveLength(1);
+		const plain = mails[0]!;
+		expect(plain.html).toContain('<strong>Bert</strong>');
+		expect(plain.html).not.toMatch(/cid:|<table|background|Pfadfinderschaft/);
+		expect((plain.attachments ?? []).length).toBe(0);
+		expect(plain.text).toContain('Hallo');
+
+		mails = [];
+		const stamm = await data<MessageDetail>(
+			await send('sender', validBody({ ...only, layout: 'stamm' })),
+			201
+		);
+		expect(stamm.layout).toBe('stamm');
+		await deliveriesIdleForTests();
+		expect(mails[0]!.html).toMatch(/cid:/);
+		expect((mails[0]!.attachments ?? []).length).toBeGreaterThan(0);
+
+		// ohne Angabe gilt die Einstellung
+		await setSetting(admin, 'messages.layout.default', 'plain');
+		try {
+			const dflt = await data<MessageDetail>(await send('sender', validBody(only)), 201);
+			expect(dflt.layout).toBe('plain');
+			await deliveriesIdleForTests();
+		} finally {
+			await setSetting(admin, 'messages.layout.default', 'stamm');
+		}
+	});
+
+	it('Zustellbarkeit: Message-ID mit Absender-Domain, List-Unsubscribe, Text-Fassung, alt-Texte', async () => {
+		await data<MessageDetail>(
+			await send('sender', validBody({ groupIds: [], memberIds: [bert.id] })),
+			201
+		);
+		await deliveriesIdleForTests();
+		const m = mails[0]!;
+		expect(m.messageId).toMatch(/^<[0-9a-f-]+@pfadfinder\.test>$/);
+		expect(m.headers?.['List-Unsubscribe']).toBe('<mailto:stamm@pfadfinder.test>');
+		expect(m.text.length).toBeGreaterThan(0);
+		expect(m.html).toMatch(/alt="Pfadfinder-Lilie"/);
+		expect(m.html).not.toMatch(/<img[^>]*alt=""/);
 	});
 
 	it('Reply-To abweichend setzbar; Stamm-Absender ohne Namen-Mix', async () => {

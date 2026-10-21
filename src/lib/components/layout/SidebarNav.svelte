@@ -38,7 +38,10 @@
 
 	const primary = $derived(PRIMARY_NAV.filter((i) => canSeeNavItem(permissions, i)));
 
-	/** Modul-Einträge: gleiche `group` (je Modul) werden zu einer Gruppe, Reihenfolge bleibt erhalten. */
+	/**
+	 * Modul-Einträge: gleiche `group` werden zu einer Gruppe – auch über Module hinweg (z. B. „Stamm“ mit
+	 * Mitgliedern und Nachrichten); Reihenfolge bleibt erhalten.
+	 */
 	const moduleEntries = $derived.by(() => {
 		const out: Entry[] = [];
 		const groups = new Map<string, Group>();
@@ -49,7 +52,7 @@
 				out.push({ kind: 'link', link });
 				continue;
 			}
-			const id = `${n.moduleId}:${n.group}`;
+			const id = `group:${n.group}`;
 			let g = groups.get(id);
 			if (!g) {
 				g = { kind: 'group', id, label: n.group, icon: n.groupIcon ?? 'folder', items: [] };

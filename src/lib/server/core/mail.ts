@@ -23,6 +23,11 @@ export interface MailMessage {
 	fromName?: string;
 	/** Adresse für Antworten */
 	replyTo?: string;
+	/**
+	 * Zusätzliche Kopfzeilen (z. B. `List-Unsubscribe`); nur vom Core gesetzt (`core.mail.sendMessage`),
+	 * Werte ohne Zeilenumbrüche.
+	 */
+	headers?: Record<string, string>;
 }
 
 export interface MailTransport {
@@ -33,6 +38,9 @@ export interface MailTransport {
 		text: string;
 		html?: string;
 		replyTo?: string;
+		/** `Message-ID` mit der Domain des Absenders (statt des SMTP-Hosts) */
+		messageId?: string;
+		headers?: Record<string, string>;
 		attachments?: (MailAttachment | { filename: string; content: Buffer; contentType: string })[];
 	}): Promise<unknown>;
 }
@@ -232,18 +240,25 @@ export function formatSender(address: string, name?: string): string {
 
 async function sendMailNow(msg: MailMessage): Promise<void> {
 	const { t, from: defaultFrom, pooled } = await transport();
-	const { layout, files = [], from: fromAddress, fromName, replyTo, ...mail } = msg;
+	const { layout, files = [], from: fromAddress, fromName, replyTo, headers, ...mail } = msg;
 	const from = fromAddress ? formatSender(fromAddress, fromName) : defaultFrom;
 	if (replyTo !== undefined && (replyTo.length > 254 || !SENDER_ADDRESS.test(replyTo))) {
 		throw errors.badRequest('Ungültige Antwortadresse');
 	}
 	const reply = replyTo ? { replyTo } : {};
+	// Message-ID mit der Domain der Absenderadresse (passt zu SPF/DKIM, weniger Spam-Punkte)
+	const domain = fromAddress?.split('@')[1];
+	const extra = {
+		...(domain ? { messageId: `<${crypto.randomUUID()}@${domain}>` } : {}),
+		...(headers && Object.keys(headers).length ? { headers } : {})
+	};
 	const options = await loadMailLayoutOptions();
 	if (layout === false || !options.enabled) {
 		await deliver(t, pooled, {
 			from,
 			...mail,
 			...reply,
+			...extra,
 			...(files.length ? { attachments: files } : {})
 		});
 		return;
@@ -254,6 +269,7 @@ async function sendMailNow(msg: MailMessage): Promise<void> {
 		to: mail.to,
 		subject: mail.subject,
 		...reply,
+		...extra,
 		...rendered,
 		attachments: [...rendered.attachments, ...files]
 	});
