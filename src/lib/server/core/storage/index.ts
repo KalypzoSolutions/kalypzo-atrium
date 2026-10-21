@@ -10,6 +10,7 @@ import {
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { and, eq, inArray, like, sql } from 'drizzle-orm';
+import { DEFAULT_ALLOWED_CONTENT_TYPES } from '$lib/sdk/content-types';
 import type { RequestContext, StoredFile } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getDb, schema } from '../database/client';
@@ -97,24 +98,7 @@ const REMOVE_BATCH = 1000;
 const REMOVE_FALLBACK_PARALLEL = 8;
 const MAX_SIGNED_TTL = 3600;
 
-export const DEFAULT_ALLOWED_CONTENT_TYPES = [
-	'application/pdf',
-	'image/png',
-	'image/jpeg',
-	'image/gif',
-	'image/webp',
-	'text/plain',
-	'text/csv',
-	'text/markdown',
-	'application/json',
-	'application/zip',
-	'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-	'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-	'application/msword',
-	'application/vnd.ms-excel',
-	'application/vnd.ms-powerpoint'
-];
+export { DEFAULT_ALLOWED_CONTENT_TYPES };
 
 // Aktive Inhalte: nur zulässig, wenn ausdrücklich in der Allowlist genannt
 const ACTIVE_CONTENT_TYPES = new Set(['text/html', 'image/svg+xml', 'application/xhtml+xml']);

@@ -166,6 +166,35 @@ describe('Storage-Service', () => {
 		).resolves.toBeTruthy();
 	});
 
+	it('erlaubt Office-Dokumente und -Vorlagen, aber keine Makro-Formate', async () => {
+		const ctx = ctxWith('members.storage.write');
+		const allowed = [
+			'application/msword',
+			'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
+			'application/vnd.openxmlformats-officedocument.presentationml.template',
+			'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
+			'application/rtf',
+			'application/vnd.oasis.opendocument.text',
+			'application/vnd.oasis.opendocument.text-template',
+			'image/avif'
+		];
+		for (const [i, ct] of allowed.entries()) {
+			await expect(
+				storage.upload(ctx, { ...txt('members', `office-${i}`), contentType: ct })
+			).resolves.toBeTruthy();
+		}
+		for (const ct of [
+			'application/vnd.ms-word.document.macroenabled.12',
+			'application/vnd.ms-word.template.macroenabled.12',
+			'application/vnd.ms-excel.sheet.macroenabled.12'
+		]) {
+			await expect(
+				storage.upload(ctx, { ...txt('members', 'makro'), contentType: ct })
+			).rejects.toMatchObject({ code: 'bad_request' });
+		}
+	});
+
 	it('prüft Berechtigungen; System-Akteur darf alles', async () => {
 		await expect(storage.upload(ctxWith(), txt('members', 'a.txt'))).rejects.toMatchObject({
 			code: 'forbidden'

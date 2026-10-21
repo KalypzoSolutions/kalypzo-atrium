@@ -273,7 +273,7 @@ Zugriff (Service-Funktionen für Module): `<module>.storage.read|write|delete` o
 `<module>.storage.*` ist ein **internes** Recht für die Modul-Endpunkte, die vorher selbst die Objekt-ACL (Freigabe, Eigentum, Abschluss-Sperre) prüfen.
 Die generische REST-API `/api/v1/storage/*` (`files`, `upload-url`, `files/:id/confirm`, `download-url`) verlangt dagegen **`core.storage.manage`**
 (System hat alle Rechte); `<module>.storage.*` öffnet sie nicht. Die Prüfung läuft im Router vor jedem Storage-Zugriff (403 vor 503).
-Moduldateien gibt es für alle anderen nur über die Modul-Endpunkte. Grenzen: `core.storage.maxFileSizeMb`, Content-Type-Allowlist (HTML/SVG nur bei expliziter Freigabe). Metadaten liegen in `file`, Objekte unter einem nicht ableitbaren Schlüssel im Bucket.
+Moduldateien gibt es für alle anderen nur über die Modul-Endpunkte. Grenzen: `core.storage.maxFileSizeMb`, Content-Type-Allowlist (`core.storage.allowedContentTypes`, leer = Standardliste `DEFAULT_ALLOWED_CONTENT_TYPES` aus `$lib/sdk/content-types`: PDF, Bilder, Text, ZIP, Office/OpenDocument inkl. Vorlagen, RTF; keine Makro-Formate; HTML/SVG nur bei expliziter Freigabe). Metadaten liegen in `file`, Objekte unter einem nicht ableitbaren Schlüssel im Bucket.
 
 ## core.images
 
