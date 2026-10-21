@@ -88,6 +88,11 @@ Neben manuell zugewiesenen Rollen (`user_role`) können **Module** Rollen verlei
 - Modulrechte wirken nur bei aktivem Modul. Benutzer löschen entfernt die Zeilen (CASCADE). Backup/Reset: Bereich `core:users`
   bzw. Reset-Bereich „Benutzer“; Datenauskunft nennt sie als `directPermissions`.
 
+### Rechte des Moduls Nachrichten
+
+`messages.message.send` (Nachrichten an Mitglieder/Gruppen senden, eigener Verlauf; Empfänger nach `members.member.view` bzw. Gruppenleitung `members.led-member.view` nur eigene Gruppen),
+`messages.message.view-all` (Verlauf aller), `messages.settings.manage` (Einstellungen). Siehe `.claude/rules/module-messages.md`.
+
 ## Systemrolle Administrator
 
 Die Rolle `Administrator` (ID `role_administrator`, `isSystem`) wird beim Start angelegt; neue Berechtigungen werden ihr automatisch zugeordnet. Es gibt **kein Wildcard-Recht**: Der Administrator besitzt konkret alle registrierten Berechtigungen. Systemrollen können weder umbenannt, noch in ihren Rechten geändert, noch gelöscht werden. Der erste Administrator entsteht über `INITIAL_ADMIN_EMAIL/PASSWORD`.
