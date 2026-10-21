@@ -14,7 +14,7 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { RequestContext } from '$lib/sdk/types';
 import type { AccountingState } from '$lib/modules/actions/schemas';
 import type { Account, Payable, PayableList } from '$lib/modules/treasury/schemas';
@@ -181,7 +181,7 @@ beforeAll(async () => {
 	for (const m of ['members', 'actions', 'treasury']) await enableModule(admin, m);
 	admin = (await contextForUser(u!.id))!.ctx;
 	setPdfRendererForTests(async () => new TextEncoder().encode('%PDF-fake'));
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 	key = (await createApiKey(admin, { name: 'admin', scopes: [...admin.permissions] })).key;
 	giro = (
 		await data<Account>(
@@ -197,7 +197,7 @@ beforeAll(async () => {
 afterAll(async () => {
 	// keine weiteren Anfragen vor close() – sonst hängt PGlite
 	setPdfRendererForTests(undefined);
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 

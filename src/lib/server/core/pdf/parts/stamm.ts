@@ -19,9 +19,6 @@ import {
 export const PART_IDS = ['briefkopf', 'falzmarken', 'adressfeld', 'fusszeile'] as const;
 export type StammPartId = (typeof PART_IDS)[number];
 
-export const PAGE_WIDTH_MM = 210;
-export const PAGE_HEIGHT_MM = 297;
-
 export const GEOMETRY = {
 	lilie: { x: 13, y: 10.8, width: 13.5, height: 16.8 },
 	title: { x: 30.5, y: 18.8, lineHeight: 6.7, sizePt: 13 },

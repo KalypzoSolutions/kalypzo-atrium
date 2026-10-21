@@ -54,7 +54,7 @@ describe('renderDisclaimer', () => {
 			'{{aktion}}: {{beitrag}} an {{kontoinhaber}} ({{verwendungszweck}})',
 			vars
 		);
-		expect(out).toBe('Sommerlager: 93,00 € an Stamm (Sommerlager + Name)');
+		expect(out).toBe('Sommerlager: 93,00\u00a0€ an Stamm (Sommerlager + Name)');
 	});
 	it('ohne Beitrag Hinweistext, unbekannte Platzhalter leer, kein erneutes Ersetzen', () => {
 		expect(renderDisclaimer('{{beitrag}}|{{foo}}|{{bic}}', { ...vars, feeCents: null })).toBe(
@@ -63,8 +63,9 @@ describe('renderDisclaimer', () => {
 		expect(renderDisclaimer('{{aktion}}', { ...vars, aktion: '{{iban}}' })).toBe('{{iban}}');
 	});
 	it('formatiert Euro mit Tausenderpunkt', () => {
-		expect(formatEuro(123456)).toBe('1.234,56 €');
-		expect(formatEuro(5)).toBe('0,05 €');
+		// einheitlich über money.ts (Intl, geschütztes Leerzeichen vor „€“, #34)
+		expect(formatEuro(123456)).toBe('1.234,56\u00a0€');
+		expect(formatEuro(5)).toBe('0,05\u00a0€');
 	});
 });
 
@@ -90,7 +91,7 @@ describe('toCsv', () => {
 			],
 			cols
 		);
-		expect(csv.startsWith('﻿A;B\r\n')).toBe(true);
+		expect(csv.startsWith('\ufeffA;B\r\n')).toBe(true);
 		expect(csv).toContain('\'=1+1;"x;y"');
 		expect(csv).toContain('\'+49;"sagt ""hi"""');
 		expect(csv).toContain("'@a;'-1");

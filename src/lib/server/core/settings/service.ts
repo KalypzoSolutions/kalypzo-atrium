@@ -6,7 +6,24 @@ import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { allDefinitions } from '../modules/registry';
 import { has } from '../permissions/service';
-import { CORE_SETTINGS, type SettingDefinition } from './catalog';
+import { invalidateStorageConfigCache } from '../storage/config-cache';
+import { invalidateMailTransportCache } from '../mail-cache';
+import { CORE_SETTINGS, SECRET_BINDINGS, type SettingDefinition } from './catalog';
+
+/** Höchstzahl Schlüssel je Speichervorgang (`setSettings`, `PUT /api/v1/settings`) */
+export const MAX_SETTINGS_PER_WRITE = 100;
+const CORE_WRITE_PERMISSION = 'core.settings.manage';
+
+/** `<modul>.settings.manage`, wenn das Modul es deklariert (z. B. Kasse), sonst `core.settings.manage`. */
+function moduleWritePermission(manifest: { id: string; permissions: string[] }): string {
+	const own = `${manifest.id}.settings.manage`;
+	return manifest.permissions.includes(own) ? own : CORE_WRITE_PERMISSION;
+}
+
+/** Recht, das zum Schreiben einer globalen Einstellung nötig ist. */
+export function writePermissionOf(def: SettingDefinition): string {
+	return def.writePermission ?? CORE_WRITE_PERMISSION;
+}
 
 function definitionMap(): Map<string, SettingDefinition> {
 	const map = new Map<string, SettingDefinition>();
@@ -21,7 +38,8 @@ function definitionMap(): Map<string, SettingDefinition> {
 				default: s.default,
 				secret: s.secret,
 				scope: 'global',
-				group: m.manifest.id
+				group: m.manifest.id,
+				writePermission: s.writePermission ?? moduleWritePermission(m.manifest)
 			});
 		}
 	}
@@ -78,6 +96,22 @@ export interface PublicSettingValue {
 	isSet: boolean;
 }
 
+/**
+ * `core.settings.listPublic` für Module (#67, 01a-12): wie `getPublicSettings`, aber nur mit
+ * `core.settings.view` (bzw. System-Kontext) – auch nicht geheime Werte (z. B. Bankdaten) sind nicht für
+ * jedes Modul bestimmt. Einzelwerte eigener Einstellungen liest ein Modul mit `core.settings.get`.
+ */
+export async function listPublicSettingsFor(
+	ctx: RequestContext,
+	filter: { group?: string; scope?: 'global' | 'user' } = {}
+): Promise<PublicSettingValue[]> {
+	if (ctx.actor.type !== 'system' && !ctx.userId) throw errors.unauthenticated();
+	if (!has(ctx, 'core.settings.view')) {
+		throw errors.forbidden('Berechtigung fehlt: core.settings.view');
+	}
+	return getPublicSettings({ ...filter, userId: ctx.userId });
+}
+
 /** Für UI/API: Secrets werden nie ausgeliefert. */
 export async function getPublicSettings(
 	filter: { group?: string; userId?: string | null; scope?: 'global' | 'user' } = {}
@@ -115,52 +149,183 @@ export async function getPublicSettings(
 }
 
 /**
- * Setzt eine Einstellung. Globale Einstellungen erfordern `core.settings.manage`,
- * benutzerspezifische dürfen nur für den eigenen Benutzer gesetzt werden.
- * Secrets: `undefined`/leerer String behält den bisherigen Wert; `null` löscht.
+ * `null` löscht den gespeicherten Wert (→ Standardwert). Erlaubt nur, wenn danach ein gültiger Wert gilt:
+ * Secrets, Schemas mit `null` oder ein Standardwert, der das Schema erfüllt. Sonst 422 – `null` umgeht
+ * so nie die Schemaprüfung.
  */
+function isClearable(def: SettingDefinition): boolean {
+	if (def.secret || def.schema.safeParse(null).success) return true;
+	return def.default !== undefined && def.schema.safeParse(def.default).success;
+}
+
+type WriteOp =
+	| { key: string; def: SettingDefinition; scopeId: string; kind: 'delete'; auto?: boolean }
+	| { key: string; def: SettingDefinition; scopeId: string; kind: 'upsert'; value: unknown };
+
+const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+export interface SetSettingsResult {
+	/** Secrets, die wegen eines geänderten Ziels (Host, URL …) verworfen wurden */
+	clearedSecrets: string[];
+}
+
+/**
+ * Setzt mehrere Einstellungen **atomar**: erst werden alle Schlüssel geprüft (Existenz, Schreibrecht,
+ * Schema; `null` nur, wenn löschbar), dann in EINER Transaktion geschrieben, danach Audit.
+ *
+ * - Globale Einstellungen brauchen ihr `writePermission` (Standard `core.settings.manage`, Modul-Schlüssel
+ *   ggf. `<modul>.settings.manage`); benutzerspezifische dürfen nur für den eigenen Benutzer gesetzt werden.
+ * - Secrets: `undefined`/leerer String behält den bisherigen Wert; `null` löscht.
+ * - Ändert sich ein Ziel aus `SECRET_BINDINGS` (z. B. SMTP-Host), wird das zugehörige Secret gelöscht,
+ *   sofern es nicht im selben Aufruf neu gesetzt wird.
+ * - Mehr als `MAX_SETTINGS_PER_WRITE` Schlüssel → 422.
+ */
+export async function setSettings(
+	ctx: RequestContext,
+	values: Record<string, unknown>,
+	opts: { userId?: string } = {}
+): Promise<SetSettingsResult> {
+	const entries = Object.entries(values);
+	if (entries.length > MAX_SETTINGS_PER_WRITE) {
+		const message = `Höchstens ${MAX_SETTINGS_PER_WRITE} Einstellungen auf einmal`;
+		throw errors.validation([{ path: ['values'], message }], message);
+	}
+	// 1) Existenz und Rechte – vor jeder Schemaprüfung
+	const defs = entries.map(([key]) => getDefinition(key));
+	const scopeIds = defs.map((def) => {
+		if (def.scope === 'global') {
+			const perm = writePermissionOf(def);
+			if (!has(ctx, perm)) throw errors.forbidden(`Berechtigung fehlt: ${perm}`);
+			return '';
+		}
+		if (!ctx.userId) throw errors.unauthenticated();
+		const target = opts.userId ?? ctx.userId;
+		if (target !== ctx.userId) throw errors.forbidden('Nur eigene Einstellungen änderbar');
+		return target;
+	});
+
+	// 2) Werte prüfen (alle Fehler gesammelt, nichts geschrieben)
+	const ops: WriteOp[] = [];
+	const issues: { path: (string | number)[]; message: string }[] = [];
+	entries.forEach(([key, value], i) => {
+		const def = defs[i]!;
+		const scopeId = scopeIds[i]!;
+		if (def.secret && (value === undefined || value === '')) return;
+		if (value === null) {
+			if (!isClearable(def)) {
+				issues.push({ path: [key], message: 'Diese Einstellung kann nicht gelöscht werden' });
+				return;
+			}
+			ops.push({ key, def, scopeId, kind: 'delete' });
+			return;
+		}
+		const parsed = def.schema.safeParse(value);
+		if (!parsed.success) {
+			for (const iss of parsed.error.issues) {
+				const sub = iss.path.map((p) => (typeof p === 'number' ? p : String(p)));
+				issues.push({ path: [key, ...sub], message: iss.message });
+			}
+			return;
+		}
+		ops.push({ key, def, scopeId, kind: 'upsert', value: parsed.data });
+	});
+	if (issues.length) {
+		const message =
+			issues.length === 1
+				? `Ungültiger Wert für ${String(issues[0]!.path[0])}`
+				: 'Ungültige Einstellungen';
+		throw errors.validation(issues, message);
+	}
+
+	// 3) Ziel-gebundene Secrets verwerfen, wenn sich das Ziel ändert
+	const clearedSecrets: string[] = [];
+	const touched = new Map<string, WriteOp>(
+		ops.filter((o) => o.scopeId === '').map((o) => [o.key, o])
+	);
+	const targetKeys = SECRET_BINDINGS.flatMap((b) => b.targets).filter((k) => touched.has(k));
+	if (targetKeys.length) {
+		const rows = await getDb()
+			.select()
+			.from(schema.setting)
+			.where(and(inArray(schema.setting.key, targetKeys), eq(schema.setting.scopeId, '')));
+		const current = (k: string) => {
+			const row = rows.find((r) => r.key === k);
+			return row ? row.value : getDefinition(k).default;
+		};
+		for (const b of SECRET_BINDINGS) {
+			const changed = b.targets.some((k) => {
+				const op = touched.get(k);
+				if (!op) return false;
+				const next = op.kind === 'upsert' ? op.value : getDefinition(k).default;
+				return !sameValue(current(k), next);
+			});
+			if (!changed) continue;
+			for (const secret of b.secrets) {
+				const op = touched.get(secret);
+				if (op?.kind === 'upsert') continue; // im selben Vorgang neu gesetzt
+				if (!op) {
+					const auto: WriteOp = {
+						key: secret,
+						def: getDefinition(secret),
+						scopeId: '',
+						kind: 'delete',
+						auto: true
+					};
+					ops.push(auto);
+					touched.set(secret, auto);
+				}
+				clearedSecrets.push(secret);
+			}
+		}
+	}
+
+	// 4) Schreiben in einer Transaktion
+	if (ops.length) {
+		await getDb().transaction(async (tx) => {
+			for (const op of ops) {
+				const where = and(eq(schema.setting.key, op.key), eq(schema.setting.scopeId, op.scopeId));
+				if (op.kind === 'delete') {
+					await tx.delete(schema.setting).where(where);
+					continue;
+				}
+				const stored = op.def.secret ? encryptSecret(String(op.value)) : op.value;
+				await tx
+					.insert(schema.setting)
+					.values({ key: op.key, scopeId: op.scopeId, value: stored, updatedBy: ctx.userId })
+					.onConflictDoUpdate({
+						target: [schema.setting.key, schema.setting.scopeId],
+						set: { value: stored, updatedAt: new Date(), updatedBy: ctx.userId }
+					});
+			}
+		});
+		// Storage-Konfiguration wird kurz zwischengespeichert (Team Performance, #23)
+		if (ops.some((o) => o.key.startsWith('core.storage.'))) invalidateStorageConfigCache();
+		// SMTP-Einstellungen und gepoolter Transport ebenso (#24)
+		if (ops.some((o) => o.key.startsWith('core.smtp.'))) invalidateMailTransportCache();
+	}
+
+	// 5) Audit danach (nur globale Einstellungen; Secrets ohne Wert)
+	for (const op of ops) {
+		if (op.def.scope !== 'global') continue;
+		let metadata: Record<string, unknown>;
+		if (op.def.secret) {
+			metadata = { secret: true };
+			if (op.kind === 'delete') metadata.cleared = true;
+			if (op.kind === 'delete' && op.auto) metadata.reason = 'target-changed';
+		} else {
+			metadata = { value: op.kind === 'upsert' ? op.value : null };
+		}
+		await auditFromContext(ctx, 'core.settings.changed', { target: op.key, metadata });
+	}
+	return { clearedSecrets: [...new Set(clearedSecrets)] };
+}
+
+/** Setzt eine Einstellung (wie `setSettings` mit genau einem Schlüssel). */
 export async function setSetting(
 	ctx: RequestContext,
 	key: string,
 	value: unknown,
 	opts: { userId?: string } = {}
 ): Promise<void> {
-	const def = getDefinition(key);
-	let scopeId = '';
-	if (def.scope === 'global') {
-		if (!has(ctx, 'core.settings.manage')) {
-			throw errors.forbidden('Berechtigung fehlt: core.settings.manage');
-		}
-	} else {
-		if (!ctx.userId) throw errors.unauthenticated();
-		const target = opts.userId ?? ctx.userId;
-		if (target !== ctx.userId) throw errors.forbidden('Nur eigene Einstellungen änderbar');
-		scopeId = target;
-	}
-	if (def.secret && (value === undefined || value === '')) return;
-	const db = getDb();
-	if (value === null) {
-		await db
-			.delete(schema.setting)
-			.where(and(eq(schema.setting.key, key), eq(schema.setting.scopeId, scopeId)));
-	} else {
-		const parsed = def.schema.safeParse(value);
-		if (!parsed.success) {
-			throw errors.validation(parsed.error.issues, `Ungültiger Wert für ${key}`);
-		}
-		const stored = def.secret ? encryptSecret(String(parsed.data)) : parsed.data;
-		await db
-			.insert(schema.setting)
-			.values({ key, scopeId, value: stored, updatedBy: ctx.userId })
-			.onConflictDoUpdate({
-				target: [schema.setting.key, schema.setting.scopeId],
-				set: { value: stored, updatedAt: new Date(), updatedBy: ctx.userId }
-			});
-	}
-	if (def.scope === 'global') {
-		await auditFromContext(ctx, 'core.settings.changed', {
-			target: key,
-			metadata: def.secret ? { secret: true } : { value }
-		});
-	}
+	await setSettings(ctx, { [key]: value }, opts);
 }

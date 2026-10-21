@@ -15,8 +15,7 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
-import { resetSyncThrottleForTests } from '$lib/modules/treasury/sync';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { RequestContext } from '$lib/sdk/types';
 import type {
 	Account,
@@ -99,7 +98,7 @@ beforeAll(async () => {
 	for (const m of ['members', 'actions', 'treasury']) await enableModule(admin, m);
 	admin = await ctxOf(u!.id);
 	setMailTransportForTests({ sendMail: async (m) => void mails.push(m) });
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 
 	const all = [...admin.permissions].filter(
 		(p) => p.startsWith('treasury.') || p.startsWith('members.') || p.startsWith('actions.')
@@ -183,7 +182,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	setMailTransportForTests(undefined);
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 
@@ -322,9 +321,12 @@ describe('Stornierung durch Abgleich', () => {
 				}
 			)
 		);
-		const r = await data<{ cancelled: number }>(await T('/sync', { method: 'POST' }), 201);
-		expect(r.cancelled).toBe(1);
+		// Gezielter Abgleich der Aktion direkt nach dem Löschen – ohne Job/„Jetzt abgleichen“
 		const open = await data<OpenItems>(await T('/open-items'));
+		expect(open.totals.creditCents).toBe(19000);
+		// Ein späterer Vollabgleich findet nichts mehr zu stornieren
+		const r = await data<{ cancelled: number }>(await T('/sync', { method: 'POST' }), 201);
+		expect(r.cancelled).toBe(0);
 		expect(open.totals.creditCents).toBe(19000);
 		expect(open.totals.openCents).toBe(9000);
 	});
@@ -358,16 +360,16 @@ describe('Erinnerungen', () => {
 		const run = async () =>
 			data<{ invoices: number }>(await T('/reminders/run', { method: 'POST' }), 201);
 		mails.length = 0;
-		setTreasuryTodayForTests('2026-06-21');
+		setTodayForTests('2026-06-21');
 		expect((await run()).invoices).toBe(0);
-		setTreasuryTodayForTests('2026-06-22');
+		setTodayForTests('2026-06-22');
 		expect((await run()).invoices).toBe(1);
 		expect((await run()).invoices).toBe(0);
-		setTreasuryTodayForTests('2026-07-05');
+		setTodayForTests('2026-07-05');
 		expect((await run()).invoices).toBe(0);
-		setTreasuryTodayForTests('2026-07-06');
+		setTodayForTests('2026-07-06');
 		expect((await run()).invoices).toBe(1);
-		setTreasuryTodayForTests('2026-09-01');
+		setTodayForTests('2026-09-01');
 		// Team-Rechnung (ohne Adresse) fällig, Schmidt bereits Stufe 2
 		const last = await data<{ invoices: number; withoutAddress: number }>(
 			await T('/reminders/run', { method: 'POST' }),
@@ -377,7 +379,7 @@ describe('Erinnerungen', () => {
 		expect(mails.filter((m) => m.to === 'schmidt@example.test')).toHaveLength(2);
 		const d = await data<InvoiceDetail>(await T(`/invoices/${invoiceId}`));
 		expect(d.reminders.map((r) => r.level)).toEqual([1, 2]);
-		setTreasuryTodayForTests('2026-06-01');
+		setTodayForTests('2026-06-01');
 	});
 
 	it('Barzahlung als bezahlt markieren', async () => {
@@ -458,6 +460,5 @@ describe('Rechte und Audit', () => {
 		);
 		expect(state.autoIncome.contributions?.source).toBe('calculated');
 		await enableModule(admin, 'treasury');
-		resetSyncThrottleForTests();
 	});
 });

@@ -7,6 +7,7 @@
 import { json } from '@sveltejs/kit';
 import type { z } from 'zod';
 import { isCoreError } from '$lib/server/core/errors';
+import { safeFileName as cleanFileName } from '$lib/sdk/file-names';
 import { BackupFormatError } from '$lib/server/core/backup/types';
 
 export const BACKUP_PERMISSION = 'core.system.backup';
@@ -36,8 +37,12 @@ export function coreMessage(e: { message: string; details?: unknown }): string {
 
 /** Dateiname für content-disposition: nur sichere ASCII-Zeichen. */
 export function safeFileName(name: string, ext: string): string {
-	const cleaned = name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
-	return (cleaned || 'ep-intern-sicherung') + (cleaned.endsWith(ext) ? '' : ext);
+	const cleaned = cleanFileName(name, {
+		replacement: '-',
+		maxLength: 200,
+		fallback: 'ep-intern-sicherung'
+	});
+	return cleaned + (cleaned.endsWith(ext) ? '' : ext);
 }
 
 interface GuardOptions {

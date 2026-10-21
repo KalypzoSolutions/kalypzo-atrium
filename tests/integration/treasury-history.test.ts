@@ -14,7 +14,7 @@ import { listAudit } from '$lib/server/core/audit/service';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { RequestContext } from '$lib/sdk/types';
 import type { HistoryEntry } from '$lib/modules/treasury/history-labels';
 import type { Account, InvoiceDetail, Payable, Transaction } from '$lib/modules/treasury/schemas';
@@ -100,7 +100,7 @@ beforeAll(async () => {
 	admin = (await contextForUser(u!.id))!.ctx;
 	for (const m of ['members', 'actions', 'treasury']) await enableModule(admin, m);
 	admin = (await contextForUser(u!.id))!.ctx;
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 	key = (await createApiKey(admin, { name: 'admin', scopes: [...admin.permissions] })).key;
 
 	// Kasse ohne Berichtsrecht → kein Verlauf
@@ -132,7 +132,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 

@@ -154,10 +154,15 @@ describe('listGroups', () => {
 		});
 	});
 
-	it('kürzt Uhrzeiten auf HH:MM und macht leere Texte zu null', async () => {
+	it('macht leere Texte zu null; Uhrzeiten außerhalb HH:MM lehnt die DB ab (CHECK, members/0014)', async () => {
+		await expect(
+			core.database.forModule('members').transaction(async (tx) => {
+				await tx.execute(sql`UPDATE groups SET meeting_time = '9:05:00' WHERE id = ${groupOtter}`);
+			})
+		).rejects.toThrow();
 		await core.database.forModule('members').transaction(async (tx) => {
 			await tx.execute(
-				sql`UPDATE groups SET meeting_weekday = 7, meeting_time = '9:05:00', meeting_place = '   '
+				sql`UPDATE groups SET meeting_weekday = 7, meeting_time = '09:05', meeting_place = '   '
 					WHERE id = ${groupOtter}`
 			);
 		});

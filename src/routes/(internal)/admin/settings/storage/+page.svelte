@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button';
-	import { DataTable } from '$lib/components/layout';
+	import { DataTable, PageTitle } from '$lib/components/layout';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { submitHandler } from '../../_shared/form-utils';
@@ -27,7 +27,7 @@
 	}
 </script>
 
-<svelte:head><title>Speicher · Einstellungen</title></svelte:head>
+<PageTitle title="Speicher · Einstellungen" />
 
 <div class="space-y-6">
 	<Card.Root>

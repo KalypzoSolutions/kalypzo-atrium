@@ -4,13 +4,15 @@
 	import { toast } from 'svelte-sonner';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import {
+		BUSY_SAVE,
 		ConfirmDialog,
 		DataTable,
 		EntityAvatar,
 		FileField,
 		PageHeader,
 		Pagination,
-		SearchInput
+		SearchInput,
+		PageTitle
 	} from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -18,11 +20,16 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
+	import PermissionPicker from '../_shared/PermissionPicker.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	type UserRow = PageData['users'][number];
+
+	/** Hinweis für Konten mit Rechten, die man selbst nicht besitzt (der Server lehnt Änderungen ab) */
+	const LOCKED_HINT =
+		'Dieses Konto hat Rechte, die du selbst nicht besitzt. Ändern, Deaktivieren und Löschen kann nur jemand mit mindestens denselben Rechten.';
 
 	let createOpen = $state(false);
 	let editOpen = $state(false);
@@ -33,6 +40,8 @@
 	const editUser = $derived(data.users.find((u) => u.id === editUserId) ?? null);
 	let deleteUser = $state<UserRow | null>(null);
 	let editRoleIds = $state<string[]>([]);
+	let editPermissionKeys = $state<string[]>([]);
+	let createPermissionKeys = $state<string[]>([]);
 	let formError = $state('');
 
 	function fmt(d: Date) {
@@ -42,6 +51,7 @@
 	function openEdit(u: UserRow) {
 		editUserId = u.id;
 		editRoleIds = u.roles.map((r) => r.id);
+		editPermissionKeys = [...u.permissions];
 		formError = '';
 		avatarFile = null;
 		editOpen = true;
@@ -94,7 +104,7 @@
 		};
 </script>
 
-<svelte:head><title>Benutzer</title></svelte:head>
+<PageTitle title="Benutzer" />
 
 <div class="space-y-6">
 	<PageHeader
@@ -103,12 +113,15 @@
 	>
 		{#snippet actions()}
 			{#if data.can.create}
-				<Button onclick={() => ((formError = ''), (createOpen = true))}>Benutzer anlegen</Button>
+				<Button onclick={() => ((formError = ''), (createPermissionKeys = []), (createOpen = true))}
+					>Benutzer anlegen</Button
+				>
 			{/if}
 		{/snippet}
 	</PageHeader>
 
 	<DataTable
+		mobile="cards"
 		caption="Benutzer"
 		empty={data.users.length === 0}
 		emptyTitle="Keine Benutzer gefunden."
@@ -133,6 +146,7 @@
 			</Table.Row>
 		{/snippet}
 		{#each data.users as u (u.id)}
+			{@const locked = !u.manageable}
 			<Table.Row>
 				<Table.Cell class="font-medium">
 					<span class="flex items-center gap-2">
@@ -144,7 +158,14 @@
 				<Table.Cell>
 					<div class="flex flex-wrap gap-1">
 						{#each u.roles as r (r.id)}<Badge variant="secondary">{r.name}</Badge>{/each}
-						{#if !u.roles.length}<span class="text-muted-foreground">–</span>{/if}
+						{#if u.permissions.length}
+							<Badge variant="outline" title={u.permissions.join(', ')}
+								>+{u.permissions.length} Einzelrecht{u.permissions.length === 1 ? '' : 'e'}</Badge
+							>
+						{/if}
+						{#if !u.roles.length && !u.permissions.length}<span class="text-muted-foreground"
+								>–</span
+							>{/if}
 					</div>
 				</Table.Cell>
 				<Table.Cell>
@@ -156,21 +177,42 @@
 				<Table.Cell class="text-right">
 					<div class="flex justify-end gap-2">
 						{#if data.can.edit}
-							<Button size="sm" variant="outline" onclick={() => openEdit(u)}>Bearbeiten</Button>
+							<Button
+								size="sm"
+								variant="outline"
+								disabled={locked}
+								title={locked ? LOCKED_HINT : undefined}
+								onclick={() => openEdit(u)}>Bearbeiten</Button
+							>
 							{#if u.id !== data.selfId}
 								<form method="POST" action="?/setActive" use:enhance={submit()}>
 									<input type="hidden" name="id" value={u.id} />
 									<input type="hidden" name="active" value={String(!u.active)} />
-									<Button size="sm" variant="outline" type="submit" disabled={busy}>
+									<Button
+										size="sm"
+										variant="outline"
+										type="submit"
+										disabled={busy || locked}
+										title={locked ? LOCKED_HINT : undefined}
+									>
 										{u.active ? 'Deaktivieren' : 'Aktivieren'}
 									</Button>
 								</form>
 							{/if}
 						{/if}
 						{#if data.can.delete && u.id !== data.selfId}
-							<Button size="sm" variant="destructive" onclick={() => openDelete(u)}>Löschen</Button>
+							<Button
+								size="sm"
+								variant="destructive"
+								disabled={locked}
+								title={locked ? LOCKED_HINT : undefined}
+								onclick={() => openDelete(u)}>Löschen</Button
+							>
 						{/if}
 					</div>
+					{#if locked && (data.can.edit || data.can.delete)}
+						<p class="mt-1 text-xs text-muted-foreground">Mehr Rechte als du – nicht änderbar</p>
+					{/if}
 				</Table.Cell>
 			</Table.Row>
 		{/each}
@@ -225,12 +267,28 @@
 					{/each}
 				</fieldset>
 			{/if}
+			{#if data.can.assign && data.permissions.length}
+				<section class="space-y-2" aria-labelledby="c-perms-title">
+					<h3 id="c-perms-title" class="text-sm font-medium">Einzelne Berechtigungen</h3>
+					<p class="text-xs text-muted-foreground">
+						Zusätzlich zu den Rollen. Du kannst nur Rechte vergeben, die du selbst besitzt.
+					</p>
+					<PermissionPicker
+						permissions={data.permissions}
+						bind:selected={createPermissionKeys}
+						idPrefix="c-perm"
+					/>
+					{#each createPermissionKeys as key (key)}
+						<input type="hidden" name="permissionKeys" value={key} />
+					{/each}
+				</section>
+			{/if}
 			{#if formError}<p class="text-sm text-destructive" role="alert">{formError}</p>{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (createOpen = false)}
 					>Abbrechen</Button
 				>
-				<Button type="submit" disabled={busy}>{busy ? 'Speichere …' : 'Anlegen'}</Button>
+				<Button type="submit" disabled={busy}>{busy ? BUSY_SAVE : 'Anlegen'}</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>
@@ -330,12 +388,29 @@
 						{/each}
 					</fieldset>
 				{/if}
+				{#if data.can.assign && data.permissions.length}
+					<input type="hidden" name="permissionsIncluded" value="1" />
+					<section class="space-y-2" aria-labelledby="e-perms-title">
+						<h3 id="e-perms-title" class="text-sm font-medium">Einzelne Berechtigungen</h3>
+						<p class="text-xs text-muted-foreground">
+							Zusätzlich zu den Rollen. Du kannst nur Rechte vergeben, die du selbst besitzt.
+						</p>
+						<PermissionPicker
+							permissions={data.permissions}
+							bind:selected={editPermissionKeys}
+							idPrefix="e-perm"
+						/>
+						{#each editPermissionKeys as key (key)}
+							<input type="hidden" name="permissionKeys" value={key} />
+						{/each}
+					</section>
+				{/if}
 				{#if formError}<p class="text-sm text-destructive" role="alert">{formError}</p>{/if}
 				<Dialog.Footer>
 					<Button type="button" variant="outline" onclick={() => (editOpen = false)}
 						>Abbrechen</Button
 					>
-					<Button type="submit" disabled={busy}>{busy ? 'Speichere …' : 'Speichern'}</Button>
+					<Button type="submit" disabled={busy}>{busy ? BUSY_SAVE : 'Speichern'}</Button>
 				</Dialog.Footer>
 			</form>
 		{/if}
@@ -361,6 +436,11 @@
 				du das Konto deaktivieren.
 			</Dialog.Description>
 		</Dialog.Header>
+		<p class="text-sm text-muted-foreground">
+			Mit dem Konto werden auch die eigenen Dateien (samt öffentlicher Links), das Profilbild, Ämter
+			mit persönlicher Beschreibung und die Verknüpfungen zu Mitgliedern entfernt. Termine, Galerien
+			und Aktionen dieser Person gehen an dich über.
+		</p>
 		<form method="POST" action="?/delete" use:enhance={submit(() => (deleteOpen = false))}>
 			<input type="hidden" name="id" value={deleteUser?.id ?? ''} />
 			{#if formError}<p class="mb-3 text-sm text-destructive" role="alert">{formError}</p>{/if}

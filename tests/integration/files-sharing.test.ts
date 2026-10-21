@@ -9,7 +9,7 @@ import sharp from 'sharp';
 import { useTestDatabase } from '../helpers/db';
 import { installFakeStorage, uninstallFakeStorage } from '../helpers/fake-storage';
 import { getDb, schema } from '$lib/server/core/database/client';
-import { contextForUser } from '$lib/server/core/auth/context';
+import { contextForUser, systemContext } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
 import { createRole } from '$lib/server/core/permissions/roles';
 import { registerModule } from '$lib/server/core/modules/registry';
@@ -27,6 +27,7 @@ import {
 	previewReset
 } from '$lib/server/core/system/reset';
 import filesModule from '$lib/modules/files/module';
+import { unlockLink } from '$lib/modules/files/links.service';
 import {
 	MAX_LINKS_PER_NODE,
 	MAX_UNLOCK_FAILURES,
@@ -724,6 +725,42 @@ describe('Öffentliche Links', () => {
 		);
 	});
 
+	it(`viele parallele Fehlversuche: höchstens ${MAX_UNLOCK_FAILURES} werden geprüft, Rest 429 (#67, 01b-10)`, async () => {
+		const target = await folder('owner', 'Parallel-Sperre');
+		const l = ok<ShareLink>(await link('owner', target, 'richtig-123'), 201);
+		const t = tokenOf(l);
+		// Direkt über den Dienst (ohne IP-Rate-Limit des Routers), alle Anfragen gleichzeitig
+		const results = await Promise.allSettled(
+			Array.from({ length: MAX_UNLOCK_FAILURES * 3 }, () =>
+				unlockLink(systemContext('test'), t, 'falsch-12345')
+			)
+		);
+		const codes = results.map((r) =>
+			r.status === 'rejected' ? (r.reason as { code?: string }).code : 'ok'
+		);
+		expect(codes.filter((c) => c === 'forbidden')).toHaveLength(MAX_UNLOCK_FAILURES);
+		expect(codes.filter((c) => c === 'rate_limited')).toHaveLength(MAX_UNLOCK_FAILURES * 2);
+		await expect(unlockLink(systemContext('test'), t, 'richtig-123')).rejects.toMatchObject({
+			code: 'rate_limited'
+		});
+	});
+
+	it('richtiges Passwort nach einzelnen Fehlversuchen setzt den Zähler zurück', async () => {
+		const target = await folder('owner', 'Zähler zurück');
+		const l = ok<ShareLink>(await link('owner', target, 'richtig-123'), 201);
+		const t = tokenOf(l);
+		for (let i = 0; i < MAX_UNLOCK_FAILURES - 1; i++) {
+			await expect(unlockLink(systemContext('test'), t, 'falsch-12345')).rejects.toMatchObject({
+				code: 'forbidden'
+			});
+		}
+		await expect(unlockLink(systemContext('test'), t, 'richtig-123')).resolves.toHaveProperty(
+			'accessToken'
+		);
+		const [row] = await q(sql`SELECT failed_count FROM mod_files.share_links WHERE id = ${l.id}`);
+		expect(Number(row!.failed_count)).toBe(0);
+	});
+
 	it('Validierung: Passwort 7 Zeichen 422, Ablauf in der Vergangenheit 422, zu viele Links 409', async () => {
 		const target = await folder('owner', 'Viele Links');
 		const short = await link('owner', target, '1234567');
@@ -836,7 +873,11 @@ describe('Reset', () => {
 		const before = await q(sql`SELECT count(*)::int AS n FROM mod_files.nodes`);
 		expect(Number(before[0]!.n)).toBeGreaterThan(0);
 		const p = await previewReset(admin, ['files:all']);
-		await exportResetData(admin, { token: p.token, password: PW });
+		await exportResetData(admin, {
+			token: p.token,
+			password: PW,
+			backupPassword: 'Reset-Sicherung-2026'
+		});
 		await executeReset(admin, { token: p.token, confirmWord: RESET_CONFIRM_WORD });
 		for (const t of ['nodes', 'node_shares', 'share_links']) {
 			const r = await q(sql.raw(`SELECT count(*)::int AS n FROM mod_files.${t}`));

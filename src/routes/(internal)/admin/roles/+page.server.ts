@@ -1,7 +1,12 @@
 import type { Actions } from '@sveltejs/kit';
 import { z } from 'zod';
 import { createRole, deleteRole, listRoles, updateRole } from '$lib/server/core/permissions/roles';
-import { listPermissions } from '$lib/server/core/permissions/service';
+import {
+	canGrantPermission,
+	isAdministrator,
+	isPrivilegedPermission,
+	listPermissions
+} from '$lib/server/core/permissions/service';
 import { invalid, requirePerm, toFail } from '../_shared/server-utils';
 import type { PageServerLoad } from './$types';
 
@@ -15,8 +20,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 			key: p.key,
 			moduleId: p.moduleId,
 			description: p.description,
-			grantable: mine.has(p.key)
+			// Eigene Rechte; admin-gleiche nur als Administrator*in (gleiche Regel wie der Server)
+			grantable: canGrantPermission(locals.ctx, p.key),
+			privileged: isPrivilegedPermission(p.key)
 		})),
+		isAdministrator: isAdministrator(locals.ctx),
 		can: {
 			create: mine.has('core.roles.create'),
 			edit: mine.has('core.roles.edit'),

@@ -287,6 +287,16 @@ describe('Konto-Verknüpfung', () => {
 			password: PW,
 			relation: 'Oma'
 		};
+		// Mutter + Vater haben den Code verbraucht (Standard 2 Konten je Code, #18): Link nicht mehr gültig
+		expect((await post(`/${token}/register`, body)).status).toBe(404);
+		const status = await data<{ code: { uses: number; maxUses: number; exhausted: boolean } }>(
+			await call(`/members/${kid1}/links`)
+		);
+		expect(status.code).toMatchObject({ uses: 2, maxUses: 2, exhausted: true });
+		await data(await call(`/members/${kid1}/link-code`, { method: 'POST' }), 201);
+		await letter(kid1);
+		({ token, code } = tokenAndCode());
+		body.code = code;
 		expect((await post(`/${token}/register`, { ...body, code: '999999' })).status).toBe(403);
 		expect((await post(`/${token}/register`, { ...body, password: 'kurz' })).status).toBe(422);
 		await data(await post(`/${token}/register`, body), 201);
@@ -295,6 +305,8 @@ describe('Konto-Verknüpfung', () => {
 			.from(schema.user)
 			.where(eq(schema.user.email, 'oma@example.test'));
 		expect(u).toBeTruthy();
+		// Selbstregistrierung: unbestätigt, Anmeldung erst nach Bestätigung (#18)
+		expect(u!.emailVerified).toBe(false);
 		const roles = await getDb()
 			.select({ name: schema.role.name })
 			.from(schema.userRole)

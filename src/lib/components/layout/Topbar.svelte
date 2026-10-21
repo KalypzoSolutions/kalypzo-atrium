@@ -14,11 +14,13 @@
 		DropdownMenuContent,
 		DropdownMenuItem,
 		DropdownMenuLabel,
+		DropdownMenuRadioGroup,
+		DropdownMenuRadioItem,
 		DropdownMenuSeparator,
 		DropdownMenuTrigger
 	} from '$lib/components/ui/dropdown-menu';
 	import { Sheet, SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
-	import { theme } from '$lib/theme.svelte';
+	import { theme, type ThemeChoice } from '$lib/theme.svelte';
 	import CommandPalette from './CommandPalette.svelte';
 	import SidebarNav from './SidebarNav.svelte';
 	import type { ModuleNavEntry } from './nav';
@@ -36,6 +38,11 @@
 	} = $props();
 
 	let menuOpen = $state(false);
+	const THEME_LABELS: Record<ThemeChoice, string> = {
+		light: 'Hell',
+		dark: 'Dunkel',
+		system: 'System'
+	};
 	let paletteOpen = $state(false);
 	/** Nur eigene Profilbilder (`/avatar/…`) anzeigen, keine fremden Adressen aus alten Daten */
 	const avatarSrc = $derived(user.image?.startsWith('/avatar/') ? user.image : null);
@@ -95,7 +102,7 @@
 		<SearchIcon />
 		<span class="hidden flex-1 text-left sm:inline">Suchen</span>
 		<kbd
-			class="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] sm:inline"
+			class="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-xs sm:inline"
 			aria-hidden="true">Strg K</kbd
 		>
 	</Button>
@@ -104,15 +111,28 @@
 	<DropdownMenu>
 		<DropdownMenuTrigger>
 			{#snippet child({ props })}
-				<Button {...props} variant="ghost" size="icon" aria-label="Darstellung wählen">
+				<Button
+					{...props}
+					variant="ghost"
+					size="icon"
+					aria-label="Darstellung wählen (aktuell: {THEME_LABELS[theme.choice]})"
+				>
 					{#if theme.dark}<Moon />{:else}<Sun />{/if}
 				</Button>
 			{/snippet}
 		</DropdownMenuTrigger>
-		<DropdownMenuContent align="end">
-			<DropdownMenuItem onSelect={() => theme.set('light')}><Sun /> Hell</DropdownMenuItem>
-			<DropdownMenuItem onSelect={() => theme.set('dark')}><Moon /> Dunkel</DropdownMenuItem>
-			<DropdownMenuItem onSelect={() => theme.set('system')}><Monitor /> System</DropdownMenuItem>
+		<DropdownMenuContent align="end" class="w-40">
+			<DropdownMenuLabel>Darstellung</DropdownMenuLabel>
+			<DropdownMenuRadioGroup
+				value={theme.choice}
+				onValueChange={(v) => theme.set(v as ThemeChoice)}
+			>
+				<DropdownMenuRadioItem value="light" closeOnSelect><Sun /> Hell</DropdownMenuRadioItem>
+				<DropdownMenuRadioItem value="dark" closeOnSelect><Moon /> Dunkel</DropdownMenuRadioItem>
+				<DropdownMenuRadioItem value="system" closeOnSelect
+					><Monitor /> System</DropdownMenuRadioItem
+				>
+			</DropdownMenuRadioGroup>
 		</DropdownMenuContent>
 	</DropdownMenu>
 

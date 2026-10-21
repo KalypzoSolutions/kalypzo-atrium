@@ -8,7 +8,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { ColorPicker } from '$lib/components/ui/color-picker';
+	import { ColorPicker, primaryContrast } from '$lib/components/ui/color-picker';
 	import { Input } from '$lib/components/ui/input';
 	import { SelectField } from '$lib/components/ui/select-field';
 	import { Switch } from '$lib/components/ui/switch';
@@ -43,18 +43,11 @@
 
 	const startOptions = $derived(data.startPageOptions);
 
-	/** Kontrast der Akzentfarbe zu weißem Text (Schaltflächen-Beschriftung) */
-	function luminance(hex: string): number {
-		const n = parseInt(hex.replace('#', '').slice(0, 6), 16);
-		const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
-			const c = v / 255;
-			return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-		});
-		return 0.2126 * ch[0]! + 0.7152 * ch[1]! + 0.0722 * ch[2]!;
-	}
 	const shown = $derived(accent ?? DEFAULT_ACCENT);
-	const contrast = $derived(1.05 / (luminance(shown) + 0.05));
+	// Schrift auf Primärflächen wird automatisch hell/dunkel gewählt (app.css); hier nur der erreichte Kontrast
+	const contrast = $derived(primaryContrast(shown) ?? 21);
 	const lowContrast = $derived(contrast < 4.5);
+	const contrastText = $derived(contrast.toFixed(1).replace('.', ','));
 	const previewStyle = $derived(`--accent-color:${shown};--primary:${shown};--ring:${shown}`);
 
 	let previewSwitch = $state(true);
@@ -102,7 +95,7 @@
 								class={cn(
 									'flex flex-col items-center gap-2 rounded-lg border bg-card p-4 text-sm transition-colors',
 									'hover:bg-muted peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary/30',
-									'peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50'
+									'peer-focus-visible:ring-3 peer-focus-visible:ring-ring'
 								)}
 							>
 								<Icon class="size-5" aria-hidden="true" />
@@ -137,13 +130,13 @@
 				<input type="hidden" name="accentColor" value={accent ?? ''} />
 				<p class="text-xs text-muted-foreground" aria-live="polite">
 					{#if lowContrast}
-						<span class="text-amber-700 dark:text-amber-400">
-							Weißer Text auf dieser Farbe ist schwer lesbar (Kontrast {contrast
-								.toFixed(1)
-								.replace('.', ',')} : 1, empfohlen mindestens 4,5 : 1). Wähle eine dunklere Farbe.
+						<span class="text-warning">
+							Schrift auf dieser Farbe ist schwer lesbar (Kontrast {contrastText} : 1, empfohlen mindestens
+							4,5 : 1). Wähle eine hellere oder dunklere Farbe.
 						</span>
 					{:else}
-						Kontrast {contrast.toFixed(1).replace('.', ',')} : 1 – gut lesbar.
+						Kontrast {contrastText} : 1 – gut lesbar. Die Schriftfarbe auf Knöpfen passt sich automatisch
+						an.
 					{/if}
 				</p>
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { PageHeader } from '$lib/components/layout';
+	import { PageHeader, PageTitle } from '$lib/components/layout';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import ExportPanel from './ExportPanel.svelte';
 	import ImportWizard from './ImportWizard.svelte';
@@ -19,7 +19,7 @@
 	}
 </script>
 
-<svelte:head><title>Datensicherung</title></svelte:head>
+<PageTitle title="Datensicherung" />
 
 <div class="mx-auto max-w-4xl">
 	<PageHeader

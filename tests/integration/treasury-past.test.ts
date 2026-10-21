@@ -21,7 +21,7 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import { STANDARD_FORM_KEYS, type FormConfig } from '$lib/modules/actions/schemas';
 import type { RequestContext } from '$lib/sdk/types';
 import type { ActionReceivables, InvoiceList, PayableList } from '$lib/modules/treasury/schemas';
@@ -127,6 +127,29 @@ async function register(token: string, name: string, email: string) {
 		}
 	});
 	expect(res.status).toBe(201);
+	await confirmOptIn();
+}
+
+/** Double-Opt-in: Link aus der Bestätigungsbitte aufrufen; die Bitte selbst zählt nicht als Mail */
+async function confirmOptIn() {
+	const optIn = mails.find((m) => /anmeldung-bestaetigen\/[0-9a-f]{64}/.test(m.text));
+	if (!optIn) return;
+	const token = /anmeldung-bestaetigen\/([0-9a-f]{64})/.exec(optIn.text)![1]!;
+	mails.splice(mails.indexOf(optIn), 1);
+	resetAllForTests();
+	const url = new URL(
+		`http://localhost:5173/api/v1/modules/actions/public/registrations/${token}/confirm`
+	);
+	const res = await handleApiRequest({
+		request: new Request(url, {
+			method: 'POST',
+			body: '{}',
+			headers: { 'content-type': 'application/json' }
+		}),
+		url,
+		ip: '127.0.0.1'
+	});
+	expect(res.status, await res.clone().text()).toBe(201);
 }
 
 const invoicesOf = async (search: string) =>
@@ -150,7 +173,7 @@ beforeAll(async () => {
 	admin = await ctxOf(u!.id);
 	setMailTransportForTests({ sendMail: async (m) => void mails.push(m as Mail) });
 	setPdfRendererForTests(async () => new TextEncoder().encode('%PDF-fake'));
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 
 	const all = [...admin.permissions].filter((p) => /^(treasury|members|actions)\./.test(p));
 	const role = await createRole(admin, { name: 'Kasse', permissions: ['core.api.manage', ...all] });
@@ -167,13 +190,15 @@ beforeAll(async () => {
 afterAll(async () => {
 	setMailTransportForTests(undefined);
 	setPdfRendererForTests(undefined);
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 
 describe('Abgleich bei vergangenen Aktionen', () => {
 	it('legt für eine vergangene Aktion keine Rechnungen an, Aktion bleibt in der Liste', async () => {
 		const id = await newAction('Altfahrt');
+		// Vergangen VOR der Anmeldung (Teilnehmende lösen sofort einen gezielten Abgleich aus)
+		await setPast(id, true);
 		await data(
 			await A(`/actions/${id}/participants`, {
 				method: 'POST',
@@ -181,7 +206,6 @@ describe('Abgleich bei vergangenen Aktionen', () => {
 			}),
 			201
 		);
-		await setPast(id, true);
 		await data(await T('/sync', { method: 'POST' }), 201);
 		expect(await invoicesOf('Paula')).toHaveLength(0);
 		const list = await data<ActionReceivables[]>(await T('/actions'));

@@ -5,6 +5,7 @@
  * Weitere Szenarien: `core-backup-secret`, `core-backup-merge`, `core-backup-security`.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { invalidateStorageConfigCache } from '$lib/server/core/storage/config-cache';
 import { sql } from 'drizzle-orm';
 import { seedBackupWorld, type BackupWorld } from '../helpers/backup-seed';
 import {
@@ -73,7 +74,11 @@ describe('Vollsicherung und Wiederherstellen', () => {
 	it('Reset + Änderungen → Wiederherstellen ergibt tabellenweise den alten Stand', async () => {
 		// Änderungen: Modul-Reset (members/treasury), Löschen/Ändern per SQL, Dateien weg
 		const p = await previewReset(world.admin, ['treasury:all', 'members:all']);
-		await exportResetData(world.admin, { token: p.token, password: SEED_PASSWORD });
+		await exportResetData(world.admin, {
+			token: p.token,
+			password: SEED_PASSWORD,
+			backupPassword: 'Reset-Sicherung-2026'
+		});
 		await executeReset(world.admin, { token: p.token, confirmWord: RESET_CONFIRM_WORD });
 		expect(await dumpTable('mod_members.members')).toEqual([]);
 		await exec(sql`DELETE FROM mod_files.share_links`);
@@ -165,6 +170,7 @@ describe('ohne Dateien / ohne S3', () => {
 
 	it('Sicherung mit Dateien auf Server ohne S3 → Warnung, Datensätze trotzdem zurück', async () => {
 		await exec(sql`DELETE FROM "public"."setting" WHERE key LIKE 'core.storage.%'`);
+		invalidateStorageConfigCache(); // Einstellungen am Dienst vorbei per SQL gelöscht
 		const preview = await previewBackup(world.admin, full);
 		expect(preview.warnings.join(' ')).toMatch(/Kein Dateispeicher/);
 		await exec(sql`DELETE FROM mod_offices.office_holders`);

@@ -1,3 +1,5 @@
+import { safeRedirect as safeRedirectCore } from '$lib/server/core/safe-redirect';
+
 /** Wandelt Better-Auth-Fehler in eine anzeigbare deutsche Meldung um (ohne interne Details). */
 export function authErrorMessage(e: unknown, fallback = 'Aktion fehlgeschlagen.'): string {
 	const err = e as {
@@ -13,6 +15,9 @@ export function authErrorMessage(e: unknown, fallback = 'Aktion fehlgeschlagen.'
 	if (code === 'INVALID_EMAIL_OR_PASSWORD' || code === 'INVALID_PASSWORD') {
 		return 'E-Mail oder Passwort ist falsch.';
 	}
+	if (code === 'EMAIL_NOT_VERIFIED') {
+		return 'Bitte bestätige zuerst deine E-Mail-Adresse über den Link in der Bestätigungsmail.';
+	}
 	if (code === 'INVALID_TOKEN') return 'Der Link ist ungültig oder abgelaufen.';
 	if (code === 'INVALID_TWO_FACTOR_COOKIE' || code === 'INVALID_CODE') {
 		return 'Der Code ist ungültig oder abgelaufen.';
@@ -23,11 +28,10 @@ export function authErrorMessage(e: unknown, fallback = 'Aktion fehlgeschlagen.'
 	return fallback;
 }
 
-/** Nur relative Pfade derselben Origin zulassen (Open-Redirect-Schutz). */
+/**
+ * Weiterleitungsziel nach dem Login: nur relative Pfade derselben Origin (Open-Redirect-Schutz über
+ * den zentralen Helfer mit URL-Parser), nie zurück auf `/login`.
+ */
 export function safeRedirect(target: string | null | undefined, fallback = '/dashboard'): string {
-	if (!target || !target.startsWith('/') || target.startsWith('//') || target.startsWith('/\\')) {
-		return fallback;
-	}
-	if (target.startsWith('/login')) return fallback;
-	return target;
+	return safeRedirectCore(target, fallback, ['/login']);
 }

@@ -1,11 +1,14 @@
 import { redirect, type Handle, type HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
-import { randomUUID } from 'node:crypto';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
+import '$lib/zod-locale';
 import { legacyAdminRedirect } from '$lib/server/core/admin-redirects';
+import { requestIdFrom } from '$lib/server/core/api/request-id';
 import { anonymousContext, resolveSession } from '$lib/server/core/auth/context';
 import { getAuth } from '$lib/server/core/auth';
+import { applyClientIpHeader, clientAddress } from '$lib/server/core/auth/client-ip';
+import { logError } from '$lib/server/core/db-errors';
 import { initCore } from '$lib/server/core/init';
 import { startJobRunner } from '$lib/server/core/jobs';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
@@ -26,18 +29,17 @@ if (!building) {
 		});
 }
 
-function clientIp(event: Parameters<Handle>[0]['event']): string | null {
-	try {
-		return event.getClientAddress();
-	} catch {
-		return null;
-	}
-}
-
 const init: Handle = async ({ event, resolve }) => {
 	await initCore();
-	const requestId = event.request.headers.get('x-request-id')?.slice(0, 64) || randomUUID();
-	const ip = clientIp(event);
+	const requestId = requestIdFrom(event.request.headers);
+	const ip = clientAddress(event);
+	// Einzige IP-Quelle für Better Auth (Rate-Limit, Session-IP) und Audit: eingehender gleichnamiger
+	// Header des Clients wird verworfen, dann die von adapter-node ermittelte Adresse gesetzt (#42)
+	try {
+		applyClientIpHeader(event.request.headers, ip);
+	} catch (e) {
+		console.error('[core] Client-IP-Header nicht setzbar:', (e as Error)?.message);
+	}
 	event.locals.requestId = requestId;
 	event.locals.ctx = anonymousContext(ip);
 	event.locals.user = null;
@@ -129,9 +131,7 @@ const headers: Handle = async ({ event, resolve }) => {
 export const handle: Handle = sequence(headers, init, authHandler, guard);
 
 export const handleError: HandleServerError = ({ error, event }) => {
-	console.error(
-		`[server] ${event.locals.requestId}`,
-		error instanceof Error ? error.message : error
-	);
+	// Parameterfrei loggen (keine SQL-Werte), Stack nur serverseitig (#56)
+	logError(`[server] ${event.locals.requestId}`, error, { requestId: event.locals.requestId });
 	return { message: 'Es ist ein interner Fehler aufgetreten.', requestId: event.locals.requestId };
 };

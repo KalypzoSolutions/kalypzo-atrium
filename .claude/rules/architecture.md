@@ -19,27 +19,44 @@ Rate-Limit → Zod-Validierung (`params`, `query`, `body`) → Handler → `{ da
 API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte. `system` hat immer alle Rechte.
 
 ## Das `core`-Objekt (für Module via `$lib/sdk/server`)
-`auth`, `users.directory(ctx,{search,ids,limit})` (aktive Benutzer: id/name/email, ab 2 Zeichen, max 30),
+`auth`, `users.byIds(ctx, ids, { includeEmail? })` (Map id → Eintrag, stückelt selbst, gleiche Regeln wie `directory`; Anzeige `userLabel(map, id)`
+→ „Unbekannt“ – **keine** eigenen 30er-Schleifen um `directory`), `users.directory(ctx,{search,ids,limit,includeEmail?})` (aktive Benutzer: id/name/email/image, ab 2 Zeichen, max 30; **E-Mail nur** für System,
+`core.users.view`, das eigene Konto oder `includeEmail: true` nach eigener Prüfung eines Verwaltungsrechts – sonst `''`, Suche dann nur im Namen),
 `crypto.forModule(id)` (`encrypt/decrypt/isEncrypted`, AES-256-GCM), `permissions` (`require`, `has`, …),
 `modules` (`use`, `useOptional` für `optionalDependencies`), `settings`, `api`, `database.forModule(id).transaction`, `pdf`, `ai`, `storage`
-(`upload/download/remove/stat/list/signed*`; braucht `<modul>.storage.read|write|delete`), `audit.logFromContext`.
+(`upload/download/remove/stat/list/signed*`; braucht `<modul>.storage.read|write|delete` – internes Recht für Modul-Endpunkte mit Objektprüfung;
+die generische REST-API `/api/v1/storage/*` verlangt `core.storage.manage`, 403 vor 503), `audit.logFromContext`.
+Seit 2026-10-20 (#23/#24): `storage.downloadStream` (Inhalt als `ReadableStream`, `file.size` = Länge – für Bild-/Datei-Auslieferung),
+`storage.removeMany(ctx, { module, paths })` (S3 `DeleteObjects` à 1000, Rückfall Einzel-Löschung ×8, ein Audit `core.storage.files_deleted`,
+`{ removed, missing, failed }`, Metadaten fehlgeschlagener Objekte bleiben). Storage-Konfiguration 10 s gecacht, `setSettings` mit `core.storage.*`
+invalidiert sofort (`invalidateStorageConfigCache`, `storage/config-cache.ts`). `getUserPermissions` nutzt den Modulstatus-Cache (3 s),
+`principalKeysFor` ist je Kontextobjekt + Modul memoisiert (WeakMap, 5 s). Bild-Endpunkte: `IMAGE_RATE_LIMIT` (1200/60 s) aus `$lib/sdk/server`.
 `images.process(bytes, { variants })` (sharp, nur Core): Inhalt prüfen (JPEG/PNG/WebP/AVIF/GIF, ≤ 50 MP), nach EXIF drehen,
 **alle Metadaten inkl. GPS entfernen**, Varianten (WebP/JPEG/PNG) mit Maßen; Typen `ImageVariantSpec` & Co. über `$lib/sdk/server`.
 
 ## Datenbank
 - Jedes Modul hat genau ein Schema `mod_<id>` (Bindestrich → Unterstrich). `forModule(id).transaction` setzt
-  `SET LOCAL search_path TO "mod_<id>"` – Core-Tabellen sind dort **nicht** erreichbar (Isolation).
+  `SET LOCAL search_path TO "mod_<id>"` – Core-Tabellen sind dort **unqualifiziert** nicht erreichbar (Konvention, kein Sicherheitsmechanismus;
+  `forModule` nur mit eigener `MODULE_ID`, ESLint meldet fremde Literale).
 - Tabellen in Migrationen **unqualifiziert** anlegen; Fremdschlüssel auf Core-Tabellen gibt es nicht
   (`user_id text` ohne FK; Namen über `core.users.directory` auflösen).
-- Rohe Abfragen: `tx.execute(sql\`…\`)` mit `import { sql } from 'drizzle-orm'`, Zeilen in `.rows`.
-- Treiber-Unterschiede: `pg` liefert `Date`, PGlite **Strings** für `timestamptz` → immer `new Date(String(v)).toISOString()`.
+- Rohe Abfragen: `tx.execute(sql\`…\`)` mit `import { sql } from 'drizzle-orm'`. Grundhelfer **nur** aus `$lib/sdk/server` (`sdk/server/db.ts`,
+  Implementierung `core/database/rows.ts`, auch für Core): `moduleDb(id)`, `rowsOf(tx, sql)`, `resultRows(res)`, `type Row`, `inList(ids)` (leere Liste →
+  `NULL`, also `IN (NULL)` trifft nie; **`NOT IN` vorher selbst prüfen**), `toIso`/`toIsoOrNull`, `str`, `num`, `userLabel` – keine lokalen Kopien (#70).
+- Treiber-Unterschiede (`tx.execute`, geprüft 2026-10-21, #60): `timestamptz`/`date` kommen bei **beiden** als String (drizzle reicht sie roh
+  durch) → immer `toIso(v)` (behält auch bei `Date` die Millisekunden, `new Date(String(date))` nicht); `int8` (`count(*)`, `::bigint`, `sum`) liefert `pg` als **String**, PGlite als `number`
+  → immer `Number()`/`num()`. Test: `tests/integration/pg-concurrency.test.ts` (nur mit `TEST_DATABASE_URL`).
 - PGlite (Tests/Demo) hat **eine Sitzung**: keine verschachtelten Core-Aufrufe in offenen Transaktionen, Pool im Demo auf 1.
-- Migrationen werden vom Runner in Einzel-Statements zerlegt (`modules/split-sql.ts`); `CREATE … IF NOT EXISTS`.
+- Migrationen werden vom Runner in Einzel-Statements zerlegt (`modules/split-sql.ts`: Strings inkl. `E'…'`, verschachtelte Kommentare, `$tag_1$`); `CREATE … IF NOT EXISTS`.
+- Auch **Modul-Migrationen** laufen nur mit `search_path TO "mod_<id>"` (ohne `public`), danach `TO DEFAULT`; Core- und Modul-Migrationen unter der Advisory-Sperre `MIGRATION_LOCK_KEY` (`database/migrate.ts`, #73).
+- Geld in **neuen** Spalten als `bigint`; FKs im Modulschema mit Index; Formate zusätzlich als `CHECK` (`NOT VALID` → bereinigen → `VALIDATE`), siehe `docs/database.md`.
 
 ## Fehler und Audit
 - `errors.notFound|forbidden|validation|badRequest|conflict|unauthenticated|tooLarge|unavailable` (`$lib/sdk/server`).
   HTTP: 400/403/404/409/422/401/413/503. Texte deutsch mit echten Umlauten.
 - Fremde Objekte → `notFound` (nicht `forbidden`), damit Existenz nicht verraten wird.
+- Mehrschritt-Änderungen: erst alle Prüfungen, dann **eine** Transaktion (Muster `updateUserFull` für `PATCH /users/:id`). Nebenarbeiten (Mail/Audit) über `bestEffort`/`logBestEffort` (`$lib/sdk/server`), nie `catch {}` ohne Log.
+- Zod-Standardmeldungen sind deutsch (`src/lib/zod-locale.ts`, importiert in `hooks.server.ts`, API-Router und Root-Layout).
 - Audit **nach** der Transaktion: `core.audit.logFromContext(ctx, 'modul.ressource.aktion', { target, metadata })`.
   Keine personenbezogenen Details (Geburtsdatum, Allergien, E-Mail, IBAN) in `metadata`.
 
@@ -49,7 +66,21 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
   Adresse. `/verify-email` ohne Session → Redirect `/login` (keine Session über den Link, 2FA). Rate-Limit `/change-email`
   5/300 s, `/update-user` 20/300 s. Audit `core.auth.email_change_requested|email_changed` mit maskierten Adressen (`a***@domain`).
   Admin `updateUser` mit neuer Adresse: `emailVerified=true`, alle Sessions des Benutzers widerrufen, Duplikat 409.
-- Profilbild: `setOwnAvatar` → Storage `core/avatars/<userId>` (braucht S3, sonst 503), `user.image=/avatar/<id>?v=…`, Auslieferung `GET /avatar/<userId>`.
+- **Schutz bei Kontoänderungen** (2026-10-20, #4): `assertCanManageUser(ctx, targetId)` / `canManageUser` (`core/auth/manage-guard.ts`) –
+  die handelnde Person braucht **alle wirksamen Rechte** des Zielkontos (`getUserPermissions`, inkl. `user_role_grant`), sonst 403; System und
+  eigenes Konto ausgenommen. Aufgerufen in `updateUser` (alle Felder), `setUserActive`, `deleteUser`, `setUserRoles`, `setUserAvatar`/`removeUserAvatar`.
+  Administrativer E-Mail-Wechsel: Hinweismail an die **alte** Adresse (Fire-and-forget), Audit `core.user.updated` mit `emailFrom`/`emailTo` maskiert;
+  `core.user.created` speichert die Adresse nur maskiert. `/admin/users`: Zeilen mit `manageable: false` → Knöpfe gesperrt + Hinweis.
+- **Konto löschen** (#8): `deleteUser` → Core-Zeile weg → `removeAvatarObject` → `cleanupModulesAfterUserDeletion` (Hook `onUserDeleted` je aktivem
+  Modul, eigene Modul-Transaktion, danach `afterCommit`; Fehler → Log + Audit `cleanupFailed`). Details: `docs/module-development.md`.
+- **Mitglied gelöscht/anonymisiert** (#30): `core.modules.memberDeleted('members', { memberIds, reason })` (`core/privacy/member-hooks.ts`, nur `members`
+  darf auslösen) → Hook `onMemberDeleted` aller anderen aktiven Module. **Datenauskunft** `/admin/privacy` (Recht `core.privacy.export`, privilegiert):
+  `core/privacy/service.ts` `findPrivacySubjects`/`exportSubject` → Core-Daten + `ModuleDefinition.subjectExport` (`resolve`, `run`), JSON-Download per
+  Formular-POST `/admin/privacy/export`, Audit `core.privacy.exported`. Details: `docs/security.md` → „Löschkonzept und Betroffenenrechte“.
+- Profilbild: `setOwnAvatar` → Storage `core/avatars/<userId>` (braucht S3, sonst 503), `user.image=/avatar/<id>?v=…&n=1`, Auslieferung `GET /avatar/<userId>`.
+  Seit #19 wird nie das Original gespeichert: Magic-Bytes-Prüfung, dann `processImage` (WebP, `maxEdge` 512, Qualität 82, ≤ 2 MB Eingabe; erkanntes Format
+  muss zum angegebenen Typ passen, sonst 400) → nur die WebP-Variante (ohne EXIF/GPS). Bestand: stündlicher Core-Job `core.avatars-reprocess`
+  (`reprocessLegacyAvatars`, idempotent über Marker `n=1` im `user.image`; unlesbare/fremde Bilder → `image = NULL`).
   Verwaltung (2026-10-19): `setUserAvatar`/`removeUserAvatar` (`core/auth/profile.ts`, Recht `core.users.edit`, unbekannt 404, gleiche Typ-/Größen-/Magic-Bytes-Prüfung),
   Aktionen `setAvatar`/`removeAvatar` auf `/admin/users` (Bereich „Profilbild“ im Bearbeiten-Dialog, Avatar in der Liste; `UserListItem.image`). Audit wie beim eigenen Bild, mit `byAdmin: true`.
 - Theme: Cookie `theme` ist SSR-Quelle, `core.user.theme` (nur bei ausdrücklicher Wahl) gewinnt beim `(internal)`-Load;
@@ -60,20 +91,43 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
   `PUT /dashboard/layout` (`core.user.dashboard`, Origin-Check, `null` = Standard). Tests `dashboard-widgets`, `dashboard-layout`, E2E `dashboard.spec.ts`.
 - `/` und Login ohne `redirectTo` leiten auf `core.user.startPage` (erlaubt: Dashboard, Profil, Modul-Navigation).
 
+## Protokolle und Aufbewahrung (2026-10-20)
+- `api_log` speichert das **Endpunkt-Muster** (`apiLogPath` in `api/router.ts`, ohne Treffer token-artige Segmente → `:param`), nie Tokens.
+  `GET /api/v1/health` prüft die DB (`api/health.ts`, `SELECT 1`, 2 s, sonst 503) und wird **nicht** protokolliert (`UNLOGGED` im Router).
+- Core-Jobs: `CORE_JOBS` in `core/jobs/index.ts` (Schlüssel `core.<id>`, immer aktiv, nach den Modul-Jobs). `core.housekeeping` (täglich,
+  `jobs/housekeeping.ts`): `api_log` nach `core.retention.apiLogDays` (30) löschen, `audit_log`-IP nach `auditIpDays` (90) leeren, Einträge nach
+  `auditDays` (730, 0 = nie) löschen – nur mit `SET LOCAL app.audit_retention = 'on'` (Migration 0007; UPDATE nur `ip → NULL`). Audit
+  `core.system.housekeeping` nur mit Zählern. Einstellungen: Verwaltung → Einstellungen → Allgemein. Indizes `audit_log_target_idx`,
+  `audit_log_action_pattern_idx` (0007). Tests `core-housekeeping`, `core-health`, `api-log-path`.
+
 ## Sicherheit
 Security-Header und CSP aus `hooks.server.ts`/`svelte.config.js`; CSRF über SvelteKit-Origin-Check.
 Öffentliche Modul-Endpoints sind **verboten** (`permission` darf nicht `null` sein) – Phase 3 führt ein
 kontrolliertes Opt-in (`public: true`, Pflicht-Rate-Limit) ein. Details: `docs/security.md`.
 Nutzereingaben nie als `{@html}` ausgeben; CSV-Exporte gegen Formel-Injection (`= + - @`) absichern.
+**Admin-gleiche Rechte** (`PRIVILEGED_PERMISSIONS`: `core.system.backup|reset`) vergeben nur Administrator*innen (`isAdministrator` = alle
+Core-Rechte; Prüfung zentral in `assertCanGrant` → Rollen, Zuweisung, API-Keys, Ämter); Restore von `core:users|roles|api-keys`/`offices` nur
+für Admins, nie zusätzliche Rollen für die ausführende Person. **Einstellungen**: `setSettings(ctx, values)` atomar (≤ 100 Schlüssel),
+`writePermission` je Schlüssel (Modul mit `<modul>.settings.manage` → dieses Recht), Ziel-Wechsel (SMTP-Host/Port/User, KI-URL,
+Storage-Endpoint) verwirft das gebundene Secret (`SECRET_BINDINGS`). Details: `docs/permissions.md`, `docs/security.md`.
+Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `currentClientIp(headers)`; `hooks.server.ts` setzt den internen Header
+`x-ep-client-ip`, Better Auth liest nur ihn) – nie `X-Forwarded-For` selbst auswerten. Auth-Form-Actions begrenzen über `limitAuthAction`
+(`core/auth/auth-limits.ts`, gleiche Werte wie Better-Auth-`customRules`), weil `getAuth().api.*` dessen Limiter umgeht. Login-Audits nur mit
+`maskEmail`/`maskEmailInput`; `sanitizeMetadata` bereinigt personenbezogene Schlüssel (Blockliste) mit Warnung im Log.
 
 ## Öffentliches Multipart und Admin-Reset (2026-10-18)
 - `ApiEndpoint.multipart { maxBytes ≤ 12 MB, maxFiles ≤ 10 (Standard 1) }` nur für `public: true` + POST + `body`: Router verlangt
   `multipart/form-data` + `Content-Length` (413 bei Überschreitung), Textfelder → `body`-Zod (doppelte Felder/`__proto__` → 400), Dateien → `files`.
 - Reset (`core/system/reset.ts`, Recht `core.system.reset`, Seite `/admin/reset`): `listResetAreas` → `previewReset` (Token 15 min, im Prozessspeicher)
-  → `exportResetData` (Passwort + TOTP bei 2FA, JSON ohne Geheimnisse) → `executeReset` (Wort `ZURÜCKSETZEN`). Bereiche: Core (`core:audit|api-log|jobs|
+  → `exportResetData` (Passwort + TOTP bei 2FA + Sicherungs-Passwort → verschlüsselte `.epbackup` über `writeBackupFile`, Modul-Teilbereiche → ganzes Modul) → `executeReset` (Wort `ZURÜCKSETZEN`). Bereiche: Core (`core:audit|api-log|jobs|
   ai-usage|api-keys|users|roles|settings`) + `ModuleDefinition.resetAreas` (`<modul>:<id>`, `implies` transitiv, `rebuild` = Schema neu inkl. Startdaten)
   + `resetUsers(tx, keepUserId)`. Jobs pausiert; Reihenfolge Module → Benutzer → Core → Dateien (`core.storage.purge`) → Einstellungen (Storage/SMTP/Secrets
   bleiben) → Audit (DELETE nur mit `SET LOCAL app.audit_reset = 'on'`, Migration 0005) → Eintrag `core.system.reset`.
+
+## Einzelrechte am Benutzer (2026-10-21)
+- Tabelle `user_permission` (Core-Migration 0009): Rechte direkt am Benutzer zusätzlich zu Rollen; `getUserPermissions` vereinigt sie
+  (Modulrechte nur bei aktivem Modul). Vergabe in `auth/users.ts` (`permissionKeys`, `planUserPermissions`) mit denselben Regeln wie Rollen
+  (`core.roles.assign`, `assertCanGrant`, `assertCanManageUser`). UI `admin/_shared/PermissionPicker.svelte`. Details: `docs/permissions.md`.
 
 ## Freigabe an Principals (2026-10-18)
 - Generische Objekt-Freigabe für Module: Typen in `$lib/sdk/types/sharing.ts` (Client + Server), Logik in `$lib/sdk/server/sharing.ts`
@@ -88,12 +142,26 @@ Nutzereingaben nie als `{@html}` ausgeben; CSV-Exporte gegen Formel-Injection (`
 - Weitere Helfer (alle nach/vor der Transaktion): `searchPrincipals(ctx, modul, q, { everyoneLabel, types?, limitPerType? })` (ab 2 Zeichen,
   Reihenfolge everyone, group, role, member, user), `describePrincipals` (Anzeige, Unbekannte = „Unbekannt“), `validatePrincipals` (422,
   Pfad `[pathPrefix ?? 'shares', i, 'id']`, `everyone` nur mit `*`).
-- `members` ist **optional**: Modul führt `members` in `optionalDependencies`; `PrincipalProvider` (`listGroups`, `principalIdsForUser`,
-  `searchMembers`, im SDK dupliziert, implementiert in `members/principals.service.ts`) via `core.modules.useOptional`. Ohne `members`
-  entfallen Gruppen/Mitglieder still (Validierung → 422).
+- `members` als `optionalDependencies` (`core.modules.useOptional`, ohne aktives `members` entfallen Gruppen/Mitglieder still, Validierung → 422)
+  **oder** `dependencies` (`core.modules.use`, z. B. `actions`); ohne Deklaration wirft jeder Helfer einen `Error` (Programmierfehler).
+  Vertrag `PrincipalProvider` (`listGroups` → `PrincipalGroupRef` inkl. `meetingEndTime`, `principalIdsForUser`, `searchMemberPrincipals(ctx, …)`)
+  steht **nur** in `$lib/sdk/types/sharing.ts`; `members/contract.ts` (`MembersService extends PrincipalProvider`) und
+  `members/principals.service.ts`/`module.ts` (`satisfies`) bauen darauf auf. `MembersService.searchMembers` bleibt ohne Rechteprüfung (Systemfunktionen).
+- **Datenschutz (2026-10-20, #5)**: `searchPrincipals`/`describePrincipals` werten `ctx` aus – `member` nur mit `members.member.view`
+  (`searchMemberPrincipals` prüft zusätzlich selbst; gespeicherte Mitglieds-Freigaben ohne Recht nur als „Mitglied“), E-Mail als `detail` nur mit
+  `core.users.view`. **Gruppen bleiben bewusst für alle sichtbar** (keine personenbezogenen Daten, ohnehin in `events` `GET /groups` und auf der
+  Website, nötig zum Teilen mit der eigenen Gruppe). `validatePrincipals` prüft nur die Existenz (System-Kontext, gibt nichts aus).
+- Freigabe-Suchen (`GET /principals` in events/galleries/files, `actions` `GET /users`): `requireShareCapability(ctx, modul, { anyPermission,
+  canShareSql })` → 403 für Personen, die nichts teilen können (events/galleries: `create`/`edit-all`/Eigentum/`edit`-Freigabe; files: `manage-all`
+  oder eigener Knoten; actions: `edit-all` oder eigene Aktion), Rate-Limit `PRINCIPAL_SEARCH_RATE_LIMIT` (60/60 s). Test `principals-privacy.test.ts`.
 - Core: `core.roles.directory(ctx, { search, ids, limit })` (id/name, nur Anmeldung nötig, Suche ab 2 Zeichen, max. 30) und
   `core.users.roleIds(userId)`. UI: `SharePanel`/`ShareMenu`/`ShareDialog` mit `type` und `everyoneLabel` (siehe `ui-design.md`).
-- Nutzer: `events` (siehe `module-events.md`). `actions` nutzt noch die Benutzer-Freigabe (`action_shares.user_id`) – Umstellung offen.
+- **Zugriffsbaustein** (#35, `$lib/sdk/server/share-access.ts`): `createShareAccess({ table, shareTable, fk, ownerColumn?, perms: { viewAll, editAll },
+  readIf?: { column, equals }, notFoundText, forbiddenText })` → `canEditAll`, `canViewAll`, `resolveAccess`, `requireAccess` (404/403), `visibleFilter(ctx, keys,
+  alias)`, `accessForMany`, `loadShares`, `replaceShares`. `events`/`galleries` (`readIf` = öffentlich) haben in `access.ts` nur noch Konfiguration; `files`
+  (Ordnervererbung) nutzt die Bausteine `shareLevelOn`, `loadObjectShares`, `replaceObjectShares` mit `NODE_SHARES`. Neue Module (z. B. `actions`-Umstellung)
+  bauen darauf auf. Test `tests/integration/share-access.test.ts` (Zugriffsmatrix mit Testtabelle).
+- Nutzer: `events` (siehe `module-events.md`), `galleries`, `files`. `actions` nutzt noch die Benutzer-Freigabe (`action_shares.user_id`) – Umstellung offen.
 
 ## Rollen aus Modulen (2026-10-19)
 - Core-Tabelle `user_role_grant(user_id, role_id, module_id)` (Migration `drizzle/0006_user_role_grant.sql`, FK auf `user`/`role` mit CASCADE): Rollen, die ein
@@ -123,7 +191,8 @@ Nutzereingaben nie als `{@html}` ausgeben; CSV-Exporte gegen Formel-Injection (`
 - **Befehlspalette** `CommandPalette` (Strg/⌘+K, Topbar-Button „Suchen“): Dashboard, Modulseiten und alle sichtbaren Verwaltungseinträge (lokal)
   **plus Datensuche** (2026-10-20): ab 2 Zeichen, 250 ms verzögert `GET /search?q=` (`src/routes/(internal)/search/+server.ts` →
   `core/search/service.ts` `searchEverything`): Core (Benutzer*innen `core.users.view`, Rollen `core.roles.view`) + `ModuleDefinition.search`
-  (`ModuleSearchProvider { permission?, anyPermission?, run(ctx, q, limit) }`) aktiver Module, nur mit Recht, nacheinander, je Quelle ≤ 5,
+  (`ModuleSearchProvider { permission?, anyPermission?, run(ctx, q, limit) }`) aktiver Module, nur mit Recht, nacheinander (mit echtem `pg`-Pool > 1 Verbindung parallel, Zeitbudget 3 s je Quelle,
+  `databaseAllowsParallelQueries`; `principalKeysFor` je Request einmal, #68), je Quelle ≤ 5,
   Fehler einer Quelle übersprungen, nur relative Links (`isSafeHref`). Typen `$lib/sdk/types/search`. Quellen: members (Mitglieder `?open=`, Gruppen),
   actions, events (`?event=`), galleries, files, offices, orders, treasury (Rechnungen, Zahler `?payer=`, eigene Rechnungen mit `own.view`).
   Tests `search-core`, `search-modules-a|b`, E2E `search.spec.ts`.

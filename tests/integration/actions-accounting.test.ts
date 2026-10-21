@@ -433,6 +433,7 @@ describe('Abrechnung: Belege', () => {
 		expect(dl.headers.get('content-type')).toBe('image/png');
 		expect(dl.headers.get('cache-control')).toBe('private, no-store');
 		expect(dl.headers.get('content-disposition')).toContain("filename*=UTF-8''foto.png");
+		expect(dl.headers.get('content-security-policy')).toBe("default-src 'none'; sandbox");
 		expect(new Uint8Array(await dl.arrayBuffer())).toEqual(PNG);
 
 		const del = await data<{ id: string }>(
@@ -450,11 +451,12 @@ describe('Abrechnung: Belege', () => {
 		const id = await createAction();
 		const e = await addEntry(id, expense());
 		const inc = await addEntry(id, income());
+		// einheitliche Upload-Regel (#33): Typ/leer/fehlend → 422, zu groß → 413
 		expect((await uploadReceipt(id, e.id, uploadForm('x', 'a.txt', 'text/plain'))).status).toBe(
-			400
+			422
 		);
 		expect((await uploadReceipt(id, e.id, uploadForm('', 'a.pdf', 'application/pdf'))).status).toBe(
-			400
+			422
 		);
 		// Inhalt passt nicht zum Typ (Magic Bytes)
 		expect(
@@ -475,7 +477,7 @@ describe('Abrechnung: Belege', () => {
 					body: new FormData()
 				})
 			).status
-		).toBe(400);
+		).toBe(422);
 	});
 
 	it('entfernt den Beleg beim Löschen der Buchung', async () => {

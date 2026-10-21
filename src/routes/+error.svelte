@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { PageTitle } from '$lib/components/layout';
 	import { Button } from '$lib/components/ui/button';
 </script>
 
-<svelte:head><title>Fehler {page.status}</title></svelte:head>
+<PageTitle title={`Fehler ${page.status}`} />
 
 <main class="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
 	<p class="text-5xl font-semibold text-muted-foreground">{page.status}</p>
-	<h1 class="text-xl font-semibold">
+	<h1 class="text-title">
 		{page.status === 404 ? 'Seite nicht gefunden' : 'Es ist ein Fehler aufgetreten'}
 	</h1>
 	<p class="max-w-md text-sm text-muted-foreground">{page.error?.message}</p>

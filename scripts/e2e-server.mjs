@@ -28,6 +28,8 @@ const env = {
 	INITIAL_ADMIN_PASSWORD: 'e2e-admin-password-1',
 	// PGlite hat nur eine Sitzung (nur bei echter PostgreSQL über E2E_DATABASE_URL mehrere)
 	...(process.env.E2E_DATABASE_URL ? {} : { DATABASE_POOL_MAX: '1' }),
+	// Alle Specs melden sich von 127.0.0.1 an – Auth-Rate-Limits (#14) entsprechend anheben
+	AUTH_RATE_LIMIT_FACTOR: '50',
 	PORT: '4173',
 	HOST: '127.0.0.1'
 };

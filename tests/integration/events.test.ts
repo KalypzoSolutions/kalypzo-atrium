@@ -202,6 +202,7 @@ beforeAll(async () => {
 		color: '#16a34a',
 		meetingWeekday: 2,
 		meetingTime: '18:00',
+		meetingEndTime: '19:30',
 		meetingPlace: 'Pfadiheim Kellerraum'
 	});
 	wolf = await membersPost('/groups', { name: 'Meute Wolf', type: 'sippe', leaderIds: [lea] });
@@ -223,7 +224,20 @@ beforeAll(async () => {
 
 	// Rollen
 	const viewPerms = ['core.api.manage', 'events.event.view'];
-	const ownerPerms = [...viewPerms, 'events.event.create'];
+	// Mitgliedsnamen und E-Mails in Freigaben/Suche nur mit diesen Rechten (siehe principals-privacy.test.ts)
+	const ownerPerms = [
+		...viewPerms,
+		'events.event.create',
+		'events.event.publish',
+		'members.member.view',
+		'core.users.view'
+	];
+	// Eigentümer*in ohne Veröffentlichungsrecht (#67, 01b-06)
+	const noPublishPerms = [...viewPerms, 'events.event.create'];
+	const noPublishRole = await createRole(admin, {
+		name: 'Ohne Veröffentlichen',
+		permissions: noPublishPerms
+	});
 	const ownerRole = await createRole(admin, { name: 'Terminplanung', permissions: ownerPerms });
 	const viewerRole = await createRole(admin, { name: 'Lesende', permissions: viewPerms });
 	editorsRole = await createRole(admin, { name: 'Redaktion', permissions: viewPerms });
@@ -263,6 +277,7 @@ beforeAll(async () => {
 		'events.event.create'
 	]);
 	await addUser('web', 'Website', websiteRole, ['events.website.read']);
+	await addUser('q', 'Quentin Ohne Publish', noPublishRole, noPublishPerms);
 	keys.webNoScope = (
 		await createApiKey(await ctxOf(userIds.web!), { name: 'kein', scopes: ['core.api.manage'] })
 	).key;
@@ -458,6 +473,88 @@ describe('Zugriffsmatrix', () => {
 		expect(wildcard.total).toBe(0);
 		const later = ok<EventList>(await call('owner', 'GET', '/events?from=2026-11-04'));
 		expect(later.items.map((i) => i.id)).not.toContain(eMain);
+	});
+});
+
+describe('Veröffentlichen auf der Website (#67, 01b-06)', () => {
+	it('Eigentümer*in ohne events.event.publish: POST mit onWebsite → 403, ohne → 201, PUT auf öffentlich → 403', async () => {
+		fail(
+			await call('q', 'POST', '/events', base({ title: 'Q öffentlich', onWebsite: true })),
+			403,
+			'forbidden'
+		);
+		const id = ok<EventDetail>(
+			await call('q', 'POST', '/events', base({ title: 'Q intern' })),
+			201
+		).id;
+		fail(
+			await call('q', 'PUT', `/events/${id}`, base({ title: 'Q intern', onWebsite: true })),
+			403,
+			'forbidden'
+		);
+		// Sonstige Änderungen ohne Veröffentlichen bleiben erlaubt
+		ok(await call('q', 'PUT', `/events/${id}`, base({ title: 'Q intern 2' })));
+	});
+
+	it('edit-Freigabe ohne Publish-Recht → 403 beim Wechsel auf öffentlich; Zurücknehmen erlaubt', async () => {
+		const id = ok<EventDetail>(
+			await call(
+				'owner',
+				'POST',
+				'/events',
+				base({ title: 'Freigabe-Test', shares: [{ type: 'role', id: editorsRole, level: 'edit' }] })
+			),
+			201
+		).id;
+		const shares = [{ type: 'role', id: editorsRole, level: 'edit' }];
+		fail(
+			await call(
+				'd',
+				'PUT',
+				`/events/${id}`,
+				base({ title: 'Freigabe-Test', shares, onWebsite: true })
+			),
+			403,
+			'forbidden'
+		);
+		// Eigentümer*in mit Recht veröffentlicht; danach darf d weiter bearbeiten und zurücknehmen
+		ok(
+			await call(
+				'owner',
+				'PUT',
+				`/events/${id}`,
+				base({ title: 'Freigabe-Test', shares, onWebsite: true })
+			)
+		);
+		ok(
+			await call(
+				'd',
+				'PUT',
+				`/events/${id}`,
+				base({ title: 'Freigabe-Test 2', shares, onWebsite: true })
+			)
+		);
+		const back = ok<EventDetail>(
+			await call('d', 'PUT', `/events/${id}`, base({ title: 'Freigabe-Test 2', shares }))
+		);
+		expect(back.onWebsite).toBe(false);
+		const { rows } = await listAudit({ target: id, limit: 50 });
+		const actions = rows.map((r) => r.action);
+		expect(actions).toContain('events.event.published');
+		expect(actions).toContain('events.event.unpublished');
+	});
+
+	it('edit-all ohne Publish-Recht → 403 beim Wechsel auf öffentlich', async () => {
+		fail(
+			await call(
+				'h',
+				'PUT',
+				`/events/${ePrivate}`,
+				base({ title: 'Leiterrunde', onWebsite: true })
+			),
+			403,
+			'forbidden'
+		);
 	});
 });
 
@@ -709,6 +806,7 @@ describe('Website-API', () => {
 				color: null,
 				meetingWeekday: null,
 				meetingTime: null,
+				meetingEndTime: null,
 				meetingPlace: null
 			});
 		} finally {
@@ -810,17 +908,20 @@ describe('Freigabe-Kandidaten, Gruppen, Tags', () => {
 			color: '#16a34a',
 			meetingWeekday: 2,
 			meetingTime: '18:00',
+			meetingEndTime: '19:30',
 			meetingPlace: 'Pfadiheim Kellerraum'
 		});
 		expect(groups.find((g) => g.id === wolf)).toMatchObject({
 			meetingWeekday: null,
 			meetingTime: null,
+			meetingEndTime: null,
 			meetingPlace: null
 		});
 		expect(groups[0]).toMatchObject({
 			id: 'stamm',
 			meetingWeekday: null,
 			meetingTime: null,
+			meetingEndTime: null,
 			meetingPlace: null
 		});
 	});
@@ -840,7 +941,13 @@ describe('Audit', () => {
 		const { rows } = await listAudit({ action: 'events.event.', limit: 200 });
 		const actions = new Set(rows.map((r) => r.action));
 		expect(actions).toEqual(
-			new Set(['events.event.created', 'events.event.updated', 'events.event.deleted'])
+			new Set([
+				'events.event.created',
+				'events.event.updated',
+				'events.event.deleted',
+				'events.event.published',
+				'events.event.unpublished'
+			])
 		);
 		const created = rows.find((r) => r.action === 'events.event.created' && r.target === eMain);
 		expect(created?.metadata).toEqual({
@@ -893,6 +1000,7 @@ describe('members deaktiviert', () => {
 				color: null,
 				meetingWeekday: null,
 				meetingTime: null,
+				meetingEndTime: null,
 				meetingPlace: null
 			}
 		]);

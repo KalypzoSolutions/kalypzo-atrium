@@ -2,8 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { toast } from 'svelte-sonner';
-	import { PageHeader } from '$lib/components/layout';
-	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { ErrorState, LoadingState, PageHeader, PageTitle } from '$lib/components/layout';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import AccountTab from './_components/AccountTab.svelte';
 	import AppearanceTab from './_components/AppearanceTab.svelte';
@@ -54,12 +53,12 @@
 	}
 </script>
 
-<svelte:head><title>Profil - {data.systemName}</title></svelte:head>
+<PageTitle title="Profil" />
 
 <PageHeader title="Profil" description="Konto, Sicherheit und persönliche Einstellungen." />
 
 <Tabs.Root value={tab} onValueChange={setTab}>
-	<Tabs.List variant="line" class="mb-4 h-auto">
+	<Tabs.List variant="line" class="mb-4">
 		{#each tabs as t (t.value)}
 			<Tabs.Trigger value={t.value}>{t.label}</Tabs.Trigger>
 		{/each}
@@ -72,14 +71,15 @@
 	{#each sections as s (s.key)}
 		<Tabs.Content value={s.key}>
 			{#await sectionComponent(s)}
-				<Skeleton class="h-40 w-full" />
+				<LoadingState label={s.title} rows={1} rowClass="h-40 w-full" />
 			{:then mod}
 				{@const Section = mod.default}
 				<Section userId={data.profile.id} />
 			{:catch}
-				<p class="text-sm text-destructive" role="alert">
-					Dieser Bereich konnte nicht geladen werden. Bitte lade die Seite neu.
-				</p>
+				<ErrorState
+					message="Dieser Bereich konnte nicht geladen werden."
+					onretry={() => location.reload()}
+				/>
 			{/await}
 		</Tabs.Content>
 	{/each}

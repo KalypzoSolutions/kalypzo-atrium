@@ -1,9 +1,10 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import * as Card from '$lib/components/ui/card';
-	import { Skeleton } from '$lib/components/ui/skeleton';
 	import * as Table from '$lib/components/ui/table';
 	import EmptyState from './EmptyState.svelte';
+	import ErrorState from './ErrorState.svelte';
+	import LoadingState from './LoadingState.svelte';
 
 	/**
 	 * Einheitliche Tabellen-Karte: optionale Toolbar (Suche/Filter), Ladezustand, Fehler,
@@ -14,9 +15,11 @@
 	let {
 		caption,
 		title,
+		titleLevel = 2,
 		description,
 		loading = false,
 		error = '',
+		onretry,
 		empty = false,
 		emptyTitle = 'Keine Einträge',
 		emptyDescription,
@@ -32,9 +35,13 @@
 		caption: string;
 		/** Optionaler sichtbarer Kartentitel (+ Beschreibung) */
 		title?: string;
+		/** Überschriftsebene des Titels (`3` unter einer Abschnittsüberschrift) */
+		titleLevel?: 2 | 3 | 4;
 		description?: string;
 		loading?: boolean;
 		error?: string;
+		/** „Erneut versuchen“ im Fehlerzustand */
+		onretry?: () => void | Promise<void>;
 		/** Keine Datensätze vorhanden (nach Laden/Filtern) */
 		empty?: boolean;
 		emptyTitle?: string;
@@ -85,7 +92,7 @@
 <Card.Root>
 	{#if title}
 		<Card.Header>
-			<Card.Title>{title}</Card.Title>
+			<Card.Title level={titleLevel}>{title}</Card.Title>
 			{#if description}<Card.Description>{description}</Card.Description>{/if}
 		</Card.Header>
 	{/if}
@@ -95,13 +102,9 @@
 		{/if}
 
 		{#if error}
-			<p class="text-sm text-destructive" role="alert">{error}</p>
+			<ErrorState message={error} {onretry} busy={loading} />
 		{:else if loading && empty}
-			<div class="space-y-2" aria-busy="true" aria-label="Lade {caption}">
-				{#each Array.from({ length: skeletonRows }, (_, i) => i) as i (i)}
-					<Skeleton class="h-10 w-full" />
-				{/each}
-			</div>
+			<LoadingState label={caption} rows={skeletonRows} rowClass="h-10 w-full" />
 		{:else if empty}
 			<EmptyState title={emptyTitle} description={emptyDescription}>
 				{#if emptyAction}{@render emptyAction()}{/if}

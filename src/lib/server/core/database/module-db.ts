@@ -7,7 +7,8 @@ export interface ModuleDatabase {
 	readonly schemaName: string;
 	/**
 	 * Transaktion mit `search_path` = Modulschema. Unqualifizierte Tabellen lösen
-	 * ausschließlich im eigenen Schema auf; Core- und Fremdtabellen sind nicht erreichbar.
+	 * ausschließlich im eigenen Schema auf; Core- und Fremdtabellen sind nur **unqualifiziert**
+	 * nicht erreichbar (Konvention, kein Sicherheitsmechanismus – Module sind vertrauenswürdiger Code).
 	 */
 	transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T>;
 }

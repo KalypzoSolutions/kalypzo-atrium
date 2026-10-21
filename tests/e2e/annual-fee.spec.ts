@@ -106,10 +106,16 @@ test('Jahresbeitrag: Lauf anlegen, Texte, Empfänger, Vorschau, planen', async (
 	});
 
 	await page.goto('/modules/treasury?tab=annual');
-	await expect(page.getByRole('tab', { name: 'Jahresbeitrag' })).toHaveAttribute(
+	// `?tab=annual` (Altlink) → Bereich „Eingänge“ mit der Unteransicht „Jahresbeitrag“ (#62)
+	await expect(page.getByRole('tab', { name: 'Eingänge' })).toHaveAttribute(
 		'aria-selected',
 		'true'
 	);
+	await expect(
+		page
+			.getByRole('group', { name: 'Ansicht der Eingänge' })
+			.getByRole('button', { name: 'Jahresbeitrag' })
+	).toHaveAttribute('aria-pressed', 'true');
 
 	// Lauf anlegen (Leerzustand „Lauf für … anlegen“ oder Kopf „Neuer Lauf für …“)
 	await page.getByRole('button', { name: new RegExp(`Lauf für ${year}`) }).click();

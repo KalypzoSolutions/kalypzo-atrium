@@ -125,23 +125,24 @@ function picture(color: string): Buffer {
 // --- Hilfen ------------------------------------------------------------------------------
 
 /**
- * Anmeldung über die Login-Seite. Better Auth begrenzt Anmeldungen auf 10/min (gemeinsamer Bucket
- * aller Specs) – bei einer Sperre kurz warten und erneut versuchen.
+ * Anmeldung über die Login-Seite (Form-Action, `auth.api.signInEmail`). Die Login-Sperre zählt nur
+ * Fehlversuche – erfolgreiche Anmeldungen der Specs lösen sie nicht aus. Statt blind 15 s zu warten
+ * (#75) wird eine Sperre gezielt erkannt und mit klarer Meldung gemeldet.
  */
 async function login(page: Page, creds: { email: string; password: string } = ADMIN) {
-	for (let attempt = 0; ; attempt++) {
-		await page.goto('/login');
-		await page.getByLabel('E-Mail').fill(creds.email);
-		await page.getByLabel('Passwort').fill(creds.password);
-		await page.getByRole('button', { name: 'Anmelden' }).click();
-		try {
-			await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 10_000 });
-			return;
-		} catch (e) {
-			if (attempt >= 3) throw e;
-			await page.waitForTimeout(15_000);
-		}
-	}
+	await page.goto('/login');
+	await page.getByLabel('E-Mail').fill(creds.email);
+	await page.getByLabel('Passwort').fill(creds.password);
+	await page.getByRole('button', { name: 'Anmelden' }).click();
+	const blocked = page.getByText(/Zu viele Versuche/);
+	await expect
+		.poll(
+			async () =>
+				!new URL(page.url()).pathname.startsWith('/login') ||
+				((await blocked.isVisible()) ? 'gesperrt' : false),
+			{ timeout: 10_000 }
+		)
+		.toBe(true);
 }
 
 async function call<T>(

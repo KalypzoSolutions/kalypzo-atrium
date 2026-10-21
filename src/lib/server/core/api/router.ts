@@ -1,15 +1,17 @@
-import { randomUUID } from 'node:crypto';
 import { ZodError } from 'zod';
+import '$lib/zod-locale';
 import type { ApiErrorBody, RequestContext } from '$lib/sdk/types';
 import { anonymousContext, resolveApiKey, resolveSession } from '../auth/context';
 import { getDb, schema } from '../database/client';
 import { env } from '../env';
+import { isUniqueViolation, logError } from '../db-errors';
 import { errors, isCoreError } from '../errors';
 import { isModuleEnabled } from '../modules/service';
 import { has } from '../permissions/service';
 import { hit } from '../rate-limit';
 import { newId } from '../util';
 import { matchEndpoint } from './registry';
+import { requestIdFrom } from './request-id';
 
 const MAX_BODY_BYTES = 1_000_000;
 const DEFAULT_LIMIT = { limit: 120, windowSec: 60 };
@@ -37,13 +39,19 @@ function errorResponse(e: unknown, requestId: string): Response {
 	if (e instanceof ZodError) {
 		e = errors.validation(e.issues);
 	}
+	if (!isCoreError(e) && isUniqueViolation(e)) {
+		// Nicht abgefangene Unique-Verletzung: kein Serverfehler, sondern ein Konflikt (#55)
+		logError(`[api] ${requestId} unbehandelte Unique-Verletzung`, e, { requestId });
+		e = errors.conflict('Ein Eintrag mit diesen Angaben existiert bereits');
+	}
 	if (isCoreError(e)) {
 		const body: ApiErrorBody = {
 			error: { code: e.code, message: e.message, details: e.details, requestId }
 		};
 		return json(body, e.status);
 	}
-	console.error(`[api] ${requestId}`, e instanceof Error ? e.message : e);
+	// Nie `e.message` loggen: bei DB-Fehlern enthält sie alle SQL-Parameterwerte (#56)
+	logError(`[api] ${requestId}`, e, { requestId });
 	const body: ApiErrorBody = {
 		error: { code: 'internal_error', message: 'Interner Serverfehler', requestId }
 	};
@@ -57,11 +65,46 @@ function sameOrigin(request: Request): boolean {
 	return site === 'same-origin' || site === 'none';
 }
 
+/**
+ * Liest den Body gestreamt mit Byte-Zähler und bricht ab, sobald `maxBytes` überschritten ist
+ * (auch ohne bzw. mit falschem `Content-Length`, z. B. `Transfer-Encoding: chunked`). So landet nie
+ * mehr als `maxBytes` (+ ein Chunk) im Speicher (#25).
+ */
+export async function readLimitedBody(
+	request: Request,
+	maxBytes: number,
+	tooLarge: () => Error
+): Promise<Uint8Array> {
+	if (!request.body) return new Uint8Array(0);
+	const reader = request.body.getReader();
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		total += value.byteLength;
+		if (total > maxBytes) {
+			// Rest nicht mehr lesen; Fehler beim Abbrechen sind hier bedeutungslos
+			await reader.cancel().catch(() => undefined);
+			throw tooLarge();
+		}
+		chunks.push(value);
+	}
+	const out = new Uint8Array(total);
+	let offset = 0;
+	for (const c of chunks) {
+		out.set(c, offset);
+		offset += c.byteLength;
+	}
+	return out;
+}
+
 async function readBody(request: Request): Promise<unknown> {
+	const tooLarge = () => errors.tooLarge('Anfrage ist zu groß');
 	const length = Number(request.headers.get('content-length') ?? 0);
-	if (length > MAX_BODY_BYTES) throw errors.tooLarge('Anfrage ist zu groß');
-	const text = await request.text();
-	if (text.length > MAX_BODY_BYTES) throw errors.tooLarge('Anfrage ist zu groß');
+	if (length > MAX_BODY_BYTES) throw tooLarge();
+	const bytes = await readLimitedBody(request, MAX_BODY_BYTES, tooLarge);
+	const text = new TextDecoder().decode(bytes);
 	if (!text.trim()) return undefined;
 	try {
 		return JSON.parse(text);
@@ -90,11 +133,10 @@ async function readMultipart(
 			`Anfrage ist zu groß (höchstens ${Math.floor(limits.maxBytes / (1024 * 1024))} MB)`
 		);
 	if (Number(raw) > limits.maxBytes) throw tooLarge();
-	const buffer = await request.arrayBuffer();
-	if (buffer.byteLength > limits.maxBytes) throw tooLarge();
+	const buffer = await readLimitedBody(request, limits.maxBytes, tooLarge);
 	let form: FormData;
 	try {
-		form = await new Response(buffer, {
+		form = await new Response(buffer as BodyInit, {
 			headers: { 'content-type': request.headers.get('content-type') ?? '' }
 		}).formData();
 	} catch {
@@ -124,9 +166,41 @@ async function logAccess(row: typeof schema.apiLog.$inferInsert): Promise<void> 
 	}
 }
 
+/** Endpunkte, die nicht im `api_log` landen (Health-Check alle 30 s) */
+const UNLOGGED = new Set(['GET /health']);
+
+/** Längere Pfadsegmente aus Buchstaben/Ziffern/`-_` gelten als Token oder ID und werden maskiert. */
+const TOKENISH = /^[A-Za-z0-9_-]{16,}$/;
+
+/**
+ * Pfad für das Zugriffsprotokoll: bei einem Treffer das Endpunkt-Muster (`/api/v1/…/:token`) statt
+ * des konkreten Pfads, sonst der Pfad mit maskierten token-artigen Segmenten. So landen Link-Tokens
+ * öffentlicher Endpunkte nie im Klartext im `api_log`.
+ */
+export function apiLogPath(pathname: string, fullPath?: string | null): string {
+	if (fullPath) return `${API_PREFIX}${fullPath}`.slice(0, 300);
+	const masked = pathname
+		.split('/')
+		.map((seg) => {
+			let s = seg;
+			try {
+				s = decodeURIComponent(seg);
+			} catch {
+				// ungültige Kodierung: Rohsegment prüfen
+			}
+			return TOKENISH.test(s) || s.length > 64 ? ':param' : seg;
+		})
+		.join('/');
+	return masked.slice(0, 300);
+}
+
 interface State {
 	ctx: RequestContext;
 	apiKeyId: string | null;
+	/** Gematchtes Endpunkt-Muster (ohne `/api/v1`) */
+	pattern: string | null;
+	/** Nicht protokollieren (siehe `UNLOGGED`) */
+	skipLog: boolean;
 }
 
 async function execute(
@@ -137,11 +211,16 @@ async function execute(
 	const pathname = url.pathname.startsWith(API_PREFIX)
 		? url.pathname.slice(API_PREFIX.length)
 		: url.pathname;
-	const { match, pathExists } = matchEndpoint(request.method, pathname);
+	const { match, pathExists, allowed } = matchEndpoint(request.method, pathname);
 	if (!match) {
-		throw pathExists ? errors.methodNotAllowed() : errors.notFound('Endpunkt nicht gefunden');
+		if (!pathExists) throw errors.notFound('Endpunkt nicht gefunden');
+		const r = errorResponse(errors.methodNotAllowed(), requestId);
+		r.headers.set('allow', allowed.join(', '));
+		return r;
 	}
 	const { endpoint, params } = match;
+	state.pattern = endpoint.fullPath;
+	state.skipLog = UNLOGGED.has(`${endpoint.method} ${endpoint.fullPath}`);
 
 	// Modulstatus zuerst: deaktivierte Module sind nicht erreichbar (auch nicht anonym)
 	if (endpoint.moduleId !== 'core' && !(await isModuleEnabled(endpoint.moduleId))) {
@@ -274,8 +353,14 @@ async function execute(
 export async function handleApiRequest(input: ApiRequestInput): Promise<Response> {
 	const started = Date.now();
 	const { request, url, ip } = input;
-	const requestId = request.headers.get('x-request-id')?.slice(0, 64) || randomUUID();
-	const state: State = { ctx: anonymousContext(ip), apiKeyId: null };
+	// nur sichere IDs übernehmen (keine Steuerzeichen/Zeilenumbrüche in Logs), sonst neue UUID
+	const requestId = requestIdFrom(request.headers);
+	const state: State = {
+		ctx: anonymousContext(ip),
+		apiKeyId: null,
+		pattern: null,
+		skipLog: false
+	};
 	let response: Response;
 	try {
 		response = await execute(input, requestId, state);
@@ -283,11 +368,17 @@ export async function handleApiRequest(input: ApiRequestInput): Promise<Response
 		response = errorResponse(e, requestId);
 	}
 	response.headers.set('x-request-id', requestId);
+	// HEAD: gleiche Header wie GET, aber ohne Body
+	if (request.method === 'HEAD' && response.body) {
+		response.body.cancel().catch(() => undefined);
+		response = new Response(null, { status: response.status, headers: response.headers });
+	}
+	if (state.skipLog) return response;
 	void logAccess({
 		id: newId(),
 		requestId,
 		method: request.method,
-		path: url.pathname.slice(0, 300),
+		path: apiLogPath(url.pathname, state.pattern),
 		status: response.status,
 		durationMs: Date.now() - started,
 		actorType: state.ctx.actor.type,

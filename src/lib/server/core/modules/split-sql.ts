@@ -1,13 +1,15 @@
 /**
- * Zerlegt ein SQL-Skript an Semikolons in einzelne Statements. Berücksichtigt Zeichenketten,
- * quotierte Bezeichner, Zeilen-/Blockkommentare und Dollar-Quoting. Nötig, weil manche Treiber
- * (PGlite) pro Aufruf nur ein Statement erlauben.
+ * Zerlegt ein SQL-Skript an Semikolons in einzelne Statements. Berücksichtigt Zeichenketten
+ * (inkl. `E'…'` mit Backslash-Escapes), quotierte Bezeichner, Zeilenkommentare, verschachtelte
+ * Blockkommentare und Dollar-Quoting (`$$`, `$tag$`, `$tag_1$`). Nötig, weil manche Treiber
+ * (PGlite) pro Aufruf nur ein Statement erlauben. Kommentare werden nicht übernommen.
  */
 export function splitSqlStatements(script: string): string[] {
 	const out: string[] = [];
 	let cur = '';
 	let i = 0;
 	const n = script.length;
+	const isIdentChar = (ch: string | undefined) => !!ch && /[A-Za-z0-9_$]/.test(ch);
 
 	while (i < n) {
 		const c = script[i]!;
@@ -15,18 +17,38 @@ export function splitSqlStatements(script: string): string[] {
 
 		if (c === '-' && next === '-') {
 			const end = script.indexOf('\n', i);
-			const stop = end === -1 ? n : end;
-			i = stop;
+			i = end === -1 ? n : end;
 			continue;
 		}
 		if (c === '/' && next === '*') {
-			const end = script.indexOf('*/', i + 2);
-			i = end === -1 ? n : end + 2;
+			// PostgreSQL erlaubt verschachtelte Blockkommentare
+			let depth = 1;
+			let j = i + 2;
+			while (j < n && depth > 0) {
+				if (script[j] === '/' && script[j + 1] === '*') {
+					depth++;
+					j += 2;
+				} else if (script[j] === '*' && script[j + 1] === '/') {
+					depth--;
+					j += 2;
+				} else j++;
+			}
+			i = j;
+			// Kommentar trennt Tokens: Leerzeichen statt nichts, damit `a/* */b` nicht zu `ab` wird
+			cur += ' ';
 			continue;
 		}
 		if (c === "'" || c === '"') {
+			// E'…' (Escape-String): Backslash maskiert das folgende Zeichen
+			const prev = script[i - 1];
+			const escapeString =
+				c === "'" && (prev === 'E' || prev === 'e') && !isIdentChar(script[i - 2]);
 			let j = i + 1;
 			while (j < n) {
+				if (escapeString && script[j] === '\\') {
+					j += 2;
+					continue;
+				}
 				if (script[j] === c) {
 					if (script[j + 1] === c) {
 						j += 2;
@@ -40,8 +62,8 @@ export function splitSqlStatements(script: string): string[] {
 			i = j + 1;
 			continue;
 		}
-		if (c === '$') {
-			const m = /^\$[A-Za-z_]*\$/.exec(script.slice(i));
+		if (c === '$' && !isIdentChar(script[i - 1])) {
+			const m = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(script.slice(i));
 			if (m) {
 				const tag = m[0];
 				const end = script.indexOf(tag, i + tag.length);

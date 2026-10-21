@@ -12,7 +12,29 @@ export interface SettingDefinition {
 	secret?: boolean;
 	scope: SettingScope;
 	group: string;
+	/**
+	 * Recht zum Schreiben (nur globale Einstellungen). Standard: `core.settings.manage`; Modul-Schlüssel
+	 * bekommen `<modul>.settings.manage`, wenn das Modul dieses Recht deklariert (siehe `service.ts`).
+	 */
+	writePermission?: string;
 }
+
+/**
+ * Secrets, die an ein Ziel gebunden sind (#15): Ändert sich ein Ziel-Schlüssel (Host, Port, Benutzer,
+ * URL), wird das zugehörige Secret verworfen – außer es wird im selben Speichervorgang neu gesetzt.
+ * Sonst ließe sich ein gespeichertes Passwort/API-Key an einen fremden Server schicken.
+ */
+export const SECRET_BINDINGS: { targets: string[]; secrets: string[] }[] = [
+	{
+		targets: ['core.smtp.host', 'core.smtp.port', 'core.smtp.user'],
+		secrets: ['core.smtp.password']
+	},
+	{ targets: ['core.ai.baseUrl'], secrets: ['core.ai.apiKey'] },
+	{
+		targets: ['core.storage.endpoint'],
+		secrets: ['core.storage.accessKeyId', 'core.storage.secretAccessKey']
+	}
+];
 
 const str = (max = 200) => z.string().trim().max(max);
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -64,10 +86,65 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		default: '',
 		group: 'system'
 	}),
+
+	// Rechtliche Links (Login-Fußzeile, öffentliche Seiten `/p/*`, Anmeldeformulare; Issue #28)
+	g({
+		key: 'core.legal.privacyUrl',
+		label: 'Datenschutzerklärung (URL)',
+		description:
+			'Link auf die Datenschutzerklärung des Stammes. Erscheint auf der Anmeldeseite und allen öffentlichen Seiten; Anmeldeformulare ohne eigenen Link nutzen ihn.',
+		schema: urlOrEmpty,
+		default: '',
+		group: 'system'
+	}),
+	g({
+		key: 'core.legal.imprintUrl',
+		label: 'Impressum (URL)',
+		description:
+			'Link auf das Impressum. Erscheint auf der Anmeldeseite und allen öffentlichen Seiten.',
+		schema: urlOrEmpty,
+		default: '',
+		group: 'system'
+	}),
+
+	// Aufbewahrungsfristen (Core-Job `core.housekeeping`, täglich)
+	g({
+		key: 'core.retention.apiLogDays',
+		label: 'API-Protokoll aufbewahren (Tage)',
+		description:
+			'Einträge im API-Zugriffsprotokoll (Pfad, IP-Adresse, Akteur) werden danach gelöscht. 1–3650 Tage.',
+		schema: z.coerce.number().int().min(1).max(3650),
+		default: 30,
+		group: 'system'
+	}),
+	g({
+		key: 'core.retention.auditIpDays',
+		label: 'IP-Adressen im Audit-Log aufbewahren (Tage)',
+		description:
+			'Danach wird die IP-Adresse aus Audit-Einträgen entfernt; der Eintrag selbst bleibt. 1–3650 Tage.',
+		schema: z.coerce.number().int().min(1).max(3650),
+		default: 90,
+		group: 'system'
+	}),
+	g({
+		key: 'core.retention.auditDays',
+		label: 'Audit-Log aufbewahren (Tage)',
+		description:
+			'Audit-Einträge werden danach gelöscht. 0 = nie löschen, sonst mindestens 30 Tage (höchstens 36500).',
+		schema: z.coerce
+			.number()
+			.int()
+			.min(0)
+			.max(36500)
+			.refine((v) => v === 0 || v >= 30, 'Bitte 0 (nie) oder mindestens 30 Tage angeben'),
+		default: 730,
+		group: 'system'
+	}),
 	g({
 		key: 'core.design.logoFileId',
 		label: 'Logo (Datei-ID im Storage)',
-		schema: z.string().max(64),
+		// Leer oder UUID einer Datei aus `core/branding/` (Logo-Upload); PDFs prüfen den Bereich zusätzlich.
+		schema: z.union([z.literal(''), z.uuid()]),
 		default: '',
 		group: 'design'
 	}),

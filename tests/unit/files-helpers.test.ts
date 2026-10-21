@@ -107,4 +107,26 @@ describe('iconFor', () => {
 		expect(new Set([sheet, pres, zip, other]).size).toBe(4);
 		expect(iconFor('file', 'application/vnd.ms-excel')).toBe(sheet);
 	});
+
+	it('Vorlagen und OpenDocument wie die Dokumentart', () => {
+		const text = iconFor(
+			'file',
+			'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+		);
+		const sheet = iconFor('file', 'application/vnd.ms-excel');
+		const pres = iconFor('file', 'application/vnd.ms-powerpoint');
+		expect(
+			iconFor('file', 'application/vnd.openxmlformats-officedocument.wordprocessingml.template')
+		).toBe(text);
+		expect(iconFor('file', 'application/rtf')).toBe(text);
+		expect(iconFor('file', 'application/vnd.oasis.opendocument.text-template')).toBe(text);
+		expect(
+			iconFor('file', 'application/vnd.openxmlformats-officedocument.spreadsheetml.template')
+		).toBe(sheet);
+		expect(iconFor('file', 'application/vnd.oasis.opendocument.spreadsheet')).toBe(sheet);
+		expect(
+			iconFor('file', 'application/vnd.openxmlformats-officedocument.presentationml.template')
+		).toBe(pres);
+		expect(iconFor('file', 'application/vnd.oasis.opendocument.presentation-template')).toBe(pres);
+	});
 });

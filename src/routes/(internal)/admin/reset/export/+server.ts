@@ -1,11 +1,16 @@
+import { createReadStream } from 'node:fs';
+import { Readable } from 'node:stream';
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
+import { BACKUP_FILE_EXT, BACKUP_MIN_PASSWORD } from '$lib/backup/contract';
 import { isCoreError } from '$lib/server/core/errors';
+import { safeFileName as cleanFileName } from '$lib/sdk/file-names';
 import { exportResetData } from '$lib/server/core/system/reset';
 import type { RequestHandler } from './$types';
 
 /**
- * Sicherung vor dem Zurücksetzen: POST JSON `{ token, password, totp? }` → JSON-Datei als Download.
+ * Sicherung vor dem Zurücksetzen: POST JSON `{ token, password, totp?, backupPassword }` → verschlüsselte
+ * Sicherung (`.epbackup`, Format der Datensicherung) als Download; die Temp-Datei wird nach dem Senden gelöscht.
  * JSON-POSTs fallen nicht unter den Origin-Check von SvelteKit (nur Formular-Content-Types) –
  * daher hier eigener Same-Origin-Check.
  */
@@ -13,6 +18,10 @@ const bodySchema = z
 	.object({
 		token: z.string().min(1).max(500),
 		password: z.string().min(1, 'Bitte das Passwort eingeben').max(1024),
+		backupPassword: z
+			.string()
+			.min(BACKUP_MIN_PASSWORD, `Sicherungs-Passwort: mindestens ${BACKUP_MIN_PASSWORD} Zeichen`)
+			.max(200),
 		totp: z
 			.string()
 			.regex(/^\d{6}$/, 'Bitte den 6-stelligen Code eingeben')
@@ -37,8 +46,12 @@ function coreMessage(e: { message: string; details?: unknown }): string {
 
 /** Dateiname für content-disposition: nur sichere ASCII-Zeichen. */
 function safeFileName(name: string): string {
-	const cleaned = name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
-	return (cleaned || 'ep-intern-sicherung') + (cleaned.endsWith('.json') ? '' : '.json');
+	const cleaned = cleanFileName(name, {
+		replacement: '-',
+		maxLength: 200,
+		fallback: 'ep-intern-sicherung'
+	});
+	return cleaned + (cleaned.endsWith(BACKUP_FILE_EXT) ? '' : BACKUP_FILE_EXT);
 }
 
 export const POST: RequestHandler = async ({ request, locals, url }) => {
@@ -67,12 +80,25 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 	}
 
 	try {
-		const { fileName, json: body } = await exportResetData(locals.ctx, parsed.data);
+		const exp = await exportResetData(locals.ctx, parsed.data);
+		// Temp-Datei genau einmal freigeben – nach vollständigem Senden, Fehler oder Abbruch
+		let finished = false;
+		const finish = () => {
+			if (finished) return;
+			finished = true;
+			void exp.done().catch(() => {});
+		};
+		const file = createReadStream(exp.path);
+		file.once('close', finish);
+		file.once('error', finish);
+		request.signal.addEventListener('abort', () => file.destroy(), { once: true });
+		const body = Readable.toWeb(file) as unknown as ReadableStream<Uint8Array>;
 		return new Response(body, {
 			status: 200,
 			headers: {
-				'content-type': 'application/json; charset=utf-8',
-				'content-disposition': `attachment; filename="${safeFileName(fileName)}"`,
+				'content-type': 'application/octet-stream',
+				'content-disposition': `attachment; filename="${safeFileName(exp.fileName)}"`,
+				'content-length': String(exp.size),
 				'cache-control': 'no-store',
 				'x-content-type-options': 'nosniff'
 			}

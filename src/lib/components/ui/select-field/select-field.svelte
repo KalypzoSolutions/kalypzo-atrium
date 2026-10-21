@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
 	import * as Select from '$lib/components/ui/select';
 	import { cn } from '$lib/utils';
 
@@ -44,6 +45,11 @@
 		class?: string;
 	} = $props();
 
+	// Hinweis/Fehler des umgebenden FormField (#51); Kinder bekommen den Kontext nicht erneut
+	const field = claimFieldContext();
+	const fieldOwn = $derived(appliesTo(field, id) ? field : null);
+	const isInvalid = $derived(invalid || !!fieldOwn?.invalid);
+
 	const internal = $derived(value ? value : emptyLabel ? NONE : '');
 	const selectedLabel = $derived(
 		value ? options.find((o) => o.value === value)?.label : emptyLabel
@@ -61,7 +67,9 @@
 		{id}
 		{size}
 		aria-label={label}
-		aria-invalid={invalid || undefined}
+		aria-invalid={isInvalid || undefined}
+		aria-describedby={fieldOwn?.describedby}
+		aria-required={fieldOwn?.required || undefined}
 		class={cn('w-full min-w-40', className)}
 	>
 		<span class={cn('truncate', !selectedLabel && 'text-muted-foreground')}>

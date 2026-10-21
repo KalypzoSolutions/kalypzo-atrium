@@ -9,7 +9,9 @@ import type {
 	PdfResult,
 	RequestContext
 } from '$lib/sdk/types';
+import { env } from '../env';
 import { errors } from '../errors';
+import { safeFileName } from '$lib/sdk/file-names';
 import { getSettings } from '../settings/service';
 import { readFileByIdUnchecked, upload } from '../storage';
 import {
@@ -53,9 +55,54 @@ export type PdfRenderer = (html: string, options: RenderOptions) => Promise<Uint
 
 let browserPromise: Promise<Browser> | undefined;
 
+export type ChromiumSandboxMode = 'auto' | 'on' | 'off';
+
+/**
+ * Startversuche für Chromium je Sandbox-Modus (#67, 01a-13), der Reihe nach. Playwright startet Chromium
+ * ohne `chromiumSandbox: true` immer mit `--no-sandbox` – daher wird die Sandbox hier ausdrücklich verlangt.
+ * `auto` fällt nur zurück, wenn der Start mit Sandbox scheitert (z. B. Docker ohne passendes seccomp-Profil).
+ */
+export function chromiumLaunchAttempts(
+	mode: ChromiumSandboxMode
+): { chromiumSandbox: boolean; args: string[] }[] {
+	const args = ['--disable-dev-shm-usage'];
+	const sandboxed = { chromiumSandbox: true, args };
+	const unsandboxed = { chromiumSandbox: false, args: [...args, '--no-sandbox'] };
+	if (mode === 'on') return [sandboxed];
+	if (mode === 'off') return [unsandboxed];
+	return [sandboxed, unsandboxed];
+}
+
+function sandboxMode(): ChromiumSandboxMode {
+	try {
+		return env().PDF_CHROMIUM_SANDBOX;
+	} catch {
+		return 'auto';
+	}
+}
+
+async function launchChromium(): Promise<Browser> {
+	const attempts = chromiumLaunchAttempts(sandboxMode());
+	let lastError: unknown;
+	for (const [i, opts] of attempts.entries()) {
+		try {
+			const browser = await chromium.launch(opts);
+			if (i > 0) {
+				console.warn(
+					'[pdf] Chromium läuft OHNE Sandbox (Start mit Sandbox fehlgeschlagen). ' +
+						'Siehe docs/security.md → „PDF-Renderer“; PDF_CHROMIUM_SANDBOX=on|off setzt den Modus fest.'
+				);
+			}
+			return browser;
+		} catch (e) {
+			lastError = e;
+		}
+	}
+	throw lastError;
+}
+
 function getBrowser(): Promise<Browser> {
-	browserPromise ??= chromium
-		.launch({ args: ['--disable-dev-shm-usage', '--no-sandbox'] })
+	browserPromise ??= launchChromium()
 		.then((b) => {
 			b.on('disconnected', () => (browserPromise = undefined));
 			return b;
@@ -129,19 +176,21 @@ export function buildDocumentHtml(
 <body>${template.overlay?.(data, input) ?? ''}${template.titleBlock?.(data, input) ?? ''}${renderBlocks(content)}</body></html>`;
 }
 
+/** PDF-Dateiname aus dem Titel (ASCII, `-` statt Sonderzeichen, ≤ 80 Zeichen + `.pdf`) */
 export function sanitizeFileName(title: string): string {
-	const base = title
-		.normalize('NFKD')
-		.replace(/[̀-ͯ]/g, '')
-		.replace(/[^a-zA-Z0-9._-]+/g, '-')
-		.replace(/^-+|-+$/g, '')
-		.slice(0, 80);
-	return `${base || 'dokument'}.pdf`;
+	return `${safeFileName(title, { replacement: '-', maxLength: 80, fallback: 'dokument' })}.pdf`;
 }
 
-async function loadLogo(fileId: string): Promise<string | null> {
-	if (!fileId) return null;
-	const file = await readFileByIdUnchecked(fileId);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Logo als Data-URL. Nur Dateien aus dem Core-Bereich `branding/` (Logo-Upload der Einstellungen): Eine frei
+ * gesetzte ID darf keine fremden Modul-Dateien (Mitglieds-/Galeriebilder) in PDFs holen (#67, 01a-08).
+ * Exportiert für Tests.
+ */
+export async function loadLogo(fileId: string): Promise<string | null> {
+	if (!fileId || !UUID_RE.test(fileId)) return null;
+	const file = await readFileByIdUnchecked(fileId, { module: 'core', pathPrefix: 'branding/' });
 	if (!file || !/^image\/(png|jpeg|gif|webp)$/.test(file.contentType)) return null;
 	return `data:${file.contentType};base64,${Buffer.from(file.buffer).toString('base64')}`;
 }

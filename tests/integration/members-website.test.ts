@@ -4,6 +4,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
+import sharp from 'sharp';
 import { useTestDatabase } from '../helpers/db';
 import { installFakeStorage, uninstallFakeStorage } from '../helpers/fake-storage';
 import { getDb, schema } from '$lib/server/core/database/client';
@@ -21,6 +22,7 @@ import { core } from '$lib/server/core';
 import membersModule from '$lib/modules/members/module';
 import { slugFromName } from '$lib/modules/members/slug';
 import type { Group, Member, WebsiteGroup } from '$lib/modules/members/schemas';
+import { websiteGroupSchema } from '$lib/modules/members/website.schemas';
 import type { RequestContext } from '$lib/sdk/types';
 
 const ROOT = 'http://localhost:5173/api/v1/modules/members';
@@ -125,6 +127,7 @@ let woelflinge: Group;
 let falken: Group;
 let adler: Group;
 let intern: Group;
+const userIds: Record<string, string> = {};
 
 beforeAll(async () => {
 	await useTestDatabase();
@@ -148,6 +151,7 @@ beforeAll(async () => {
 			password: 'a-long-enough-pw',
 			roleIds: [roleId]
 		});
+		userIds[name] = userId;
 		const ctx = await ctxOf(userId);
 		const scopes = name === 'website' ? ['members.website.read'] : perms;
 		keys[name] = (await createApiKey(ctx, { name: `key-${name}`, scopes })).key;
@@ -155,10 +159,12 @@ beforeAll(async () => {
 
 	const mk = async (first: string, last: string, over: Record<string, unknown> = {}) =>
 		ok<Member>(await call('editor', 'POST', '/members', memberBody(first, last, over)), 201);
-	anna = await mk('Anna', 'Zander');
-	bert = await mk('Bert', 'Yilmaz');
-	carla = await mk('Carla', 'Xaver');
-	left = await mk('Dora', 'Weg', { entryDate: '2015-01-01', exitDate: '2020-01-01' });
+	// Website-Einwilligung (#27): nur Leitende mit `consentWebsite` erscheinen auf der Website
+	const web = { consentWebsite: true };
+	anna = await mk('Anna', 'Zander', web);
+	bert = await mk('Bert', 'Yilmaz', web);
+	carla = await mk('Carla', 'Xaver', web);
+	left = await mk('Dora', 'Weg', { ...web, entryDate: '2015-01-01', exitDate: '2020-01-01' });
 
 	woelflinge = ok<Group>(
 		await call(
@@ -436,6 +442,8 @@ describe('Website-API', () => {
 
 	it('Liste: nur Gruppen auf der Website, Meute vor Sippe, dann Name', async () => {
 		const list = ok<WebsiteGroup[]>(await call('website', 'GET', '/website/groups'));
+		// Vertrag (#48): strikt gegen das exportierte Website-Schema
+		websiteGroupSchema.array().parse(list);
 		expect(list.map((g) => g.slug)).toEqual(['woelflinge', 'adler', 'falken']);
 		expect(list.find((g) => g.id === intern.id)).toBeUndefined();
 	});
@@ -492,6 +500,7 @@ describe('Website-API', () => {
 
 	it('Detail per Slug; privat/unbekannt → 404, ungültiger Slug → 422', async () => {
 		const d = ok<WebsiteGroup>(await call('website', 'GET', '/website/groups/falken'));
+		websiteGroupSchema.parse(d);
 		expect(d.name).toBe('Falken');
 		expect(d.leaders).toEqual([{ firstName: 'Bert' }]);
 		fail(await call('website', 'GET', '/website/groups/interne-runde'), 404, 'not_found');
@@ -521,9 +530,13 @@ describe('Website-API', () => {
 			);
 	});
 
-	it('Bild mit Storage: roh, Content-Type, public-Cache, nosniff; imagePath gesetzt', async () => {
+	it('Bild mit Storage: bereinigtes WebP, public-Cache, nosniff; imagePath gesetzt', async () => {
 		await installFakeStorage(admin);
-		const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+		const png = new Uint8Array(
+			await sharp({ create: { width: 16, height: 16, channels: 3, background: '#2a6' } })
+				.png()
+				.toBuffer()
+		);
 		const fd = new FormData();
 		fd.set('file', new File([png as BlobPart], 'gruppe.png', { type: 'image/png' }));
 		const up = await raw('editor', 'POST', `/groups/${woelflinge.id}/image`, fd);
@@ -536,10 +549,13 @@ describe('Website-API', () => {
 		);
 		const res = await raw('website', 'GET', '/website/groups/woelflinge/image');
 		expect(res.status).toBe(200);
-		expect(res.headers.get('content-type')).toBe('image/png');
+		// gespeichert wird nur die bereinigte WebP-Variante (#19)
+		expect(res.headers.get('content-type')).toBe('image/webp');
 		expect(res.headers.get('cache-control')).toBe('public, max-age=86400');
 		expect(res.headers.get('x-content-type-options')).toBe('nosniff');
-		expect(new Uint8Array(await res.arrayBuffer())).toEqual(png);
+		const served = await sharp(Buffer.from(await res.arrayBuffer())).metadata();
+		expect(served.format).toBe('webp');
+		expect(served.width).toBe(16);
 
 		// Gruppe nicht mehr auf der Website → Bild 404
 		ok<Group>(
@@ -554,6 +570,73 @@ describe('Website-API', () => {
 		);
 		fail(await call('website', 'GET', '/website/groups/woelflinge/image'), 404, 'not_found');
 		fail(await call('website', 'GET', '/website/groups/woelflinge'), 404, 'not_found');
+	});
+});
+
+describe('Website-Einwilligung der Leitenden (#27)', () => {
+	it('Leitung ohne consentWebsite erscheint nicht; Nachweis mit Zeitpunkt und Person', async () => {
+		const emil = ok<Member>(
+			await call('editor', 'POST', '/members', memberBody('Emil', 'Vogt')),
+			201
+		);
+		expect(emil.consentProof).toEqual({ socialMedia: null, website: null, print: null });
+		// Anna (mit Einwilligung) hat einen Nachweis aus dem Anlegen
+		expect(anna.consentProof.website?.at).toBeTruthy();
+		expect(anna.consentProof.website?.by).toBe(userIds.editor);
+		ok<Group>(
+			await call(
+				'editor',
+				'POST',
+				'/groups',
+				groupBody('Biber', 'meute', [emil.id, anna.id], {
+					website: { onWebsite: true, slug: 'biber' }
+				})
+			),
+			201
+		);
+		let d = ok<WebsiteGroup>(await call('website', 'GET', '/website/groups/biber'));
+		expect(d.leaders).toEqual([{ firstName: 'Anna' }]);
+		expect(JSON.stringify(d)).not.toContain('Emil');
+
+		// Einwilligung erteilen → erscheint, Nachweis gesetzt
+		const withConsent = ok<Member>(
+			await call(
+				'editor',
+				'PUT',
+				`/members/${emil.id}`,
+				memberBody('Emil', 'Vogt', { consentWebsite: true })
+			)
+		);
+		expect(withConsent.consentProof.website?.by).toBe(userIds.editor);
+		expect(withConsent.consentProof.socialMedia).toBeNull();
+		d = ok<WebsiteGroup>(await call('website', 'GET', '/website/groups/biber'));
+		expect(d.leaders).toEqual([{ firstName: 'Anna' }, { firstName: 'Emil' }]);
+
+		// Unverändert speichern → Zeitpunkt bleibt
+		const again = ok<Member>(
+			await call(
+				'editor',
+				'PUT',
+				`/members/${emil.id}`,
+				memberBody('Emil', 'Vogt', { consentWebsite: true })
+			)
+		);
+		expect(again.consentProof.website?.at).toBe(withConsent.consentProof.website?.at);
+
+		// Widerruf per Sammelaktion → Nachweis aktualisiert, wieder ausgeblendet
+		ok(
+			await call('editor', 'POST', '/members/bulk', {
+				action: 'set-consent',
+				ids: [emil.id],
+				consent: { consentWebsite: false }
+			}),
+			201
+		);
+		const revoked = ok<Member>(await call('editor', 'GET', `/members/${emil.id}`));
+		expect(revoked.consentWebsite).toBe(false);
+		expect(revoked.consentProof.website).not.toBeNull();
+		d = ok<WebsiteGroup>(await call('website', 'GET', '/website/groups/biber'));
+		expect(d.leaders).toEqual([{ firstName: 'Anna' }]);
 	});
 });
 

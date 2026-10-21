@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { PageTitle } from '$lib/components/layout';
+	import { addDays, todayBerlin } from '$lib/sdk/dates';
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
 	import DataTable from '$lib/components/layout/DataTable.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -23,6 +26,13 @@
 	let newName = $state('');
 	let toRevoke = $state<KeyRow | null>(null);
 	let scopeFilter = $state('');
+	/** Gewählte Scopes – bleiben beim Filtern erhalten (versteckte Felder für den Formular-POST) */
+	let chosenScopes = $state<string[]>([]);
+	function toggleScope(key: string, on: boolean) {
+		chosenScopes = on
+			? [...new Set([...chosenScopes, key])]
+			: chosenScopes.filter((k) => k !== key);
+	}
 
 	const visibleScopes = $derived(
 		data.scopes.filter((s) => s.key.includes(scopeFilter.trim().toLowerCase()))
@@ -66,28 +76,36 @@
 		success: () => (revokeOpen = false)
 	});
 
-	const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+	const tomorrow = addDays(todayBerlin(), 1);
 </script>
 
-<svelte:head><title>API-Keys</title></svelte:head>
+<PageTitle title="API-Keys" />
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<h2 class="text-lg font-semibold">API-Keys</h2>
+			<h2 class="text-section">API-Keys</h2>
 			<p class="text-sm text-muted-foreground">
 				Schlüssel für externe Dienste. Wirksame Rechte sind die Schnittmenge aus Scopes und deinen
 				eigenen Berechtigungen.
 			</p>
 		</div>
 		{#if data.canManage}
-			<Button onclick={() => ((formError = ''), (scopeFilter = ''), (createOpen = true))}>
+			<Button
+				onclick={() => (
+					(formError = ''),
+					(scopeFilter = ''),
+					(chosenScopes = []),
+					(createOpen = true)
+				)}
+			>
 				API-Key erstellen
 			</Button>
 		{/if}
 	</div>
 
 	<DataTable
+		mobile="cards"
 		caption="API-Keys"
 		empty={data.keys.length === 0}
 		emptyTitle="Noch keine API-Keys vorhanden."
@@ -136,7 +154,7 @@
 </div>
 
 <Dialog.Root bind:open={createOpen}>
-	<Dialog.Content class="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+	<Dialog.Content class="sm:max-w-xl">
 		<Dialog.Header>
 			<Dialog.Title>API-Key erstellen</Dialog.Title>
 			<Dialog.Description>
@@ -168,16 +186,27 @@
 					bind:value={scopeFilter}
 				/>
 				<div class="max-h-56 space-y-1 overflow-y-auto rounded-lg border p-2">
+					{#each chosenScopes as k (k)}<input type="hidden" name="scopes" value={k} />{/each}
 					{#each visibleScopes as s (s.key)}
-						<label class="flex items-start gap-2 text-sm">
-							<input type="checkbox" name="scopes" value={s.key} class="mt-1" />
-							<span>
+						{@const cid = `scope-${s.key.replace(/[^a-z0-9-]/g, '-')}`}
+						<div class="flex items-start gap-2 text-sm">
+							<Checkbox
+								id={cid}
+								class="mt-0.5"
+								aria-label={s.key}
+								aria-describedby={s.description ? `${cid}-desc` : undefined}
+								checked={chosenScopes.includes(s.key)}
+								onCheckedChange={(v) => toggleScope(s.key, v)}
+							/>
+							<label for={cid}>
 								<code class="text-xs">{s.key}</code>
 								{#if s.description}
-									<span class="block text-xs text-muted-foreground">{s.description}</span>
+									<span id={`${cid}-desc`} class="block text-xs text-muted-foreground"
+										>{s.description}</span
+									>
 								{/if}
-							</span>
-						</label>
+							</label>
+						</div>
 					{:else}
 						<p class="text-sm text-muted-foreground">Keine Scopes gefunden.</p>
 					{/each}

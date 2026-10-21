@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { readFile } from 'node:fs/promises';
 import { eq, sql } from 'drizzle-orm';
 import { symmetricEncrypt } from 'better-auth/crypto';
 import { createOTP } from '@better-auth/utils/otp';
@@ -134,10 +135,26 @@ async function seedBase() {
 	await q(sql`INSERT INTO mod_rstdep.link (id, item_id) VALUES ('l1', 'a')`);
 }
 
+/** Pflicht-Export ist eine verschlüsselte `.epbackup`-Datei (kein Klartext-JSON, #29); räumt die Temp-Datei ab. */
+async function expectEncryptedExport(exp: { path: string; size: number; done(): Promise<void> }) {
+	const bytes = await readFile(exp.path);
+	expect(bytes.length).toBe(exp.size);
+	expect(bytes.subarray(0, 4).toString('latin1')).toBe('EPBK');
+	const text = bytes.toString('latin1');
+	expect(text).not.toContain('ep-intern-reset-export');
+	expect(text).not.toContain('mod_rstbase');
+	expect(() => JSON.parse(bytes.toString('utf8'))).toThrow();
+	await exp.done();
+}
+
 /** Vorschau → Export → Ausführen */
 async function runFull(areas: string[]) {
 	const p = await previewReset(admin, areas);
-	const exp = await exportResetData(admin, { token: p.token, password: PW });
+	const exp = await exportResetData(admin, {
+		token: p.token,
+		password: PW,
+		backupPassword: 'Reset-Sicherung-2026'
+	});
 	const res = await executeReset(admin, { token: p.token, confirmWord: RESET_CONFIRM_WORD });
 	return { p, exp, res };
 }
@@ -183,7 +200,10 @@ describe('Rechte', () => {
 		const lea = await ctxOf(uid);
 		await expectError(listResetAreas(lea), 'forbidden');
 		await expectError(previewReset(lea, ['core:audit']), 'forbidden');
-		await expectError(exportResetData(lea, { token: 'x', password: PW }), 'forbidden');
+		await expectError(
+			exportResetData(lea, { token: 'x', password: PW, backupPassword: 'Reset-Sicherung-2026' }),
+			'forbidden'
+		);
 		await expectError(executeReset(lea, { token: 'x', confirmWord: 'x' }), 'forbidden');
 		const keyCtx: RequestContext = { ...admin, actor: { type: 'api_key', id: 'k', name: 'k' } };
 		await expectError(listResetAreas(keyCtx), 'forbidden');
@@ -244,7 +264,11 @@ describe('Ablauf', () => {
 		await seedBase();
 		const p = await previewReset(admin, ['rstbase:notes']);
 		const err = await expectError(
-			exportResetData(admin, { token: p.token, password: 'falsch-falsch-1' }),
+			exportResetData(admin, {
+				token: p.token,
+				password: 'falsch-falsch-1',
+				backupPassword: 'Reset-Sicherung-2026'
+			}),
 			'validation_failed'
 		);
 		expect(JSON.stringify(err.details)).toContain('password');
@@ -252,18 +276,19 @@ describe('Ablauf', () => {
 			executeReset(admin, { token: p.token, confirmWord: RESET_CONFIRM_WORD }),
 			'conflict'
 		);
-		const exp = await exportResetData(admin, { token: p.token, password: PW });
+		const exp = await exportResetData(admin, {
+			token: p.token,
+			password: PW,
+			backupPassword: 'Reset-Sicherung-2026'
+		});
 		await expectError(
 			executeReset(admin, { token: p.token, confirmWord: 'zurücksetzen' }),
 			'validation_failed'
 		);
 		expect(await count('mod_rstbase.note')).toBe(2);
 
-		const data = JSON.parse(exp.json);
-		expect(exp.fileName).toMatch(/^ep-intern-reset-.*\.json$/);
-		expect(data.format).toBe('ep-intern-reset-export');
-		expect(data.areas).toEqual(['rstbase:notes']);
-		expect(data.tables['mod_rstbase.note']).toHaveLength(2);
+		expect(exp.fileName).toMatch(/^ep-intern-reset-.*\.epbackup$/);
+		await expectEncryptedExport(exp);
 
 		const res = await executeReset(admin, { token: p.token, confirmWord: RESET_CONFIRM_WORD });
 		expect(res.areas).toEqual(['rstbase:notes']);
@@ -290,11 +315,32 @@ describe('Ablauf', () => {
 		});
 		const other = await ctxOf(uid);
 		const p = await previewReset(admin, ['rstbase:notes']);
-		await expectError(exportResetData(other, { token: p.token, password: PW }), 'conflict');
-		await expectError(exportResetData(admin, { token: 'unbekannt', password: PW }), 'conflict');
+		await expectError(
+			exportResetData(other, {
+				token: p.token,
+				password: PW,
+				backupPassword: 'Reset-Sicherung-2026'
+			}),
+			'conflict'
+		);
+		await expectError(
+			exportResetData(admin, {
+				token: 'unbekannt',
+				password: PW,
+				backupPassword: 'Reset-Sicherung-2026'
+			}),
+			'conflict'
+		);
 		setResetClockForTests(() => Date.now() + 16 * 60_000);
 		try {
-			await expectError(exportResetData(admin, { token: p.token, password: PW }), 'conflict');
+			await expectError(
+				exportResetData(admin, {
+					token: p.token,
+					password: PW,
+					backupPassword: 'Reset-Sicherung-2026'
+				}),
+				'conflict'
+			);
 		} finally {
 			setResetClockForTests(undefined);
 		}
@@ -320,7 +366,7 @@ describe('Ablauf', () => {
 			'rstbase:notes',
 			'rstdep:links'
 		]);
-		expect(JSON.parse(exp.json).tables['mod_rstbase.item']).toHaveLength(3);
+		await expectEncryptedExport(exp);
 		expect(res.deletedRows).toBeGreaterThanOrEqual(5);
 		const items = await q(sql`SELECT id FROM mod_rstbase.item`);
 		expect(items.map((r) => r.id)).toEqual(['seed']);
@@ -335,8 +381,12 @@ describe('Ablauf', () => {
 			       ('f2', 'rstbase', 'docs/b.pdf', 'b.pdf', 'rstbase/f2', 50, 'application/pdf', 'pending')`);
 		const p = await previewReset(admin, ['rstbase:all']);
 		expect(p.files).toEqual([{ module: 'rstbase', count: 2, bytes: 150 }]);
-		const exp = await exportResetData(admin, { token: p.token, password: PW });
-		expect(JSON.parse(exp.json).tables['public.file']).toHaveLength(2);
+		const exp = await exportResetData(admin, {
+			token: p.token,
+			password: PW,
+			backupPassword: 'Reset-Sicherung-2026'
+		});
+		await expectEncryptedExport(exp);
 		const res = await executeReset(admin, { token: p.token, confirmWord: RESET_CONFIRM_WORD });
 		expect(res.deletedFiles).toBe(2);
 		expect(res.warnings.join(' ')).toContain('nur Metadaten');
@@ -363,10 +413,7 @@ describe('Core-Bereiche', () => {
 		expect(before).toBeGreaterThan(1);
 		const { p, exp, res } = await runFull(['core:users']);
 		expect(p.areas).toEqual(['core:api-keys', 'core:users']);
-		const data = JSON.parse(exp.json);
-		expect(data.tables['public.user'].length).toBe(before - 1);
-		expect(JSON.stringify(data)).not.toMatch(/"password"|"secret"|"hash"/);
-		expect(data.tables['public.account']).toBeUndefined();
+		await expectEncryptedExport(exp);
 		expect(res.deletedRows).toBeGreaterThan(0);
 		const users = await q(sql`SELECT id FROM "user"`);
 		expect(users.map((u) => u.id)).toEqual([adminId]);
@@ -437,7 +484,11 @@ describe('Core-Bereiche', () => {
 		expect(await createOTP(secret).verify(totpCode(secret))).toBe(true);
 		const p = await previewReset(admin, ['core:jobs']);
 		const e1 = await expectError(
-			exportResetData(admin, { token: p.token, password: PW }),
+			exportResetData(admin, {
+				token: p.token,
+				password: PW,
+				backupPassword: 'Reset-Sicherung-2026'
+			}),
 			'validation_failed'
 		);
 		expect(JSON.stringify(e1.details)).toContain('totp');
@@ -445,11 +496,17 @@ describe('Core-Bereiche', () => {
 			exportResetData(admin, {
 				token: p.token,
 				password: PW,
+				backupPassword: 'Reset-Sicherung-2026',
 				totp: '000000' === totpCode(secret) ? '111111' : '000000'
 			}),
 			'validation_failed'
 		);
-		await exportResetData(admin, { token: p.token, password: PW, totp: totpCode(secret) });
+		await exportResetData(admin, {
+			token: p.token,
+			password: PW,
+			backupPassword: 'Reset-Sicherung-2026',
+			totp: totpCode(secret)
+		});
 		await executeReset(admin, { token: p.token, confirmWord: RESET_CONFIRM_WORD });
 		await getDb()
 			.update(schema.user)

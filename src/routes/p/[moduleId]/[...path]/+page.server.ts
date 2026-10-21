@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { getDefinition } from '$lib/server/core/modules/registry';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
+import { getSettings } from '$lib/server/core/settings/service';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -12,7 +13,14 @@ export const load: PageServerLoad = async ({ params }) => {
 	if (!def || !(await isModuleEnabled(params.moduleId))) {
 		throw error(404, 'Seite nicht verfügbar');
 	}
+	const legal = await getSettings(['core.legal.privacyUrl', 'core.legal.imprintUrl']);
+	const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 	return {
+		/** Rechtliche Links für die Fußzeile (Issue #28) */
+		legal: {
+			privacyUrl: text(legal['core.legal.privacyUrl']),
+			imprintUrl: text(legal['core.legal.imprintUrl'])
+		},
 		moduleId: params.moduleId,
 		moduleName: def.manifest.name,
 		path: (params.path ?? '').replace(/^\/+|\/+$/g, '')

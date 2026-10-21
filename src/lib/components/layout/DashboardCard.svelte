@@ -3,7 +3,8 @@
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { Skeleton } from '$lib/components/ui/skeleton';
+	import ErrorState from './ErrorState.svelte';
+	import LoadingState from './LoadingState.svelte';
 
 	/**
 	 * Einheitliche Dashboard-Kachel: Kopf mit Icon, Titel und optionalem Link („Alle anzeigen“),
@@ -48,14 +49,14 @@
 		<div class="flex min-w-0 items-center gap-2">
 			{#if Icon}
 				<span
-					class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+					class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-link"
 					aria-hidden="true"
 				>
 					<Icon class="size-4" />
 				</span>
 			{/if}
 			<div class="min-w-0">
-				<Card.Title class="truncate text-base">{title}</Card.Title>
+				<Card.Title class="truncate">{title}</Card.Title>
 				{#if description}<Card.Description class="text-xs">{description}</Card.Description>{/if}
 			</div>
 		</div>
@@ -77,20 +78,9 @@
 	</Card.Header>
 	<Card.Content class="flex-1 px-4 text-sm">
 		{#if error}
-			<p class="text-sm text-destructive" role="alert">
-				{error}
-				{#if onretry}
-					<Button size="sm" variant="link" class="h-auto p-0 pl-1" onclick={onretry}>
-						Erneut versuchen
-					</Button>
-				{/if}
-			</p>
+			<ErrorState compact message={error} {onretry} />
 		{:else if loading}
-			<div class="space-y-2" aria-busy="true" aria-label={`Lade ${title}`}>
-				{#each Array.from({ length: skeletonRows }, (_, i) => i) as i (i)}
-					<Skeleton class="h-8 w-full" />
-				{/each}
-			</div>
+			<LoadingState label={title} rows={skeletonRows} />
 		{:else if empty}
 			<p class="text-muted-foreground">{emptyText}</p>
 		{:else if children}

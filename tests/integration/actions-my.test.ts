@@ -20,7 +20,7 @@ import { resetAllForTests } from '$lib/server/core/rate-limit';
 import { core } from '$lib/sdk/server';
 import membersModule from '$lib/modules/members/module';
 import actionsModule from '$lib/modules/actions/module';
-import { setActionsDashboardTodayForTests } from '$lib/modules/actions/my.endpoints';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { MyRegistration, OpenAccounting } from '$lib/modules/actions/schemas';
 import type { RequestContext } from '$lib/sdk/types';
 
@@ -157,7 +157,7 @@ beforeAll(async () => {
 	admin = await ctxOf(u!.id);
 	userIds.admin = u!.id;
 	keys.admin = (await createApiKey(admin, { name: 'a', scopes: [...admin.permissions] })).key;
-	setActionsDashboardTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 
 	await mkUser('eltern', ['core.api.manage', 'actions.own.view']);
 	await mkUser('leiter', ['core.api.manage', 'actions.action.view', 'actions.own.view']);
@@ -259,7 +259,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	setActionsDashboardTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 

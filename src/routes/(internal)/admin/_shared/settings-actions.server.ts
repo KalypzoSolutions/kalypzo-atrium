@@ -49,9 +49,12 @@ export async function testMailAction({ request, locals }: RequestEvent) {
 		return { success: true, message: `Test-E-Mail an ${parsed.data} gesendet` };
 	} catch (e) {
 		if (isCoreError(e)) return fail(e.status, { message: e.message });
-		// SMTP-Fehlertext ohne Zugangsdaten an den Admin weiterreichen
+		// Details (Host, Port, Antwort des Servers) nur ins Server-Log – die Oberfläche bekommt keine
+		// Verbindungsinterna (sonst Port-/Dienstscan im internen Netz über die Testmail möglich)
+		console.error('[core] Test-E-Mail fehlgeschlagen:', e);
 		return fail(502, {
-			message: `E-Mail-Versand fehlgeschlagen: ${e instanceof Error ? e.message : 'unbekannter Fehler'}`
+			message:
+				'E-Mail-Versand fehlgeschlagen. Bitte Host, Port, TLS und Zugangsdaten prüfen; Details stehen im Server-Protokoll.'
 		});
 	}
 }

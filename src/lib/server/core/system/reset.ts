@@ -2,7 +2,7 @@
  * Admin-Reset: ausgewählte Datenbereiche (Core und Module) zurücksetzen.
  *
  * Ablauf: `listResetAreas` → `previewReset` (Token, 15 min) → `exportResetData` (Passwort + ggf. TOTP,
- * Pflicht-JSON-Export) → `executeReset` (Bestätigungswort). Nur Session-Benutzer mit
+ * Pflicht-Export als verschlüsselte `.epbackup`-Sicherung) → `executeReset` (Bestätigungswort). Nur Session-Benutzer mit
  * `core.system.reset`. Core-Services laufen nie innerhalb offener Modul-Transaktionen (PGlite).
  *
  * TOTP: Das Secret aus `two_factor` wird mit Better-Auths `symmetricDecrypt` (Schlüssel aus
@@ -29,6 +29,10 @@ import { getUserPermissions, requirePermission } from '../permissions/service';
 import { hit, peek, reset as resetRateLimit } from '../rate-limit';
 import { listDefinitions } from '../settings/service';
 import { listPurgeCandidates, purgeUnchecked, type PurgeInput } from '../storage';
+import { writeBackupFile } from '../backup/export';
+import { listBackupScopes } from '../backup/scopes';
+import { removeTemp } from '../backup/tempfiles';
+import { BACKUP_MIN_PASSWORD } from '../backup/types';
 import { acquireMaintenanceLock, releaseMaintenanceLock } from './maintenance';
 import {
 	areasFingerprint,
@@ -37,6 +41,7 @@ import {
 	resolveAreas,
 	type AreaNode
 } from './reset-areas';
+import { rowsOf, type Row } from '../database/rows';
 
 // ---------------------------------------------------------------------------
 // Öffentliche Typen
@@ -162,6 +167,7 @@ const CORE_AREAS: CoreAreaDef[] = [
 			{ table: 'setting', where: (keep) => sql`scope_id <> '' AND scope_id <> ${keep}` },
 			{ table: 'user_role', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
 			{ table: 'user_role_grant', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
+			{ table: 'user_permission', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
 			{ table: 'user', where: (keep) => sql`id <> ${keep}`, columns: USER_COLUMNS }
 		]
 	},
@@ -345,12 +351,6 @@ function requireToken(token: string, userId: string): TokenEntry {
 // Datenbank-Helfer
 // ---------------------------------------------------------------------------
 
-type Row = Record<string, unknown>;
-
-async function rowsOf(db: DbOrTx, query: SQL): Promise<Row[]> {
-	return ((await db.execute(query)) as unknown as { rows: Row[] }).rows;
-}
-
 const qualified = (schemaName: string, table: string) =>
 	sql.raw(`"${schemaName}"."${table.replace(/"/g, '')}"`);
 
@@ -409,14 +409,6 @@ async function countRows(t: PlannedTable): Promise<number> {
 		sql`SELECT count(*)::int AS n FROM ${qualified(t.schemaName, t.table)}${where}`
 	);
 	return Number(r?.n ?? 0);
-}
-
-async function selectRows(t: PlannedTable): Promise<Row[]> {
-	const cols = t.columns?.length
-		? sql.raw(t.columns.map((c) => `"${c.replace(/"/g, '')}"`).join(', '))
-		: sql.raw('*');
-	const where = t.where ? sql` WHERE ${t.where}` : sql``;
-	return rowsOf(getDb(), sql`SELECT ${cols} FROM ${qualified(t.schemaName, t.table)}${where}`);
 }
 
 /** Storage-Löschaufträge der aufgelösten Bereiche (je Modul zusammengefasst). */
@@ -593,19 +585,45 @@ export async function previewReset(ctx: RequestContext, areaKeys: string[]): Pro
 	};
 }
 
-function jsonReplacer(_key: string, value: unknown): unknown {
-	if (typeof value === 'bigint') return value.toString();
-	if (value instanceof Uint8Array) return Buffer.from(value).toString('base64');
-	return value;
+/** Mindestlänge des Passworts für die verschlüsselte Sicherung (wie bei der Datensicherung) */
+export const RESET_EXPORT_MIN_PASSWORD = BACKUP_MIN_PASSWORD;
+
+/** Reset-Bereich → Bereich der Datensicherung (`core:<id>` gleich, `<modul>:<id>` → ganzes Modul). */
+export function backupScopesForResetAreas(areas: string[]): string[] {
+	const out = new Set<string>();
+	for (const a of areas) out.add(a.startsWith('core:') ? a : a.slice(0, a.indexOf(':')));
+	return [...out];
 }
 
-/** Pflicht-Export (JSON) aller betroffenen Tabellen nach Passwort-(und TOTP-)Prüfung. */
+export interface ResetExport {
+	fileName: string;
+	/** Temp-Datei (`.epbackup`); nach dem Senden mit `done()` löschen */
+	path: string;
+	size: number;
+	done(): Promise<void>;
+}
+
+/**
+ * Pflicht-Export vor dem Zurücksetzen nach Passwort-(und TOTP-)Prüfung (#29): verschlüsselte Sicherung im
+ * Format der Datensicherung (`.epbackup`, scrypt + AES-256-GCM, Passwort `backupPassword` ≥ 12 Zeichen)
+ * mit den **ganzen** Bereichen/Modulen der Auswahl (Teil-Bereiche eines Moduls → ganzes Modul, Dateien
+ * ohne Inhalte). Wiederherstellbar über `/admin/backup` (Import). Kein Klartext-JSON mehr.
+ */
 export async function exportResetData(
 	ctx: RequestContext,
-	input: { token: string; password: string; totp?: string }
-): Promise<{ fileName: string; json: string }> {
+	input: { token: string; password: string; totp?: string; backupPassword: string }
+): Promise<ResetExport> {
 	const userId = await requireResetUser(ctx);
 	const entry = requireToken(input.token, userId);
+	const backupPassword = String(input.backupPassword ?? '');
+	if (backupPassword.length < BACKUP_MIN_PASSWORD || backupPassword.length > 200) {
+		throw errors.validation([
+			{
+				path: ['backupPassword'],
+				message: `Sicherungs-Passwort: mindestens ${BACKUP_MIN_PASSWORD} Zeichen`
+			}
+		]);
+	}
 	if (!(await verifyUserPassword(userId, String(input.password ?? '')))) {
 		throw errors.validation([{ path: ['password'], message: 'Passwort ist nicht korrekt' }]);
 	}
@@ -628,39 +646,30 @@ export async function exportResetData(
 		resetRateLimit(key);
 	}
 	const resolved = await reresolve(entry, input.token);
-	const planned = await planTables(resolved.defs, userId);
-	const out: Record<string, Row[]> = {};
-	const seen = new Map<string, Set<string>>();
-	let rowCount = 0;
-	for (const t of planned) {
-		const name = `${t.schemaName}.${t.table}`;
-		const list = (out[name] ??= []);
-		const keys = seen.get(name) ?? new Set<string>();
-		seen.set(name, keys);
-		for (const r of await selectRows(t)) {
-			const k = JSON.stringify(r, jsonReplacer);
-			if (keys.has(k)) continue;
-			keys.add(k);
-			list.push(r);
-			rowCount++;
-		}
-	}
-	const fileRows = [...(await storageCandidates(planStorage(resolved.defs, userId))).values()]
-		.flatMap((m) => [...m.values()])
-		.map((f) => f.row);
-	if (fileRows.length) out['public.file'] = fileRows;
-	const exportedAt = new Date().toISOString();
-	const json = JSON.stringify(
-		{ format: 'ep-intern-reset-export', exportedAt, areas: resolved.areas, tables: out },
-		jsonReplacer,
-		1
+	const known = new Set((await listBackupScopes()).map((s) => s.key));
+	const scopes = backupScopesForResetAreas(resolved.areas).filter((s) => known.has(s));
+	if (!scopes.length) throw errors.badRequest('Für die gewählten Bereiche gibt es keine Daten');
+	const built = await writeBackupFile(
+		userId,
+		{ scopes, includeFiles: false, backupPassword },
+		'Sicherung vor dem Zurücksetzen'
 	);
 	entry.status = 'exported';
 	await auditFromContext(ctx, 'core.system.reset_exported', {
-		metadata: { areas: resolved.areas, tables: Object.keys(out).length, rows: rowCount }
+		metadata: {
+			areas: resolved.areas,
+			scopes,
+			tables: built.summary.tables,
+			rows: built.summary.rows,
+			encrypted: true
+		}
 	});
-	const stamp = exportedAt.slice(0, 16).replace(/[:T]/g, '-');
-	return { fileName: `ep-intern-reset-${stamp}.json`, json };
+	return {
+		fileName: built.fileName.replace(/^ep-intern-sicherung-/, 'ep-intern-reset-'),
+		path: built.path,
+		size: built.summary.bytes,
+		done: () => removeTemp(built.path)
+	};
 }
 
 async function deleteCount(db: DbOrTx, table: SQL, where?: SQL): Promise<number> {

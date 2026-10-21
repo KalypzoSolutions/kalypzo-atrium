@@ -160,9 +160,39 @@ describe('Storage-Service', () => {
 			).rejects.toMatchObject({ code: 'bad_request' });
 		}
 		settingsStore['core.storage.allowedContentTypes'] = ['image/svg+xml'];
+		storage.invalidateStorageConfigCache();
 		await expect(
 			storage.upload(ctx, { ...txt('members', 'x.svg', '<svg/>'), contentType: 'image/svg+xml' })
 		).resolves.toBeTruthy();
+	});
+
+	it('erlaubt Office-Dokumente und -Vorlagen, aber keine Makro-Formate', async () => {
+		const ctx = ctxWith('members.storage.write');
+		const allowed = [
+			'application/msword',
+			'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
+			'application/vnd.openxmlformats-officedocument.presentationml.template',
+			'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
+			'application/rtf',
+			'application/vnd.oasis.opendocument.text',
+			'application/vnd.oasis.opendocument.text-template',
+			'image/avif'
+		];
+		for (const [i, ct] of allowed.entries()) {
+			await expect(
+				storage.upload(ctx, { ...txt('members', `office-${i}`), contentType: ct })
+			).resolves.toBeTruthy();
+		}
+		for (const ct of [
+			'application/vnd.ms-word.document.macroenabled.12',
+			'application/vnd.ms-word.template.macroenabled.12',
+			'application/vnd.ms-excel.sheet.macroenabled.12'
+		]) {
+			await expect(
+				storage.upload(ctx, { ...txt('members', 'makro'), contentType: ct })
+			).rejects.toMatchObject({ code: 'bad_request' });
+		}
 	});
 
 	it('prüft Berechtigungen; System-Akteur darf alles', async () => {
@@ -237,6 +267,7 @@ describe('Storage-Service', () => {
 
 	it('nutzt Multipart-Upload für große Dateien', async () => {
 		settingsStore['core.storage.maxFileSizeMb'] = 50;
+		storage.invalidateStorageConfigCache();
 		const putLarge = vi.fn(async (key: string, body: Uint8Array) => {
 			fakes.objects.set(key, { body });
 		});
@@ -256,6 +287,44 @@ describe('Storage-Service', () => {
 		expect(usage).toEqual([{ moduleId: 'members', files: 1, bytes: 3 }]);
 		await expect(storage.usageByModule(ctxWith())).rejects.toMatchObject({ code: 'forbidden' });
 		settingsStore['core.storage.bucket'] = '';
+		storage.invalidateStorageConfigCache();
 		await expect(storage.testConnection()).rejects.toMatchObject({ code: 'unavailable' });
+	});
+});
+
+describe('removeMany', () => {
+	it('fällt ohne DeleteObjects auf Einzel-Löschungen zurück; ein Audit-Eintrag', async () => {
+		for (const p of ['a.txt', 'b.txt', 'c.txt']) await storage.upload(systemCtx, txt('members', p));
+		const res = await storage.removeMany(systemCtx, {
+			module: 'members',
+			paths: ['a.txt', 'b.txt', 'c.txt', 'fehlt.txt']
+		});
+		expect(res).toEqual({ removed: 3, missing: 1, failed: 0 });
+		expect(fakes.rows.size).toBe(0);
+		expect(fakes.objects.size).toBe(0);
+		expect(auditLog).toHaveBeenCalledOnce();
+	});
+
+	it('behält Metadaten, wenn der Speicher ein Objekt nicht löschen kann', async () => {
+		await storage.upload(systemCtx, txt('members', 'a.txt'));
+		await storage.upload(systemCtx, txt('members', 'b.txt'));
+		const keyA = [...fakes.rows.values()].find((r) => r.path === 'a.txt')!.objectKey;
+		const send = fakes.s3.send.bind(fakes.s3);
+		fakes.s3.send = async (cmd) => {
+			if (cmd instanceof DeleteObjectCommand && cmd.input.Key === keyA) throw new Error('kaputt');
+			return send(cmd);
+		};
+		const res = await storage.removeMany(systemCtx, {
+			module: 'members',
+			paths: ['a.txt', 'b.txt']
+		});
+		expect(res).toEqual({ removed: 1, missing: 0, failed: 1 });
+		expect([...fakes.rows.values()].map((r) => r.path)).toEqual(['a.txt']);
+	});
+
+	it('prüft das Löschrecht', async () => {
+		await expect(
+			storage.removeMany(ctxWith('members.storage.read'), { module: 'members', paths: ['a.txt'] })
+		).rejects.toMatchObject({ code: 'forbidden' });
 	});
 });

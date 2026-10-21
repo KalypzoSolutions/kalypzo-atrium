@@ -150,6 +150,32 @@ describe('Rolle „Amtsinhaber*in“', () => {
 			.where(eq(schema.rolePermission.roleId, holderRoleId));
 		expect(keys.map((k) => k.key)).toEqual(['offices.office.view']);
 	});
+
+	it('wird über die Standard-Kennung gefunden, nicht per Name (#67, 01a-07)', async () => {
+		// Echte Inhaber-Rolle umbenennen, gleichnamige Rolle OHNE Kennung danebenlegen (Squatting)
+		await getDb()
+			.update(schema.role)
+			.set({ name: 'Amtsinhaber*in (umbenannt)' })
+			.where(eq(schema.role.id, holderRoleId));
+		const squatId = crypto.randomUUID();
+		await getDb()
+			.insert(schema.role)
+			.values({ id: squatId, name: HOLDER_ROLE_NAME, description: null, isSystem: false });
+		try {
+			const office = await createOffice('Squatting', []);
+			await expectHolders(office.id, [utaId]);
+			const grants = await core.roles.listModuleGrants('offices', { userId: utaId });
+			expect(grants.map((g) => g.roleId)).toEqual([holderRoleId]);
+			expect(await core.users.roleIds(utaId)).not.toContain(squatId);
+			await api(adminKey, 'DELETE', `/offices/${office.id}`);
+		} finally {
+			await getDb().delete(schema.role).where(eq(schema.role.id, squatId));
+			await getDb()
+				.update(schema.role)
+				.set({ name: HOLDER_ROLE_NAME })
+				.where(eq(schema.role.id, holderRoleId));
+		}
+	});
 });
 
 describe('Rechte kommen und gehen', () => {

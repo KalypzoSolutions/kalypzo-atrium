@@ -16,7 +16,7 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { RequestContext } from '$lib/sdk/types';
 import type {
 	Account,
@@ -86,7 +86,7 @@ beforeAll(async () => {
 		void html;
 		return new TextEncoder().encode('%PDF-fake');
 	});
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 	const perms = [...admin.permissions].filter((p) => /^(treasury|members|actions)\./.test(p));
 	const role = await createRole(admin, {
 		name: 'Kasse',
@@ -175,7 +175,7 @@ beforeAll(async () => {
 afterAll(async () => {
 	setMailTransportForTests(undefined);
 	setPdfRendererForTests(undefined);
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 

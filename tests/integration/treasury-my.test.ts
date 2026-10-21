@@ -22,7 +22,7 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { Account, InvoiceDetail, MyInvoices } from '$lib/modules/treasury/schemas';
 import type { RequestContext } from '$lib/sdk/types';
 
@@ -134,7 +134,7 @@ beforeAll(async () => {
 	admin = await ctxOf(u!.id);
 	keys.admin = (await createApiKey(admin, { name: 'a', scopes: [...admin.permissions] })).key;
 	setMailTransportForTests({ sendMail: async () => undefined });
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 
 	await mkUser('eltern', ['core.api.manage', 'treasury.own.view']);
 	await mkUser('ohne', ['core.api.manage', 'treasury.own.view']);
@@ -193,7 +193,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	setMailTransportForTests(undefined);
 	await close();
 });

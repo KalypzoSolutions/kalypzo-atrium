@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import { DataTable, PageHeader, Pagination } from '$lib/components/layout';
+	import { DataTable, PageHeader, Pagination, PageTitle } from '$lib/components/layout';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
@@ -43,7 +43,7 @@
 	}
 </script>
 
-<svelte:head><title>Audit-Log</title></svelte:head>
+<PageTitle title="Audit-Log" />
 
 <div class="space-y-6">
 	<PageHeader
@@ -52,6 +52,7 @@
 	/>
 
 	<DataTable
+		mobile="cards"
 		caption="Audit-Log"
 		empty={data.rows.length === 0}
 		emptyTitle="Keine Einträge gefunden."

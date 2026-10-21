@@ -50,6 +50,8 @@ test('Aktionsliste lädt ohne Konsolenfehler', async ({ page }) => {
 			.nth(1)
 			.or(page.getByText(/keine aktionen/i).first())
 	).toBeVisible();
+	// Begründete feste Wartezeit (#75): Eine Effekt-Endlosschleife zeigt sich nur über die Zeit –
+	// es gibt kein Ereignis, auf das man warten könnte. 1 s Beobachtungsfenster.
 	await page.waitForTimeout(1000);
 	expect(errors.filter((e) => e.includes('effect_update_depth_exceeded'))).toEqual([]);
 	expect(errors).toEqual([]);

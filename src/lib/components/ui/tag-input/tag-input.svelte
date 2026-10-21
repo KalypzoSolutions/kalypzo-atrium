@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appliesTo, claimFieldContext, mergeIds } from '$lib/components/ui/field/context';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import XIcon from '@lucide/svelte/icons/x';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -43,6 +44,11 @@
 		onchange?: (value: string[]) => void;
 		class?: string;
 	} = $props();
+
+	// Hinweis/Fehler des umgebenden FormField (#51)
+	const field = claimFieldContext();
+	const fieldOwn = $derived(appliesTo(field, id) ? field : null);
+	const isInvalid = $derived(invalid || !!fieldOwn?.invalid);
 
 	const uid = $props.id();
 	const inputId = $derived(id ?? `${uid}-input`);
@@ -195,8 +201,8 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
 		class={cn(
-			'border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex min-h-8 w-full min-w-0 cursor-text flex-wrap items-center gap-1 rounded-lg border bg-transparent px-1.5 py-1 text-sm transition-colors focus-within:ring-3',
-			invalid &&
+			'border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring flex min-h-8 w-full min-w-0 cursor-text flex-wrap items-center gap-1 rounded-lg border bg-transparent px-1.5 py-1 text-sm transition-colors focus-within:ring-3',
+			isInvalid &&
 				'border-destructive ring-destructive/20 dark:ring-destructive/40 dark:border-destructive/50 ring-3',
 			disabled && 'cursor-not-allowed opacity-50'
 		)}
@@ -211,7 +217,7 @@
 					type="button"
 					{disabled}
 					aria-label={`Tag ${tag} entfernen`}
-					class="hover:bg-foreground/10 focus-visible:ring-ring/50 inline-flex size-5 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:ring-2 disabled:pointer-events-none [@media(pointer:coarse)]:size-7"
+					class="hover:bg-foreground/10 focus-visible:ring-ring inline-flex size-5 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:ring-2 disabled:pointer-events-none [@media(pointer:coarse)]:size-7"
 					onclick={() => remove(i)}
 				>
 					<XIcon class="size-3" />
@@ -229,9 +235,9 @@
 			aria-autocomplete="list"
 			aria-haspopup="listbox"
 			aria-activedescendant={activeOption ? optionId(active) : undefined}
-			aria-invalid={invalid ? 'true' : undefined}
-			aria-describedby={[describedby, full ? hintId : undefined].filter(Boolean).join(' ') ||
-				undefined}
+			aria-invalid={isInvalid ? 'true' : undefined}
+			aria-describedby={mergeIds(describedby, fieldOwn?.describedby, full && hintId)}
+			aria-required={fieldOwn?.required || undefined}
 			autocomplete="off"
 			enterkeyhint="enter"
 			disabled={inputDisabled}

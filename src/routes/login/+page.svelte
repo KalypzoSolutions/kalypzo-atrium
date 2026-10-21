@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-	import { FormField } from '$lib/components/layout';
+	import { FormField, PageTitle } from '$lib/components/layout';
+	import LegalLinks from '$lib/components/layout/LegalLinks.svelte';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -21,14 +22,14 @@
 	);
 </script>
 
-<svelte:head><title>Anmelden</title></svelte:head>
+<PageTitle title="Anmelden" />
 
-<main class="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+<main class="flex min-h-screen flex-col items-center justify-center gap-6 bg-muted/40 p-4">
 	<Card class="w-full max-w-sm">
 		<CardHeader>
-			<CardTitle class="text-xl">Anmelden</CardTitle>
+			<CardTitle level={1} class="text-section">Anmelden</CardTitle>
 			<CardDescription>
-				{twoFactor ? 'Zwei-Faktor-Authentifizierung' : 'Melden Sie sich mit Ihrem Konto an.'}
+				{twoFactor ? 'Zwei-Faktor-Authentifizierung' : 'Melde dich mit deinem Konto an.'}
 			</CardDescription>
 		</CardHeader>
 		<CardContent>
@@ -54,7 +55,7 @@
 					<FormField
 						label="Authentifizierungscode"
 						id="code"
-						hint="6-stelliger Code aus Ihrer Authenticator-App"
+						hint="6-stelliger Code aus deiner Authenticator-App"
 					>
 						<Input
 							id="code"
@@ -115,4 +116,5 @@
 			{/if}
 		</CardContent>
 	</Card>
+	<LegalLinks privacyUrl={data.legal?.privacyUrl} imprintUrl={data.legal?.imprintUrl} />
 </main>

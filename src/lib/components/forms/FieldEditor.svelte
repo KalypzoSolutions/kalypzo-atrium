@@ -63,6 +63,8 @@
 	);
 
 	const hasRequired = $derived(field.type !== 'info');
+	/** Kennzeichen „Gesundheitsdaten“ nur für Felder mit Antwort (nicht Info/Zustimmung) */
+	const hasHealthFlag = $derived(field.type !== 'info' && field.type !== 'consent');
 	const keyReadonly = $derived(disabled || field.locked || keyLocked);
 
 	function changeType(next: string | null) {
@@ -73,7 +75,7 @@
 		>;
 		const old = field as unknown as Record<string, unknown>;
 		const out: Record<string, unknown> = { ...created };
-		for (const k of ['label', 'help', 'required', 'hidden']) {
+		for (const k of ['label', 'help', 'required', 'hidden', 'health']) {
 			if (old[k] !== undefined) out[k] = old[k];
 		}
 		// nur Werte übernehmen, die für den neuen Typ dieselbe Bedeutung haben
@@ -203,14 +205,14 @@
 			<div class="flex min-h-9 items-center gap-2">
 				<Switch
 					id="{uid}-required"
-					checked={field.required === true}
+					checked={field.mandatory === true || field.required === true}
 					onCheckedChange={(c) => (field.required = c)}
-					{disabled}
+					disabled={disabled || field.mandatory === true}
 				/>
 				<label for="{uid}-required" class="text-sm">Pflichtfeld</label>
 			</div>
 		{/if}
-		{#if field.locked}
+		{#if field.locked && !field.mandatory}
 			<div class="flex min-h-9 items-center gap-2">
 				<Switch
 					id="{uid}-hidden"
@@ -221,7 +223,28 @@
 				<label for="{uid}-hidden" class="text-sm">Ausblenden</label>
 			</div>
 		{/if}
+		{#if hasHealthFlag}
+			<div class="flex min-h-9 items-center gap-2">
+				<Switch
+					id="{uid}-health"
+					checked={field.health === true}
+					onCheckedChange={(c) => (field.health = c ? true : undefined)}
+					disabled={disabled || field.locked === true}
+				/>
+				<label for="{uid}-health" class="text-sm">Gesundheitsdaten</label>
+			</div>
+		{/if}
 	</div>
+	{#if field.mandatory}
+		<p class="text-xs text-muted-foreground">
+			Dieses Feld ist vorgeschrieben und lässt sich weder ausblenden noch als optional markieren.
+		</p>
+	{:else if field.health && !field.locked}
+		<p class="text-xs text-muted-foreground">
+			Antworten werden als Gesundheitsdaten verschlüsselt gespeichert und nur Berechtigten
+			angezeigt.
+		</p>
+	{/if}
 
 	{#if !field.locked}
 		<div class="space-y-1.5">
@@ -524,7 +547,7 @@
 	<div class="rounded-lg border">
 		<button
 			type="button"
-			class="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+			class="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring"
 			aria-expanded={advanced}
 			aria-controls="{uid}-adv"
 			onclick={() => (advanced = !advanced)}

@@ -180,7 +180,7 @@
 					<AvatarImage src={item.image} alt="" />
 				{/if}
 				<AvatarFallback
-					class="text-[11px]"
+					class="text-xs"
 					style={item.type === 'group' && item.color && COLOR_RE.test(item.color)
 						? `background-color:${item.color};color:${contrastTextColor(item.color)}`
 						: undefined}
@@ -200,7 +200,7 @@
 				{/if}
 				<span class="truncate font-medium">{item.name}</span>
 				{#if meta}
-					<Badge variant="outline" class="h-4 px-1.5 text-[10px] font-normal">{meta.label}</Badge>
+					<Badge variant="outline" class="px-1.5 text-xs font-normal">{meta.label}</Badge>
 				{/if}
 			</span>
 			{#if sub}

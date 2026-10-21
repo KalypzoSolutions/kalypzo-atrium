@@ -2,6 +2,7 @@
 	import * as Popover from '$lib/components/ui/popover/index.js';
 	import { cn } from '$lib/utils.js';
 	import { hexToHsv, hsvToHex, normalizeHex, type Hsv } from './color.js';
+	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
 
 	const SV_GRADIENT =
 		'linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)';
@@ -42,6 +43,11 @@
 		allowClear?: boolean;
 		class?: string;
 	} = $props();
+
+	// Hinweis/Fehler des umgebenden FormField (#51)
+	const field = claimFieldContext();
+	const fieldOwn = $derived(appliesTo(field, id) ? field : null);
+	const isInvalid = $derived(invalid || !!fieldOwn?.invalid);
 
 	let open = $state(false);
 	let hsv = $state<Hsv>({ h: 150, s: 0.6, v: 0.6 });
@@ -162,11 +168,12 @@
 		{id}
 		{disabled}
 		aria-label={label}
-		aria-invalid={invalid ? 'true' : undefined}
+		aria-invalid={isInvalid ? 'true' : undefined}
+		aria-describedby={fieldOwn?.describedby}
 		data-slot="color-picker"
 		class={cn(
-			'border-input dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 flex h-8 w-fit min-w-32 items-center gap-2 rounded-lg border bg-transparent px-2 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50',
-			invalid && 'border-destructive ring-destructive/20 dark:ring-destructive/40 ring-3',
+			'border-input dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring flex h-8 w-fit min-w-32 items-center gap-2 rounded-lg border bg-transparent px-2 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50',
+			isInvalid && 'border-destructive ring-destructive/20 dark:ring-destructive/40 ring-3',
 			className
 		)}
 	>
@@ -194,7 +201,7 @@
 			aria-valuemax={100}
 			aria-valuenow={Math.round(hsv.s * 100)}
 			aria-valuetext={`Sättigung ${Math.round(hsv.s * 100)} %, Helligkeit ${Math.round(hsv.v * 100)} %`}
-			class="focus-visible:ring-ring/50 relative h-36 w-full cursor-crosshair touch-none rounded-md outline-none focus-visible:ring-3"
+			class="focus-visible:ring-ring relative h-36 w-full cursor-crosshair touch-none rounded-md outline-none focus-visible:ring-3"
 			style:background-color={hueColor}
 			style:background-image={SV_GRADIENT}
 			onpointerdown={onAreaDown}
@@ -217,7 +224,7 @@
 			aria-valuemin={0}
 			aria-valuemax={360}
 			aria-valuenow={Math.round(hsv.h)}
-			class="focus-visible:ring-ring/50 relative h-3 w-full cursor-pointer touch-none rounded-full outline-none focus-visible:ring-3"
+			class="focus-visible:ring-ring relative h-3 w-full cursor-pointer touch-none rounded-full outline-none focus-visible:ring-3"
 			style:background-image={HUE_GRADIENT}
 			onpointerdown={onHueDown}
 			onpointermove={onHueMove}
@@ -248,7 +255,7 @@
 					bind:value={hexText}
 					oninput={onHexInput}
 					class={cn(
-						'border-input dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border bg-transparent px-2.5 font-mono text-sm outline-none focus-visible:ring-3',
+						'border-input dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring h-8 w-full rounded-lg border bg-transparent px-2.5 font-mono text-sm outline-none focus-visible:ring-3',
 						hexError && 'border-destructive'
 					)}
 				/>
@@ -268,7 +275,7 @@
 							aria-label={`Farbe ${n}`}
 							aria-pressed={n === current}
 							class={cn(
-								'border-border focus-visible:ring-ring/50 size-6 rounded-md border outline-none focus-visible:ring-3',
+								'border-border focus-visible:ring-ring size-6 rounded-md border outline-none focus-visible:ring-3',
 								n === current && 'ring-foreground ring-2 ring-offset-1'
 							)}
 							style:background-color={n}

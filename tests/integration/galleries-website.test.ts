@@ -22,6 +22,10 @@ import { core } from '$lib/server/core';
 import eventsModule from '$lib/modules/events/module';
 import membersModule from '$lib/modules/members/module';
 import galleriesModule from '$lib/modules/galleries/module';
+import {
+	websiteGalleryDetailSchema,
+	websiteGalleryListSchema
+} from '$lib/modules/galleries/website.schemas';
 import type {
 	GalleryDetail,
 	GalleryImage,
@@ -112,6 +116,7 @@ async function createGallery(
 			title,
 			description: `Beschreibung ${title}`,
 			visibility,
+			consentConfirmed: visibility === 'public',
 			shares: [{ type: 'user', id: userIds.reader!, level: 'read' }],
 			eventIds
 		}),
@@ -142,6 +147,7 @@ const ROLES: Record<string, string[]> = {
 	owner: [
 		'galleries.gallery.view',
 		'galleries.gallery.create',
+		'galleries.gallery.publish',
 		'events.event.view',
 		'core.api.manage'
 	],
@@ -251,6 +257,8 @@ const FORBIDDEN_TEXT = [
 describe('GET /website/galleries', () => {
 	it('listet nur öffentliche Galerien mit Website-Feldern', async () => {
 		const res = await call('website', 'GET', '/website/galleries');
+		// Vertrag (#48): strikt gegen das exportierte Website-Schema
+		websiteGalleryListSchema.parse(ok(res));
 		const items = listOf<WebsiteGallery>(ok(res));
 		expect(items.map((g) => g.id)).toEqual([publicG.id, otherPublicG.id]);
 		const g = items[0]!;
@@ -286,6 +294,7 @@ describe('GET /website/galleries/:id', () => {
 			`/website/galleries/${publicG.id}`
 		);
 		const d = ok(res);
+		websiteGalleryDetailSchema.parse(d);
 		expect(Object.keys(d).sort()).toEqual([...GALLERY_KEYS, 'images'].sort());
 		expect(d.images.map((i) => i.id)).toEqual([pubImg1.id, pubImg2.id]);
 		for (const img of d.images) expect(Object.keys(img).sort()).toEqual(IMAGE_KEYS);

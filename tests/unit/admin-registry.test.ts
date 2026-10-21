@@ -23,7 +23,8 @@ const ALL_PERMISSIONS = [
 	'core.api.view',
 	'core.audit.view',
 	'core.system.reset',
-	'core.system.backup'
+	'core.system.backup',
+	'core.privacy.export'
 ];
 
 const ids = (entries: readonly AdminEntry[]) => entries.map((e) => e.id);

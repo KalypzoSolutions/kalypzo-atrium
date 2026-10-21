@@ -110,6 +110,7 @@
 			),
 			label: src.label ? `${src.label} (Kopie)` : src.label,
 			locked: undefined,
+			mandatory: undefined,
 			hidden: undefined
 		} as FieldDefinition;
 		const next = [...definition.fields];
@@ -231,7 +232,7 @@
 							<div class="flex flex-wrap items-center gap-1 p-2 sm:flex-nowrap">
 								<button
 									type="button"
-									class="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg px-2 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+									class="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg px-2 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring"
 									aria-expanded={open}
 									aria-controls="{uid}-{f.id}-panel"
 									onclick={() => (expanded[f.id] = !open)}
@@ -249,6 +250,7 @@
 									{#if f.required}<Badge variant="secondary">Pflicht</Badge>{/if}
 									{#if f.locked}<Badge variant="outline">Standardfeld</Badge>{/if}
 									{#if f.hidden}<Badge variant="outline">Ausgeblendet</Badge>{/if}
+									{#if f.health}<Badge variant="outline">Gesundheitsdaten</Badge>{/if}
 								</div>
 								<div class="ml-auto flex shrink-0 items-center">
 									<Button
@@ -333,7 +335,7 @@
 			</p>
 			<div class="rounded-xl border bg-card p-4 sm:p-6">
 				{#if definition.title}
-					<h2 class="text-lg font-semibold tracking-tight">{definition.title}</h2>
+					<h2 class="text-section">{definition.title}</h2>
 				{/if}
 				{#if definition.intro}
 					<p class="mt-1 text-sm whitespace-pre-line text-muted-foreground">{definition.intro}</p>

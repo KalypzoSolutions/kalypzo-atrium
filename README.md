@@ -1,6 +1,23 @@
-# EP Intern – modulare Verwaltungsplattform (Core)
+# EP Intern – modulare Verwaltungsplattform
 
-Selbst gehostete, webbasierte Verwaltungsplattform als **modularer Monolith**. Dieses Repository enthält ausschließlich den **Core**: Authentifizierung, RBAC, Modulverwaltung, Einstellungen, REST-API mit API-Keys, Datenverwaltung, PDF-, KI- und S3-Storage-Service sowie Audit-Log. Fachmodule werden später unter `src/lib/modules/` ergänzt.
+Selbst gehostete, webbasierte Verwaltungsplattform für einen Pfadfinderstamm als **modularer Monolith**: ein kleiner **Core**
+(Authentifizierung mit 2FA, RBAC, Modulverwaltung, Einstellungen, REST-API mit API-Keys, PDF-, KI-, Bild- und S3-Storage-Service,
+Mail, Hintergrundjobs, globale Suche, Dashboard, Audit-Log, Datensicherung, Admin-Reset, Datenauskunft) plus **Fachmodule** unter
+`src/lib/modules/<id>/`. Module werden unter Administration → Module einzeln aktiviert.
+
+| Modul | Name | Inhalt |
+|---|---|---|
+| `members` | Mitglieder & Gruppen | Mitglieder, Gruppen, Zusatzfelder, Konto-Verknüpfung per Brief, Mitgliedschaft |
+| `actions` | Aktionen | Fahrten/Lager: Kalkulation, Zuschuss, Anmeldelink, Abrechnung, Rückzahlung, PDF-Bericht |
+| `treasury` | Kasse | Konten, Buchungen, Rechnungen (auch aus Aktionen/Bestellungen), Jahresbeitrag, CSV-Import, Berichte |
+| `events` | Termine | Termine und Serien, Tags, Gruppen, Freigabe, Website-API |
+| `galleries` | Galerien | Bilder mit Titelbild, Freigabe, öffentliche Galerien für die Website |
+| `offices` | Ämter | Ämter mit Inhaber*innen, Rollen aus Ämtern, Benachrichtigungen |
+| `orders` | Bestellungen | Artikel, Bestellungen mit Rechnung über die Kasse, Lager, Einkauf |
+| `files` | Dateien | Cloud-Ablage mit Freigaben, öffentlichen Links und Papierkorb |
+
+Dazu kommt die **Stammeswebsite** in `website/` (eigenes SvelteKit-Projekt), die Termine, Galerien und Gruppen serverseitig
+über die Website-Endpunkte lädt (`WEBSITE_API_URL`, `WEBSITE_API_KEY`; siehe [REST API](docs/api.md#stammeswebsite) und [Deployment](docs/deployment.md)).
 
 ## Techstack
 
@@ -76,16 +93,19 @@ src/
 ├── hooks.server.ts              Session, Guard, Security-Header, Auth-Handler
 ├── lib/
 │   ├── server/core/             Core-Implementierung (nur Server)
-│   │   ├── auth/ permissions/ modules/ settings/ api/
-│   │   ├── database/ pdf/ ai/ storage/ audit/
+│   │   ├── auth/ permissions/ modules/ settings/ api/ jobs/ search/
+│   │   ├── database/ pdf/ ai/ storage/ images/ audit/
+│   │   ├── backup/ privacy/ system/
 │   │   └── index.ts             `core`-Objekt
 │   ├── sdk/{server,client,types}  Öffentliche Modul-SDK-Schnittstelle
-│   ├── components/{ui,layout}   shadcn-svelte + Layout
-│   └── modules/                 Fachmodule (<id>/module.ts, ui.ts, migrations)
+│   ├── components/{ui,layout,forms}  shadcn-svelte, Layout-Bausteine, Formular-Builder
+│   └── modules/                 Fachmodule (members, actions, treasury, events, galleries, offices, orders, files)
 └── routes/
     ├── login/ forgot-password/ reset-password/
     ├── api/v1/[...path]/        Zentraler REST-Router
-    └── (internal)/              Dashboard, Benutzer, Rollen, Module, …
+    ├── p/                       Öffentliche Modulseiten (/p/<modul>/…)
+    └── (internal)/              Dashboard, Profil, Modulseiten, Verwaltung unter /admin
+website/                         Stammeswebsite (eigenes Projekt)
 drizzle/                         SQL-Migrationen
 deploy/nginx/                    Reverse-Proxy-Konfiguration
 tests/{unit,integration,e2e,helpers}

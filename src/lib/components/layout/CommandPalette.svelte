@@ -286,7 +286,7 @@
 				/>
 			{/if}
 			<kbd
-				class="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline"
+				class="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground sm:inline"
 				aria-hidden="true">Esc</kbd
 			>
 		</div>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { EmptyState } from '$lib/components/layout';
+	import { EmptyState, PageTitle } from '$lib/components/layout';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
@@ -8,7 +8,7 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<svelte:head><title>Module · Einstellungen</title></svelte:head>
+<PageTitle title="Module · Einstellungen" />
 
 {#if data.modules.length === 0}
 	<EmptyState

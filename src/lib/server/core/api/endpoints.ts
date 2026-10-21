@@ -4,20 +4,14 @@ import * as ai from '../ai';
 import * as pdf from '../pdf';
 import * as storage from '../storage';
 import { createApiKey, listApiKeys, revokeApiKey } from './keys';
-import {
-	createUser,
-	deleteUser,
-	getUser,
-	listUsers,
-	setUserActive,
-	setUserRoles,
-	updateUser
-} from '../auth/users';
+import { createUser, deleteUser, getUser, listUsers, updateUserFull } from '../auth/users';
 import { disableModule, enableModule, listModules } from '../modules/service';
 import { listJobs, runJobNow } from '../jobs';
+import { adoptDefaultRole } from '../permissions/default-roles';
 import { createRole, deleteRole, listRoles, updateRole } from '../permissions/roles';
 import { listPermissions } from '../permissions/service';
-import { getPublicSettings, setSetting } from '../settings/service';
+import { getPublicSettings, MAX_SETTINGS_PER_WRITE, setSettings } from '../settings/service';
+import { healthCheck } from './health';
 import { buildOpenApiDocument } from './openapi';
 import { defineEndpoint, registerCoreEndpoints } from './registry';
 
@@ -35,10 +29,11 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/health',
+			// prüft die Datenbank (503 bei Ausfall), wird nicht im api_log protokolliert (router.ts)
 			summary: 'Health-Check',
 			tags: ['System'],
 			permission: null,
-			handler: () => ({ status: 'ok' })
+			handler: () => healthCheck()
 		}),
 		defineEndpoint({
 			method: 'GET',
@@ -95,7 +90,8 @@ export function registerCoreApi(): void {
 				name: z.string().trim().min(1).max(100),
 				email: z.string().trim().email().max(255),
 				password,
-				roleIds: z.array(z.string()).max(50).optional()
+				roleIds: z.array(z.string()).max(50).optional(),
+				permissionKeys: z.array(z.string()).max(500).optional()
 			}),
 			handler: async ({ ctx, body }) => ({ id: await createUser(ctx, body) })
 		}),
@@ -110,13 +106,12 @@ export function registerCoreApi(): void {
 				name: z.string().trim().min(1).max(100).optional(),
 				email: z.string().trim().email().max(255).optional(),
 				active: z.boolean().optional(),
-				roleIds: z.array(z.string()).max(50).optional()
+				roleIds: z.array(z.string()).max(50).optional(),
+				permissionKeys: z.array(z.string()).max(500).optional()
 			}),
 			handler: async ({ ctx, params, body }) => {
-				const { active, roleIds, ...rest } = body;
-				if (Object.keys(rest).length) await updateUser(ctx, params.id, rest);
-				if (active !== undefined) await setUserActive(ctx, params.id, active);
-				if (roleIds) await setUserRoles(ctx, params.id, roleIds);
+				// atomar: alle Prüfungen vor der ersten Änderung, dann eine Transaktion (#72, 06-08)
+				await updateUserFull(ctx, params.id, body);
 				return getUser(ctx, params.id);
 			}
 		}),
@@ -182,6 +177,20 @@ export function registerCoreApi(): void {
 			handler: async ({ ctx, params }) => {
 				await deleteRole(ctx, params.id);
 				return null;
+			}
+		}),
+		defineEndpoint({
+			method: 'POST',
+			path: '/roles/:id/adopt-default',
+			summary: 'Gleichnamige Rolle ausdrücklich als Standardrolle eines Moduls übernehmen',
+			description:
+				'Admin-Bestätigung (#67, 01a-07): Die Rolle erhält danach automatisch die defaultRoleGrants der Module.',
+			tags: ['Rollen'],
+			permission: 'core.roles.edit',
+			params: id,
+			handler: async ({ ctx, params }) => {
+				await adoptDefaultRole(ctx, params.id);
+				return { adopted: true };
 			}
 		}),
 		defineEndpoint({
@@ -262,9 +271,17 @@ export function registerCoreApi(): void {
 			summary: 'Systemeinstellungen setzen',
 			tags: ['Einstellungen'],
 			permission: 'core.settings.manage',
-			body: z.object({ values: z.record(z.string(), z.unknown()) }),
+			// Alle Werte werden vorab geprüft und atomar gespeichert; Modul-Schlüssel verlangen zusätzlich
+			// ihr Schreibrecht (z. B. `treasury.settings.manage`), siehe `setSettings`
+			body: z.object({
+				values: z
+					.record(z.string().max(200), z.unknown())
+					.refine((v) => Object.keys(v).length <= MAX_SETTINGS_PER_WRITE, {
+						message: `Höchstens ${MAX_SETTINGS_PER_WRITE} Einstellungen auf einmal`
+					})
+			}),
 			handler: async ({ ctx, body }) => {
-				for (const [key, value] of Object.entries(body.values)) await setSetting(ctx, key, value);
+				await setSettings(ctx, body.values);
 				return null;
 			}
 		}),
@@ -389,14 +406,16 @@ export function registerCoreApi(): void {
 			handler: ({ ctx, query }) => ai.usageSummary(ctx, query)
 		}),
 
-		// Storage (Berechtigung je Modul wird im Service geprüft: <modul>.storage.*)
+		// Storage: generische API nur mit `core.storage.manage` (System hat alle Rechte).
+		// `<modul>.storage.*` ist ein internes Recht für die Modul-Endpunkte, die Freigabe, Eigentum
+		// und Sperren prüfen – es öffnet diese Endpunkte nicht. Der Router prüft das Recht vor jedem
+		// Storage-Zugriff (403 vor 503).
 		defineEndpoint({
 			method: 'GET',
 			path: '/storage/files',
 			summary: 'Dateien und virtuelle Ordner eines Modulbereichs',
 			tags: ['Storage'],
-			permission: null,
-			authenticated: true,
+			permission: 'core.storage.manage',
 			query: z.object({
 				module: z.string().min(2).max(40),
 				prefix: z.string().max(300).optional()
@@ -408,8 +427,7 @@ export function registerCoreApi(): void {
 			path: '/storage/upload-url',
 			summary: 'Signierte Upload-URL erzeugen',
 			tags: ['Storage'],
-			permission: null,
-			authenticated: true,
+			permission: 'core.storage.manage',
 			body: z.object({
 				module: z.string().min(2).max(40),
 				path: z.string().min(1).max(300),
@@ -423,8 +441,7 @@ export function registerCoreApi(): void {
 			path: '/storage/files/:id/confirm',
 			summary: 'Signierten Upload bestätigen',
 			tags: ['Storage'],
-			permission: null,
-			authenticated: true,
+			permission: 'core.storage.manage',
 			params: id,
 			handler: ({ ctx, params }) => storage.confirmUpload(ctx, params.id)
 		}),
@@ -433,8 +450,7 @@ export function registerCoreApi(): void {
 			path: '/storage/download-url',
 			summary: 'Signierte Download-URL erzeugen',
 			tags: ['Storage'],
-			permission: null,
-			authenticated: true,
+			permission: 'core.storage.manage',
 			query: z.object({ module: z.string().min(2).max(40), path: z.string().min(1).max(300) }),
 			handler: ({ ctx, query }) => storage.createSignedDownloadUrl(ctx, query)
 		}),
@@ -443,8 +459,7 @@ export function registerCoreApi(): void {
 			path: '/storage/files',
 			summary: 'Datei löschen',
 			tags: ['Storage'],
-			permission: null,
-			authenticated: true,
+			permission: 'core.storage.manage',
 			query: z.object({ module: z.string().min(2).max(40), path: z.string().min(1).max(300) }),
 			handler: async ({ ctx, query }) => {
 				await storage.remove(ctx, query);

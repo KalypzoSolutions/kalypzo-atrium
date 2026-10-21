@@ -197,8 +197,19 @@ beforeAll(async () => {
 	fritz = await createMember({ firstName: 'Fritz', lastName: 'Frei' });
 
 	const viewPerms = ['core.api.manage', 'galleries.gallery.view'];
-	const ownerPerms = [...viewPerms, 'galleries.gallery.create'];
+	// Mitgliedsnamen und E-Mails in Freigaben/Suche nur mit diesen Rechten (siehe principals-privacy.test.ts)
+	const noPublishPerms = [
+		...viewPerms,
+		'galleries.gallery.create',
+		'members.member.view',
+		'core.users.view'
+	];
+	const ownerPerms = [...noPublishPerms, 'galleries.gallery.publish'];
 	const ownerRole = await createRole(admin, { name: 'Fotografie', permissions: ownerPerms });
+	const noPublishRole = await createRole(admin, {
+		name: 'Fotografie ohne Veröffentlichen',
+		permissions: noPublishPerms
+	});
 	const viewerRole = await createRole(admin, { name: 'Lesende', permissions: viewPerms });
 	editorsRole = await createRole(admin, { name: 'Redaktion', permissions: viewPerms });
 	const viewAllRole = await createRole(admin, {
@@ -216,6 +227,7 @@ beforeAll(async () => {
 	});
 
 	await addUser('owner', 'Olga Owner', ownerRole, ownerPerms);
+	await addUser('q', 'Quentin Ohnepublish', noPublishRole, noPublishPerms);
 	await addUser('a', 'Alle Anna', viewerRole, viewPerms);
 	await addUser('b', 'Gruppen Bernd', viewerRole, viewPerms);
 	await addUser('d', 'Rollen Dora', editorsRole, viewPerms);
@@ -256,7 +268,7 @@ beforeAll(async () => {
 			'owner',
 			'POST',
 			'/galleries',
-			body({ title: 'Pfingstlager', visibility: 'public' })
+			body({ title: 'Pfingstlager', visibility: 'public', consentConfirmed: true })
 		),
 		201
 	).id;
@@ -314,6 +326,7 @@ describe('Modul galleries (Smoke)', () => {
 		expect(perms.map((p) => p.key).sort()).toEqual([
 			'galleries.gallery.create',
 			'galleries.gallery.edit-all',
+			'galleries.gallery.publish',
 			'galleries.gallery.view',
 			'galleries.gallery.view-all',
 			'galleries.website.read'
@@ -380,6 +393,7 @@ describe('CRUD', () => {
 					title: 'Nachher',
 					description: null,
 					visibility: 'public',
+					consentConfirmed: true,
 					shares: [{ type: 'role', id: editorsRole, level: 'edit' }]
 				})
 			)
@@ -708,6 +722,211 @@ describe('Titelbild', () => {
 			rows.some((r) => r.action === 'galleries.gallery.cover_changed' && r.target === gCover)
 		).toBe(true);
 		expect(JSON.stringify(rows.map((r) => r.metadata))).not.toContain('Titelbild-Test');
+	});
+});
+
+describe('Veröffentlichen nur mit galleries.gallery.publish (#67, 01b-06)', () => {
+	const publicBody = (over: Record<string, unknown> = {}) =>
+		body({ visibility: 'public', consentConfirmed: true, ...over });
+
+	it('Eigentümer*in ohne Publish-Recht: POST öffentlich → 403 (vor der Einwilligungsprüfung), privat → 201, PUT auf öffentlich → 403', async () => {
+		fail(
+			await call('q', 'POST', '/galleries', publicBody({ title: 'Q öffentlich' })),
+			403,
+			'forbidden'
+		);
+		// Ohne Recht zählt die fehlende Einwilligung nicht: 403 statt 422
+		fail(await call('q', 'POST', '/galleries', body({ visibility: 'public' })), 403, 'forbidden');
+		const id = ok<GalleryDetail>(
+			await call('q', 'POST', '/galleries', body({ title: 'Q intern' })),
+			201
+		).id;
+		fail(
+			await call('q', 'PUT', `/galleries/${id}`, publicBody({ title: 'Q intern' })),
+			403,
+			'forbidden'
+		);
+		const stored = ok<GalleryDetail>(await call('q', 'GET', `/galleries/${id}`));
+		expect(stored.visibility).toBe('private');
+		expect(stored.publicConfirmation).toBeNull();
+		// Sonstige Änderungen ohne Veröffentlichen bleiben erlaubt
+		ok(await call('q', 'PUT', `/galleries/${id}`, body({ title: 'Q intern 2' })));
+	});
+
+	it('Mit Publish-Recht gilt weiterhin die Einwilligungsbestätigung (422)', async () => {
+		const res = await call('owner', 'POST', '/galleries', body({ visibility: 'public' }));
+		fail(res, 422, 'validation_failed');
+		expect(paths(res)).toContain('consentConfirmed');
+	});
+
+	it('edit-Freigabe und edit-all ohne Publish-Recht → 403 beim Wechsel auf öffentlich; Zurücknehmen erlaubt; Audit', async () => {
+		const shares = [{ type: 'role', id: editorsRole, level: 'edit' }];
+		const id = ok<GalleryDetail>(
+			await call('owner', 'POST', '/galleries', body({ title: 'Freigabe-Test', shares })),
+			201
+		).id;
+		fail(
+			await call('d', 'PUT', `/galleries/${id}`, publicBody({ title: 'Freigabe-Test', shares })),
+			403,
+			'forbidden'
+		);
+		fail(
+			await call('h', 'PUT', `/galleries/${id}`, publicBody({ title: 'Freigabe-Test', shares })),
+			403,
+			'forbidden'
+		);
+		// Eigentümer*in mit Recht veröffentlicht; danach dürfen d/h weiter bearbeiten und zurücknehmen
+		ok(
+			await call('owner', 'PUT', `/galleries/${id}`, publicBody({ title: 'Freigabe-Test', shares }))
+		);
+		ok(
+			await call(
+				'd',
+				'PUT',
+				`/galleries/${id}`,
+				body({ title: 'Freigabe-Test 2', visibility: 'public', shares })
+			)
+		);
+		const back = ok<GalleryDetail>(
+			await call('h', 'PUT', `/galleries/${id}`, body({ title: 'Freigabe-Test 2', shares }))
+		);
+		expect(back.visibility).toBe('private');
+
+		const { rows } = await listAudit({ target: id, limit: 50 });
+		const actions = rows.map((r) => r.action);
+		expect(actions.filter((a) => a === 'galleries.gallery.published')).toHaveLength(1);
+		expect(actions.filter((a) => a === 'galleries.gallery.unpublished')).toHaveLength(1);
+	});
+
+	it('POST öffentlich mit Recht schreibt galleries.gallery.published', async () => {
+		const id = ok<GalleryDetail>(
+			await call('owner', 'POST', '/galleries', publicBody({ title: 'Direkt öffentlich' })),
+			201
+		).id;
+		const { rows } = await listAudit({ target: id, limit: 50 });
+		expect(rows.map((r) => r.action)).toContain('galleries.gallery.published');
+	});
+});
+
+describe('Veröffentlichen mit Bestätigung der Einwilligungen (#27)', () => {
+	it('POST öffentlich ohne Bestätigung → 422 consentConfirmed, nichts angelegt', async () => {
+		const before = ok<GalleryList>(await call('owner', 'GET', '/galleries?limit=200')).total;
+		const res = await call('owner', 'POST', '/galleries', body({ visibility: 'public' }));
+		fail(res, 422, 'validation_failed');
+		expect(paths(res)).toContain('consentConfirmed');
+		const res2 = await call(
+			'owner',
+			'POST',
+			'/galleries',
+			body({ visibility: 'public', consentConfirmed: false })
+		);
+		fail(res2, 422, 'validation_failed');
+		expect(ok<GalleryList>(await call('owner', 'GET', '/galleries?limit=200')).total).toBe(before);
+	});
+
+	it('POST öffentlich mit Bestätigung speichert Zeitpunkt und Person', async () => {
+		const created = ok<GalleryDetail>(
+			await call(
+				'owner',
+				'POST',
+				'/galleries',
+				body({ title: 'Bestätigt', visibility: 'public', consentConfirmed: true })
+			),
+			201
+		);
+		expect(created.publicConfirmation?.by?.id).toBe(userIds.owner);
+		expect(created.publicConfirmation?.by?.name).toBeTruthy();
+		expect(Date.now() - Date.parse(created.publicConfirmation!.at)).toBeLessThan(60_000);
+		// privat angelegt → keine Bestätigung
+		const priv = ok<GalleryDetail>(await call('owner', 'POST', '/galleries', body()), 201);
+		expect(priv.publicConfirmation).toBeNull();
+	});
+
+	it('PUT: öffentlich bleibt ohne neue Bestätigung, privat → öffentlich verlangt sie erneut', async () => {
+		const g = ok<GalleryDetail>(
+			await call(
+				'owner',
+				'POST',
+				'/galleries',
+				body({ title: 'Wechsel', visibility: 'public', consentConfirmed: true })
+			),
+			201
+		);
+		const firstAt = g.publicConfirmation!.at;
+		// Bleibt öffentlich (z. B. Titel ändern): keine Bestätigung nötig, Zeitpunkt unverändert
+		const same = ok<GalleryDetail>(
+			await call(
+				'owner',
+				'PUT',
+				`/galleries/${g.id}`,
+				body({ title: 'Wechsel 2', visibility: 'public' })
+			)
+		);
+		expect(same.publicConfirmation?.at).toBe(firstAt);
+		// Auf privat: Bestätigung bleibt als Historie
+		const priv = ok<GalleryDetail>(
+			await call('owner', 'PUT', `/galleries/${g.id}`, body({ title: 'Wechsel 2' }))
+		);
+		expect(priv.visibility).toBe('private');
+		expect(priv.publicConfirmation?.at).toBe(firstAt);
+		// Wieder öffentlich ohne Bestätigung → 422, Galerie bleibt privat
+		const res = await call(
+			'owner',
+			'PUT',
+			`/galleries/${g.id}`,
+			body({ title: 'Wechsel 2', visibility: 'public' })
+		);
+		fail(res, 422, 'validation_failed');
+		expect(paths(res)).toContain('consentConfirmed');
+		expect(ok<GalleryDetail>(await call('owner', 'GET', `/galleries/${g.id}`)).visibility).toBe(
+			'private'
+		);
+		// Mit Bestätigung → neuer Zeitpunkt
+		const again = ok<GalleryDetail>(
+			await call(
+				'owner',
+				'PUT',
+				`/galleries/${g.id}`,
+				body({ title: 'Wechsel 2', visibility: 'public', consentConfirmed: true })
+			)
+		);
+		expect(again.visibility).toBe('public');
+		expect(Date.parse(again.publicConfirmation!.at)).toBeGreaterThanOrEqual(Date.parse(firstAt));
+		expect(again.publicConfirmation?.by?.id).toBe(userIds.owner);
+
+		const { rows } = await listAudit({ action: 'galleries.gallery.', limit: 500 });
+		const mine = rows.filter((r) => r.target === g.id);
+		const confirmed = mine.filter(
+			(r) => (r.metadata as { consentConfirmed?: boolean } | null)?.consentConfirmed === true
+		);
+		// Anlegen und erneutes Veröffentlichen, nicht das Ändern bei bleibender Sichtbarkeit
+		expect(confirmed.map((r) => r.action).sort()).toEqual([
+			'galleries.gallery.created',
+			'galleries.gallery.updated'
+		]);
+	});
+
+	it('Datenauskunft: subjectExport liefert Galerien, Freigaben und Bestätigungen des Kontos', async () => {
+		const out = await galleriesModule.subjectExport!.run({
+			userId: userIds.owner!,
+			memberIds: []
+		});
+		const data = out as {
+			ownedGalleries: { id: string; title: string }[];
+			publishConfirmations: { galleryId: string }[];
+		};
+		expect(data.ownedGalleries.map((g) => g.id)).toContain(gPublic);
+		expect(data.publishConfirmations.map((c) => c.galleryId)).toContain(gPublic);
+		const reader = (await galleriesModule.subjectExport!.run({
+			userId: userIds.e!,
+			memberIds: []
+		})) as { sharesToAccount: { galleryId: string }[] } | null;
+		// Emil hat eine Benutzer-Freigabe auf gMain (sofern nicht in einem Test entfernt)
+		expect(reader?.sharesToAccount.map((s) => s.galleryId) ?? []).toContain(gMain);
+		expect(await galleriesModule.subjectExport!.run({ userId: null, memberIds: ['x'] })).toBeNull();
+		expect(
+			await galleriesModule.subjectExport!.run({ userId: crypto.randomUUID(), memberIds: [] })
+		).toBeNull();
 	});
 });
 

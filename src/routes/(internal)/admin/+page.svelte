@@ -13,7 +13,8 @@
 		iconFor,
 		searchAdmin,
 		visibleAdminEntries,
-		type AdminEntry
+		type AdminEntry,
+		PageTitle
 	} from '$lib/components/layout';
 
 	let { data } = $props();
@@ -81,7 +82,7 @@
 	});
 </script>
 
-<svelte:head><title>Verwaltung</title></svelte:head>
+<PageTitle title="Verwaltung" />
 
 <PageHeader
 	title="Verwaltung"
@@ -174,7 +175,7 @@
 								<li>
 									<a
 										href={p.entry.href}
-										class="-mx-2 block rounded-md px-2 py-1.5 hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
+										class="-mx-2 block rounded-md px-2 py-1.5 hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:-outline-offset-2"
 									>
 										<span class="block text-sm font-medium">{p.entry.label}</span>
 										<span class="block text-xs text-muted-foreground">{p.entry.description}</span>
@@ -185,7 +186,7 @@
 												<li>
 													<a
 														href={t.href}
-														class="block rounded-md px-2 py-1 hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
+														class="block rounded-md px-2 py-1 hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:-outline-offset-2"
 													>
 														<span class="block text-sm">{t.label}</span>
 														<span class="block text-xs text-muted-foreground">{t.description}</span>

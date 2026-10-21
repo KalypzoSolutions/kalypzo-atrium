@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { FormField } from '$lib/components/layout';
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { ColorPicker, normalizeHex, primaryContrast } from '$lib/components/ui/color-picker';
 	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
 	import { SelectField } from '$lib/components/ui/select-field';
+	import { Textarea } from '$lib/components/ui/textarea';
+	import { cn } from '$lib/utils';
 	import { submitHandler } from './form-utils';
 	import type { FieldDescriptor } from './group-form.server';
 
@@ -33,28 +37,36 @@
 		const opts = f.options ?? [];
 		return opts.find((o) => o === f.value) ?? opts[0] ?? null;
 	}
-	const areaClass =
-		'min-h-24 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50';
+	/** Farbwerte je Feld (ColorPicker); ohne Eingabe der gespeicherte Wert */
+	let colors = $state<Record<string, string | null>>({});
+	function colorValue(f: FieldDescriptor): string | null {
+		if (f.key in colors) return colors[f.key] ?? null;
+		return normalizeHex(String(f.value ?? ''));
+	}
 </script>
 
 <form method="POST" {action} class="space-y-5" use:enhance={handler}>
 	{#each fields as f (f.key)}
 		{@const id = `s-${f.key}`}
-		<div class="space-y-1.5">
-			{#if f.kind === 'boolean'}
+		{#if f.kind === 'boolean'}
+			<div class="space-y-1.5">
 				<input type="hidden" name={`has:${f.key}`} value="1" />
-				<label class="flex items-center gap-2 text-sm font-medium" for={id}>
-					<input
+				<div class="flex items-center gap-2">
+					<Checkbox
 						{id}
-						type="checkbox"
 						name={`f:${f.key}`}
 						checked={Boolean(f.value)}
 						disabled={!canEdit}
+						aria-describedby={f.description ? `${id}-hint` : undefined}
 					/>
-					{f.label}
-				</label>
-			{:else}
-				<Label for={id}>{f.label}</Label>
+					<label class="text-sm font-medium" for={id}>{f.label}</label>
+				</div>
+				{#if f.description}
+					<p id={`${id}-hint`} class="text-xs text-muted-foreground">{f.description}</p>
+				{/if}
+			</div>
+		{:else}
+			<FormField label={f.label} {id} hint={f.description}>
 				{#if f.secret}
 					<Input
 						{id}
@@ -65,9 +77,11 @@
 						placeholder={f.isSet ? 'gesetzt – leer lassen, um beizubehalten' : 'nicht gesetzt'}
 					/>
 					{#if f.isSet && canEdit}
-						<label class="flex items-center gap-2 text-xs text-muted-foreground">
-							<input type="checkbox" name={`clear:${f.key}`} /> Wert entfernen
-						</label>
+						<div class="flex items-center gap-2">
+							<Checkbox id={`${id}-clear`} name={`clear:${f.key}`} />
+							<label class="text-xs text-muted-foreground" for={`${id}-clear`}>Wert entfernen</label
+							>
+						</div>
 					{/if}
 				{:else if f.kind === 'number'}
 					<Input
@@ -87,40 +101,74 @@
 						bind:value={() => selectValue(f), (v) => (selected[f.key] = v)}
 						disabled={!canEdit}
 					/>
+				{:else if f.kind === 'color'}
+					{@const color = colorValue(f)}
+					{@const ratio = color ? primaryContrast(color) : null}
+					<input type="hidden" name={`f:${f.key}`} value={color ?? ''} />
+					<div class="flex flex-wrap items-center gap-3">
+						<ColorPicker
+							{id}
+							label={f.label}
+							bind:value={() => colorValue(f), (v) => (colors[f.key] = v)}
+							disabled={!canEdit}
+						/>
+						{#if color}
+							<!-- Vorschau mit automatisch gewählter Schriftfarbe (hell/dunkel nach Kontrast) -->
+							<span
+								class="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
+								style={`--accent-color:${color}`}
+								aria-hidden="true">Vorschau</span
+							>
+						{/if}
+					</div>
+					{#if ratio !== null}
+						<p
+							class={cn('text-xs', ratio < 4.5 ? 'text-warning' : 'text-muted-foreground')}
+							aria-live="polite"
+						>
+							Kontrast der Schrift auf Primärknöpfen: {ratio.toLocaleString('de-DE', {
+								maximumFractionDigits: 1
+							})} : 1{ratio < 4.5
+								? ' – knapp unter dem Mindestwert 4,5 : 1. Wähle eine hellere oder dunklere Farbe.'
+								: ''}
+						</p>
+					{/if}
 				{:else if f.kind === 'list'}
-					<textarea
+					<Textarea
 						{id}
 						name={`f:${f.key}`}
-						class={areaClass}
+						class="min-h-24 font-mono"
 						disabled={!canEdit}
-						placeholder="Ein Eintrag pro Zeile">{listText(f.value)}</textarea
-					>
+						placeholder="Ein Eintrag pro Zeile"
+						value={listText(f.value)}
+					/>
 				{:else if f.kind === 'json'}
-					<textarea
+					<Textarea
 						{id}
 						name={`f:${f.key}`}
-						class={areaClass}
+						class="min-h-24 font-mono"
 						disabled={!canEdit}
-						spellcheck="false">{jsonText(f.value)}</textarea
-					>
+						spellcheck="false"
+						value={jsonText(f.value)}
+					/>
 				{:else if f.multiline}
-					<textarea
+					<Textarea
 						{id}
 						name={`f:${f.key}`}
-						class={areaClass.replace('font-mono ', '')}
-						disabled={!canEdit}>{String(f.value ?? '')}</textarea
-					>
+						class="min-h-24"
+						disabled={!canEdit}
+						value={String(f.value ?? '')}
+					/>
 				{:else}
 					<Input {id} name={`f:${f.key}`} value={String(f.value ?? '')} disabled={!canEdit} />
 				{/if}
-			{/if}
-			{#if f.description}<p class="text-xs text-muted-foreground">{f.description}</p>{/if}
-		</div>
+			</FormField>
+		{/if}
 	{/each}
 
 	{#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
 	{#if canEdit}
-		<Button type="submit" disabled={busy}>{busy ? 'Speichere …' : submitLabel}</Button>
+		<Button type="submit" disabled={busy}>{busy ? 'Speichert …' : submitLabel}</Button>
 	{:else}
 		<p class="text-sm text-muted-foreground">
 			Du hast keine Berechtigung, diese Einstellungen zu ändern.

@@ -49,19 +49,63 @@ await core.permissions.forUser(userId);                    // Set<string>
 await core.permissions.list();                             // registrierte Berechtigungen
 ```
 
+`instance()` ist Core-intern (ESLint meldet den Zugriff in Modulen). `systemContext` hat **alle** Rechte – Module nutzen ihn nur dokumentiert
+für Hintergrundarbeit (Storage, Mail, Einstellungen), nie, um eine fehlende Rechteprüfung zu umgehen.
+
+## core.users
+
+| Funktion | Beschreibung |
+|---|---|
+| `directory(ctx, { search?, ids?, limit? })` | Aktive Benutzer*innen (`id`, `name`, `email`); nur Anmeldung nötig, Suche ab 2 Zeichen, max. 30 Treffer |
+| `registerWithRole({ name, email, password, roleName })` | Konto **ohne** Rechteprüfung anlegen (siehe unten) |
+| `roleIds(userId)` | Rollen-IDs inkl. der von **aktiven** Modulen verliehenen (`user_role_grant`), z. B. für Freigaben an Rollen |
+| `readAvatar(userId)` | Profilbild `{ data, contentType }` oder `null` (inaktives Konto, kein Bild, fremder Pfad in `user.image`, kein Storage) – z. B. für Website-APIs (`offices`) |
+
+## core.roles
+
+| Funktion | Beschreibung |
+|---|---|
+| `directory(ctx, { search?, ids?, limit?, all? })` | Rollenverzeichnis (`id`, `name`); nur Anmeldung nötig (kein `core.roles.view`), Suche ab 2 Zeichen oder IDs, max. 30; `all: true` liefert alle (≤ 200) |
+| `replaceModuleGrants(moduleId, [{ userId, roleIds }])` | Ersetzt **alle** Rollen-Verleihungen des Moduls atomar (`user_role_grant`); unbekannte Benutzer/Rollen werden still übersprungen; **keine** Rechteprüfung; nie in einer Modul-Transaktion |
+| `listModuleGrants(moduleId, { userId? })` | Verleihungen des Moduls `{ userId, roleId }[]` (Anzeige, Tests) |
+| `assertCanGrant(ctx, roleIds)` | `forbidden`, wenn dem Kontext Rechte einer der Rollen fehlen (Rechteausweitung) – **vor** `replaceModuleGrants` aufrufen |
+| `defaultRoleId(name)` | ID der Standardrolle aus `defaultRoleGrants` (Kennung `default:<Name>`) oder `null` – statt Suche per Name |
+
+Verleihungen wirken nur, solange das Modul aktiv ist; manuelle Rollen (`user_role`) bleiben unberührt. Nutzer: `offices` (siehe [Rollen und Berechtigungen](permissions.md), „Rollen aus Modulen“).
+
+## core.crypto
+
+```ts
+const c = core.crypto.forModule('treasury');   // nur die EIGENE Modul-ID (ESLint)
+const enc = c.encrypt(iban);                    // AES-256-GCM, Schlüssel je Modul aus APP_SECRET abgeleitet
+const plain = c.decrypt(enc);                   // wirft bei fremdem/verändertem Wert
+c.isEncrypted(value);
+const h = c.hash(normalizedIban);               // HMAC-SHA256 (hex) mit Modulschlüssel, für Lookups/Duplikatsuche
+```
+
+- `hash` ist deterministisch und nicht umkehrbar, aber **schlüsselgebunden**: Nach einer Wiederherstellung auf einem Server mit anderem
+  `APP_SECRET` stimmen gespeicherte Hashes nicht mehr. Jede `*_hash`-Spalte braucht daher den Hook `backup.rehash`
+  (siehe [Modulentwicklung](module-development.md#weitere-modul-hooks)).
+- Klartext nie in API-Antworten, Logs oder Audit-Metadaten.
+
 ## core.modules
 
-`list()`, `isEnabled(id)`, `assertEnabled(id)`, `enable(ctx, id)`, `disable(ctx, id)`, `navigationFor(ctx)`, `registered()`. `enable` prüft Abhängigkeiten, führt Modulmigrationen aus und schreibt ein Audit-Event; `disable` scheitert, solange aktive Module abhängen.
+`list()`, `isEnabled(id)`, `assertEnabled(id)`, `enable(ctx, id)`, `disable(ctx, id)`, `navigationFor(ctx)`, `registered()` (Manifeste aller registrierten Module),
+`use(providerId, callerId)` / `useOptional(providerId, callerId)` (siehe „Modul-Dienste“) und `memberDeleted(callerId, { memberIds, reason })` (nur `members`, sonst `forbidden`: löst
+`onMemberDeleted` der anderen aktiven Module aus, nie in einer offenen Transaktion). `enable` prüft Abhängigkeiten, führt Modulmigrationen aus, schreibt
+ein Audit-Event und ruft danach `onEnable`; `disable` scheitert, solange aktive Module abhängen. `enable`/`disable` sind der Verwaltung vorbehalten
+(ESLint meldet sie in Modulen).
 
 ## core.settings
 
 ```ts
 const name = await core.settings.get<string>('core.system.name');
 await core.settings.set(ctx, 'core.design.accentColor', '#2563eb'); // validiert (Zod), auditiert
-const view = await core.settings.listPublic({ group: 'smtp' });      // Secrets: value=null, isSet=true|false
+const view = await core.settings.listPublic(ctx, { group: 'smtp' }); // braucht core.settings.view      // Secrets: value=null, isSet=true|false
 ```
 
-- Globale Einstellungen erfordern `core.settings.manage`; benutzerspezifische (`scope: 'user'`) nur für den eigenen Benutzer.
+- `core.settings.getMany(keys)` liest mehrere Werte, `core.settings.setMany(ctx, values)` schreibt mehrere atomar (alle geprüft, eine Transaktion).
+- Globale Einstellungen erfordern ihr Schreibrecht (Standard `core.settings.manage`, siehe [Rollen und Berechtigungen](permissions.md) → „Schreibrecht für Einstellungen“); benutzerspezifische (`scope: 'user'`) nur für den eigenen Benutzer.
 - Secrets (`secret: true`) werden mit AES-256-GCM verschlüsselt gespeichert; leerer Wert beim Setzen behält den alten, `null` löscht.
 - Module registrieren Einstellungen im Manifest-Umfeld (`ModuleDefinition.settings`); Schlüssel müssen mit `<id>.` beginnen.
 
@@ -76,11 +120,12 @@ const mdb = core.database.forModule('members');
 await mdb.transaction(async (tx) => {
   // search_path = "mod_members"; tx ist eine Drizzle-Transaktion
 });
-core.database.db();            // Core-intern: gesamte Datenbank
-core.database.transaction(fn); // Core-intern
+// core.database.db/transaction gibt es im SDK nicht mehr (#67): nur forModule(id)
 ```
 
-Module verwenden ausschließlich `forModule(<eigene id>)`.
+Module verwenden ausschließlich `forModule(<eigene id>)`. Der `search_path` macht Core-Tabellen und fremde Modulschemas nur **unqualifiziert**
+unerreichbar – das ist eine Konvention, kein Sicherheitsmechanismus (schemaqualifizierte Namen funktionieren technisch). Module sind vertrauenswürdiger
+Code; ESLint meldet in `src/lib/modules/**` `core.database.db`, `core.database.transaction` und `forModule` mit fremdem String-Literal.
 
 ## core.pdf
 
@@ -136,6 +181,7 @@ Vorlagen mit festem Seitenlayout (Briefkopf, Falzmarken, Adressfeld, Fußzeile) 
 ## Modul-Dienste (`ModuleDefinition.provides`, `core.modules.use`)
 
 Ein Modul kann abhängigen Modulen typisierte Funktionen anbieten: `defineModule({ …, provides: { … } })`, Vertrag als reine Typen in `src/lib/modules/<id>/contract.ts`.
+Regel: den Dienst mit `satisfies <Vertrag>` angeben (`provides: officesService satisfies OfficesService`), kein `as unknown as` – so prüft der Compiler die Umsetzung gegen den Vertrag.
 Aufruf: `await core.modules.use<MembersService>('members', 'actions')` – prüft, dass das aufrufende Modul den Anbieter in `manifest.dependencies` führt und der Anbieter aktiv ist
 (sonst `module_disabled`). Aufruf **nie** innerhalb einer offenen Modul-Transaktion. Beispiel: `actions` → `members` (Anmeldung mit Mitglied).
 
@@ -147,11 +193,16 @@ Beispiel: `actions` liest über `TreasuryService` die tatsächlich eingegangenen
 
 `defineModule({ …, jobs: [{ id: 'reminders', summary: '…', schedule: 'hourly' | 'daily', run: async (ctx) => 'Statusmeldung' }] })`.
 Der Runner startet nach der Initialisierung in `hooks.server.ts` (nicht beim Build, nicht mit `JOBS_DISABLED=1`), prüft alle 5 Minuten
-und führt fällige Jobs **aktiver** Module mit Systemkontext aus (`hourly` ≥ 55 min, `daily` ≥ 23 h seit dem letzten Start).
-Die Sperre ist ein atomares Upsert auf `job_run` – mehrere Instanzen laufen nicht doppelt, und es bleibt keine Transaktion offen
-(PGlite). Ein Lauf ohne Abschluss gilt nach 2 h als abgebrochen. Fehler werden in `job_run.last_status/last_message` protokolliert.
+und führt fällige Jobs **aktiver** Module mit Systemkontext aus (`hourly` ≥ 55 min seit dem letzten Start; `daily` einmal je Kalendertag
+im Zeitfenster `JOBS_DAILY_WINDOW`, Standard `6-20` = 06:00 bis vor 20:00 Uhr Europe/Berlin). Nach einem **Fehlschlag** folgt ein neuer
+Versuch schon nach 15 min (`RETRY_MS`, bei `daily` nur im Fenster). Die Sperre ist ein atomares Upsert auf `job_run` – mehrere Instanzen
+laufen nicht doppelt, und es bleibt keine Transaktion offen (PGlite). Laufende Jobs schreiben jede Minute einen **Heartbeat** (während
+`last_status = 'running'` in `last_finished_at`); erst ohne Heartbeat seit 10 min (`STALE_MS`) gilt ein Lauf als abgebrochen und darf
+neu starten. Abschluss und Heartbeat gelten nur für den eigenen Lauf (Startzeit als Besitzmarke). Fehler beim Sperren oder Abschließen
+eines Jobs werden geloggt und stoppen die übrigen Jobs des Ticks nicht. Fehler werden in `job_run.last_status/last_message` protokolliert.
 API: `GET /api/v1/jobs` (Liste mit letztem Lauf), `POST /api/v1/jobs/<modul>.<job>/run` (sofort, Recht `core.jobs.manage`, auditiert
-als `core.job.triggered`). Tests: `runDueJobs()`, `runJobNow(ctx, key)`, `setJobClockForTests(fn)`.
+als `core.job.triggered`). Tests: `runDueJobs()`, `runJobNow(ctx, key)`, `setJobClockForTests(fn)`, `setJobHeartbeatForTests(ms)`
+(`tests/integration/core-jobs.test.ts`, `core-jobs-resilience.test.ts`). `runJobNow` läuft weiterhin **synchron** im Request.
 
 ## Profil-Helfer (nur Core-intern, nicht im `core`-Objekt)
 
@@ -178,6 +229,11 @@ Kopf mit Lilie, Vereinsname und Wappen, Inhalt, Signatur, Fußzeile mit Vereinsn
   `core.mail.signature`, `core.mail.footerText`; Akzentfarbe aus `core.design.accentColor`) mit Live-Vorschau
   (`GET /admin/settings/mail-preview`, Recht `core.settings.view`; einzige Seite mit `x-frame-options: SAMEORIGIN`).
 - Intern (`sendMail` in `core/mail.ts`) lässt sich das Layout per `layout: false` abschalten; Module nutzen es immer.
+- **Transport (#24)**: gepoolt (`pool: true`, ≤ 3 Verbindungen) und zwischengespeichert; SMTP-Einstellungen 10 s gecacht, Speichern über
+  `setSettings` (`core.smtp.*`) verwirft Einstellungen und Pool sofort (`invalidateMailTransportCache`, `core/mail-cache.ts`). Zeitgrenzen
+  `SMTP_TIMEOUTS`: Verbindung 10 s, Begrüßung 10 s, Funkstille 20 s, je Mail höchstens 25 s (danach `503 unavailable`, Pool wird verworfen).
+  TLS-Regeln aus `smtpTransportOptions` (#15) bleiben. Keine Outbox: Aufrufer zählen Fehler bzw. wiederholen selbst (z. B. Jahresbeitrag `resend`).
+  Tests: `setMailTransportForTests`, `setSmtpTimeoutsForTests`, `tests/integration/mail-transport.test.ts`.
 
 ## Konten per Code anlegen (`core.users.registerWithRole`)
 
@@ -205,12 +261,19 @@ await core.ai.usage(ctx, { from, to }); // Verbrauch je Modul/Modell (core.ai.vi
 |---|---|
 | `upload(ctx, { module, path, file, contentType?, name? })` | Ablegen/Ersetzen; Multipart ab 8 MB |
 | `download(ctx, { module, path })` | `{ buffer, file }` |
+| `downloadStream(ctx, { module, path })` | wie `download`, als Stream (Objekt nicht komplett im Speicher) |
 | `remove`, `stat`, `list(ctx, { module, prefix? })` | `list` liefert `{ files, folders }` (virtuelle Ordner) |
+| `removeMany` | viele Dateien auf einmal löschen (S3 DeleteObjects, ein Sammel-Audit) |
 | `signedUploadUrl` / `confirmUpload` | Direkter Upload zum Bucket, danach Bestätigung |
 | `signedDownloadUrl` | Zeitlich begrenzte URL |
 | `usage(ctx)` | Speicherverbrauch je Modul (`core.storage.manage`) |
+| `purge` | alle Dateien eines Moduls (optional Präfix) löschen; System oder `core.storage.manage` |
 
-Zugriff: `<module>.storage.read|write|delete` oder `core.storage.manage`; für Modul `core` entsprechend `core.storage.*`. Grenzen: `core.storage.maxFileSizeMb`, Content-Type-Allowlist (HTML/SVG nur bei expliziter Freigabe). Metadaten liegen in `file`, Objekte unter einem nicht ableitbaren Schlüssel im Bucket.
+Zugriff (Service-Funktionen für Module): `<module>.storage.read|write|delete` oder `core.storage.manage`; für Modul `core` entsprechend `core.storage.*`.
+`<module>.storage.*` ist ein **internes** Recht für die Modul-Endpunkte, die vorher selbst die Objekt-ACL (Freigabe, Eigentum, Abschluss-Sperre) prüfen.
+Die generische REST-API `/api/v1/storage/*` (`files`, `upload-url`, `files/:id/confirm`, `download-url`) verlangt dagegen **`core.storage.manage`**
+(System hat alle Rechte); `<module>.storage.*` öffnet sie nicht. Die Prüfung läuft im Router vor jedem Storage-Zugriff (403 vor 503).
+Moduldateien gibt es für alle anderen nur über die Modul-Endpunkte. Grenzen: `core.storage.maxFileSizeMb`, Content-Type-Allowlist (`core.storage.allowedContentTypes`, leer = Standardliste `DEFAULT_ALLOWED_CONTENT_TYPES` aus `$lib/sdk/content-types`: PDF, Bilder, Text, ZIP, Office/OpenDocument inkl. Vorlagen, RTF; keine Makro-Formate; HTML/SVG nur bei expliziter Freigabe). Metadaten liegen in `file`, Objekte unter einem nicht ableitbaren Schlüssel im Bucket.
 
 ## core.images
 
@@ -235,7 +298,19 @@ const img = await core.images.process(bytes, {
 ```ts
 await core.audit.log({ action: 'members.user.created', actor: ctx.actor, metadata: { targetId } });
 await core.audit.logFromContext(ctx, 'members.user.created', { target: id, metadata: {} });
-await core.audit.list({ action: 'core.', search: 'x', limit: 50, offset: 0 });
+await core.audit.listForModule(ctx, 'treasury', { targets: [id], limit: 50 }); // nur eigene Aktionen + bekannte Objekte
 ```
 
 Metadaten werden bereinigt: Schlüssel, die auf `password`, `secret`, `token`, `apiKey`, `authorization`, `cookie`, `credential`, `hash` passen, werden durch `[redacted]` ersetzt; Strings werden gekürzt, Tiefe begrenzt.
+
+## core.qr, core.app
+
+- `core.qr.dataUrl(text)`: QR-Code als PNG-`data:`-URL (z. B. für den PDF-Bildblock).
+- `core.app.origin()`: öffentliche Basis-URL (`ORIGIN`, ohne abschließenden Schrägstrich), z. B. für absolute Links in Mails.
+
+## core.system (nur Core)
+
+`core.system.reset` (`listAreas`, `preview`, `export`, `execute`, `confirmWord`) steuert den Admin-Reset (`/admin/reset`, Recht `core.system.reset`,
+nur Session-Benutzer*innen). Module rufen es nie auf (ESLint meldet `core.system` in `src/lib/modules/**`); ihre Beiträge kommen über
+`resetAreas`/`resetUsers`. Datensicherung (`core/backup`) und Datenauskunft (`core/privacy`, `/admin/privacy`) sind nicht Teil des `core`-Objekts;
+Module beteiligen sich über `backup.rehash` und `subjectExport` (siehe [Modulentwicklung](module-development.md#weitere-modul-hooks)).

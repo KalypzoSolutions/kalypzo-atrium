@@ -18,7 +18,7 @@ import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
 import ordersModule from '$lib/modules/orders/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { InvoiceDetail, PayableList } from '$lib/modules/treasury/schemas';
 import type {
 	Order,
@@ -100,7 +100,7 @@ beforeAll(async () => {
 	admin = await ctxOf(u!.id);
 	key = (await createApiKey(admin, { name: 'a', scopes: [...admin.permissions] })).key;
 	setMailTransportForTests({ sendMail: async (m) => void mails.push(m) });
-	setTreasuryTodayForTests('2026-10-19');
+	setTodayForTests('2026-10-19');
 
 	kindId = (
 		await data<{ id: string }>(
@@ -152,7 +152,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	setMailTransportForTests(undefined);
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 

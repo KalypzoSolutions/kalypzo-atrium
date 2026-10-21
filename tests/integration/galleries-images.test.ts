@@ -224,6 +224,7 @@ const ROLES: Record<string, string[]> = {
 	owner: [
 		'galleries.gallery.view',
 		'galleries.gallery.create',
+		'galleries.gallery.publish',
 		'events.event.view',
 		'core.api.manage'
 	],
@@ -365,13 +366,18 @@ describe('mit Storage', () => {
 			expect(filesOf(g.id).size).toBe(0);
 		});
 
-		it('leere Datei, Textdatei, falscher Inhalt und fehlende Datei → 400', async () => {
+		it('leere Datei, Textdatei, fehlende Datei → 422; falscher Inhalt → 400', async () => {
 			const g = await createGallery();
-			fail(await upload('owner', g.id, form('', 'leer.jpg', 'image/jpeg')), 400, 'bad_request');
+			// einheitliche Upload-Regel (#33): Typ/leer/fehlend 422, unlesbares Bild 400 (core.images)
+			fail(
+				await upload('owner', g.id, form('', 'leer.jpg', 'image/jpeg')),
+				422,
+				'validation_failed'
+			);
 			fail(
 				await upload('owner', g.id, form('hallo welt', 'notiz.txt', 'text/plain')),
-				400,
-				'bad_request'
+				422,
+				'validation_failed'
 			);
 			// Text, der sich als JPEG ausgibt
 			fail(
@@ -380,8 +386,8 @@ describe('mit Storage', () => {
 				'bad_request'
 			);
 			const res = await raw('owner', 'POST', `/galleries/${g.id}/images`, new FormData());
-			expect(res.status).toBe(400);
-			expect(((await res.json()) as Res['body']).error?.code).toBe('bad_request');
+			expect(res.status).toBe(422);
+			expect(((await res.json()) as Res['body']).error?.code).toBe('validation_failed');
 			expect(await imageRowCount(g.id)).toBe(0);
 			expect(filesOf(g.id).size).toBe(0);
 		});
@@ -463,7 +469,13 @@ describe('mit Storage', () => {
 			privateG = (
 				await createGallery({ shares: [{ type: 'user', id: userIds.reader!, level: 'read' }] })
 			).id;
-			publicG = (await createGallery({ visibility: 'public', title: 'Öffentlich' })).id;
+			publicG = (
+				await createGallery({
+					visibility: 'public',
+					consentConfirmed: true,
+					title: 'Öffentlich'
+				})
+			).id;
 			privImg = await uploadOk(privateG, jpegExif, 'privat.jpg');
 			pubImg = await uploadOk(publicG, jpegExif, 'oeffentlich.jpg');
 		});
@@ -477,6 +489,7 @@ describe('mit Storage', () => {
 				expect(res.headers.get('content-type')).toBe('image/webp');
 				expect(res.headers.get('cache-control')).toContain('private');
 				expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+				expect(res.headers.get('content-security-policy')).toBe("default-src 'none'; sandbox");
 				expect(res.headers.get('content-disposition') ?? '').not.toContain('attachment');
 				const meta = await sharp(Buffer.from(await res.arrayBuffer())).metadata();
 				expect(meta.format).toBe('webp');

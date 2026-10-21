@@ -1,5 +1,6 @@
 import {
 	DeleteObjectCommand,
+	DeleteObjectsCommand,
 	GetObjectCommand,
 	HeadBucketCommand,
 	HeadObjectCommand,
@@ -8,7 +9,8 @@ import {
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { and, eq, like, sql } from 'drizzle-orm';
+import { and, eq, inArray, like, sql } from 'drizzle-orm';
+import { DEFAULT_ALLOWED_CONTENT_TYPES } from '$lib/sdk/content-types';
 import type { RequestContext, StoredFile } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getDb, schema } from '../database/client';
@@ -16,13 +18,21 @@ import { errors, isCoreError } from '../errors';
 import { has } from '../permissions/service';
 import { getSettings } from '../settings/service';
 import { newId } from '../util';
+import { invalidateStorageConfigCache, storageConfigGeneration } from './config-cache';
+
+export { invalidateStorageConfigCache } from './config-cache';
 
 // ---------------------------------------------------------------------------
 // Typen
 // ---------------------------------------------------------------------------
 
 type S3Command =
-	PutObjectCommand | GetObjectCommand | HeadObjectCommand | DeleteObjectCommand | HeadBucketCommand;
+	| PutObjectCommand
+	| GetObjectCommand
+	| HeadObjectCommand
+	| DeleteObjectCommand
+	| DeleteObjectsCommand
+	| HeadBucketCommand;
 
 /** Minimale S3-Schnittstelle; erlaubt Testadapter ohne echten S3Client. */
 export interface S3Handle {
@@ -54,6 +64,10 @@ export interface FileRepo {
 	insert(row: FileRow): Promise<void>;
 	update(id: string, patch: Partial<Omit<FileRow, 'id'>>): Promise<void>;
 	delete(id: string): Promise<void>;
+	/** Mehrere Pfade eines Moduls auf einmal (für `removeMany`); fehlt es, wird je Pfad gesucht */
+	findByPaths?(moduleId: string, paths: readonly string[]): Promise<FileRow[]>;
+	/** Mehrere Zeilen auf einmal löschen (für `removeMany`); fehlt es, wird je ID gelöscht */
+	deleteMany?(ids: readonly string[]): Promise<void>;
 	listByPrefix(moduleId: string, prefix: string): Promise<FileRow[]>;
 	/** Wie `listByPrefix`, aber inkl. `pending` (für `purge`); fehlt es, gilt `listByPrefix` */
 	listAllByPrefix?(moduleId: string, prefix: string): Promise<FileRow[]>;
@@ -78,26 +92,13 @@ export interface StorageConfig {
 const MODULE_PATTERN = /^[a-z][a-z0-9-]{1,30}$/;
 const MULTIPART_THRESHOLD = 8 * 1024 * 1024;
 const DEFAULT_SIGNED_TTL = 300;
+/** S3 `DeleteObjects` erlaubt höchstens 1000 Schlüssel je Aufruf */
+const REMOVE_BATCH = 1000;
+/** Parallelität beim Einzel-Löschen, falls der Speicher `DeleteObjects` nicht unterstützt */
+const REMOVE_FALLBACK_PARALLEL = 8;
 const MAX_SIGNED_TTL = 3600;
 
-export const DEFAULT_ALLOWED_CONTENT_TYPES = [
-	'application/pdf',
-	'image/png',
-	'image/jpeg',
-	'image/gif',
-	'image/webp',
-	'text/plain',
-	'text/csv',
-	'text/markdown',
-	'application/json',
-	'application/zip',
-	'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-	'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-	'application/msword',
-	'application/vnd.ms-excel',
-	'application/vnd.ms-powerpoint'
-];
+export { DEFAULT_ALLOWED_CONTENT_TYPES };
 
 // Aktive Inhalte: nur zulässig, wenn ausdrücklich in der Allowlist genannt
 const ACTIVE_CONTENT_TYPES = new Set(['text/html', 'image/svg+xml', 'application/xhtml+xml']);
@@ -151,7 +152,32 @@ export function assertAccess(ctx: RequestContext, module: string, action: Action
 // Konfiguration und Client
 // ---------------------------------------------------------------------------
 
+/**
+ * Kurzer Cache der Storage-Konfiguration: jede Bild-/Dateiauslieferung bräuchte sonst acht
+ * Einstellungs-Abfragen. Speichern über `setSettings` invalidiert sofort
+ * (`invalidateStorageConfigCache`); direkte DB-Änderungen wirken spätestens nach der TTL.
+ */
+const CONFIG_TTL_MS = 10_000;
+let configCache: { at: number; generation: number; promise: Promise<StorageConfig> } | undefined;
+
 export async function loadConfig(): Promise<StorageConfig> {
+	const generation = storageConfigGeneration();
+	if (
+		configCache &&
+		configCache.generation === generation &&
+		Date.now() - configCache.at < CONFIG_TTL_MS
+	) {
+		return configCache.promise;
+	}
+	const promise = readConfig();
+	configCache = { at: Date.now(), generation, promise };
+	promise.catch(() => {
+		if (configCache?.promise === promise) configCache = undefined;
+	});
+	return promise;
+}
+
+async function readConfig(): Promise<StorageConfig> {
 	const s = await getSettings([
 		'core.storage.endpoint',
 		'core.storage.region',
@@ -205,6 +231,7 @@ const handleCache = new Map<string, S3Handle>();
 export function setS3ClientFactoryForTests(f: S3ClientFactory | undefined): void {
 	factory = f ?? realFactory;
 	handleCache.clear();
+	invalidateStorageConfigCache();
 }
 
 export function setFileRepoForTests(r: FileRepo | undefined): void {
@@ -271,6 +298,26 @@ function dbRepo(): FileRepo {
 		},
 		async delete(id) {
 			await getDb().delete(t).where(eq(t.id, id));
+		},
+		async findByPaths(moduleId, paths) {
+			const out: FileRow[] = [];
+			for (let i = 0; i < paths.length; i += REMOVE_BATCH) {
+				const chunk = paths.slice(i, i + REMOVE_BATCH);
+				out.push(
+					...(await getDb()
+						.select()
+						.from(t)
+						.where(and(eq(t.moduleId, moduleId), inArray(t.path, [...chunk]))))
+				);
+			}
+			return out;
+		},
+		async deleteMany(ids) {
+			for (let i = 0; i < ids.length; i += REMOVE_BATCH) {
+				await getDb()
+					.delete(t)
+					.where(inArray(t.id, [...ids.slice(i, i + REMOVE_BATCH)]));
+			}
 		},
 		async listByPrefix(moduleId, prefix) {
 			const escaped = prefix.replace(/[\\%_]/g, (c) => `\\${c}`);
@@ -474,6 +521,141 @@ export async function remove(
 	});
 }
 
+export interface RemoveManyResult {
+	/** Gelöschte Dateien (Objekt und Metadaten) */
+	removed: number;
+	/** Pfade ohne Metadatenzeile (bereits gelöscht) */
+	missing: number;
+	/** Objekte, die der Speicher nicht löschen konnte – deren Metadaten bleiben erhalten */
+	failed: number;
+}
+
+/**
+ * Löscht viele Dateien eines Moduls auf einmal: S3 `DeleteObjects` in Paketen à 1000 Schlüssel
+ * (Rückfall auf Einzel-Löschungen mit begrenzter Parallelität, wenn der Speicher das nicht kann),
+ * Metadaten in Sammel-Löschungen und **ein** Audit-Eintrag `core.storage.files_deleted`.
+ * Unbekannte Pfade werden still übersprungen; ungültige Pfade → 400 (vor jeder Löschung).
+ */
+export async function removeMany(
+	ctx: RequestContext,
+	input: { module: string; paths: readonly string[] }
+): Promise<RemoveManyResult> {
+	assertAccess(ctx, input.module, 'delete');
+	const paths = [...new Set(input.paths)];
+	for (const p of paths) validatePath(p);
+	if (!paths.length) return { removed: 0, missing: 0, failed: 0 };
+
+	const repoNow = files();
+	let rows: FileRow[];
+	if (repoNow.findByPaths) {
+		rows = await repoNow.findByPaths(input.module, paths);
+	} else {
+		rows = [];
+		for (const p of paths) {
+			const r = await repoNow.findByPath(input.module, p);
+			if (r) rows.push(r);
+		}
+	}
+	const missing = paths.length - rows.length;
+	if (!rows.length) return { removed: 0, missing, failed: 0 };
+
+	const { s3 } = await connect();
+	const deleted: FileRow[] = [];
+	for (let i = 0; i < rows.length; i += REMOVE_BATCH) {
+		const batch = rows.slice(i, i + REMOVE_BATCH);
+		const ok = await deleteObjectsBatch(
+			s3,
+			batch.map((r) => r.objectKey)
+		);
+		deleted.push(...batch.filter((r) => ok.has(r.objectKey)));
+	}
+	const ids = deleted.map((r) => r.id);
+	if (repoNow.deleteMany) await repoNow.deleteMany(ids);
+	else for (const id of ids) await repoNow.delete(id);
+
+	const failed = rows.length - deleted.length;
+	if (deleted.length) {
+		await auditFromContext(ctx, 'core.storage.files_deleted', {
+			target: input.module,
+			metadata: {
+				count: deleted.length,
+				bytes: deleted.reduce((s, r) => s + Number(r.size || 0), 0),
+				failed
+			}
+		});
+	}
+	return { removed: deleted.length, missing, failed };
+}
+
+/** Löscht Objekte; Ergebnis = erfolgreich gelöschte Schlüssel (fehlende Objekte zählen als gelöscht). */
+async function deleteObjectsBatch(s3: S3Handle, keys: string[]): Promise<Set<string>> {
+	try {
+		const res = (await s3.send(
+			new DeleteObjectsCommand({
+				Bucket: s3.bucket,
+				Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true }
+			})
+		)) as { Errors?: { Key?: string; Code?: string }[] } | undefined;
+		const failedKeys = new Set(
+			(res?.Errors ?? [])
+				.filter((e) => e.Code !== 'NoSuchKey')
+				.map((e) => e.Key)
+				.filter((k): k is string => !!k)
+		);
+		return new Set(keys.filter((k) => !failedKeys.has(k)));
+	} catch {
+		// z. B. S3-kompatibler Speicher ohne DeleteObjects → einzeln, begrenzt parallel
+		const ok = new Set<string>();
+		for (let i = 0; i < keys.length; i += REMOVE_FALLBACK_PARALLEL) {
+			const chunk = keys.slice(i, i + REMOVE_FALLBACK_PARALLEL);
+			const results = await Promise.allSettled(
+				chunk.map((Key) => s3.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key })))
+			);
+			results.forEach((r, j) => {
+				if (r.status === 'fulfilled') ok.add(chunk[j]!);
+			});
+		}
+		return ok;
+	}
+}
+
+type S3Body = {
+	transformToByteArray(): Promise<Uint8Array>;
+	transformToWebStream?: () => ReadableStream<Uint8Array>;
+};
+
+/**
+ * Wie `download`, liefert den Inhalt aber als Stream (das Objekt wird nicht komplett in den
+ * Speicher geladen). `file.size` aus den Metadaten eignet sich als `content-length`.
+ */
+export async function downloadStream(
+	ctx: RequestContext,
+	input: { module: string; path: string }
+): Promise<{ stream: ReadableStream<Uint8Array>; file: StoredFile }> {
+	assertAccess(ctx, input.module, 'read');
+	const row = await requireFile(input.module, input.path);
+	const { s3 } = await connect();
+	try {
+		const res = (await s3.send(
+			new GetObjectCommand({ Bucket: s3.bucket, Key: row.objectKey })
+		)) as { Body?: S3Body };
+		if (!res.Body) throw errors.notFound('Datei nicht im Speicher gefunden');
+		const body = res.Body;
+		const stream = body.transformToWebStream
+			? body.transformToWebStream()
+			: new ReadableStream<Uint8Array>({
+					async start(controller) {
+						controller.enqueue(await body.transformToByteArray());
+						controller.close();
+					}
+				});
+		return { stream, file: toStored(row) };
+	} catch (e) {
+		if (isCoreError(e)) throw e;
+		return mapS3Error(e);
+	}
+}
+
 export async function stat(
 	ctx: RequestContext,
 	input: { module: string; path: string }
@@ -632,12 +814,19 @@ export async function testConnection(ctx?: RequestContext): Promise<{ ok: true }
 	return { ok: true };
 }
 
-/** Interner Zugriff per Datei-ID ohne Rechteprüfung (z. B. Logo für PDFs). Nie direkt an Clients durchreichen. */
+/**
+ * Interner Zugriff per Datei-ID ohne Rechteprüfung (z. B. Logo für PDFs). Nie direkt an Clients durchreichen.
+ * `scope` begrenzt auf einen Modulbereich und Pfad-Präfix (#67, 01a-08): Dateien außerhalb → `null`.
+ */
 export async function readFileByIdUnchecked(
-	fileId: string
+	fileId: string,
+	scope?: { module: string; pathPrefix: string }
 ): Promise<{ buffer: Uint8Array; contentType: string } | null> {
 	const row = await files().findById(fileId);
 	if (!row || row.status !== 'ready') return null;
+	if (scope && (row.moduleId !== scope.module || !row.path.startsWith(scope.pathPrefix))) {
+		return null;
+	}
 	const { s3 } = await connect();
 	try {
 		const res = (await s3.send(

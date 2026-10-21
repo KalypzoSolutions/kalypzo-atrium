@@ -35,6 +35,7 @@ import {
 	type TrashItem
 } from '$lib/modules/files/schemas';
 import type { RequestContext } from '$lib/sdk/types';
+import { todayBerlin } from '$lib/sdk/dates';
 
 const ROOT = 'http://localhost:5173/api/v1/modules/files';
 const PW = 'a-long-enough-pw';
@@ -356,6 +357,28 @@ describe('Upload und Inhalt', () => {
 		expect(fakeObjects.size).toBe(before);
 	});
 
+	it('Word-/Office-Vorlagen und OpenDocument sind erlaubt (auch nur nach Endung)', async () => {
+		const cases: [string, string][] = [
+			['typ-brief.dotx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.template'],
+			['typ-alt.dot', 'application/msword'],
+			['typ-tabelle.xltx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.template'],
+			['typ-folien.potx', 'application/vnd.openxmlformats-officedocument.presentationml.template'],
+			['typ-text.rtf', 'application/rtf'],
+			['typ-notiz.odt', 'application/vnd.oasis.opendocument.text'],
+			['typ-vorlage.ott', 'application/vnd.oasis.opendocument.text-template']
+		];
+		for (const [name, expected] of cases) {
+			// Browser ohne bekannten Typ → Erkennung über die Endung
+			const r = await upload('u1', 'root', name, { type: '' });
+			expect(r.status, name).toBe(201);
+			expect(r.body.data.contentType).toBe(expected);
+		}
+		const macro = await upload('u1', 'root', 'typ-makro.docm', {
+			type: 'application/vnd.ms-word.document.macroEnabled.12'
+		});
+		expect(macro.status).toBe(422);
+	});
+
 	it('SVG/HTML werden nie inline ausgeliefert (auch wenn erlaubt)', async () => {
 		const meta = (await api('u1', 'GET', '/meta')).body.data;
 		await setSetting(admin, 'core.storage.allowedContentTypes', [
@@ -597,9 +620,8 @@ describe('Papierkorb', () => {
 		expect(tr.status).toBe(200);
 		const item = (tr.body.data as TrashItem[]).find((i) => i.id === id)!;
 		expect(item).toMatchObject({ kind: 'file', name: 'papier.txt', originalPath: ROOT_LABEL });
-		const expected = new Date(new Date(item.deletedAt).getTime() + 30 * 86_400_000)
-			.toISOString()
-			.slice(0, 10);
+		// Kalendertag in Europe/Berlin (#32)
+		const expected = todayBerlin(new Date(new Date(item.deletedAt).getTime() + 30 * 86_400_000));
 		expect(item.purgeOn).toBe(expected);
 		// fremde sehen den Eintrag nicht
 		const foreign = (await api('u1', 'GET', '/trash')).body.data as TrashItem[];

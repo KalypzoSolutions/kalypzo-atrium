@@ -4,9 +4,31 @@
  * `processImage` prüft den Inhalt (nicht nur den angegebenen Typ), dreht nach EXIF-Ausrichtung,
  * entfernt ALLE Metadaten (EXIF inkl. GPS, ICC wird in sRGB umgerechnet, XMP, IPTC) und erzeugt
  * die angeforderten Varianten. Es wird nie ein Bild mit Original-Metadaten zurückgegeben.
+ *
+ * Härtung (Issue #6): Vor dem ersten sharp-Aufruf prüft `sniffImageFormat` die Datei-Signatur
+ * (Magic Bytes) gegen die Allowlist – unabhängig vom Content-Type des Clients. Zusätzlich sind beim
+ * Laden dieses Moduls alle libvips-Loader gesperrt außer JPEG, PNG, WebP, GIF und HEIF (für AVIF),
+ * damit SVG (librsvg), TIFF, PDF, Magick, OpenSlide, FITS, Matrix, VIPS, JPEG 2000/XL, RAW,
+ * UltraHDR usw. nie erreicht werden – auch nicht über andere sharp-Aufrufe im selben Prozess.
  */
-import sharp from 'sharp';
+import sharp, { type Metadata, type OutputInfo, type SharpOptions } from 'sharp';
 import { CoreError, errors } from '../errors';
+
+/**
+ * libvips-Loader, die erlaubt bleiben (Klassennamen; gelten inkl. Buffer-/File-/Source-Varianten).
+ * `VipsForeignLoadHeif` wird für AVIF gebraucht; HEIC wird über Signatur und Kompression abgewiesen.
+ */
+export const ALLOWED_VIPS_LOADERS = [
+	'VipsForeignLoadJpeg',
+	'VipsForeignLoadPng',
+	'VipsForeignLoadWebp',
+	'VipsForeignLoadNsgif',
+	'VipsForeignLoadHeif'
+] as const;
+
+// Prozessweit: erst alle Loader sperren, dann die benötigten wieder freigeben.
+sharp.block({ operation: ['VipsForeignLoad'] });
+sharp.unblock({ operation: [...ALLOWED_VIPS_LOADERS] });
 
 /** Eingangsformate (per sharp-Metadaten erkannt; GIF nur erstes Bild) */
 export const IMAGE_INPUT_FORMATS = ['jpeg', 'png', 'webp', 'avif', 'gif'] as const;
@@ -72,8 +94,11 @@ export async function processImage(
 	const maxPixels = options.maxInputPixels ?? MAX_INPUT_PIXELS;
 	if (!input || input.byteLength === 0) throw errors.badRequest('Die Datei ist leer');
 	if (input.byteLength > maxBytes) throw errors.tooLarge('Das Bild ist zu groß');
+	// Signatur VOR jedem Decoder-Aufruf prüfen
+	const sniffed = sniffImageFormat(input);
+	if (!sniffed) throw errors.badRequest(UNSUPPORTED);
 
-	const sharpOptions: sharp.SharpOptions = {
+	const sharpOptions: SharpOptions = {
 		failOn: 'error',
 		limitInputPixels: maxPixels,
 		animated: false,
@@ -81,7 +106,7 @@ export async function processImage(
 		page: 0
 	};
 
-	let meta: sharp.Metadata;
+	let meta: Metadata;
 	try {
 		meta = await sharp(input, sharpOptions).metadata();
 	} catch (err) {
@@ -89,7 +114,8 @@ export async function processImage(
 	}
 
 	const format = normalizeFormat(meta);
-	if (!format) throw errors.badRequest(UNSUPPORTED);
+	// libvips muss dasselbe Format erkennen wie die Signaturprüfung
+	if (!format || format !== sniffed) throw errors.badRequest(UNSUPPORTED);
 	const rawWidth = meta.width ?? 0;
 	// Bei mehrseitigen Bildern (GIF) nur die erste Seite
 	const rawHeight = meta.pageHeight ?? meta.height ?? 0;
@@ -113,7 +139,46 @@ const UNSUPPORTED = 'Dateityp nicht unterstützt (JPEG, PNG, WebP, AVIF oder GIF
 const UNREADABLE = 'Bild konnte nicht gelesen werden';
 const TOO_MANY_PIXELS = 'Das Bild hat zu viele Pixel';
 
-function normalizeFormat(meta: sharp.Metadata): ImageInputFormat | null {
+const HEVC_BRANDS = new Set(['heic', 'heix', 'heim', 'heis', 'hevc', 'hevx', 'hevm', 'hevs']);
+const AVIF_BRANDS = new Set(['avif', 'avis']);
+
+function ascii(input: Uint8Array, start: number, length: number): string {
+	let out = '';
+	for (let i = start; i < start + length && i < input.length; i++) {
+		out += String.fromCharCode(input[i]!);
+	}
+	return out;
+}
+
+function startsWith(input: Uint8Array, bytes: readonly number[], offset = 0): boolean {
+	if (input.length < offset + bytes.length) return false;
+	return bytes.every((b, i) => input[offset + i] === b);
+}
+
+/**
+ * Erkennt das Format allein an der Datei-Signatur (ohne Decoder). Liefert `null` für alles
+ * außerhalb der Allowlist (z. B. SVG, TIFF, PDF, HEIC, BMP, Text).
+ * AVIF: ISO-BMFF-Box `ftyp` am Anfang, Haupt- oder kompatible Marke `avif`/`avis`,
+ * keine HEVC-Marke (HEIC).
+ */
+export function sniffImageFormat(input: Uint8Array): ImageInputFormat | null {
+	if (startsWith(input, [0xff, 0xd8, 0xff])) return 'jpeg';
+	if (startsWith(input, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'png';
+	const gif = ascii(input, 0, 6);
+	if (gif === 'GIF87a' || gif === 'GIF89a') return 'gif';
+	if (ascii(input, 0, 4) === 'RIFF' && ascii(input, 8, 4) === 'WEBP') return 'webp';
+	if (input.length >= 16 && ascii(input, 4, 4) === 'ftyp') {
+		const boxSize = ((input[0]! << 24) | (input[1]! << 16) | (input[2]! << 8) | input[3]!) >>> 0;
+		if (boxSize < 16 || boxSize > input.length || boxSize > 4096) return null;
+		const brands = [ascii(input, 8, 4)];
+		for (let off = 16; off + 4 <= boxSize; off += 4) brands.push(ascii(input, off, 4));
+		if (brands.some((b) => HEVC_BRANDS.has(b))) return null;
+		if (brands.some((b) => AVIF_BRANDS.has(b))) return 'avif';
+	}
+	return null;
+}
+
+function normalizeFormat(meta: Metadata): ImageInputFormat | null {
 	const format: string | undefined = meta.format;
 	if (!format) return null;
 	// libvips meldet AVIF als `heif` mit Kompression `av1`; HEIC (hevc) bleibt unzulässig
@@ -137,7 +202,7 @@ function clampQuality(q: number | undefined): number {
 
 async function renderVariant(
 	input: Uint8Array,
-	sharpOptions: sharp.SharpOptions,
+	sharpOptions: SharpOptions,
 	spec: ImageVariantSpec,
 	hasAlpha: boolean
 ): Promise<ProcessedVariant> {
@@ -161,7 +226,7 @@ async function renderVariant(
 	else if (target === 'jpeg') pipeline = pipeline.jpeg({ quality, mozjpeg: true });
 	else pipeline = pipeline.png({ compressionLevel: 9 });
 
-	let result: { data: Buffer; info: sharp.OutputInfo };
+	let result: { data: Buffer; info: OutputInfo };
 	try {
 		result = await pipeline.toBuffer({ resolveWithObject: true });
 	} catch (err) {

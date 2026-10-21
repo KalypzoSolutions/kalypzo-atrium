@@ -632,8 +632,13 @@ describe('Bilder mit Storage', () => {
 
 	it('Upload-Prüfungen: Recht, Typ, leer, kaputt', async () => {
 		fail(await upload(article.id, form(jpeg), 'member'), 403, 'forbidden');
-		fail(await upload(article.id, form(jpeg, 'x.pdf', 'application/pdf')), 400, 'bad_request');
-		fail(await upload(article.id, form(new Uint8Array(), 'leer.jpg')), 400, 'bad_request');
+		// Typ/leer → 422 (einheitlich, #33); unlesbares Bild → 400 aus core.images
+		fail(
+			await upload(article.id, form(jpeg, 'x.pdf', 'application/pdf')),
+			422,
+			'validation_failed'
+		);
+		fail(await upload(article.id, form(new Uint8Array(), 'leer.jpg')), 422, 'validation_failed');
 		fail(await upload(article.id, form('kein bild', 'x.jpg')), 400, 'bad_request');
 		fail(await upload(crypto.randomUUID(), form(jpeg)), 404, 'not_found');
 	});

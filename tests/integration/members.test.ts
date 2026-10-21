@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
+import sharp from 'sharp';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { contextForUser } from '$lib/server/core/auth/context';
@@ -377,7 +378,11 @@ describe('Gruppen: Wochentag, Farbe, Bild', () => {
 
 	it('Bild-Upload ohne verfügbaren Storage schlägt kontrolliert fehl', async () => {
 		const form = new FormData();
-		form.set('file', new File([new Uint8Array([1, 2, 3])], 'a.png', { type: 'image/png' }));
+		// echtes PNG: der Inhalt wird vor dem Speichern geprüft und bereinigt (#19)
+		const png = await sharp({ create: { width: 8, height: 8, channels: 3, background: '#000' } })
+			.png()
+			.toBuffer();
+		form.set('file', new File([new Uint8Array(png)], 'a.png', { type: 'image/png' }));
 		const res = await call(`/groups/${g.id}/image`, { method: 'POST', body: form });
 		expect(res.ok).toBe(false);
 		expect([502, 503]).toContain(res.status);
@@ -387,9 +392,10 @@ describe('Gruppen: Wochentag, Farbe, Bild', () => {
 		const form = new FormData();
 		form.set('file', new File(['<svg/>'], 'a.svg', { type: 'image/svg+xml' }));
 		const res = await call(`/groups/${g.id}/image`, { method: 'POST', body: form });
-		expect(res.status).toBe(400);
+		// einheitliche Upload-Regel (#33): falscher Typ → 422 mit Pfad `file`
+		expect(res.status).toBe(422);
 		const body = await res.json();
-		expect(JSON.stringify(body)).toContain('bad_request');
+		expect(JSON.stringify(body)).toContain('validation_failed');
 	});
 
 	it('liefert ohne Bild 404', async () => {
@@ -407,6 +413,19 @@ describe('Dokumente (ohne Storage)', () => {
 	it('liefert ohne Dokument keinen Erfolg', async () => {
 		const res = await call(`/members/${leader.id}/documents/privacy`);
 		expect(res.ok).toBe(false);
+	});
+
+	it('Upload mit falschem Inhalt (HTML als PDF) → 422, vor dem Storage (#67, 01b-11)', async () => {
+		const form = new FormData();
+		form.set(
+			'file',
+			new File(['<html><script>alert(1)</script></html>'], 'a.pdf', { type: 'application/pdf' })
+		);
+		const res = await call(`/members/${leader.id}/documents/privacy`, {
+			method: 'POST',
+			body: form
+		});
+		expect(res.status).toBe(422);
 	});
 
 	it('Upload ohne verfügbaren Storage schlägt kontrolliert fehl', async () => {

@@ -4,7 +4,7 @@
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
-	import { DataTable, EmptyState } from '$lib/components/layout';
+	import { DataTable, EmptyState, PageTitle } from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -141,13 +141,13 @@
 	}
 </script>
 
-<svelte:head><title>API-Übersicht</title></svelte:head>
+<PageTitle title="API-Übersicht" />
 
 <div class="space-y-6">
 	<div>
 		<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
 			<div class="min-w-0">
-				<h2 class="text-lg font-semibold">API-Übersicht</h2>
+				<h2 class="text-section">API-Übersicht</h2>
 				<p class="text-sm text-muted-foreground">
 					Alle REST-Endpunkte von Core und Modulen – automatisch aus dem Code erzeugt.
 				</p>
@@ -171,7 +171,7 @@
 				{#each API_METHODS as m (m)}
 					{#if stats.byMethod[m]}
 						<span
-							class="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[11px] {METHOD_BADGE_CLASS[
+							class="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-xs {METHOD_BADGE_CLASS[
 								m
 							]}"
 						>
@@ -300,14 +300,14 @@
 						>
 							<Table.Cell>
 								<span
-									class="inline-flex min-w-14 justify-center rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold {METHOD_BADGE_CLASS[
+									class="inline-flex min-w-14 justify-center rounded-md border px-1.5 py-0.5 font-mono text-xs font-semibold {METHOD_BADGE_CLASS[
 										entry.method
 									]}">{entry.method}</span
 								>
 							</Table.Cell>
 							<Table.Cell class="font-mono text-xs break-all whitespace-normal">
 								{#each pathParts(entry.path) as part, i (i)}
-									{#if part.param}<span class="font-semibold text-primary">{part.text}</span
+									{#if part.param}<span class="font-semibold text-link">{part.text}</span
 										>{:else}{part.text}{/if}
 								{/each}
 							</Table.Cell>
@@ -318,7 +318,7 @@
 										>{ACCESS_LABEL[entry.access]}</Badge
 									>
 									{#if entry.permission}
-										<code class="text-[11px] whitespace-nowrap text-muted-foreground"
+										<code class="text-xs whitespace-nowrap text-muted-foreground"
 											>{entry.permission}</code
 										>
 									{/if}

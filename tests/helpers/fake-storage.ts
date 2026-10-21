@@ -4,6 +4,7 @@
  */
 import {
 	DeleteObjectCommand,
+	DeleteObjectsCommand,
 	GetObjectCommand,
 	HeadBucketCommand,
 	HeadObjectCommand,
@@ -21,10 +22,13 @@ import type { RequestContext } from '$lib/sdk/types';
 
 const objects = new Map<string, { body: Uint8Array; contentType?: string }>();
 const rows = new Map<string, FileRow>();
+/** Zähler der S3-Kommandos nach Klassenname (z. B. `DeleteObjectsCommand`); für Assertions. */
+const calls = new Map<string, number>();
 
 const s3: S3Handle = {
 	bucket: 'test-bucket',
 	async send(cmd) {
+		calls.set(cmd.constructor.name, (calls.get(cmd.constructor.name) ?? 0) + 1);
 		if (cmd instanceof PutObjectCommand) {
 			objects.set(cmd.input.Key!, {
 				body: cmd.input.Body as Uint8Array,
@@ -45,6 +49,10 @@ const s3: S3Handle = {
 		if (cmd instanceof DeleteObjectCommand) {
 			objects.delete(cmd.input.Key!);
 			return {};
+		}
+		if (cmd instanceof DeleteObjectsCommand) {
+			for (const o of cmd.input.Delete?.Objects ?? []) objects.delete(o.Key!);
+			return { Deleted: cmd.input.Delete?.Objects ?? [] };
 		}
 		if (cmd instanceof HeadBucketCommand) return {};
 		throw new Error('unbekanntes Kommando');
@@ -90,6 +98,7 @@ const repo: FileRepo = {
 /** Gespeicherte Objekte (Schlüssel = Objekt-Key); für Assertions. */
 export const fakeObjects = objects;
 export const fakeFileRows = rows;
+export const fakeS3Calls = calls;
 
 export async function installFakeStorage(admin: RequestContext): Promise<void> {
 	resetFakeStorage();
@@ -107,6 +116,7 @@ export async function installFakeStorage(admin: RequestContext): Promise<void> {
 export function resetFakeStorage(): void {
 	objects.clear();
 	rows.clear();
+	calls.clear();
 }
 
 export function uninstallFakeStorage(): void {

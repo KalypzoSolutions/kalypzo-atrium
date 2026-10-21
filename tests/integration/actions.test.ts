@@ -299,16 +299,25 @@ describe('Aktionen: Zugriffsmatrix', () => {
 });
 
 describe('Benutzersuche für Freigaben', () => {
-	it('liefert aktive Benutzer ohne core.users.view und ab 2 Zeichen', async () => {
+	it('liefert aktive Benutzer ohne core.users.view und ab 2 Zeichen (ohne E-Mail)', async () => {
 		const found = await data<{ id: string; name: string; email: string }[]>(
-			await as('colleague', '/users?search=reader')
+			await as('owner', '/users?search=reader')
 		);
 		expect(found.map((f) => f.id)).toEqual([userIds.reader]);
 		expect(Object.keys(found[0]!).sort()).toEqual(['email', 'id', 'image', 'name']);
+		// E-Mail nur mit core.users.view; Suche nur im Namen
+		expect(found[0]!.email).toBe('');
+		expect(await data<unknown[]>(await as('owner', '/users?search=example.test'))).toEqual([]);
 
-		const inactive = await data<unknown[]>(await as('colleague', '/users?search=inactive'));
+		const inactive = await data<unknown[]>(await as('owner', '/users?search=inactive'));
 		expect(inactive).toEqual([]);
-		expect((await as('colleague', '/users?search=r')).status).toBe(422);
+		expect((await as('owner', '/users?search=r')).status).toBe(422);
+	});
+
+	it('nur für Personen, die teilen dürfen (Eigentümer*in einer Aktion oder edit-all)', async () => {
+		const denied = await as('colleague', '/users?search=reader');
+		expect(denied.status).toBe(403);
+		expect((await data<unknown[]>(await as('editall', '/users?search=reader'))).length).toBe(1);
 	});
 });
 
@@ -397,6 +406,19 @@ describe('Löschen, Audit und Modulstatus', () => {
 	});
 
 	it('protokolliert Änderungen ohne personenbezogene Details', async () => {
+		// Teilnehmer*in anlegen und wieder löschen (participant.deleted)
+		const tmp = await data<{ id: string }>(
+			await as('owner', '/actions', { method: 'POST', json: actionBody({ name: 'Audit-Test' }) }),
+			201
+		);
+		const p = await data<{ id: string }>(
+			await as('owner', `/actions/${tmp.id}/participants`, {
+				method: 'POST',
+				json: { name: 'Paul Löschtest' }
+			}),
+			201
+		);
+		await data(await as('owner', `/actions/${tmp.id}/participants/${p.id}`, { method: 'DELETE' }));
 		const { rows } = await listAudit({ action: 'actions.' });
 		const actions = new Set(rows.map((r) => r.action));
 		for (const a of [
@@ -405,6 +427,8 @@ describe('Löschen, Audit und Modulstatus', () => {
 			'actions.action.shared',
 			'actions.action.unshared',
 			'actions.participant.created',
+			'actions.participant.updated',
+			'actions.participant.deleted',
 			'actions.action.deleted'
 		]) {
 			expect(actions, a).toContain(a);
@@ -412,6 +436,9 @@ describe('Löschen, Audit und Modulstatus', () => {
 		const serialized = JSON.stringify(rows.map((r) => r.metadata));
 		expect(serialized).not.toContain('@example.test');
 		expect(serialized).not.toContain('2015-04-03');
+		// Keine Teilnehmendennamen (Issue #26)
+		expect(serialized).not.toContain('Lena Beispiel');
+		expect(serialized).not.toContain('Paul Löschtest');
 	});
 
 	it('liefert 404, wenn das Modul deaktiviert ist', async () => {

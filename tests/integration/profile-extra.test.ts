@@ -4,6 +4,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
+import sharp from 'sharp';
 import { useTestDatabase } from '../helpers/db';
 import { installFakeStorage, uninstallFakeStorage } from '../helpers/fake-storage';
 import { getDb, schema } from '$lib/server/core/database/client';
@@ -21,12 +22,13 @@ import {
 } from '$lib/server/core/auth/profile';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
 import { createRole } from '$lib/server/core/permissions/roles';
+import { adoptDefaultRole } from '$lib/server/core/permissions/default-roles';
 import { listAudit } from '$lib/server/core/audit/service';
 import { setMailTransportForTests } from '$lib/server/core/mail';
 import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { handleApiRequest } from '$lib/server/core/api/router';
 import { createApiKey } from '$lib/server/core/api/keys';
-import { registerModule } from '$lib/server/core/modules/registry';
+import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
 import { enableModule, syncModules } from '$lib/server/core/modules/service';
 import { resetAllForTests, reset } from '$lib/server/core/rate-limit';
 import { setSetting } from '$lib/server/core/settings/service';
@@ -35,6 +37,14 @@ import { core } from '$lib/sdk/server';
 import membersModule from '$lib/modules/members/module';
 import { actions as profileActions } from '../../src/routes/(internal)/profile/+page.server';
 import type { RequestContext } from '$lib/sdk/types';
+
+/** Echtes kleines Bild (Profilbilder laufen durch `core.images`, #19) */
+const realImage = async (format: 'png' | 'jpeg' | 'webp' = 'png') =>
+	new Uint8Array(
+		await sharp({ create: { width: 8, height: 8, channels: 3, background: '#336699' } })
+			.toFormat(format)
+			.toBuffer()
+	);
 
 const ORIGIN = 'http://localhost:5173';
 const PW = 'correct-horse-battery';
@@ -252,8 +262,9 @@ describe('updateOwnName', () => {
 
 describe('Profilbild', () => {
 	let id: string;
-	const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+	let png: Uint8Array;
 	beforeAll(async () => {
+		png = await realImage('png');
 		id = await createUser(admin, { name: 'Ava', email: 'ava@example.test', password: PW });
 	});
 	const imageOf = async () =>
@@ -301,20 +312,18 @@ describe('Profilbild', () => {
 		expect(await readAvatar('gibt-es-nicht')).toBeNull();
 	});
 
-	it('mit Fake-Storage: Maximum (2 MB) ok, Lesen liefert Typ, Entfernen löscht', async () => {
+	it('mit Fake-Storage: gespeichert wird bereinigtes WebP, Entfernen löscht', async () => {
 		await installFakeStorage(admin);
 		const ctx = await ctxOf(id);
-		const webp = new Uint8Array(AVATAR_MAX_BYTES);
-		webp.set([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]);
 		const img = await setOwnAvatar(ctx, {
-			data: webp,
-			contentType: 'image/webp'
+			data: await realImage('jpeg'),
+			contentType: 'image/jpeg'
 		});
-		expect(img).toMatch(new RegExp(`^/avatar/${id}\\?v=\\d+$`));
+		expect(img).toMatch(new RegExp(`^/avatar/${id}\\?v=\\d+&n=1$`));
 		expect(await imageOf()).toBe(img);
 		const read = await readAvatar(id);
 		expect(read?.contentType).toBe('image/webp');
-		expect(read?.data.byteLength).toBe(AVATAR_MAX_BYTES);
+		expect((await sharp(read!.data).metadata()).format).toBe('webp');
 		const audit = await auditOf(id, 'core.user.avatar_changed');
 		expect(JSON.stringify(audit.map((a) => a.metadata ?? {}))).not.toContain('webp');
 		await removeOwnAvatar(ctx);
@@ -327,8 +336,9 @@ describe('Profilbild', () => {
 describe('Profilbild durch die Verwaltung', () => {
 	let id: string;
 	let plainId: string;
-	const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+	let png: Uint8Array;
 	beforeAll(async () => {
+		png = await realImage('png');
 		id = await createUser(admin, { name: 'Bea', email: 'bea@example.test', password: PW });
 		plainId = await createUser(admin, { name: 'Ohne', email: 'ohne@example.test', password: PW });
 	});
@@ -366,9 +376,9 @@ describe('Profilbild durch die Verwaltung', () => {
 	it('mit Fake-Storage: setzen, lesen, entfernen; Audit mit byAdmin am Zielkonto', async () => {
 		await installFakeStorage(admin);
 		const img = await setUserAvatar(admin, id, { data: png, contentType: 'image/png' });
-		expect(img).toMatch(new RegExp(`^/avatar/${id}\\?v=\\d+$`));
+		expect(img).toMatch(new RegExp(`^/avatar/${id}\\?v=\\d+&n=1$`));
 		expect(await imageOf()).toBe(img);
-		expect((await readAvatar(id))?.contentType).toBe('image/png');
+		expect((await readAvatar(id))?.contentType).toBe('image/webp');
 		const changed = await auditOf(id, 'core.user.avatar_changed');
 		expect(changed[0]?.metadata).toMatchObject({ byAdmin: true });
 		await removeUserAvatar(admin, id);
@@ -687,7 +697,7 @@ describe('defaultRoleGrants (Randfälle)', () => {
 		expect(perms.map((p) => p.k).sort()).toEqual(['members.own.edit', 'members.own.view']);
 	});
 
-	it('bestehende Rolle mit zugewiesenem Benutzer bekommt die Rechte nachträglich', async () => {
+	it('gleichnamige, vorab angelegte Rolle bekommt Rechte erst nach ausdrücklicher Übernahme (#67, 01a-07)', async () => {
 		const roleId = await createRole(admin, { name: 'Eltern-Bestand', permissions: [] });
 		const uid = await createUser(admin, {
 			name: 'Bestand',
@@ -706,12 +716,16 @@ describe('defaultRoleGrants (Randfälle)', () => {
 				navigation: []
 			},
 			defaultRoleGrants: {
-				'Eltern-Bestand': ['grantx.thing.view', 'grantx.thing.view', 'grantx.nope.x']
+				'Eltern-Bestand': ['grantx.thing.view', 'grantx.thing.view']
 			}
 		});
 		await syncModules();
 		// Rechte deaktivierter Module sind nie wirksam: erst aktivieren
 		await enableModule(admin, 'grantx');
+		// Kein Namens-Squatting: die manuell angelegte Rolle hat keine Kennung → keine Modulrechte
+		expect(await hasPerm(uid, 'grantx.thing.view')).toBe(false);
+		await adoptDefaultRole(admin, roleId);
+		await syncModules();
 		expect(await hasPerm(uid, 'grantx.thing.view')).toBe(true);
 		expect(await hasPerm(uid, 'grantx.thing.edit')).toBe(false);
 		// Rolle nicht doppelt angelegt, Doppel-Einträge in der Liste führen nicht zu Duplikaten
@@ -753,7 +767,7 @@ describe('defaultRoleGrants (Randfälle)', () => {
 		expect(again).toHaveLength(0);
 	});
 
-	it('Rolle ohne Rechte im Manifest (nur unbekannte Schlüssel) wird nicht angelegt', async () => {
+	it('unbekanntes Recht in defaultRoleGrants: Sync schlägt fehl, Rolle wird nicht angelegt (#76, 10-10)', async () => {
 		registerModule({
 			manifest: {
 				id: 'granty',
@@ -765,7 +779,11 @@ describe('defaultRoleGrants (Randfälle)', () => {
 			},
 			defaultRoleGrants: { 'Geister-Rolle': ['granty.unknown.x'] }
 		});
-		await syncModules();
+		try {
+			await expect(syncModules()).rejects.toThrow(/granty\.unknown\.x/);
+		} finally {
+			unregisterModule('granty');
+		}
 		expect(
 			await getDb().select().from(schema.role).where(eq(schema.role.name, 'Geister-Rolle'))
 		).toHaveLength(0);

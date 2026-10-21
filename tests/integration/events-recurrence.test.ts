@@ -125,7 +125,12 @@ beforeAll(async () => {
 	keys.admin = (
 		await createApiKey(admin, {
 			name: 'admin',
-			scopes: ['events.event.view', 'events.event.create', 'events.event.edit-all']
+			scopes: [
+				'events.event.view',
+				'events.event.create',
+				'events.event.edit-all',
+				'events.event.publish'
+			]
 		})
 	).key;
 	keys.web = (await createApiKey(admin, { name: 'web', scopes: ['events.website.read'] })).key;

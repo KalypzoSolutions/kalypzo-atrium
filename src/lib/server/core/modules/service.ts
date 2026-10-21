@@ -2,11 +2,11 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { ModuleManifest, RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getDb, schema, type DbOrTx } from '../database/client';
-import { sha256 } from '../crypto';
+import { MIGRATION_LOCK_KEY } from '../database/migrate';
 import { errors } from '../errors';
-import { newId } from '../util';
 import { CORE_PERMISSIONS } from '../permissions/catalog';
-import { syncPermissions } from '../permissions/service';
+import { ensureDefaultRole } from '../permissions/default-roles';
+import { requirePermission, syncPermissions } from '../permissions/service';
 import {
 	allDefinitions,
 	assertDependenciesResolvable,
@@ -14,7 +14,9 @@ import {
 	requireDefinition
 } from './registry';
 import { enabledModuleIds, invalidateModuleStateCache } from './state';
+import { canonicalChecksumFor, migrationChecksum } from './migration-checksum';
 import { splitSqlStatements } from './split-sql';
+import { validateModuleReferences } from './validate';
 import { moduleSchemaName } from './types';
 
 export interface ModuleInfo {
@@ -26,11 +28,20 @@ export interface ModuleInfo {
 	missingDependencies: string[];
 }
 
+/** Warnungen aus `validateModuleReferences` nur einmal je Prozess ausgeben */
+const warnedCouplings = new Set<string>();
+
 /** Gleicht Registry (Build-Zeit) mit Datenbank (Laufzeit) ab. Beim Start aufzurufen. */
 export async function syncModules(): Promise<void> {
 	assertDependenciesResolvable();
 	const db = getDb();
 	const defs = allDefinitions();
+	// Manifest-Verweise (Rechte, Reset-Bereiche) gegen alle registrierten Module prüfen (#76, 10-10)
+	for (const w of validateModuleReferences(defs)) {
+		if (warnedCouplings.has(w)) continue;
+		warnedCouplings.add(w);
+		console.warn(`[modules] ${w}`);
+	}
 	for (const d of defs) {
 		await db
 			.insert(schema.moduleState)
@@ -62,8 +73,9 @@ export async function syncModules(): Promise<void> {
 }
 
 /**
- * Vergibt `defaultRoleGrants` einmalig je (Modul, Rolle, Recht). Rollen werden per Name gesucht oder
- * angelegt (kein System). Unbekannte Rechte (nicht im Manifest) werden übersprungen.
+ * Vergibt `defaultRoleGrants` einmalig je (Modul, Rolle, Recht). Rollen werden über ihre stabile Kennung
+ * `role.system_key = 'default:<Name>'` gefunden oder angelegt (kein System, `permissions/default-roles.ts`);
+ * eine gleichnamige Rolle ohne Kennung bekommt nichts. Unbekannte Rechte (nicht im Manifest) werden übersprungen.
  */
 async function applyDefaultRoleGrants(defs: ReturnType<typeof allDefinitions>): Promise<void> {
 	const db = getDb();
@@ -86,27 +98,9 @@ async function applyDefaultRoleGrants(defs: ReturnType<typeof allDefinitions>): 
 			const doneKeys = new Set(done.map((r) => r.key));
 			const todo = wanted.filter((p) => !doneKeys.has(p));
 			if (!todo.length) continue;
-			let [role] = await db
-				.select({ id: schema.role.id })
-				.from(schema.role)
-				.where(eq(schema.role.name, roleName));
-			if (!role) {
-				await db
-					.insert(schema.role)
-					.values({
-						id: newId(),
-						name: roleName,
-						description: 'Automatisch angelegt',
-						isSystem: false
-					})
-					.onConflictDoNothing();
-				[role] = await db
-					.select({ id: schema.role.id })
-					.from(schema.role)
-					.where(eq(schema.role.name, roleName));
-			}
-			if (!role) continue;
-			const roleId = role.id;
+			// Nur die Rolle mit Kennung `default:<Name>` – nie eine bloß gleichnamige (#67, 01a-07)
+			const roleId = await ensureDefaultRole(roleName, db);
+			if (!roleId) continue;
 			await db
 				.insert(schema.rolePermission)
 				.values(todo.map((permissionKey) => ({ roleId, permissionKey })))
@@ -199,6 +193,10 @@ export async function runModuleMigrations(
 	const migrations = (def.migrations ?? []).filter((m) => !opts.only || opts.only.has(m.name));
 	const schemaName = moduleSchemaName(moduleId);
 	const run = async (t: DbOrTx): Promise<string[]> => {
+		// Globale Sperre bis Transaktionsende: parallele Starts (Rolling-Update, zwei Replikas) wenden
+		// dieselben Migrationen sonst gleichzeitig an. Der zweite Prozess wartet und sieht danach die
+		// bereits eingetragenen Migrationen.
+		await t.execute(sql`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK_KEY})`);
 		await t.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`));
 		const applied = await t
 			.select()
@@ -207,17 +205,32 @@ export async function runModuleMigrations(
 		const byName = new Map(applied.map((a) => [a.name, a]));
 		const newlyApplied: string[] = [];
 		for (const m of migrations) {
-			const checksum = sha256(m.sql);
+			// zeilenendenunabhängig (CRLF/LF), siehe migration-checksum.ts
+			const checksum = migrationChecksum(m.sql);
 			const prev = byName.get(m.name);
 			if (prev) {
-				if (prev.checksum !== checksum) {
+				if (prev.checksum === checksum) continue;
+				if (!canonicalChecksumFor(prev.checksum, m.sql)) {
 					throw new Error(`Migration ${moduleId}/${m.name} wurde nach Anwendung verändert`);
 				}
+				// Übergang: alte Prüfsumme (Roh- bzw. CRLF-Variante) auf den kanonischen Wert umstellen
+				await t
+					.update(schema.moduleMigration)
+					.set({ checksum })
+					.where(
+						and(
+							eq(schema.moduleMigration.moduleId, moduleId),
+							eq(schema.moduleMigration.name, m.name)
+						)
+					);
 				continue;
 			}
-			await t.execute(sql.raw(`SET LOCAL search_path TO "${schemaName}", public`));
+			// Nur das Modulschema (ohne `public`): unqualifizierte Namen dürfen keine Core-Tabelle treffen
+			await t.execute(sql.raw(`SET LOCAL search_path TO "${schemaName}"`));
 			// Einzeln ausführen: manche Treiber (PGlite) erlauben pro Aufruf nur ein Statement
 			for (const statement of splitSqlStatements(m.sql)) await t.execute(sql.raw(statement));
+			// Core-Tabellen (module_migration, danach module_state/audit_log) wieder erreichbar machen
+			await t.execute(sql.raw('SET LOCAL search_path TO DEFAULT'));
 			await t.insert(schema.moduleMigration).values({ moduleId, name: m.name, checksum });
 			newlyApplied.push(m.name);
 		}
@@ -228,6 +241,7 @@ export async function runModuleMigrations(
 }
 
 export async function enableModule(ctx: RequestContext, id: string): Promise<void> {
+	await requirePermission(ctx, 'core.modules.manage');
 	const def = requireDefinition(id);
 	const db = getDb();
 	await db.transaction(async (tx) => {
@@ -248,6 +262,7 @@ export async function enableModule(ctx: RequestContext, id: string): Promise<voi
 }
 
 export async function disableModule(ctx: RequestContext, id: string): Promise<void> {
+	await requirePermission(ctx, 'core.modules.manage');
 	const def = requireDefinition(id);
 	const db = getDb();
 	await db.transaction(async (tx) => {
@@ -275,11 +290,16 @@ export async function navigationFor(ctx: RequestContext) {
 		.filter((d) => enabled.has(d.manifest.id))
 		.flatMap((d) =>
 			d.manifest.navigation
-				.filter((n) => !n.permission || ctx.permissions.has(n.permission))
+				.filter((n) =>
+					n.anyPermission?.length
+						? n.anyPermission.some((p) => ctx.permissions.has(p))
+						: !n.permission || ctx.permissions.has(n.permission)
+				)
 				// Ohne explizite Berechtigung: mindestens eine Modulberechtigung nötig
 				.filter(
 					(n) =>
 						n.permission ||
+						n.anyPermission?.length ||
 						d.manifest.permissions.length === 0 ||
 						d.manifest.permissions.some((p) => ctx.permissions.has(p))
 				)

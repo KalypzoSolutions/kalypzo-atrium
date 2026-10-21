@@ -38,7 +38,7 @@
 					{#if hasDetails}
 						<button
 							type="button"
-							class="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 -ml-1 inline-flex size-5 shrink-0 items-center justify-center rounded outline-none focus-visible:ring-3"
+							class="text-muted-foreground hover:text-foreground focus-visible:ring-ring -ml-1 inline-flex size-5 shrink-0 items-center justify-center rounded outline-none focus-visible:ring-3"
 							aria-expanded={!!open[i]}
 							aria-controls="{uid}-d{i}"
 							aria-label="Details zu {row.label} {open[i] ? 'ausblenden' : 'anzeigen'}"
@@ -52,7 +52,7 @@
 						<span class="group relative inline-flex">
 							<button
 								type="button"
-								class="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex size-5 items-center justify-center rounded-full outline-none focus-visible:ring-3"
+								class="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex size-5 items-center justify-center rounded-full outline-none focus-visible:ring-3"
 								aria-label="Hinweis zu {row.label}"
 								aria-describedby="{uid}-h{i}"
 							>
@@ -73,7 +73,7 @@
 						'shrink-0 text-right tabular-nums',
 						strong && 'text-base font-semibold',
 						row.emphasis === 'muted' && 'text-muted-foreground',
-						row.negative && 'text-amber-700 dark:text-amber-400'
+						row.negative && 'text-warning'
 					)}
 				>
 					{#if row.negative}<span aria-hidden="true">−</span><span class="sr-only"

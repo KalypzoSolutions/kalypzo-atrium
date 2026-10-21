@@ -53,6 +53,7 @@ interface Detail {
 	id: string;
 	title: string;
 	visibility: 'private' | 'public';
+	publicConfirmation?: { at: string; by: { id: string; name: string } | null } | null;
 	shares?: { type: string; id: string; level: string }[];
 	events?: { id: string; title: string }[];
 }
@@ -95,6 +96,10 @@ test('Galerie anlegen, teilen, bearbeiten, löschen', async ({ page }) => {
 	await dialog.getByLabel('Beschreibung').fill('Zeltlager am See – Lagerbau und Singerunden');
 	await dialog.getByRole('radio', { name: /Öffentlich/ }).check({ force: true });
 	await dialog.getByRole('button', { name: 'Anlegen' }).click();
+	// Veröffentlichen verlangt die Bestätigung der Website-Einwilligungen (#27)
+	const consent = page.getByRole('alertdialog', { name: 'Einwilligungen bestätigen' });
+	await expect(consent).toBeVisible();
+	await consent.getByRole('button', { name: 'Bestätigen und veröffentlichen' }).click();
 	await expect(dialog).toBeHidden();
 
 	// Weiterleitung auf die Detailseite
@@ -105,6 +110,8 @@ test('Galerie anlegen, teilen, bearbeiten, löschen', async ({ page }) => {
 	await expect(page.getByText('Noch keine Bilder')).toBeVisible();
 	let detail = await api<Detail>(page, 'GET', `/modules/galleries/galleries/${id}`);
 	expect(detail.visibility).toBe('public');
+	expect(detail.publicConfirmation?.at).toBeTruthy();
+	await expect(page.getByText(/Veröffentlichung bestätigt am/)).toBeVisible();
 
 	// Übersicht: Karte mit Badge
 	await page.goto('/modules/galleries');

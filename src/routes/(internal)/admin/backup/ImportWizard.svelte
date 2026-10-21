@@ -376,7 +376,7 @@
 	<Card.Root>
 		<Card.Header>
 			<Card.Title class="flex items-center gap-2">
-				<CircleCheck class="size-5 text-green-600 dark:text-green-500" aria-hidden="true" />
+				<CircleCheck class="size-5 text-success" aria-hidden="true" />
 				Wiederherstellung abgeschlossen
 			</Card.Title>
 			<Card.Description>
@@ -393,7 +393,7 @@
 	<Card.Root>
 		<Card.Header>
 			<Card.Title class="flex items-center gap-2">
-				<CircleCheck class="size-5 text-green-600 dark:text-green-500" aria-hidden="true" />
+				<CircleCheck class="size-5 text-success" aria-hidden="true" />
 				{res.mode === 'restore' ? 'Wiederherstellung' : 'Zusammenführung'} abgeschlossen
 			</Card.Title>
 			<Card.Description>
@@ -462,8 +462,8 @@
 				</details>
 			{/if}
 			{#if res.warnings.length}
-				<Alert.Root>
-					<TriangleAlert class="text-amber-600" aria-hidden="true" />
+				<Alert.Root variant="warning">
+					<TriangleAlert aria-hidden="true" />
 					<Alert.Title>Hinweise</Alert.Title>
 					<Alert.Description>
 						<ul class="list-disc space-y-1 pl-4">
@@ -513,7 +513,7 @@
 						step
 							? 'border-primary bg-primary text-primary-foreground'
 							: n === step
-								? 'border-primary text-primary'
+								? 'border-primary text-link'
 								: ''}"
 					>
 						{n}
@@ -524,8 +524,8 @@
 		</ol>
 
 		{#if notice}
-			<Alert.Root>
-				<TriangleAlert class="text-amber-600" aria-hidden="true" />
+			<Alert.Root variant="warning">
+				<TriangleAlert aria-hidden="true" />
 				<Alert.Description>{notice}</Alert.Description>
 			</Alert.Root>
 		{/if}
@@ -733,7 +733,7 @@
 											<p class="text-xs text-destructive">{s.reason}</p>
 										{/if}
 										{#if imp}
-											<p class="text-xs text-amber-700 dark:text-amber-500">
+											<p class="text-xs text-warning">
 												Geht mit, weil „{labelOf(imp.by)}“ gewählt ist – {imp.reason}
 											</p>
 										{/if}
@@ -842,8 +842,8 @@
 					{/if}
 
 					{#if preview.missingUserRefs > 0}
-						<Alert.Root>
-							<TriangleAlert class="text-amber-600" aria-hidden="true" />
+						<Alert.Root variant="warning">
+							<TriangleAlert aria-hidden="true" />
 							<Alert.Description>
 								{fmt(preview.missingUserRefs)}
 								{preview.missingUserRefs === 1 ? 'Verweis' : 'Verweise'} auf Benutzer*innen, die es im
@@ -853,8 +853,8 @@
 					{/if}
 
 					{#if preview.warnings.length}
-						<Alert.Root>
-							<TriangleAlert class="text-amber-600" aria-hidden="true" />
+						<Alert.Root variant="warning">
+							<TriangleAlert aria-hidden="true" />
 							<Alert.Title>Hinweise</Alert.Title>
 							<Alert.Description>
 								<ul class="list-disc space-y-1 pl-4">
@@ -902,7 +902,7 @@
 				<Card.Footer class="flex flex-wrap justify-between gap-2">
 					<Button variant="outline" onclick={() => (step = 3)} disabled={busy}>Zurück</Button>
 					<Button
-						class="bg-destructive text-white hover:bg-destructive/90"
+						variant="destructive-solid"
 						disabled={!confirmed || busy}
 						onclick={() => (dialogOpen = true)}
 					>

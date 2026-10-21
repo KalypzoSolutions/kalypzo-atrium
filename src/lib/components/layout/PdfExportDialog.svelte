@@ -183,7 +183,7 @@
 									/>
 									<span class="min-w-0 truncate">{c.label}</span>
 									{#if c.sensitive}
-										<span class="text-xs text-amber-600 dark:text-amber-400">sensibel</span>
+										<span class="text-xs text-warning">sensibel</span>
 									{/if}
 								</label>
 							{/each}
@@ -206,10 +206,10 @@
 
 			{#if sensitive}
 				<p
-					class="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs"
+					class="flex items-start gap-2 rounded-md border border-warning-border bg-warning-muted p-2 text-xs"
 					role="note"
 				>
-					<TriangleAlert class="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
+					<TriangleAlert class="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
 					<span>
 						Die Liste enthält Gesundheitsangaben. Nur für den vorgesehenen Zweck verwenden und
 						danach vernichten.
