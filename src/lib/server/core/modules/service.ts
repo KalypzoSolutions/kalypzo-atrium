@@ -290,11 +290,16 @@ export async function navigationFor(ctx: RequestContext) {
 		.filter((d) => enabled.has(d.manifest.id))
 		.flatMap((d) =>
 			d.manifest.navigation
-				.filter((n) => !n.permission || ctx.permissions.has(n.permission))
+				.filter((n) =>
+					n.anyPermission?.length
+						? n.anyPermission.some((p) => ctx.permissions.has(p))
+						: !n.permission || ctx.permissions.has(n.permission)
+				)
 				// Ohne explizite Berechtigung: mindestens eine Modulberechtigung nötig
 				.filter(
 					(n) =>
 						n.permission ||
+						n.anyPermission?.length ||
 						d.manifest.permissions.length === 0 ||
 						d.manifest.permissions.some((p) => ctx.permissions.has(p))
 				)

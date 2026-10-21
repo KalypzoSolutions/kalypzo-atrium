@@ -39,7 +39,8 @@ src/lib/modules/<id>/
 - **Jedes Recht braucht eine Beschreibung** in `manifest.permissionDescriptions` (`{ '<recht>': 'Was es erlaubt' }`, kurz, deutsch);
   wird bei jedem Start übernommen (auch für bestehende Rechte) und unter Administration → Rollen → Berechtigungen (`/admin/roles/permissions`) sowie bei API-Key-Scopes
   angezeigt. Test: `tests/integration/permission-descriptions.test.ts`.
-- Navigation: `{ label, icon, path:'/modules/<id>…', permission, group?, groupIcon? }`; gleiche `group` = aufklappbare Gruppe.
+- Navigation: `{ label, icon, path:'/modules/<id>…', permission, anyPermission?, group?, groupIcon? }`; gleiche `group` = aufklappbare Gruppe.
+  `anyPermission` (eines genügt, ersetzt `permission`) für Seiten mit eingeschränktem Modus (z. B. `members` für Gruppenleitungen).
   Icons stehen in `components/layout/icons.ts` (unbekannt → Box) – neue dort ergänzen.
   Eigene Einstellungsseite eines Moduls: Navigationseintrag mit `admin: true` → erscheint in der Verwaltung (Abschnitt „Module“, Befehlspalette)
   und unter Einstellungen → Module als Link; Module ohne eigene Seite bekommen dort automatisch ein Formular aus `settings`.

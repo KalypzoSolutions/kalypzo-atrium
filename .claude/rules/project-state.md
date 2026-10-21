@@ -196,7 +196,14 @@
   share-access,file-response,best-effort}`), ESLint-Modulgrenzen, Tests (Job-Resilienz, Migrations-Upgrades, hooks/REST, optional echtes PostgreSQL
   über `TEST_DATABASE_URL`). E2E `annual-fee`/`pdf-lists` repariert. Offene Punkte und Entscheidungen: Abschlussbericht der Audit-Behebung.
 
+- **Gruppenleitung in `members` (2026-10-21, v1.11.0, Migr. 0015)**: Neue Rechte `members.led-member.view|edit|export`; Konten, deren **eigenes** Mitglied
+  eine Gruppe leitet, bekommen automatisch die Rolle „Gruppenleitung“ (`user_role_grant`) und sehen/bearbeiten in „Mitglieder“ nur die Mitglieder ihrer
+  Gruppen (inkl. Dokumente, Gesundheits-Zusatzfelder, PDF-Listen). „Eigenes Konto“ setzt nur die Verwaltung (Eltern nie). Gruppen und Mitgliedschaftsdaten
+  bleiben für Leitungen gesperrt, kein Anlegen/Löschen. Core: Modul-Navigation kennt `anyPermission`. Details: `module-members.md` → „Gruppenleitung“.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Gruppenleitung (2026-10-21): Rechte **automatisch** über die Leitung einer Gruppe; Leitungen dürfen Dokumente verwalten und PDF-Listen erzeugen,
+  **Gesundheitsfelder sehen/bearbeiten**, aber **keine Gruppenzuordnung** ändern und keine Mitglieder anlegen/löschen.
 - Programm: Pro-Kopf-Preis wird **aufgerundet** auf volle Euro. Puffer in **Prozent**. Team zahlt einen **Prozentsatz**,
   Rest wird auf die Teilnehmenden umgelegt. Leitende 12–27 zählen beim Zuschuss als Teilnehmende.
 - Kalkulation findet in der Regel **vor** der Anmeldung statt; Tab-Reihenfolge Übersicht → Kalkulation → Teilnehmende.

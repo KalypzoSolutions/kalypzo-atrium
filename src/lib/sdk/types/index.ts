@@ -29,6 +29,8 @@ export interface ModuleNavigationItem {
 	path: string;
 	/** Optional: nur sichtbar mit dieser Berechtigung */
 	permission?: string;
+	/** Optional: sichtbar mit mindestens einem dieser Rechte (ersetzt `permission`, wenn gesetzt) */
+	anyPermission?: string[];
 	/** Optional: Einträge mit gleichem Gruppennamen erscheinen als aufklappbare Gruppe */
 	group?: string;
 	/** Optional: Icon der Gruppe (nimmt den ersten gesetzten Wert der Gruppe) */

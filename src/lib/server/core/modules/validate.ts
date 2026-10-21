@@ -35,10 +35,12 @@ export function validateModuleReferences(defs: readonly ModuleDefinition[]): str
 			}
 		}
 		for (const n of m.navigation) {
-			if (n.permission && !known.has(n.permission)) {
-				throw new Error(
-					`Modul ${m.id}: Navigation "${n.path}" verlangt unbekanntes Recht "${n.permission}"`
-				);
+			for (const p of [n.permission, ...(n.anyPermission ?? [])]) {
+				if (p && !known.has(p)) {
+					throw new Error(
+						`Modul ${m.id}: Navigation "${n.path}" verlangt unbekanntes Recht "${p}"`
+					);
+				}
 			}
 		}
 		if (d.search) {
