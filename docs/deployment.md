@@ -416,3 +416,14 @@ cd website
 npm ci
 npm run build && WEBSITE_API_KEY=epk_… WEBSITE_API_URL=http://127.0.0.1:3000 PORT=3001 node build
 ```
+
+## Nachrichten (E-Mail an Mitglieder und Gruppen) – Zustellbarkeit
+
+Das Modul `messages` sendet jede Mail einzeln über den SMTP-Server aus den Systemeinstellungen. Damit sie nicht im Spam landen:
+
+- **Absenderadresse**: Persönliche Adressen (`vorname.nachname@domain`, Einstellung `messages.domain`) funktionieren nur, wenn der Mailserver das Senden als
+  diese Adressen erlaubt (Alias oder Catch-all für die Domain). Stimmt die Domain nicht mit `core.smtp.from` überein, zeigt die Oberfläche einen Hinweis.
+- **DNS** der Absender-Domain: SPF (Mailserver eintragen), DKIM (Signatur am Mailserver aktivieren, Schlüssel im DNS) und DMARC (`_dmarc`-Eintrag); dazu
+  Reverse-DNS (rDNS) der Server-IP. Neue Domains langsam „aufwärmen“ (zuerst kleine Gruppen).
+- **Inhalt**: Aussehen „Einfach“ verursacht den geringsten Spam-Wert; Betreff nicht in Großbuchstaben und ohne viele Ausrufezeichen; keine Link-Verkürzer.
+- Prüfen mit einer Testmail an einen Spam-Checker (z. B. mail-tester.com). Der Spam-Wert hängt am Mailserver und DNS, nicht nur an der Anwendung.

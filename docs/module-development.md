@@ -174,6 +174,7 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 | `EntityAvatar` | `$lib/components/layout` | Rundes Bild mit Farbrand, Fallback Initialen |
 | `FileField` | `$lib/components/layout` | Datei-Feld mit Typ-/Größenprüfung, vorhandener Datei und Entfernen |
 | `ContactListField` | `$lib/components/layout` | Dynamische Liste benannter Kontakte (Telefon, E-Mail); `readonly` + `emptyText` für Ansichten |
+| `RichTextEditor` | `$lib/components/ui/rich-text-editor` | Text-Editor (Tiptap): Fett/Kursiv/Unterstrichen/Durchgestrichen, Überschriften, Listen, Zitat, Link, Trennlinie, Rückgängig; `bind:value` = HTML (nur einfache Formatierung; der Server muss es mit `sanitize-html` bereinigen, Muster `messages/html.ts`) |
 | `TagInput` | `$lib/components/ui/tag-input` | Freie Tags als Chips (`bind:value`, `suggestions` oder `loadSuggestions(q)`, `max`, `maxLength`); Logik in `tags.ts` (`addTag`, `normalizeTag`) |
 | `MonthCalendar` | `$lib/components/layout` | Monatsraster Mo–So mit mehrtägigen Balken, mobil Agenda; `items: CalendarItem[]`, `bind:month`, `onselect`, `onday` |
 | `ShareDialog` | `$lib/components/layout` | Freigabe an Benutzer oder – mit `type` – an Principals (Stamm, Gruppe, Rolle, Mitglied): suchen, Stufe wählen, ändern, entfernen (Persistenz über Callbacks); `everyoneLabel` für „alle“ |

@@ -14,6 +14,20 @@ export interface MailMessage {
 	layout?: boolean;
 	/** Dateianhänge (z. B. Rechnung als PDF) */
 	files?: { filename: string; contentType: string; content: Buffer }[];
+	/**
+	 * Abweichende Absenderadresse (Standard: `core.smtp.from`). Nur für Module, die den Absender vorher
+	 * geprüft haben (z. B. `messages`); der SMTP-Server muss das Senden als diese Adresse erlauben.
+	 */
+	from?: string;
+	/** Anzeigename zur Absenderadresse (ohne Zeilenumbrüche/Anführungszeichen) */
+	fromName?: string;
+	/** Adresse für Antworten */
+	replyTo?: string;
+	/**
+	 * Zusätzliche Kopfzeilen (z. B. `List-Unsubscribe`); nur vom Core gesetzt (`core.mail.sendMessage`),
+	 * Werte ohne Zeilenumbrüche.
+	 */
+	headers?: Record<string, string>;
 }
 
 export interface MailTransport {
@@ -23,6 +37,10 @@ export interface MailTransport {
 		subject: string;
 		text: string;
 		html?: string;
+		replyTo?: string;
+		/** `Message-ID` mit der Domain des Absenders (statt des SMTP-Hosts) */
+		messageId?: string;
+		headers?: Record<string, string>;
 		attachments?: (MailAttachment | { filename: string; content: Buffer; contentType: string })[];
 	}): Promise<unknown>;
 }
@@ -203,12 +221,60 @@ export function sendMail(msg: MailMessage): Promise<void> {
 	return p;
 }
 
+/**
+ * HTML einer Mail, wie sie beim Versand aussähe (Stamm-Layout mit den gespeicherten Einstellungen,
+ * Bilder als `data:`-URLs statt CID) – für Vorschauen, ohne etwas zu senden.
+ */
+export async function previewMailHtml(msg: {
+	text: string;
+	html: string;
+	layout?: boolean;
+}): Promise<string> {
+	const options = await loadMailLayoutOptions();
+	if (msg.layout === false || !options.enabled) return msg.html;
+	return renderMailLayout({ text: msg.text, html: msg.html }, options, 'data').html;
+}
+
+const SENDER_ADDRESS = /^[^\s@,;<>()"\x5c]+@[^\s@,;<>()"\x5c]+\.[^\s@,;<>()"\x5c]+$/;
+
+/** Absender-Kopfzeile `"Name" <adresse>`; ungültige Adressen/Namen mit Steuerzeichen werden abgewiesen (Header-Injection). */
+export function formatSender(address: string, name?: string): string {
+	if (address.length > 254 || !SENDER_ADDRESS.test(address)) {
+		throw errors.badRequest('Ungültige Absenderadresse');
+	}
+	const clean = (name ?? '')
+		// Steuerzeichen (Zeilenumbrüche!) und Anführungszeichen/Klammern entfernen
+		// eslint-disable-next-line no-control-regex
+		.replace(/[\u0000-\u001f\u007f"<>\x5c]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, 100);
+	return clean ? `"${clean}" <${address}>` : address;
+}
+
 async function sendMailNow(msg: MailMessage): Promise<void> {
-	const { t, from, pooled } = await transport();
-	const { layout, files = [], ...mail } = msg;
+	const { t, from: defaultFrom, pooled } = await transport();
+	const { layout, files = [], from: fromAddress, fromName, replyTo, headers, ...mail } = msg;
+	const from = fromAddress ? formatSender(fromAddress, fromName) : defaultFrom;
+	if (replyTo !== undefined && (replyTo.length > 254 || !SENDER_ADDRESS.test(replyTo))) {
+		throw errors.badRequest('Ungültige Antwortadresse');
+	}
+	const reply = replyTo ? { replyTo } : {};
+	// Message-ID mit der Domain der Absenderadresse (passt zu SPF/DKIM, weniger Spam-Punkte)
+	const domain = fromAddress?.split('@')[1];
+	const extra = {
+		...(domain ? { messageId: `<${crypto.randomUUID()}@${domain}>` } : {}),
+		...(headers && Object.keys(headers).length ? { headers } : {})
+	};
 	const options = await loadMailLayoutOptions();
 	if (layout === false || !options.enabled) {
-		await deliver(t, pooled, { from, ...mail, ...(files.length ? { attachments: files } : {}) });
+		await deliver(t, pooled, {
+			from,
+			...mail,
+			...reply,
+			...extra,
+			...(files.length ? { attachments: files } : {})
+		});
 		return;
 	}
 	const rendered = renderMailLayout(mail, options);
@@ -216,6 +282,8 @@ async function sendMailNow(msg: MailMessage): Promise<void> {
 		from,
 		to: mail.to,
 		subject: mail.subject,
+		...reply,
+		...extra,
 		...rendered,
 		attachments: [...rendered.attachments, ...files]
 	});

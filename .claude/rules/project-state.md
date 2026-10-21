@@ -200,6 +200,10 @@
   eine Gruppe leitet, bekommen automatisch die Rolle „Gruppenleitung“ (`user_role_grant`) und sehen/bearbeiten in „Mitglieder“ nur die Mitglieder ihrer
   Gruppen (inkl. Dokumente, Gesundheits-Zusatzfelder, PDF-Listen). „Eigenes Konto“ setzt nur die Verwaltung (Eltern nie). Gruppen und Mitgliedschaftsdaten
   bleiben für Leitungen gesperrt, kein Anlegen/Löschen. Core: Modul-Navigation kennt `anyPermission`. Details: `module-members.md` → „Gruppenleitung“.
+- **Mitgliederliste: Filter und „Alle Treffer auswählen“ (2026-10-21)**: Mehrfachauswahl bei Ständen und Gruppen (mindestens eine/alle, „Ohne Gruppe“), ausklappbare
+  erweiterte Suche (Alter, Eintritt, Einwilligungen, Zweitmitglied, E-Mail), `GET /members/ids` (+ `/led/members/ids`) für die Auswahl **aller** Treffer
+  (≤ 2000), Sammelaktionen/PDF-Listen bis 2000 IDs (`BULK_MAX_IDS`, `SHEETS_MAX_IDS`; Briefe weiter 100). Details: `module-members.md`. Offen: Laufzeit großer PDF-Listen/Sammelaktionen
+  bei ~2000 Personen ungeprüft; E2E und Screenshot-Prüfung der neuen Filterleiste.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Gruppenleitung (2026-10-21): Rechte **automatisch** über die Leitung einer Gruppe; Leitungen dürfen Dokumente verwalten und PDF-Listen erzeugen,

@@ -63,7 +63,7 @@ wenn es nur ein Formular ist. Listen: Suche + Filter in der Toolbar der `DataTab
 | Tabellen-Karte (Toolbar, Laden/Fehler/Leer, Footer; `mobile="cards"`) | `DataTable` aus `$lib/components/layout` |
 | Fixierte Aktionsleiste mobil (Bulk) | `MobileActionBar` (`show`, `label`) |
 | PDF-Listen mit wählbaren Spalten | `PdfExportDialog` (`catalog`, `count`, `storageKey`, `onexport`) + `$lib/pdf-lists` |
-| Seitenkopf, Formularfeld, Leerzustand, Bestätigung | `PageHeader`, `FormField` (`label`, `id`, `hint`, `error`, `required`), `EmptyState`, `ConfirmDialog` |
+| Seitenkopf, Formularfeld, Leerzustand, Bestätigung | `PageHeader`, `FormField` (`label`, `id`, `hint`, `error`, `required`; `content-start`, damit Labels im Raster neben Feldern mit Hinweis auf einer Höhe bleiben), `EmptyState`, `ConfirmDialog` |
 | Ladezustand / Fehlerzustand beim Laden | `LoadingState` (`label`, `rows`, `rowClass`, `variant` rows/text; Skeleton + `role="status"` + sr „Lädt …“) / `ErrorState` (`title`, `message`, `onretry`, `busy`, `compact`, `details`; „Erneut versuchen“). `DataTable` (`error` + `onretry`) und `DashboardCard` nutzen sie intern. Nach Ladefehler **nie** leere Daten rendern |
 | Suche / Seitenwechsel (URL-basiert) | `SearchInput` (`param`, `resetParams`), `Pagination` (`pageParam`) |
 | Einfachauswahl / Mehrfachauswahl mit Suche | `SelectField` (`ui/select-field`, `emptyLabel`, `name`) / `MultiSelect` (`ui/multi-select`) |
@@ -115,6 +115,7 @@ werden in `docs/module-development.md` (Tabelle) und hier ergänzt.
 - Barrierefreiheit: Icon-Buttons mit `aria-label`, Gruppen mit `fieldset/legend`, Fokus sichtbar, Farbe nie alleiniger Träger.
 
 ## Fallen
+- `Card` hat `overflow-hidden`: eigene, absolut positionierte Trefferlisten/Menüs in einer Karte werden abgeschnitten → `Card.Root class="overflow-visible"` oder portaliertes Overlay (`ui/popover`).
 - **bits-ui setzt `data-state="open|closed|checked|unchecked|active"` und `data-orientation`.** shadcn-Vorlagen anderer
   Versionen nutzen `data-open:`/`data-checked:`/`data-horizontal:` → wirkungslos (unsichtbare Schalter, Tabs als Spalte).
   Immer `data-[state=open]:` / `data-[orientation=horizontal]:` verwenden; Vorlagen beim Einfügen anpassen.

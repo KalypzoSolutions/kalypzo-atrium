@@ -138,3 +138,52 @@ test('Mitglied: Ansicht, Bearbeiten mit Tabs, Austritt und Statusfilter', async 
 	);
 	expect(list.items.map((m) => m.exitDate)).toEqual(['2024-06-30']);
 });
+
+test('Mitglieder: alle Treffer auswählen und erweiterte Filter', async ({ page }) => {
+	await login(page);
+	await ensureModules(page, ['members']);
+
+	// 25 Mitglieder (> 20 je Seite) mit eigenem Nachnamen; die letzten 5 sind Kreuzpfadfinder*innen
+	const lastName = `Sammel${run}`;
+	for (let i = 0; i < 25; i++) {
+		await api(page, 'POST', '/modules/members/members', {
+			firstName: `Person${String(i).padStart(2, '0')}`,
+			lastName,
+			birthDate: i < 20 ? '2016-04-12' : '2000-01-01',
+			street: 'Am Wall 1',
+			postalCode: '28195',
+			city: 'Bremen',
+			country: 'DE',
+			stage: i < 20 ? 'woelfling' : 'kreuzpfadfinder',
+			emails: [{ name: null, value: `p${i}-${run}@example.test` }]
+		});
+	}
+
+	await page.goto(`/modules/members?search=${encodeURIComponent(lastName)}`);
+	await expect(page.getByRole('row', { name: /Person00 .* anzeigen/ })).toBeVisible();
+
+	// Kopf-Checkbox wählt die Seite; die Leiste bietet alle Treffer an
+	await page.getByLabel('Alle Mitglieder dieser Seite auswählen').click();
+	await expect(page.getByText('20 ausgewählt')).toBeVisible();
+	await page.getByRole('button', { name: 'Alle 25 Treffer auswählen' }).click();
+	await expect(page.getByText('Alle 25 Treffer sind ausgewählt.')).toBeVisible();
+	await expect(page.getByText('25 ausgewählt')).toBeVisible();
+
+	// Filterwechsel verwirft die Auswahl
+	await page.getByRole('button', { name: 'Erweitert' }).click();
+	await page.getByLabel('Alter von (Jahre)').fill('18');
+	await page.getByLabel('Alter von (Jahre)').blur();
+	await expect(page).toHaveURL(/ageMin=18/);
+	await expect(page.getByRole('row', { name: /Person20 .* anzeigen/ })).toBeVisible();
+	await expect(page.getByRole('row', { name: /Person00 .* anzeigen/ })).toHaveCount(0);
+	await expect(page.getByText('25 ausgewählt')).toHaveCount(0);
+
+	// Mehrfachauswahl bei Ständen
+	await page.getByRole('button', { name: 'Filter zurücksetzen' }).click();
+	await expect(page).not.toHaveURL(/ageMin/);
+	await page.getByRole('combobox', { name: 'Nach Ständen filtern' }).click();
+	await page.getByRole('option', { name: /Kreuzpfadfinder/ }).click();
+	await expect(page).toHaveURL(/stages=kreuzpfadfinder/);
+	await expect(page.getByRole('row', { name: /Person24 .* anzeigen/ })).toBeVisible();
+	await expect(page.getByRole('row', { name: /Person00 .* anzeigen/ })).toHaveCount(0);
+});

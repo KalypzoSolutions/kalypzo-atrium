@@ -47,7 +47,7 @@ import {
 } from './permissions/grants';
 import { readAvatar } from './auth/profile';
 import * as pdf from './pdf';
-import { sendMail } from './mail';
+import { previewMailHtml, sendMail } from './mail';
 import { errors } from './errors';
 import { env } from './env';
 import { qrDataUrl } from './qr';
@@ -125,6 +125,91 @@ async function sendModuleMail(msg: {
 	const { attachments: _a, ...rest } = msg;
 	void _a;
 	await sendMail({ ...rest, files });
+}
+
+const MESSAGE_MAX_FILES = 10;
+const MESSAGE_MAX_BYTES = 20 * 1024 * 1024;
+/** Ausführbare/Skript-Dateien werden von vielen Mailservern abgelehnt und sind ein Missbrauchsweg */
+const BLOCKED_ATTACHMENT =
+	/\.(exe|bat|cmd|com|scr|msi|js|jse|vbs|vbe|wsf|ps1|jar|lnk|dll|apk|app|sh)$/i;
+
+/**
+ * Nachricht mit frei wählbarem (vom Modul bereits geprüftem) Absender, Antwortadresse und beliebigen
+ * Anhängen (≤ 10 Dateien, zusammen ≤ 20 MB, keine ausführbaren Dateien). Gleiche Prüfungen wie `send`
+ * für Empfänger, Betreff und Text.
+ */
+async function sendModuleMessage(msg: {
+	to: string;
+	subject: string;
+	text: string;
+	html?: string;
+	from?: string;
+	fromName?: string;
+	replyTo?: string;
+	/** Kein Stamm-Layout (Kopf, Signatur, Fußzeile): einfache Mail */
+	layout?: boolean;
+	/** Adresse für den `List-Unsubscribe`-Header (`mailto:`) – senkt den Spam-Wert */
+	unsubscribe?: string;
+	attachments?: { filename: string; contentType: string; data: Uint8Array }[];
+}): Promise<void> {
+	const bad = (path: string, message: string) => errors.validation([{ path: [path], message }]);
+	if (typeof msg.to !== 'string' || msg.to.length > 254 || !EMAIL_RE.test(msg.to)) {
+		throw bad('to', 'Ungültige E-Mail-Adresse');
+	}
+	if (
+		typeof msg.subject !== 'string' ||
+		!msg.subject.trim() ||
+		msg.subject.length > 200 ||
+		/[\r\n]/.test(msg.subject)
+	) {
+		throw bad('subject', 'Betreff ungültig (max. 200 Zeichen, keine Zeilenumbrüche)');
+	}
+	if (typeof msg.text !== 'string' || msg.text.length > 200_000) {
+		throw bad('text', 'Text zu lang');
+	}
+	if (msg.html !== undefined && (typeof msg.html !== 'string' || msg.html.length > 500_000)) {
+		throw bad('html', 'HTML zu lang');
+	}
+	for (const [k, v] of [
+		['from', msg.from],
+		['replyTo', msg.replyTo],
+		['unsubscribe', msg.unsubscribe]
+	] as const) {
+		if (v !== undefined && (typeof v !== 'string' || v.length > 254 || !EMAIL_RE.test(v))) {
+			throw bad(k, 'Ungültige E-Mail-Adresse');
+		}
+	}
+	const list = msg.attachments ?? [];
+	const total = list.reduce((sum, a) => sum + (a.data?.byteLength ?? 0), 0);
+	if (
+		list.length > MESSAGE_MAX_FILES ||
+		total > MESSAGE_MAX_BYTES ||
+		list.some((a) => !(a.data instanceof Uint8Array) || BLOCKED_ATTACHMENT.test(a.filename))
+	) {
+		throw bad(
+			'attachments',
+			'Höchstens 10 Anhänge mit zusammen 20 MB; ausführbare Dateien sind nicht erlaubt'
+		);
+	}
+	const files = list.map((a) => ({
+		filename:
+			a.filename
+				.normalize('NFKD')
+				.replace(/[^A-Za-z0-9._-]+/g, '_')
+				.replace(/^[._]+/, '')
+				.slice(-100) || 'anhang',
+		contentType: /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/i.test(a.contentType)
+			? a.contentType
+			: 'application/octet-stream',
+		content: Buffer.from(a.data)
+	}));
+	const { attachments: _a, unsubscribe, ...rest } = msg;
+	void _a;
+	await sendMail({
+		...rest,
+		files,
+		...(unsubscribe ? { headers: { 'List-Unsubscribe': `<mailto:${unsubscribe}>` } } : {})
+	});
 }
 
 export const core = {
@@ -274,7 +359,11 @@ export const core = {
 	},
 	mail: {
 		/** Sendet eine E-Mail an eine einzelne Adresse; SMTP-Fehler werden weitergereicht */
-		send: sendModuleMail
+		send: sendModuleMail,
+		/** Wie `send`, aber mit gewähltem Absender/Antwortadresse und bis zu 10 beliebigen Anhängen (20 MB) */
+		sendMessage: sendModuleMessage,
+		/** HTML-Dokument, wie `sendMessage` es senden würde (Layout, Bilder als `data:`) – nur für Vorschauen */
+		preview: previewMailHtml
 	},
 	qr: {
 		/** QR-Code als PNG-`data:`-URL (z. B. für den PDF-Bildblock) */
