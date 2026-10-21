@@ -123,6 +123,30 @@ describe('visibleAdminEntries', () => {
 	it('Modul-Eintrag ohne moduleName nutzt das Label', () => {
 		const [m] = moduleAdminEntries([{ ...treasuryNav, moduleName: undefined }]);
 		expect(m!.label).toBe('Kasse-Einstellungen');
+		expect(m!.navHint).toBe('Einstellungen');
+	});
+
+	it('mehrere Seiten eines Moduls heißen nach ihrem Label, Zusatzzeile = Modulname', () => {
+		const members = (label: string, path: string): ModuleNavEntry => ({
+			label,
+			icon: 'settings',
+			path,
+			moduleId: 'members',
+			moduleName: 'Mitglieder',
+			admin: true
+		});
+		const v = moduleAdminEntries([
+			treasuryNav,
+			members('Zusatzfelder', '/modules/members/fields'),
+			members('Löschfristen', '/modules/members/retention')
+		]);
+		expect(v.map((e) => [e.label, e.navHint])).toEqual([
+			['Kasse', 'Einstellungen'],
+			['Zusatzfelder', 'Mitglieder'],
+			['Löschfristen', 'Mitglieder']
+		]);
+		expect(v[1]!.description).toBe('Zusatzfelder des Moduls Mitglieder');
+		expect(v[1]!.keywords).toContain('Mitglieder');
 	});
 });
 

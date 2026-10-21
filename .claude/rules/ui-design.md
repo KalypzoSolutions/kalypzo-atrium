@@ -45,7 +45,7 @@ paths:
   Elemente ohne eigenen Stil, Utility `focus-ring` für native Elemente; Core-Bausteine `focus-visible:ring-ring` (nie `/50`). Skip-Link
   „Zum Inhalt springen“ (`.skip-link`) als erstes Element im `(internal)`-Layout. `prefers-reduced-motion` global in `app.css`
   (Ladekreisel drehen langsam weiter). Ladetexte als Konstanten `BUSY_SAVE` („Speichert …“) & Co. (`layout/busy.ts`).
-- Layout: Sidebar links (`w-56`, Einträge `py-1.5`, Gruppen aufklappbar), Kopfzeile `h-14`, Inhalt in `max-w`-freier
+- Layout: Sidebar links (`w-56`, Einträge `py-1.5`, flache Liste nach `order`, „Administration“ aufklappbar und nach dem Laden zu), Kopfzeile `h-14`, Inhalt in `max-w`-freier
   Spalte mit `p-4…8`. Abstände `space-y-4` (innerhalb) / `space-y-6` (Abschnitte). Raster: `grid gap-4 sm:grid-cols-2 lg:grid-cols-3`.
 - Texte deutsch, du-Ansprache, kurze Sätze. Gendern mit `*` (Teilnehmende*r, Besitzer*in). UI mit echten Umlauten.
 - Formate: `de-DE`, Datum `TT.MM.JJJJ`, Beträge `1.234,50 €` (`formatEuro`), Zeiten `HH:MM`.

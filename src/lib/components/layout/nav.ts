@@ -104,7 +104,7 @@ export function buildAdminNav(
 				label: e.label,
 				href: e.href,
 				icon: e.icon,
-				...(e.id.startsWith('module:') ? { hint: 'Einstellungen' } : {})
+				...(e.navHint ? { hint: e.navHint } : {})
 			}))
 	})).filter((s) => s.items.length > 0);
 	if (!sections.length) return null;
