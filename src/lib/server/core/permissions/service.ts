@@ -17,8 +17,9 @@ export function assertPermissionKey(key: string): void {
 }
 
 /**
- * Wirksame Berechtigungen eines Benutzers: Vereinigung aller Rollen, begrenzt auf
- * Berechtigungen aktiver Module (Core ist immer aktiv).
+ * Wirksame Berechtigungen eines Benutzers: Vereinigung aller Rollen und der direkt am Benutzer
+ * vergebenen Einzelrechte (`user_permission`), begrenzt auf Berechtigungen aktiver Module
+ * (Core ist immer aktiv).
  */
 export async function getUserPermissions(userId: string, tx?: DbOrTx): Promise<Set<string>> {
 	const db = tx ?? getDb();
@@ -39,10 +40,16 @@ export async function getUserPermissions(userId: string, tx?: DbOrTx): Promise<S
 		.innerJoin(schema.rolePermission, eq(schema.rolePermission.roleId, schema.userRoleGrant.roleId))
 		.innerJoin(schema.permission, eq(schema.permission.key, schema.rolePermission.permissionKey))
 		.where(eq(schema.userRoleGrant.userId, userId));
+	// Einzelrechte direkt am Benutzer
+	const direct = await db
+		.select({ key: schema.permission.key, moduleId: schema.permission.moduleId })
+		.from(schema.userPermission)
+		.innerJoin(schema.permission, eq(schema.permission.key, schema.userPermission.permissionKey))
+		.where(eq(schema.userPermission.userId, userId));
 	// Ohne übergebene Transaktion den kurzen Modulstatus-Cache nutzen (#23: je Request eine Query weniger)
 	const enabled = await enabledModuleIds(tx);
 	return new Set(
-		[...rows, ...granted.filter((g) => enabled.has(g.grantModuleId))]
+		[...rows, ...direct, ...granted.filter((g) => enabled.has(g.grantModuleId))]
 			.filter((r) => r.moduleId === 'core' || enabled.has(r.moduleId))
 			.map((r) => r.key)
 	);
@@ -161,6 +168,16 @@ export async function permissionsOfRole(roleId: string, tx?: DbOrTx): Promise<st
 		.from(schema.rolePermission)
 		.where(eq(schema.rolePermission.roleId, roleId));
 	return rows.map((r) => r.key);
+}
+
+/** Direkt am Benutzer vergebene Einzelrechte (ohne Rollen, ohne Filter nach Modulstatus). */
+export async function directPermissionsOfUser(userId: string, tx?: DbOrTx): Promise<string[]> {
+	const db = tx ?? getDb();
+	const rows = await db
+		.select({ key: schema.userPermission.permissionKey })
+		.from(schema.userPermission)
+		.where(eq(schema.userPermission.userId, userId));
+	return rows.map((r) => r.key).sort();
 }
 
 export async function existingKeys(keys: string[], tx?: DbOrTx): Promise<Set<string>> {

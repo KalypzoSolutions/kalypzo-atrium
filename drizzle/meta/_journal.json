@@ -64,6 +64,13 @@
       "when": 1792569600000,
       "tag": "0008_role_system_key",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792656000000,
+      "tag": "0009_user_permission",
+      "breakpoints": true
     }
   ]
 }

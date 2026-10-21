@@ -852,6 +852,7 @@ const OWN_COLUMN: Record<string, string> = {
 	'public.session': 'user_id',
 	'public.user_role': 'user_id',
 	'public.user_role_grant': 'user_id',
+	'public.user_permission': 'user_id',
 	'public.setting': 'scope_id',
 	'public.api_key': 'owner_id'
 };
@@ -1279,12 +1280,15 @@ async function runRestore(a: RunArgs): Promise<void> {
 				const hasBackupRight = async () => {
 					const [has] = await rowsOf(
 						tx,
-						sql`SELECT EXISTS (
+						sql`SELECT (EXISTS (
 							SELECT 1 FROM "public"."user_role" ur
 							LEFT JOIN "public"."role_permission" rp ON rp.role_id = ur.role_id
 							WHERE ur.user_id = ${effectiveUserId}
 								AND (ur.role_id = ${ADMIN_ROLE_ID} OR rp.permission_key = 'core.system.backup')
-						) AS ok`
+						) OR EXISTS (
+							SELECT 1 FROM "public"."user_permission" up
+							WHERE up.user_id = ${effectiveUserId} AND up.permission_key = 'core.system.backup'
+						)) AS ok`
 					);
 					return has?.ok === true || has?.ok === 't';
 				};

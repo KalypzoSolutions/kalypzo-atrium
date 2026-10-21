@@ -5,7 +5,13 @@ import { getDb, schema, type Tx } from '../database/client';
 import { errors } from '../errors';
 import { ADMIN_ROLE_ID } from '../permissions/catalog';
 import { ensureDefaultRole } from '../permissions/default-roles';
-import { assertCanGrant, permissionsOfRole, requirePermission } from '../permissions/service';
+import {
+	assertCanGrant,
+	directPermissionsOfUser,
+	existingKeys,
+	permissionsOfRole,
+	requirePermission
+} from '../permissions/service';
 import { forModule } from '../database/module-db';
 import { sendMail } from '../mail';
 import { allDefinitions } from '../modules/registry';
@@ -26,6 +32,8 @@ export interface UserListItem {
 	twoFactorEnabled: boolean;
 	createdAt: Date;
 	roles: { id: string; name: string }[];
+	/** Einzelrechte, die direkt am Benutzer hängen (zusätzlich zu den Rollen) */
+	permissions: string[];
 	/** Profilbild-Adresse (`/avatar/<id>?v=…`) oder `null` */
 	image: string | null;
 }
@@ -41,6 +49,21 @@ async function rolesByUser(userIds: string[]) {
 		if (!userIds.includes(r.userId)) continue;
 		map.set(r.userId, [...(map.get(r.userId) ?? []), { id: r.id, name: r.name }]);
 	}
+	return map;
+}
+
+async function permissionsByUser(userIds: string[]) {
+	const map = new Map<string, string[]>();
+	if (!userIds.length) return map;
+	const rows = await getDb()
+		.select({
+			userId: schema.userPermission.userId,
+			key: schema.userPermission.permissionKey
+		})
+		.from(schema.userPermission)
+		.where(inArray(schema.userPermission.userId, userIds));
+	for (const r of rows) map.set(r.userId, [...(map.get(r.userId) ?? []), r.key]);
+	for (const list of map.values()) list.sort();
 	return map;
 }
 
@@ -64,7 +87,9 @@ export async function listUsers(
 			.offset(opts.offset ?? 0),
 		db.select({ n: count() }).from(schema.user).where(where)
 	]);
-	const roles = await rolesByUser(rows.map((r) => r.id));
+	const ids = rows.map((r) => r.id);
+	const roles = await rolesByUser(ids);
+	const direct = await permissionsByUser(ids);
 	const items: UserListItem[] = rows.map((u) => ({
 		id: u.id,
 		name: u.name,
@@ -73,6 +98,7 @@ export async function listUsers(
 		twoFactorEnabled: u.twoFactorEnabled,
 		createdAt: u.createdAt,
 		roles: roles.get(u.id) ?? [],
+		permissions: direct.get(u.id) ?? [],
 		image: directoryAvatar(u.id, u.image)
 	}));
 	return { items, total: total?.n ?? 0 };
@@ -83,6 +109,7 @@ export async function getUser(ctx: RequestContext, id: string): Promise<UserList
 	const [u] = await getDb().select().from(schema.user).where(eq(schema.user.id, id));
 	if (!u) throw errors.notFound('Benutzer nicht gefunden');
 	const roles = await rolesByUser([id]);
+	const direct = await permissionsByUser([id]);
 	return {
 		id: u.id,
 		name: u.name,
@@ -91,6 +118,7 @@ export async function getUser(ctx: RequestContext, id: string): Promise<UserList
 		twoFactorEnabled: u.twoFactorEnabled,
 		createdAt: u.createdAt,
 		roles: roles.get(id) ?? [],
+		permissions: direct.get(id) ?? [],
 		image: directoryAvatar(u.id, u.image)
 	};
 }
@@ -117,6 +145,8 @@ export interface CreateUserInput {
 	email: string;
 	password: string;
 	roleIds?: string[];
+	/** Einzelrechte direkt am Benutzer (zusätzlich zu den Rollen) */
+	permissionKeys?: string[];
 }
 
 /**
@@ -155,6 +185,12 @@ export async function createUserUnchecked(
 			await tx
 				.insert(schema.userRole)
 				.values(input.roleIds.map((roleId) => ({ userId: id, roleId })));
+		}
+		const keys = [...new Set(input.permissionKeys ?? [])];
+		if (keys.length) {
+			await tx
+				.insert(schema.userPermission)
+				.values(keys.map((permissionKey) => ({ userId: id, permissionKey })));
 		}
 	});
 	return id;
@@ -209,12 +245,21 @@ export async function createUser(ctx: RequestContext, input: CreateUserInput): P
 		await requirePermission(ctx, 'core.roles.assign');
 		await assertCanAssignRoles(ctx, input.roleIds);
 	}
+	if (input.permissionKeys?.length) {
+		await requirePermission(ctx, 'core.roles.assign');
+		await assertValidPermissionKeys(input.permissionKeys);
+		assertCanGrant(ctx, input.permissionKeys);
+	}
 	if (input.password.length < 12)
 		throw errors.badRequest('Passwort muss mindestens 12 Zeichen lang sein');
 	const id = await createUserUnchecked(input);
 	await auditFromContext(ctx, 'core.user.created', {
 		target: id,
-		metadata: { email: maskEmail(input.email.trim().toLowerCase()), roleIds: input.roleIds ?? [] }
+		metadata: {
+			email: maskEmail(input.email.trim().toLowerCase()),
+			roleIds: input.roleIds ?? [],
+			permissionKeys: [...new Set(input.permissionKeys ?? [])]
+		}
 	});
 	return id;
 }
@@ -307,14 +352,21 @@ export async function updateUser(
 export async function updateUserFull(
 	ctx: RequestContext,
 	id: string,
-	input: { name?: string; email?: string; active?: boolean; roleIds?: string[] }
+	input: {
+		name?: string;
+		email?: string;
+		active?: boolean;
+		roleIds?: string[];
+		permissionKeys?: string[];
+	}
 ): Promise<void> {
-	const { active, roleIds, ...profile } = input;
+	const { active, roleIds, permissionKeys, ...profile } = input;
 	const hasProfile = profile.name !== undefined || profile.email !== undefined;
 	const profilePlan = hasProfile ? await planUserUpdate(ctx, id, profile) : null;
 	if (active !== undefined) await planUserActive(ctx, id, active);
 	const rolesPlan = roleIds ? await planUserRoles(ctx, id, roleIds) : null;
-	if (!profilePlan && active === undefined && !rolesPlan) {
+	const permsPlan = permissionKeys ? await planUserPermissions(ctx, id, permissionKeys) : null;
+	if (!profilePlan && active === undefined && !rolesPlan && !permsPlan) {
 		await requirePermission(ctx, 'core.users.edit');
 		return;
 	}
@@ -322,6 +374,7 @@ export async function updateUserFull(
 		if (profilePlan) await applyUserUpdate(tx, ctx, id, profilePlan);
 		if (active !== undefined) await applyUserActive(tx, ctx, id, active);
 		if (rolesPlan) await applyUserRoles(tx, ctx, id, rolesPlan);
+		if (permsPlan) await applyUserPermissions(tx, ctx, id, permsPlan);
 	});
 	if (profilePlan?.emailChanged) {
 		notifyOldAddress(profilePlan.current.email, profilePlan.current.name, profilePlan.patch.email!);
@@ -492,6 +545,62 @@ async function applyUserRoles(
 	await auditFromContext(
 		ctx,
 		'core.user.roles_changed',
+		{ target: id, metadata: { added: plan.added, removed: plan.removed } },
+		tx
+	);
+}
+
+interface UserPermissionsPlan {
+	unique: string[];
+	added: string[];
+	removed: string[];
+}
+
+async function assertValidPermissionKeys(keys: string[]): Promise<void> {
+	const unique = [...new Set(keys)];
+	const known = await existingKeys(unique);
+	if (unique.some((k) => !known.has(k))) throw errors.badRequest('Unbekannte Berechtigung');
+}
+
+/**
+ * Einzelrechte direkt am Benutzer: gleiche Schutzregeln wie bei Rollen – Recht zum Zuweisen, Zielkonto
+ * höchstens mit eigenen Rechten, nur eigene (und admin-gleiche nur als Administrator*in) vergeben/entziehen,
+ * keine eigenen Rechte entziehen.
+ */
+async function planUserPermissions(
+	ctx: RequestContext,
+	id: string,
+	keys: string[]
+): Promise<UserPermissionsPlan> {
+	await requirePermission(ctx, 'core.roles.assign');
+	await assertCanManageUser(ctx, id);
+	const unique = [...new Set(keys)];
+	await assertValidPermissionKeys(unique);
+	const current = await directPermissionsOfUser(id);
+	const added = unique.filter((k) => !current.includes(k));
+	const removed = current.filter((k) => !unique.includes(k));
+	assertCanGrant(ctx, [...added, ...removed]);
+	if (id === ctx.userId && removed.length) {
+		throw errors.conflict('Du kannst dir eigene Berechtigungen nicht entziehen');
+	}
+	return { unique, added, removed };
+}
+
+async function applyUserPermissions(
+	tx: Tx,
+	ctx: RequestContext,
+	id: string,
+	plan: UserPermissionsPlan
+): Promise<void> {
+	await tx.delete(schema.userPermission).where(eq(schema.userPermission.userId, id));
+	if (plan.unique.length) {
+		await tx
+			.insert(schema.userPermission)
+			.values(plan.unique.map((permissionKey) => ({ userId: id, permissionKey })));
+	}
+	await auditFromContext(
+		ctx,
+		'core.user.permissions_changed',
 		{ target: id, metadata: { added: plan.added, removed: plan.removed } },
 		tx
 	);

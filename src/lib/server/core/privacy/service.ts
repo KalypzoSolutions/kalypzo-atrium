@@ -15,7 +15,7 @@ import { errors } from '../errors';
 import type { DataSubject, SubjectCandidate } from '../modules/types';
 import { allDefinitions } from '../modules/registry';
 import { isModuleEnabled } from '../modules/service';
-import { requirePermission } from '../permissions/service';
+import { directPermissionsOfUser, requirePermission } from '../permissions/service';
 
 export const PRIVACY_PERMISSION = 'core.privacy.export';
 /** Höchstzahl Audit-Einträge im Export (neueste zuerst) */
@@ -119,6 +119,7 @@ async function coreData(userId: string): Promise<Record<string, unknown> | null>
 		.from(schema.userRoleGrant)
 		.innerJoin(schema.role, eq(schema.role.id, schema.userRoleGrant.roleId))
 		.where(eq(schema.userRoleGrant.userId, userId));
+	const directPermissions = await directPermissionsOfUser(userId);
 	const sessions = await db
 		.select({
 			createdAt: schema.session.createdAt,
@@ -172,6 +173,7 @@ async function coreData(userId: string): Promise<Record<string, unknown> | null>
 			updatedAt: iso(u.updatedAt)
 		},
 		roles: roles.map((r) => ({ id: r.id, name: r.name })),
+		directPermissions,
 		rolesFromModules: granted.map((r) => ({ id: r.id, name: r.name, module: r.moduleId })),
 		sessions: sessions.map((s) => ({
 			createdAt: iso(s.createdAt),

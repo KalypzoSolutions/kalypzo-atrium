@@ -4,7 +4,8 @@
 
 - **Berechtigung**: Schlüssel `modul.ressource.aktion` (Regex `^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$`), registriert durch Core oder Module in Tabelle `permission`.
 - **Rolle**: benannte Menge von Berechtigungen (`role`, `role_permission`).
-- **Benutzer**: beliebig viele Rollen (`user_role`); wirksame Rechte = Vereinigung.
+- **Benutzer**: beliebig viele Rollen (`user_role`) und zusätzlich **Einzelrechte direkt am Benutzer** (`user_permission`);
+  wirksame Rechte = Vereinigung aus Rollen, Modul-Verleihungen und Einzelrechten.
 - Nur Berechtigungen **aktiver** Module (und des Core) sind wirksam.
 - Durchsetzung ausschließlich serverseitig (`core.permissions.require`, API-Router, Load/Actions). Die UI blendet nur aus.
 
@@ -76,6 +77,16 @@ Neben manuell zugewiesenen Rollen (`user_role`) können **Module** Rollen verlei
 - Manuelle Rollen bleiben unberührt: Wer eine Rolle manuell **und** über ein Amt hat, behält sie beim Entfernen aus dem Amt.
 - Benutzer- oder Rollenlöschung entfernt die Verleihungen (Fremdschlüssel mit CASCADE).
 - Module ersetzen ihre Verleihungen nur gesammelt über `core.roles.replaceModuleGrants` und prüfen vorher mit `core.roles.assertCanGrant` (siehe unten).
+
+### Einzelrechte am Benutzer
+
+- Verwaltung unter `/admin/users` (Anlegen/Bearbeiten, Abschnitt „Einzelne Berechtigungen“) oder per API
+  (`permissionKeys` bei `POST /users` und `PATCH /users/:id`; `undefined` = unverändert, Liste ersetzt die Menge).
+- Gleiche Regeln wie bei Rollen: Recht `core.roles.assign`, Zielkonto höchstens mit eigenen Rechten (`assertCanManageUser`),
+  nur selbst besessene Rechte vergeben/entziehen, admin-gleiche nur Administrator*innen (`assertCanGrant`), eigene Einzelrechte
+  nicht selbst entziehen (409), unbekannte Schlüssel 400. Änderung atomar mit Name/E-Mail/Status/Rollen; Audit `core.user.permissions_changed`.
+- Modulrechte wirken nur bei aktivem Modul. Benutzer löschen entfernt die Zeilen (CASCADE). Backup/Reset: Bereich `core:users`
+  bzw. Reset-Bereich „Benutzer“; Datenauskunft nennt sie als `directPermissions`.
 
 ## Systemrolle Administrator
 

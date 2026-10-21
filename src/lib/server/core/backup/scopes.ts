@@ -27,7 +27,7 @@ const CORE_SCOPES: Record<CoreScopeKey, CoreScopeDef> = {
 	'core:users': {
 		label: 'Benutzer',
 		description:
-			'Benutzerkonten mit Anmeldedaten, Zwei-Faktor-Einstellungen, persönlichen Einstellungen, Rollenzuweisungen und Profilbildern.',
+			'Benutzerkonten mit Anmeldedaten, Zwei-Faktor-Einstellungen, persönlichen Einstellungen, Rollenzuweisungen, Einzelrechten und Profilbildern.',
 		implies: [{ scope: 'core:api-keys', reason: 'API-Keys gehören zu Benutzerkonten' }],
 		tables: [
 			{ table: 'user' },
@@ -36,6 +36,7 @@ const CORE_SCOPES: Record<CoreScopeKey, CoreScopeDef> = {
 			{ table: 'setting', where: `scope_id <> ''` },
 			{ table: 'user_role' },
 			{ table: 'user_role_grant' },
+			{ table: 'user_permission' },
 			{ table: 'file', where: `module_id = 'core'` }
 		]
 	},

@@ -20,6 +20,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
+	import PermissionPicker from '../_shared/PermissionPicker.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -39,6 +40,8 @@
 	const editUser = $derived(data.users.find((u) => u.id === editUserId) ?? null);
 	let deleteUser = $state<UserRow | null>(null);
 	let editRoleIds = $state<string[]>([]);
+	let editPermissionKeys = $state<string[]>([]);
+	let createPermissionKeys = $state<string[]>([]);
 	let formError = $state('');
 
 	function fmt(d: Date) {
@@ -48,6 +51,7 @@
 	function openEdit(u: UserRow) {
 		editUserId = u.id;
 		editRoleIds = u.roles.map((r) => r.id);
+		editPermissionKeys = [...u.permissions];
 		formError = '';
 		avatarFile = null;
 		editOpen = true;
@@ -109,7 +113,9 @@
 	>
 		{#snippet actions()}
 			{#if data.can.create}
-				<Button onclick={() => ((formError = ''), (createOpen = true))}>Benutzer anlegen</Button>
+				<Button onclick={() => ((formError = ''), (createPermissionKeys = []), (createOpen = true))}
+					>Benutzer anlegen</Button
+				>
 			{/if}
 		{/snippet}
 	</PageHeader>
@@ -152,7 +158,14 @@
 				<Table.Cell>
 					<div class="flex flex-wrap gap-1">
 						{#each u.roles as r (r.id)}<Badge variant="secondary">{r.name}</Badge>{/each}
-						{#if !u.roles.length}<span class="text-muted-foreground">–</span>{/if}
+						{#if u.permissions.length}
+							<Badge variant="outline" title={u.permissions.join(', ')}
+								>+{u.permissions.length} Einzelrecht{u.permissions.length === 1 ? '' : 'e'}</Badge
+							>
+						{/if}
+						{#if !u.roles.length && !u.permissions.length}<span class="text-muted-foreground"
+								>–</span
+							>{/if}
 					</div>
 				</Table.Cell>
 				<Table.Cell>
@@ -253,6 +266,22 @@
 						</label>
 					{/each}
 				</fieldset>
+			{/if}
+			{#if data.can.assign && data.permissions.length}
+				<section class="space-y-2" aria-labelledby="c-perms-title">
+					<h3 id="c-perms-title" class="text-sm font-medium">Einzelne Berechtigungen</h3>
+					<p class="text-xs text-muted-foreground">
+						Zusätzlich zu den Rollen. Du kannst nur Rechte vergeben, die du selbst besitzt.
+					</p>
+					<PermissionPicker
+						permissions={data.permissions}
+						bind:selected={createPermissionKeys}
+						idPrefix="c-perm"
+					/>
+					{#each createPermissionKeys as key (key)}
+						<input type="hidden" name="permissionKeys" value={key} />
+					{/each}
+				</section>
 			{/if}
 			{#if formError}<p class="text-sm text-destructive" role="alert">{formError}</p>{/if}
 			<Dialog.Footer>
@@ -358,6 +387,23 @@
 							{#if !r.assignable && checked}<input type="hidden" name="roleIds" value={r.id} />{/if}
 						{/each}
 					</fieldset>
+				{/if}
+				{#if data.can.assign && data.permissions.length}
+					<input type="hidden" name="permissionsIncluded" value="1" />
+					<section class="space-y-2" aria-labelledby="e-perms-title">
+						<h3 id="e-perms-title" class="text-sm font-medium">Einzelne Berechtigungen</h3>
+						<p class="text-xs text-muted-foreground">
+							Zusätzlich zu den Rollen. Du kannst nur Rechte vergeben, die du selbst besitzt.
+						</p>
+						<PermissionPicker
+							permissions={data.permissions}
+							bind:selected={editPermissionKeys}
+							idPrefix="e-perm"
+						/>
+						{#each editPermissionKeys as key (key)}
+							<input type="hidden" name="permissionKeys" value={key} />
+						{/each}
+					</section>
 				{/if}
 				{#if formError}<p class="text-sm text-destructive" role="alert">{formError}</p>{/if}
 				<Dialog.Footer>

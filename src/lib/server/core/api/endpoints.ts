@@ -90,7 +90,8 @@ export function registerCoreApi(): void {
 				name: z.string().trim().min(1).max(100),
 				email: z.string().trim().email().max(255),
 				password,
-				roleIds: z.array(z.string()).max(50).optional()
+				roleIds: z.array(z.string()).max(50).optional(),
+				permissionKeys: z.array(z.string()).max(500).optional()
 			}),
 			handler: async ({ ctx, body }) => ({ id: await createUser(ctx, body) })
 		}),
@@ -105,7 +106,8 @@ export function registerCoreApi(): void {
 				name: z.string().trim().min(1).max(100).optional(),
 				email: z.string().trim().email().max(255).optional(),
 				active: z.boolean().optional(),
-				roleIds: z.array(z.string()).max(50).optional()
+				roleIds: z.array(z.string()).max(50).optional(),
+				permissionKeys: z.array(z.string()).max(500).optional()
 			}),
 			handler: async ({ ctx, params, body }) => {
 				// atomar: alle Prüfungen vor der ersten Änderung, dann eine Transaktion (#72, 06-08)

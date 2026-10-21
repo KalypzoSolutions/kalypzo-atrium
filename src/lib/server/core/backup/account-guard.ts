@@ -31,6 +31,8 @@ export interface AccountGuardData {
 	userRoles: Map<string, Set<string>>;
 	/** role_id → Rechte; `null`, wenn `role_permission` nicht in der Sicherung ist */
 	rolePermissions: Map<string, Set<string>> | null;
+	/** user_id → direkt vergebene Einzelrechte */
+	userPermissions: Map<string, Set<string>>;
 	truncated: boolean;
 }
 
@@ -41,6 +43,7 @@ export function newAccountGuardData(): AccountGuardData {
 		twoFactorUsers: new Set(),
 		userRoles: new Map(),
 		rolePermissions: null,
+		userPermissions: new Map(),
 		truncated: false
 	};
 }
@@ -51,7 +54,8 @@ export const ACCOUNT_GUARD_TABLES = new Set([
 	'public.account',
 	'public.two_factor',
 	'public.user_role',
-	'public.role_permission'
+	'public.role_permission',
+	'public.user_permission'
 ]);
 
 const bool = (v: unknown) => v === true || v === 't' || v === 'true';
@@ -95,6 +99,13 @@ export function collectAccountRow(data: AccountGuardData, table: string, row: Ro
 				add(data.userRoles, row.user_id, set);
 			}
 			break;
+		case 'public.user_permission':
+			if (typeof row.user_id === 'string' && typeof row.permission_key === 'string') {
+				const set = data.userPermissions.get(row.user_id) ?? new Set<string>();
+				set.add(row.permission_key);
+				add(data.userPermissions, row.user_id, set);
+			}
+			break;
 		case 'public.role_permission':
 			data.rolePermissions ??= new Map();
 			if (typeof row.role_id === 'string' && typeof row.permission_key === 'string') {
@@ -116,8 +127,9 @@ export interface AccountAssessment {
 	blocked?: string;
 }
 
-async function rolesWithBackupRight(roleIds: Set<string>, data: AccountGuardData) {
+async function rolesWithBackupRight(roleIds: Set<string>, data: AccountGuardData, userId: string) {
 	if (roleIds.has(ADMIN_ROLE_ID)) return true;
+	if (data.userPermissions.get(userId)?.has(BACKUP_PERMISSION)) return true;
 	if (data.rolePermissions) {
 		for (const r of roleIds) if (data.rolePermissions.get(r)?.has(BACKUP_PERMISSION)) return true;
 		return false;
@@ -191,7 +203,7 @@ export async function assessAccount(
 			'Ihr Konto ist in der Sicherung deaktiviert. Benutzer lassen sich so nicht wiederherstellen.';
 		return result;
 	}
-	if (!(await rolesWithBackupRight(data.userRoles.get(matchId) ?? new Set(), data))) {
+	if (!(await rolesWithBackupRight(data.userRoles.get(matchId) ?? new Set(), data, matchId))) {
 		result.blocked =
 			'Ihr Konto hat in der Sicherung kein Recht für die Datensicherung. Benutzer lassen sich so nicht wiederherstellen.';
 	}

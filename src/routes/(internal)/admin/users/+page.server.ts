@@ -12,6 +12,12 @@ import { canManageUser } from '$lib/server/core/auth/manage-guard';
 import { isCoreError } from '$lib/server/core/errors';
 import { resolvePageSize } from '$lib/server/core/settings/user-prefs';
 import { listRoles } from '$lib/server/core/permissions/roles';
+import {
+	canGrantPermission,
+	isAdministrator,
+	isPrivilegedPermission,
+	listPermissions
+} from '$lib/server/core/permissions/service';
 import type { PageServerLoad } from './$types';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -37,6 +43,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	});
 	const canSeeRoles = locals.ctx.permissions.has('core.roles.view');
 	const roles = canSeeRoles ? await listRoles(locals.ctx) : [];
+	// Einzelrechte vergibt, wer Rollen zuweisen darf (gleiche Regeln: nur eigene, admin-gleiche nur als Admin)
+	const permissions = locals.ctx.permissions.has('core.roles.assign')
+		? await listPermissions()
+		: [];
 	// Konten mit Rechten, die man selbst nicht hat, sind gesperrt (nur Anzeige; der Server prüft selbst)
 	const users = [];
 	for (const u of items) users.push({ ...u, manageable: await canManageUser(locals.ctx, u.id) });
@@ -52,6 +62,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			// Nur Rollen, deren Rechte der Benutzer selbst besitzt, sind zuweisbar
 			assignable: r.permissions.every((p) => locals.ctx.permissions.has(p))
 		})),
+		permissions: permissions.map((p) => ({
+			key: p.key,
+			moduleId: p.moduleId,
+			description: p.description,
+			grantable: canGrantPermission(locals.ctx, p.key),
+			privileged: isPrivilegedPermission(p.key)
+		})),
+		isAdministrator: isAdministrator(locals.ctx),
 		can: {
 			create: locals.ctx.permissions.has('core.users.create'),
 			edit: locals.ctx.permissions.has('core.users.edit'),
@@ -66,7 +84,8 @@ const createSchema = z.object({
 	name: z.string().trim().min(1, 'Name ist erforderlich').max(100),
 	email: z.string().trim().email('Ungültige E-Mail-Adresse').max(255),
 	password: z.string().min(12, 'Passwort muss mindestens 12 Zeichen lang sein').max(128),
-	roleIds: z.array(z.string()).max(50)
+	roleIds: z.array(z.string()).max(50),
+	permissionKeys: z.array(z.string()).max(500)
 });
 
 const updateSchema = z.object({
@@ -82,7 +101,8 @@ export const actions: Actions = {
 			name: fd.get('name'),
 			email: fd.get('email'),
 			password: fd.get('password'),
-			roleIds: fd.getAll('roleIds').map(String)
+			roleIds: fd.getAll('roleIds').map(String),
+			permissionKeys: fd.getAll('permissionKeys').map(String)
 		});
 		if (!parsed.success) return invalid(parsed.error);
 		try {
@@ -106,7 +126,11 @@ export const actions: Actions = {
 			await updateUserFull(locals.ctx, parsed.data.id, {
 				name: parsed.data.name,
 				email: parsed.data.email,
-				roleIds: fd.get('rolesIncluded') === '1' ? fd.getAll('roleIds').map(String) : undefined
+				roleIds: fd.get('rolesIncluded') === '1' ? fd.getAll('roleIds').map(String) : undefined,
+				permissionKeys:
+					fd.get('permissionsIncluded') === '1'
+						? fd.getAll('permissionKeys').map(String)
+						: undefined
 			});
 			return { success: true, message: 'Benutzer gespeichert' };
 		} catch (e) {

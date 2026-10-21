@@ -124,6 +124,11 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   + `resetUsers(tx, keepUserId)`. Jobs pausiert; Reihenfolge Module → Benutzer → Core → Dateien (`core.storage.purge`) → Einstellungen (Storage/SMTP/Secrets
   bleiben) → Audit (DELETE nur mit `SET LOCAL app.audit_reset = 'on'`, Migration 0005) → Eintrag `core.system.reset`.
 
+## Einzelrechte am Benutzer (2026-10-21)
+- Tabelle `user_permission` (Core-Migration 0009): Rechte direkt am Benutzer zusätzlich zu Rollen; `getUserPermissions` vereinigt sie
+  (Modulrechte nur bei aktivem Modul). Vergabe in `auth/users.ts` (`permissionKeys`, `planUserPermissions`) mit denselben Regeln wie Rollen
+  (`core.roles.assign`, `assertCanGrant`, `assertCanManageUser`). UI `admin/_shared/PermissionPicker.svelte`. Details: `docs/permissions.md`.
+
 ## Freigabe an Principals (2026-10-18)
 - Generische Objekt-Freigabe für Module: Typen in `$lib/sdk/types/sharing.ts` (Client + Server), Logik in `$lib/sdk/server/sharing.ts`
   (über `$lib/sdk/server` exportiert). Principal-Typen `everyone` (ID `*`, „Stamm“), `group` / `member` (aus `members`), `role`, `user`.

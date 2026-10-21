@@ -148,6 +148,24 @@ export const userRole = pgTable(
 );
 
 /**
+ * Einzelne Berechtigungen, die direkt an einem Benutzer hängen (zusätzlich zu seinen Rollen).
+ * Wirksam nur für Core-Rechte und Rechte aktiver Module (siehe `getUserPermissions`).
+ */
+export const userPermission = pgTable(
+	'user_permission',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		permissionKey: text('permission_key')
+			.notNull()
+			.references(() => permission.key, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.permissionKey] })]
+);
+
+/**
  * Rollen, die ein Modul verleiht (z. B. `offices` über Ämter). Getrennt von `user_role`,
  * damit manuelle Zuweisungen unberührt bleiben; wirksam nur bei aktivem Modul.
  */
