@@ -9,11 +9,11 @@
 		class: className,
 		children,
 		showCloseButton = false,
-		sticky = false,
+		sticky = true,
 		...restProps
 	}: WithElementRef<HTMLAttributes<HTMLDivElement>> & {
 		showCloseButton?: boolean;
-		/** Lange Formulare (#71): Fußzeile bleibt beim Scrollen unten im Dialog sichtbar */
+		/** Fußzeile bleibt beim Scrollen unten im Dialog sichtbar (Standard; mobil wichtig für lange Formulare) */
 		sticky?: boolean;
 	} = $props();
 </script>
