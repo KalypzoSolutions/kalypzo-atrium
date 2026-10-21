@@ -31,6 +31,8 @@ export interface AdminEntry {
 	nav?: boolean;
 	/** Reiter innerhalb einer Seite: ID des übergeordneten Eintrags (z. B. `settings`) */
 	parent?: string;
+	/** Kleine Zusatzzeile in der Seitenleiste (Modul-Einträge: „Einstellungen“ bzw. Modulname) */
+	navHint?: string;
 }
 
 export const ADMIN_HOME = { label: 'Übersicht', href: '/admin', icon: 'layout-grid' } as const;
@@ -306,23 +308,30 @@ export function canSeeAdminEntry(permissions: readonly string[], e: AdminEntry):
 	return !e.permission || permissions.includes(e.permission);
 }
 
-/** Module mit eigener Einstellungsseite (`admin: true`) als Einträge im Abschnitt „Module“. */
+/**
+ * Module mit eigener Einstellungsseite (`admin: true`) als Einträge im Abschnitt „Module“. Eine Seite je
+ * Modul heißt wie das Modul („Kasse“); hat ein Modul mehrere, heißen sie nach ihrem Navigationslabel
+ * („Zusatzfelder“) mit dem Modulnamen als Zusatzzeile.
+ */
 export function moduleAdminEntries(navigation: readonly ModuleNavEntry[]): AdminEntry[] {
-	return navigation
-		.filter((n) => n.admin)
-		.map((n) => {
-			const name = n.moduleName ?? n.label;
-			return {
-				id: `module:${n.moduleId}:${n.path}`,
-				section: 'modules' as const,
-				label: name,
-				description: `Einstellungen des Moduls ${name}`,
-				href: n.path,
-				icon: n.icon,
-				keywords: [n.label, n.moduleId, 'Modul-Einstellungen'],
-				nav: true
-			};
-		});
+	const admin = navigation.filter((n) => n.admin);
+	const perModule = new Map<string, number>();
+	for (const n of admin) perModule.set(n.moduleId, (perModule.get(n.moduleId) ?? 0) + 1);
+	return admin.map((n) => {
+		const name = n.moduleName ?? n.label;
+		const several = (perModule.get(n.moduleId) ?? 0) > 1;
+		return {
+			id: `module:${n.moduleId}:${n.path}`,
+			section: 'modules' as const,
+			label: several ? n.label : name,
+			description: several ? `${n.label} des Moduls ${name}` : `Einstellungen des Moduls ${name}`,
+			href: n.path,
+			icon: n.icon,
+			keywords: [n.label, name, n.moduleId, 'Modul-Einstellungen'],
+			nav: true,
+			navHint: several ? name : 'Einstellungen'
+		};
+	});
 }
 
 /** Alle für diese Rechte sichtbaren Einträge (Core + Modul-Einstellungsseiten), Reihenfolge der Registry. */

@@ -37,6 +37,16 @@ export interface ModuleNavigationItem {
 	groupIcon?: string;
 	/** Optional: Eintrag erscheint in der Gruppe „Administration“ (z. B. Modul-Einstellungen) */
 	admin?: boolean;
+	/**
+	 * Optional (nur mit `admin`): Seite ersetzt das generische Formular unter Einstellungen → Module
+	 * (dort erscheint dann nur ein Link)
+	 */
+	settingsPage?: boolean;
+	/**
+	 * Optional: Position in der Seitenleiste über alle Module hinweg (kleiner = weiter oben, ohne Angabe 1000;
+	 * bei gleichem Wert gilt die Reihenfolge der Registrierung)
+	 */
+	order?: number;
 }
 
 export interface ModuleSettingDefinition {

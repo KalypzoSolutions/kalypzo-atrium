@@ -283,10 +283,16 @@ export async function disableModule(ctx: RequestContext, id: string): Promise<vo
 	await def.onDisable?.(ctx);
 }
 
-/** Navigation für aktive Module, gefiltert nach Berechtigungen des Kontexts. */
+/** Ohne `order`: hinter allen sortierten Einträgen. */
+const DEFAULT_NAV_ORDER = 1000;
+
+/**
+ * Navigation für aktive Module, gefiltert nach Berechtigungen des Kontexts und sortiert nach `order`
+ * (stabil, gleicher Wert → Reihenfolge der Registrierung).
+ */
 export async function navigationFor(ctx: RequestContext) {
 	const enabled = await enabledModuleIds();
-	return allDefinitions()
+	const items = allDefinitions()
 		.filter((d) => enabled.has(d.manifest.id))
 		.flatMap((d) =>
 			d.manifest.navigation
@@ -305,4 +311,5 @@ export async function navigationFor(ctx: RequestContext) {
 				)
 				.map((n) => ({ ...n, moduleId: d.manifest.id, moduleName: d.manifest.name }))
 		);
+	return items.sort((a, b) => (a.order ?? DEFAULT_NAV_ORDER) - (b.order ?? DEFAULT_NAV_ORDER));
 }

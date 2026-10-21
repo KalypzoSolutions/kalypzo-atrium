@@ -205,6 +205,11 @@
   (≤ 2000), Sammelaktionen/PDF-Listen bis 2000 IDs (`BULK_MAX_IDS`, `SHEETS_MAX_IDS`; Briefe weiter 100). Details: `module-members.md`. Offen: Laufzeit großer PDF-Listen/Sammelaktionen
   bei ~2000 Personen ungeprüft; E2E und Screenshot-Prüfung der neuen Filterleiste.
 
+- **Sidebar aufgeräumt (2026-10-21)**: flache Liste ohne Gruppen, fest sortiert über `ModuleNavigationItem.order` (Termine, Galerien, Dateien,
+  Bestellungen, Mitglieder, Gruppen, Nachrichten, Aktionen, Ämter, Kasse); Gruppe „Stamm“ entfällt. Zusatzfelder/Löschfristen (`members`) unter
+  Administration › Module (`admin: true`); `settingsPage: true` markiert echte Einstellungsseiten (Kasse) für Einstellungen → Module. „Administration“
+  ist nach jedem Laden zu (Gruppenknopf hervorgehoben, wenn die aktive Seite darin liegt). Rechte filtern wie bisher.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Gruppenleitung (2026-10-21): Rechte **automatisch** über die Leitung einer Gruppe; Leitungen dürfen Dokumente verwalten und PDF-Listen erzeugen,
   **Gesundheitsfelder sehen/bearbeiten**, aber **keine Gruppenzuordnung** ändern und keine Mitglieder anlegen/löschen.

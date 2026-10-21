@@ -97,9 +97,11 @@
 	});
 
 	// Manuell umgeschaltete Gruppen; ohne Eintrag ist eine Gruppe offen, wenn sie die aktive Seite enthält.
+	// Ausnahme Administration: nach dem Laden immer zu (nichts wird gespeichert).
 	let toggled = $state<Record<string, boolean>>({});
+	const containsActive = (items: Link[]) => items.some((i) => i.href === activeHref);
 	const isOpen = (id: string, items: Link[]) =>
-		toggled[id] ?? items.some((i) => i.href === activeHref);
+		toggled[id] ?? (id === ADMIN_ID ? false : containsActive(items));
 
 	const linkClass =
 		'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none';
@@ -122,14 +124,15 @@
 	</a>
 {/snippet}
 
-{#snippet groupButton(id: string, label: string, icon: string, open: boolean)}
+{#snippet groupButton(id: string, label: string, icon: string, open: boolean, active = false)}
 	{@const Icon = iconFor(icon)}
+	<!-- `active`: zugeklappte Gruppe enthält die aktuelle Seite -->
 	<button
 		type="button"
 		aria-expanded={open}
 		aria-controls={`nav-${id}`}
 		onclick={() => (toggled[id] = !open)}
-		class={cn(linkClass, 'w-full justify-between')}
+		class={cn(linkClass, 'w-full justify-between', active && 'bg-accent text-accent-foreground')}
 	>
 		<span class="flex items-center gap-2.5">
 			<Icon class="size-4 shrink-0" aria-hidden="true" />
@@ -148,7 +151,13 @@
 			{@render linkItem(entry.link)}
 		{:else}
 			{@const open = isOpen(entry.id, entry.items)}
-			{@render groupButton(entry.id, entry.label, entry.icon, open)}
+			{@render groupButton(
+				entry.id,
+				entry.label,
+				entry.icon,
+				open,
+				!open && containsActive(entry.items)
+			)}
 			{#if open}
 				<div id={`nav-${entry.id}`} class="flex flex-col gap-0.5">
 					{#each entry.items as item (item.href)}
@@ -161,7 +170,13 @@
 
 	{#if adminNav}
 		{@const open = isOpen(ADMIN_ID, adminLinks)}
-		{@render groupButton(ADMIN_ID, ADMIN_GROUP.label, ADMIN_GROUP.icon, open)}
+		{@render groupButton(
+			ADMIN_ID,
+			ADMIN_GROUP.label,
+			ADMIN_GROUP.icon,
+			open,
+			!open && containsActive(adminLinks)
+		)}
 		{#if open}
 			<div id={`nav-${ADMIN_ID}`} class="flex flex-col gap-0.5">
 				{@render linkItem(adminNav.home, true)}

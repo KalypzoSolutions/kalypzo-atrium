@@ -10,7 +10,7 @@ import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
 import { createRole } from '$lib/server/core/permissions/roles';
 import { registerModule } from '$lib/server/core/modules/registry';
-import { enableModule, syncModules } from '$lib/server/core/modules/service';
+import { enableModule, navigationFor, syncModules } from '$lib/server/core/modules/service';
 import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { handleApiRequest } from '$lib/server/core/api/router';
 import { createApiKey } from '$lib/server/core/api/keys';
@@ -730,5 +730,23 @@ describe('Verlauf und Datenschutz', () => {
 		const after = await data<MessageDetail>(await M('sender', `/messages/${created.id}`));
 		expect(after.attachments.every((a) => a.removed)).toBe(true);
 		await runJobNow(admin, 'messages.resume');
+	});
+});
+
+describe('Seitenleiste', () => {
+	it('sortiert modulübergreifend nach `order`, Konfigurationsseiten nur in der Verwaltung', async () => {
+		const nav = await navigationFor(admin);
+		// Registrierung: members, offices, messages – die Reihenfolge kommt aus `order`
+		expect(nav.filter((n) => !n.admin).map((n) => n.path)).toEqual([
+			'/modules/members',
+			'/modules/members/groups',
+			'/modules/messages',
+			'/modules/offices'
+		]);
+		expect(nav.filter((n) => n.admin).map((n) => n.path)).toEqual([
+			'/modules/members/fields',
+			'/modules/members/retention'
+		]);
+		expect(nav.some((n) => n.group)).toBe(false);
 	});
 });

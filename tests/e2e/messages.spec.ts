@@ -53,13 +53,26 @@ test('Verlauf lädt nur einmal je Aufruf, auch nach mehrfachem Neuladen', async 
 	}
 });
 
-test('Seitenleiste: „Stamm“ nur einmal, Nachrichten darin', async ({ page }) => {
+test('Seitenleiste: flache Liste, Mitglieder vor Nachrichten, Administration zu', async ({
+	page
+}) => {
 	await login(page);
 	await ensureModules(page, ['members', 'messages']);
 	await page.goto('/modules/messages');
-	const nav = page.getByRole('navigation').first();
-	await expect(nav.getByRole('button', { name: 'Stamm' })).toHaveCount(1);
-	await expect(nav.getByRole('link', { name: 'Nachrichten' })).toBeVisible();
+	const nav = page.getByRole('navigation', { name: 'Hauptnavigation' }).first();
+	await expect(nav.getByRole('button', { name: 'Stamm' })).toHaveCount(0);
+	const labels = await nav.getByRole('link').allInnerTexts();
+	const pos = (l: string) => labels.findIndex((t) => t.trim() === l);
+	expect(pos('Mitglieder')).toBeGreaterThan(-1);
+	expect(pos('Mitglieder')).toBeLessThan(pos('Gruppen'));
+	expect(pos('Gruppen')).toBeLessThan(pos('Nachrichten'));
+	// Konfigurationsseiten stehen nur in der (zugeklappten) Administration
+	await expect(nav.getByRole('link', { name: 'Zusatzfelder' })).toHaveCount(0);
+	const adminToggle = nav.getByRole('button', { name: 'Administration' });
+	await expect(adminToggle).toHaveAttribute('aria-expanded', 'false');
+	await adminToggle.click();
+	await expect(nav.getByRole('link', { name: /Zusatzfelder/ })).toBeVisible();
+	await expect(nav.getByRole('link', { name: /Löschfristen/ })).toBeVisible();
 });
 
 test('Neue Nachricht: ein Empfängerfeld, Gruppe als Chip, Aussehen wählbar', async ({ page }) => {

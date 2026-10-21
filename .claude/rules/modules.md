@@ -39,12 +39,14 @@ src/lib/modules/<id>/
 - **Jedes Recht braucht eine Beschreibung** in `manifest.permissionDescriptions` (`{ '<recht>': 'Was es erlaubt' }`, kurz, deutsch);
   wird bei jedem Start übernommen (auch für bestehende Rechte) und unter Administration → Rollen → Berechtigungen (`/admin/roles/permissions`) sowie bei API-Key-Scopes
   angezeigt. Test: `tests/integration/permission-descriptions.test.ts`.
-- Navigation: `{ label, icon, path:'/modules/<id>…', permission, anyPermission?, group?, groupIcon? }`; gleiche `group` = aufklappbare Gruppe.
-  Gleiche `group` wird **modulübergreifend** zu einer Gruppe (z. B. „Stamm“ mit `members` und `messages`, `SidebarNav`); das erste gesetzte `groupIcon` gilt.
+- Navigation: `{ label, icon, path:'/modules/<id>…', permission, anyPermission?, order?, admin?, settingsPage?, group?, groupIcon? }`.
+  Seitenleiste = **flache Liste**, sortiert nach `order` (Nutzerentscheidung 2026-10-21; Werte siehe `docs/module-development.md`: Termine 10 … Kasse 100,
+  ohne Angabe 1000). Konfigurationsseiten mit `admin: true` in die Administration, nicht ins Hauptmenü. `group`/`groupIcon` (aufklappbare Gruppe,
+  modulübergreifend) existiert noch, Fachmodule nutzen es nicht.
   `anyPermission` (eines genügt, ersetzt `permission`) für Seiten mit eingeschränktem Modus (z. B. `members` für Gruppenleitungen).
   Icons stehen in `components/layout/icons.ts` (unbekannt → Box) – neue dort ergänzen.
-  Eigene Einstellungsseite eines Moduls: Navigationseintrag mit `admin: true` → erscheint in der Verwaltung (Abschnitt „Module“, Befehlspalette)
-  und unter Einstellungen → Module als Link; Module ohne eigene Seite bekommen dort automatisch ein Formular aus `settings`.
+  Eintrag mit `admin: true` → erscheint in der Verwaltung (Abschnitt „Module“, Befehlspalette; mehrere Seiten eines Moduls heißen nach ihrem Label).
+  Nur mit zusätzlich `settingsPage: true` ersetzt er unter Einstellungen → Module das automatische Formular aus `settings` durch einen Link (Kasse).
 - **Manifest-Verweise werden beim Start geprüft** (`core/modules/validate.ts` `validateModuleReferences`, aus `syncModules`; #76): Rechte in
   `defaultRoleGrants` müssen im **eigenen** Manifest stehen; `navigation[].permission` und `search.permission|anyPermission` müssen bekannte Rechte
   (Core oder ein registriertes Modul) sein; `resetAreas`-IDs `[a-z][a-z0-9-]*`, eindeutig, nicht leer; `implies` = `<modul>:<bereich>` und bei registriertem

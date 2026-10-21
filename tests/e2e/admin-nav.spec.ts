@@ -46,6 +46,28 @@ test('Seitenleiste: Administration mit Übersicht', async ({ page }) => {
 	await expect(page).toHaveURL(/\/admin$/);
 });
 
+test('Seitenleiste: Administration ist auch auf Verwaltungsseiten nach dem Laden zu', async ({
+	page
+}) => {
+	await login(page);
+	await page.goto('/admin/users');
+	const nav = page.getByRole('navigation', { name: 'Hauptnavigation' }).first();
+	const adminToggle = nav.getByRole('button', { name: 'Administration' });
+	await expect(adminToggle).toHaveAttribute('aria-expanded', 'false');
+	// Zugeklappt markiert der Gruppenknopf die aktive Seite
+	await expect(adminToggle).toHaveClass(/bg-accent/);
+	await adminToggle.click();
+	await expect(adminToggle).toHaveAttribute('aria-expanded', 'true');
+	await expect(nav.getByRole('link', { name: 'Benutzer' })).toHaveAttribute('aria-current', 'page');
+	await page.reload();
+	await expect(
+		page
+			.getByRole('navigation', { name: 'Hauptnavigation' })
+			.first()
+			.getByRole('button', { name: 'Administration' })
+	).toHaveAttribute('aria-expanded', 'false');
+});
+
 test('Suche „smtp“ findet E-Mail-Versand', async ({ page }) => {
 	await login(page);
 	await page.goto('/admin');

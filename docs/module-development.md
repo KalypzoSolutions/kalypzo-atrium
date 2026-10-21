@@ -77,7 +77,12 @@ export default defineModule({
 });
 ```
 
-Navigationseinträge mit gleichem `group` (optional `groupIcon`) erscheinen in der Seitenleiste als aufklappbare Gruppe mit Icon, z. B. `{ label: 'Mitglieder', icon: 'users', path: '/modules/members', group: 'Verwaltung', groupIcon: 'folder' }`. Die Gruppe ist automatisch offen, wenn eine ihrer Seiten aktiv ist.
+Die Seitenleiste ist eine **flache, fest sortierte Liste** (Nutzerentscheidung 2026-10-21): `order` legt die Position über alle Module fest
+(kleiner = weiter oben, ohne Angabe 1000, gleicher Wert → Registrierungsreihenfolge; `navigationFor` sortiert). Vergeben: Termine 10, Galerien 20,
+Dateien 30, Bestellungen 40, Mitglieder 50, Gruppen 60, Nachrichten 70, Aktionen 80, Ämter 90, Kasse 100 – Seiten für alle zuerst, Leitung/Verwaltung
+danach. Konfigurationsseiten gehören nicht ins Hauptmenü, sondern per `admin: true` in die Administration (z. B. Zusatzfelder, Löschfristen).
+`group`/`groupIcon` (aufklappbare Gruppe, modulübergreifend zusammengefasst) gibt es weiterhin, Fachmodule nutzen es aber nicht. Die Gruppe
+„Administration“ ist nach jedem Laden zugeklappt; enthält sie die aktive Seite, ist der Gruppenknopf hervorgehoben.
 
 Validierungen (beim Registrieren, Fehler beenden den Start): ID-Format, SemVer, Berechtigungen im Schema `members.ressource.aktion` mit Präfix der eigenen ID, Einstellungsschlüssel mit Präfix `members.`, Navigationspfade unter `/modules/members`, keine öffentlichen Endpunkte, keine Abhängigkeitszyklen/unbekannten Abhängigkeiten.
 
@@ -397,7 +402,7 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 | `optionalDependencies` | Module, deren Dienste genutzt werden, **wenn** sie aktiv sind (`core.modules.useOptional` → sonst `null`); keine Aktivierungsreihenfolge. Rückkanäle ohne harte Abhängigkeit. | `actions` → `treasury`, Module → `offices` |
 | `permissionDescriptions` | Beschreibung je Recht (Anzeige unter Rollen/Berechtigungen und bei API-Key-Scopes). | `offices`, `files` |
 | `offices` | Amt-Vorlagen `{ key, name, description?, notifications[] }` für das Modul `offices` (siehe „Ämter als Vorlage“). | `treasury` (`kasse`), `orders` (`kaemmerer`) |
-| `navigation[].admin` | `admin: true` stellt den Eintrag in die Gruppe „Administration“ (Abschnitt „Module“ unter `/admin`, Befehlspalette); Einstellungen des Moduls erscheinen dann unter Einstellungen → Module nur als Link. | `treasury` (Kassen-Einstellungen) |
+| `navigation[].admin` | `admin: true` stellt den Eintrag in die Gruppe „Administration“ (Abschnitt „Module“ unter `/admin`, Befehlspalette). Eine Seite je Modul heißt dort wie das Modul (Zusatzzeile „Einstellungen“), mehrere heißen nach ihrem Label (Zusatzzeile = Modulname). Mit zusätzlich `settingsPage: true` ersetzt die Seite das generische Formular: unter Einstellungen → Module erscheint dann nur ein Link. | `treasury` (Kassen-Einstellungen, `settingsPage`), `members` (Zusatzfelder, Löschfristen) |
 | `navigation[].group` / `groupIcon` | Aufklappbare Gruppe in der Seitenleiste (siehe oben). | |
 
 ### `ui.ts` (`ModuleUi`)

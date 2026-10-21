@@ -5,7 +5,7 @@ import { loadFields, saveFields } from '../../_shared/group-form.server';
 import { requirePerm } from '../../_shared/server-utils';
 import type { PageServerLoad } from './$types';
 
-/** Aktive Module mit Einstellungen; `ownPage` = Navigationseintrag mit `admin: true`. */
+/** Aktive Module mit Einstellungen; `ownPage` = Navigationseintrag mit `admin` + `settingsPage`. */
 async function modulesWithSettings() {
 	const enabled = await enabledModuleIds();
 	return allDefinitions()
@@ -15,7 +15,7 @@ async function modulesWithSettings() {
 			name: d.manifest.name,
 			description: d.manifest.description ?? null,
 			keys: (d.settings ?? []).map((s) => s.key),
-			ownPage: d.manifest.navigation.find((n) => n.admin) ?? null
+			ownPage: d.manifest.navigation.find((n) => n.admin && n.settingsPage) ?? null
 		}))
 		.sort((a, b) => a.name.localeCompare(b.name, 'de'));
 }
