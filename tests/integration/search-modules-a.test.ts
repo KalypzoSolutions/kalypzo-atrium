@@ -153,7 +153,8 @@ beforeAll(async () => {
 			'events.event.view',
 			'events.event.create',
 			'galleries.gallery.view',
-			'galleries.gallery.create'
+			'galleries.gallery.create',
+			'galleries.gallery.publish'
 		]
 	});
 	for (const who of ['alice', 'bob']) {
@@ -172,7 +173,8 @@ beforeAll(async () => {
 					'events.event.view',
 					'events.event.create',
 					'galleries.gallery.view',
-					'galleries.gallery.create'
+					'galleries.gallery.create',
+					'galleries.gallery.publish'
 				]
 			})
 		).key;
@@ -269,7 +271,12 @@ beforeAll(async () => {
 	ids.galPublic = await created(
 		'bob',
 		'/galleries/galleries',
-		gallery({ title: 'Öffentlich', description: 'Zeltbilder für alle', visibility: 'public' })
+		gallery({
+			title: 'Öffentlich',
+			description: 'Zeltbilder für alle',
+			visibility: 'public',
+			consentConfirmed: true
+		})
 	);
 });
 

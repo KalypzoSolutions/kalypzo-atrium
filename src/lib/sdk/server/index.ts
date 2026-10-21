@@ -9,9 +9,15 @@ export { core } from '$lib/server/core';
 export type { Core } from '$lib/server/core';
 export { defineEndpoint } from '$lib/server/core/api/registry';
 export { CoreError, errors, isCoreError } from '$lib/server/core/errors';
+export { describeError, errorSummary, isUniqueViolation } from '$lib/server/core/db-errors';
+export type { ErrorDescription } from '$lib/server/core/db-errors';
 export type {
 	ModuleBackupHooks,
 	ModuleBackupRehashHelpers,
+	DataSubject,
+	MemberDeletedInfo,
+	ModuleSubjectExport,
+	SubjectCandidate,
 	ModuleDefinition,
 	ModuleJob,
 	ModuleMigration,
@@ -19,9 +25,17 @@ export type {
 	ResetArea
 } from '$lib/server/core/modules/types';
 export type { Db, Tx } from '$lib/server/core/database/client';
-export type { ApiEndpoint, ApiHandlerArgs } from '$lib/server/core/api/types';
+export type { AnyApiEndpoint, ApiEndpoint, ApiHandlerArgs } from '$lib/server/core/api/types';
 export type * from '$lib/sdk/types';
 export * from './sharing';
+export * from './share-access';
+export * from './db';
+export * from './rate-limits';
+export * from './best-effort';
+export * from './file-response';
+export * from './upload';
+export * from '$lib/sdk/dates';
+export * from '$lib/sdk/csv';
 export type {
 	ImageVariantSpec,
 	ProcessedImage,

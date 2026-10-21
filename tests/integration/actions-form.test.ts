@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
+import { confirmIfNeeded } from '../helpers/registration-optin';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
 import { createRole } from '$lib/server/core/permissions/roles';
@@ -101,9 +102,12 @@ const person = (over: Record<string, unknown> = {}) => ({
 	...over
 });
 
-const submit = (token: string, values: Record<string, unknown>, extra: object = {}) => {
+/** Anmelden und (Double-Opt-in) über den Link aus der Mail bestätigen – wie früher „sofort angemeldet“ */
+const submit = async (token: string, values: Record<string, unknown>, extra: object = {}) => {
 	resetAllForTests();
-	return pub(`/${token}/submit`, { method: 'POST', json: { values, ...extra } });
+	const before = sent.length;
+	const res = await pub(`/${token}/submit`, { method: 'POST', json: { values, ...extra } });
+	return confirmIfNeeded(res, sent, api, before);
 };
 
 beforeAll(async () => {
@@ -130,7 +134,8 @@ beforeAll(async () => {
 
 	const base = ['core.api.manage', 'actions.action.view'];
 	const roles: Record<string, string[]> = {
-		creator: [...base, 'actions.action.create', 'actions.action.delete'],
+		// `members.data.export`: CSV mit Gesundheitsspalten (Ernährung/Allergien/Sonstiges)
+		creator: [...base, 'actions.action.create', 'actions.action.delete', 'members.data.export'],
 		viewer: base
 	};
 	const roleIds: Record<string, string> = {};
@@ -316,7 +321,8 @@ describe('Anmeldeformular: Konfiguration', () => {
 			expect(sent[0]!.to).toBe('eltern@example.test');
 			expect(sent[0]!.subject).toBe('Anmeldebestätigung: Sommerlager "Süd"');
 			expect(sent[0]!.text).toContain('Testbank');
-			expect(sent[0]!.text).toMatch(/\d+,\d{2} €/);
+			// Betrag über formatEuro: geschütztes Leerzeichen vor „€“ (kein Umbruch zwischen Zahl und Währung, #34)
+			expect(sent[0]!.text).toMatch(/\d+,\d{2}\u00a0€/);
 			expect(sent[0]!.text).toContain('DE02 1234 5678 9012 3456 78');
 
 			const list = await data<
@@ -393,17 +399,18 @@ describe('Anmeldeformular: Konfiguration', () => {
 			expect(sent).toHaveLength(0);
 		});
 
-		it('Mailfehler werden abgefangen (emailSent=false)', async () => {
+		it('Mailfehler: ohne Bestätigungs-Mail keine Anmeldung (503, nichts gespeichert)', async () => {
 			failMail = true;
 			try {
-				const out = await data<PublicSubmitResult>(
-					await submit(token, person({ name: 'Lena Ohnemail', birthDate: '2015-01-02' })),
-					201
-				);
-				expect(out.emailSent).toBe(false);
+				const res = await submit(token, person({ name: 'Lena Ohnemail', birthDate: '2015-01-02' }));
+				expect(res.status).toBe(503);
 			} finally {
 				failMail = false;
 			}
+			const list = await data<{ name: string }[]>(
+				await as('owner', `/actions/${actionId}/participants`)
+			);
+			expect(list.some((p) => p.name === 'Lena Ohnemail')).toBe(false);
 		});
 
 		it('Audit der Anmeldung ohne personenbezogene Daten', async () => {

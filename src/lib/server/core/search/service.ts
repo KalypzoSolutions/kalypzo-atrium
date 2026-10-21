@@ -14,10 +14,11 @@ import {
 	type SearchHit,
 	type SearchResponse
 } from '$lib/sdk/types/search';
-import { getDb, schema } from '../database/client';
+import { databaseAllowsParallelQueries, getDb, schema } from '../database/client';
 import { allDefinitions } from '../modules/registry';
 import { enabledModuleIds } from '../modules/state';
 import type { ModuleSearchProvider } from '../modules/types';
+import { isSafeRelativeHref } from '../safe-redirect';
 
 /** `%`, `_` und `\` in LIKE-Mustern wörtlich nehmen */
 export function likePattern(q: string): string {
@@ -26,9 +27,7 @@ export function likePattern(q: string): string {
 
 /** Nur relative App-Pfade zulassen (kein `//host`, kein `javascript:`). */
 export function isSafeHref(href: unknown): href is string {
-	return (
-		typeof href === 'string' && href.startsWith('/') && !href.startsWith('//') && !/\s/.test(href)
-	);
+	return typeof href === 'string' && isSafeRelativeHref(href);
 }
 
 export function normalizeQuery(raw: string | null | undefined): string | null {
@@ -122,16 +121,47 @@ export async function searchEverything(
 		groups.push({ source: 'core', label: 'Verwaltung', hits: clean(core, limit * 2) });
 
 	const enabled = await enabledModuleIds();
-	for (const def of allDefinitions()) {
-		const provider = def.search;
+	const sources = allDefinitions().filter(
+		(def) => def.search && enabled.has(def.manifest.id) && allowed(ctx, def.search)
+	);
+	const runSource = async (def: (typeof sources)[number]): Promise<SearchGroup | null> => {
 		const id = def.manifest.id;
-		if (!provider || !enabled.has(id) || !allowed(ctx, provider)) continue;
 		try {
-			const hits = clean(await provider.run(ctx, query, limit), limit);
-			if (hits.length) groups.push({ source: id, label: def.manifest.name, hits });
+			const hits = clean(await def.search!.run(ctx, query, limit), limit);
+			return hits.length ? { source: id, label: def.manifest.name, hits } : null;
 		} catch (e) {
 			console.error(`[search] Quelle ${id} fehlgeschlagen:`, e);
+			return null;
+		}
+	};
+	if (databaseAllowsParallelQueries()) {
+		// Echter Pool: Quellen gleichzeitig, je Quelle ein Zeitbudget (#68); Reihenfolge bleibt.
+		// Principal-Schlüssel teilen sich die Quellen über das Memo am Kontext (`principalKeysFor`).
+		const results = await Promise.all(sources.map((def) => withBudget(runSource(def), def)));
+		for (const g of results) if (g) groups.push(g);
+	} else {
+		// PGlite / eine Verbindung: strikt nacheinander
+		for (const def of sources) {
+			const g = await runSource(def);
+			if (g) groups.push(g);
 		}
 	}
 	return { query, groups };
+}
+
+/** Zeitbudget je Suchquelle bei paralleler Suche; danach wird die Quelle übersprungen */
+export const SEARCH_SOURCE_BUDGET_MS = 3000;
+
+function withBudget(
+	run: Promise<SearchGroup | null>,
+	def: { manifest: { id: string } }
+): Promise<SearchGroup | null> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const budget = new Promise<null>((resolve) => {
+		timer = setTimeout(() => {
+			console.error(`[search] Quelle ${def.manifest.id} hat das Zeitbudget überschritten`);
+			resolve(null);
+		}, SEARCH_SOURCE_BUDGET_MS);
+	});
+	return Promise.race([run, budget]).finally(() => clearTimeout(timer));
 }

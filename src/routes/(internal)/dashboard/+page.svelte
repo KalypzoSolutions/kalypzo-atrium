@@ -6,7 +6,7 @@
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import Settings2 from '@lucide/svelte/icons/settings-2';
-	import { DashboardCard, EmptyState, PageHeader } from '$lib/components/layout';
+	import { DashboardCard, EmptyState, PageHeader, PageTitle } from '$lib/components/layout';
 	import type { ModuleNavEntry } from '$lib/components/layout/nav';
 	import { Button } from '$lib/components/ui/button';
 	import * as Sheet from '$lib/components/ui/sheet';
@@ -174,7 +174,7 @@
 	}
 </script>
 
-<svelte:head><title>Dashboard - {data.systemName}</title></svelte:head>
+<PageTitle title="Dashboard" />
 
 <PageHeader title={firstName ? `Willkommen, ${firstName}` : 'Willkommen'} description={today}>
 	{#snippet actions()}
@@ -218,7 +218,8 @@
 				{:catch}
 					<DashboardCard
 						title={w.title}
-						error="Diese Kachel konnte nicht geladen werden. Bitte lade die Seite neu."
+						error="Diese Kachel konnte nicht geladen werden."
+						onretry={() => location.reload()}
 					/>
 				{/await}
 			</section>

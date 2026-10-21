@@ -32,7 +32,7 @@
 				<Input id="to" name="to" type="email" required value={email} />
 			</div>
 			<Button type="submit" variant="outline" disabled={busy}>
-				{busy ? 'Sende …' : 'Test-E-Mail senden'}
+				{busy ? 'Sendet …' : 'Test-E-Mail senden'}
 			</Button>
 		</form>
 	</Card.Content>

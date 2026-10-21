@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-16)
+# Projektstand (zuletzt aktualisiert: 2026-10-21)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -141,7 +141,6 @@
   (Push `TreasuryService.upsertOrderInvoice`, Kasse-Migration 0007, Herkunft „Bestellung“); Ausgabe aus dem Lager auch teilweise; Lager mit Fehlmengen und
   Bestellvorschlag; Einkauf mit Teillieferung, Lieferantenrechnung als Auszahlung (`upsertOrderPayable`) mit Bezahlstatus. Amts-Vorlage „Kämmerer*in“
   (Benachrichtigungen neue Bestellung / Fehlmengen), Rolle „Kämmerer*in“ per `defaultRoleGrants`. Details: `rules/module-orders.md`.
-  Bekannt (nicht durch `orders`): E2E `annual-fee.spec.ts` (sucht alten Kassen-Tab „Jahresbeitrag“) und `pdf-lists.spec.ts` (Auswahl leer) schlagen fehl.
 - **Verwaltung unter `/admin` (2026-10-19)**: alle Verwaltungsseiten unter `/admin` (Übersicht mit Abschnitten und Suche, Benutzer, Rollen + Reiter
   Berechtigungen, Einstellungen mit Reitern Allgemein/Design/E-Mail-Versand/E-Mail-Layout/Speicher/KI/PDF/**Module**, Module, API-Keys + Reiter
   API-Übersicht, Audit-Log, Zurücksetzen). Registry `layout/admin-registry.ts` als einzige Quelle für Seitenleiste (Gruppe „Administration“ mit
@@ -184,6 +183,19 @@
   verlinken nur auf den Tab; Termin-Suche ohne Beschreibung; `?payer=` öffnet bei bereits offener Kasse nicht erneut.
 - Modul-Details (Dateien, Datenmodell, Rechte, API, Regeln): `rules/module-members.md`, `rules/module-actions.md`, `rules/module-treasury.md`, `rules/module-events.md`.
 
+- **Audit-Behebung (2026-10-21, Issues #3–#76, Label `audit-2026-10`)**: Sicherheit (Storage-API nur `core.storage.manage`, Schutz vor
+  Rechteausweitung bei Kontoänderungen `assertCanManageUser`, Principal-Suche nur für Teilende ohne E-Mails/Kinder, sharp 0.35 + Magic Bytes +
+  Loader-Sperre, Open-Redirect-Helfer, Auth-Rate-Limits in Form-Actions + `AUTH_RATE_LIMIT_FACTOR`, Client-IP aus `getClientAddress`, SMTP/KI/Storage-
+  Secrets an Ziel gebunden, privilegierte Rechte `PRIVILEGED_PERMISSIONS`, Rollen per `role.system_key` (Migr. 0008), Link-Tokens nur als Hash,
+  Modulverwaltung prüft `core.modules.manage`), Datenschutz (Gesundheitsdaten in Aktionen nur mit `members.data.export` + verschlüsselt, Lösch-Hooks
+  `onUserDeleted`/`onMemberDeleted`, Aufbewahrungsjob `core.housekeeping` (Migr. 0007), Einwilligungen ausgewertet, Double-Opt-in für anonyme
+  Anmeldungen, Datenauskunft `/admin/privacy`, Löschfristen, EXIF-freie Avatare/Gruppenbilder), Betrieb (CI `.github/workflows/ci.yml`, Dependabot,
+  `.gitattributes` + zeilenendenfeste Prüfsummen, Compose-Limits/Backups/MinIO-Trennung, Health mit DB), Kasse (Abgleich nur Job/„Jetzt abgleichen“
+  + gezielt je Aktion, Mahnlauf mit Reservierung, SQL-Pagination, Jahresbeitrag im Hintergrund), Designsystem (Status-Tokens, Guard-Test für alle
+  Module, FormField-ARIA, Lade-/Fehlerzustände, Fokus/Skip-Link), Codequalität (`$lib/sdk/{dates,csv,file-names,iban}`, `sdk/server/{db,upload,
+  share-access,file-response,best-effort}`), ESLint-Modulgrenzen, Tests (Job-Resilienz, Migrations-Upgrades, hooks/REST, optional echtes PostgreSQL
+  über `TEST_DATABASE_URL`). E2E `annual-fee`/`pdf-lists` repariert. Offene Punkte und Entscheidungen: Abschlussbericht der Audit-Behebung.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Programm: Pro-Kopf-Preis wird **aufgerundet** auf volle Euro. Puffer in **Prozent**. Team zahlt einen **Prozentsatz**,
   Rest wird auf die Teilnehmenden umgelegt. Leitende 12–27 zählen beim Zuschuss als Teilnehmende.
@@ -218,6 +230,6 @@
 3. Aufräumen: Git-Initial-Commit, Schema-/Doku-Aktualisierung, ggf. `docs/` um das Modul `actions` ergänzen.
 
 ## Bekannte Eigenheiten
-- Es gibt noch keinen Git-Commit; Branch `master` (Zielbranch `main`).
+- Branches `staging` (Arbeitsbranch, Autodeploy) und `main`; Dokploy deployt bisher ohne CI-Gate (Branch-Protection manuell einrichten).
 - Dokument-/Bild-Upload braucht konfiguriertes S3 (sonst `503 unavailable`) – Demo: MinIO per `docker-compose.demo.yml` (siehe `workflow.md`).
 - Demo-Daten sind Testdaten (Benutzer `tessa@demo.test`, `tom@demo.test`, Aktion „Kopenhagen 2026“).

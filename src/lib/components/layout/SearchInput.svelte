@@ -7,7 +7,7 @@
 
 	let {
 		param = 'search',
-		placeholder = 'Suchen ...',
+		placeholder = 'Suchen …',
 		label = 'Suche',
 		resetParams = ['offset']
 	}: {

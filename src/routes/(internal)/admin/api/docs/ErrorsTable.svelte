@@ -10,7 +10,7 @@
 
 	function statusClass(status: number): string {
 		if (status >= 500) return 'bg-destructive/10 text-destructive dark:bg-destructive/20';
-		return 'bg-amber-500/15 text-amber-700 dark:text-amber-400';
+		return 'bg-warning-muted text-warning';
 	}
 </script>
 

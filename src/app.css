@@ -20,11 +20,25 @@
 	--muted-foreground: oklch(0.45 0 0);
 	--accent: oklch(0.97 0 0);
 	--accent-foreground: oklch(0.205 0 0);
-	--destructive: oklch(0.577 0.245 27.325);
+	--destructive: oklch(0.55 0.22 27);
+	--destructive-foreground: oklch(0.985 0 0);
+	/* Statusfarben: Text/Symbol (`text-success`), volle Fläche mit `-foreground`, getönte Fläche `-muted`, Rand `-border` */
+	--success: oklch(0.5 0.13 150);
+	--success-foreground: oklch(0.985 0 0);
+	--warning: oklch(0.53 0.13 60);
+	--warning-foreground: oklch(0.985 0 0);
+	--info: oklch(0.5 0.13 245);
+	--info-foreground: oklch(0.985 0 0);
+	--status-muted: 10%;
+	--status-border: 40%;
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: var(--accent-color, #2563eb);
+	/* Fokusring (#71): volle Akzentfarbe, 2 px + 2 px Abstand – nie halbtransparent */
+	--focus-ring: var(--ring);
 	--sidebar: oklch(0.985 0 0);
+	/* Native Bedienelemente (Datumsfelder, Scrollleisten, Autofill) im passenden Farbschema */
+	color-scheme: light;
 }
 
 .dark {
@@ -34,8 +48,9 @@
 	--card-foreground: oklch(0.985 0 0);
 	--popover: oklch(0.205 0 0);
 	--popover-foreground: oklch(0.985 0 0);
-	--primary-foreground: oklch(0.985 0 0);
 	--link: color-mix(in oklab, var(--primary) 55%, white);
+	/* dunkel: aufgehellte Akzentfarbe, damit der Fokusring ≥ 3 : 1 gegen den dunklen Grund bleibt */
+	--focus-ring: var(--link);
 	--secondary: oklch(0.269 0 0);
 	--secondary-foreground: oklch(0.985 0 0);
 	--muted: oklch(0.269 0 0);
@@ -43,9 +58,51 @@
 	--accent: oklch(0.269 0 0);
 	--accent-foreground: oklch(0.985 0 0);
 	--destructive: oklch(0.704 0.191 22.216);
+	--destructive-foreground: oklch(0.145 0 0);
+	--success: oklch(0.8 0.16 150);
+	--success-foreground: oklch(0.145 0 0);
+	--warning: oklch(0.83 0.15 80);
+	--warning-foreground: oklch(0.145 0 0);
+	--info: oklch(0.78 0.11 245);
+	--info-foreground: oklch(0.145 0 0);
+	--status-muted: 15%;
+	--status-border: 45%;
 	--border: oklch(1 0 0 / 12%);
 	--input: oklch(1 0 0 / 15%);
 	--sidebar: oklch(0.185 0 0);
+	color-scheme: dark;
+}
+
+/*
+ * Textfarbe auf der Akzentfarbe: hell oder dunkel nach (genäherter) Luminanz, damit auch eine helle
+ * Stammesfarbe (z. B. Gelb) lesbare Primärknöpfe ergibt. Gleiche Regel in TypeScript:
+ * `primaryForeground()` in `ui/color-picker/contrast.ts` (Schwelle 0,18, Test `design-tokens-contrast`).
+ * Ohne Unterstützung relativer Farben bleibt der Text hell (Fallback oben in `:root`).
+ */
+@supports (color: color(from red srgb pow(r, 2) g b / 1)) {
+	:root,
+	[style*='--accent-color'],
+	[data-accent-scope] {
+		--primary-foreground: color(
+			from var(--primary) srgb
+				clamp(
+					0.04,
+					(0.18 - (0.2126 * pow(r, 2.2) + 0.7152 * pow(g, 2.2) + 0.0722 * pow(b, 2.2))) * 1000,
+					0.98
+				)
+				clamp(
+					0.04,
+					(0.18 - (0.2126 * pow(r, 2.2) + 0.7152 * pow(g, 2.2) + 0.0722 * pow(b, 2.2))) * 1000,
+					0.98
+				)
+				clamp(
+					0.04,
+					(0.18 - (0.2126 * pow(r, 2.2) + 0.7152 * pow(g, 2.2) + 0.0722 * pow(b, 2.2))) * 1000,
+					0.98
+				) /
+				1
+		);
+	}
 }
 
 /*
@@ -56,6 +113,7 @@
 [data-accent-scope] {
 	--primary: var(--accent-color, #2563eb);
 	--ring: var(--accent-color, #2563eb);
+	--focus-ring: var(--ring);
 }
 
 @theme inline {
@@ -79,6 +137,29 @@
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-success-muted: color-mix(in oklab, var(--success) var(--status-muted), transparent);
+	--color-success-border: color-mix(in oklab, var(--success) var(--status-border), transparent);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-warning-muted: color-mix(in oklab, var(--warning) var(--status-muted), transparent);
+	--color-warning-border: color-mix(in oklab, var(--warning) var(--status-border), transparent);
+	--color-info: var(--info);
+	--color-info-foreground: var(--info-foreground);
+	--color-info-muted: color-mix(in oklab, var(--info) var(--status-muted), transparent);
+	--color-info-border: color-mix(in oklab, var(--info) var(--status-border), transparent);
+	--color-destructive-muted: color-mix(
+		in oklab,
+		var(--destructive) var(--status-muted),
+		transparent
+	);
+	--color-destructive-border: color-mix(
+		in oklab,
+		var(--destructive) var(--status-border),
+		transparent
+	);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
@@ -87,11 +168,78 @@
 
 @layer base {
 	* {
-		@apply border-border outline-ring/50;
+		@apply border-border outline-ring;
 	}
 	body {
 		@apply bg-background text-foreground antialiased;
 	}
+	/* Sichtbarer Fokus für alle Elemente ohne eigenen Fokusstil (native Buttons, Links …), #71 */
+	:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
+	}
+}
+
+/* Fokusring für native Elemente (gleich wie der Standard oben, auch gegen `outline-none`) */
+@utility focus-ring {
+	&:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
+	}
+}
+
+/* Typografie-Skala (#71): Seitentitel, Abschnittsüberschrift, Kleinschrift (Mindestgröße text-xs) */
+@utility text-title {
+	font-size: var(--text-2xl);
+	line-height: var(--text-2xl--line-height);
+	font-weight: var(--font-weight-semibold);
+	letter-spacing: var(--tracking-tight);
+}
+@utility text-section {
+	font-size: var(--text-lg);
+	line-height: var(--text-lg--line-height);
+	font-weight: var(--font-weight-semibold);
+}
+@utility text-caption {
+	font-size: var(--text-xs);
+	line-height: var(--text-xs--line-height);
+}
+
+/* Reduzierte Bewegung (#71, WCAG 2.3.3): Animationen/Übergänge praktisch abschalten */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+	/* Ladekreisel dürfen sich langsam weiterdrehen, damit „lädt“ erkennbar bleibt */
+	.animate-spin {
+		animation-duration: 1.5s !important;
+		animation-iteration-count: infinite !important;
+	}
+}
+
+/* Skip-Link „Zum Inhalt springen“: nur bei Fokus sichtbar */
+.skip-link {
+	position: absolute;
+	left: 0.5rem;
+	top: 0.5rem;
+	z-index: 100;
+	transform: translateY(-200%);
+	border-radius: var(--radius-md);
+	background: var(--background);
+	color: var(--foreground);
+	padding: 0.5rem 0.75rem;
+	font-size: 0.875rem;
+	font-weight: 500;
+	box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+}
+.skip-link:focus-visible,
+.skip-link:focus {
+	transform: none;
 }
 
 /* ---- Mobil ---------------------------------------------------------------------------- */
@@ -144,7 +292,7 @@
 }
 
 /* Dichte "kompakt" (`<html data-density="compact">`): kleinere Tabellenzeilen und Kartenabstände.
-   Touch-Mindestgroessen (pointer: coarse) bleiben unberuehrt. */
+   Touch-Mindestgrößen (pointer: coarse) bleiben unberührt. */
 [data-density='compact'] [data-slot='table-cell'] {
 	padding-block: 0.25rem;
 }
@@ -214,7 +362,7 @@
 	[data-mobile='cards'] td:not([data-label]) {
 		justify-content: flex-end;
 	}
-	/* abgeschnittene Zellen (truncate/max-w) duerfen in Karten umbrechen */
+	/* abgeschnittene Zellen (truncate/max-w) dürfen in Karten umbrechen */
 	[data-mobile='cards'] td .truncate {
 		white-space: normal;
 		overflow: visible;

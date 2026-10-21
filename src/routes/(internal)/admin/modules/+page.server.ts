@@ -28,6 +28,7 @@ const idSchema = z.object({ id: z.string().min(1).max(40) });
 
 export const actions: Actions = {
 	enable: async ({ request, locals }) => {
+		requirePerm(locals, 'core.modules.manage');
 		const parsed = idSchema.safeParse({ id: (await request.formData()).get('id') });
 		if (!parsed.success) return invalid(parsed.error);
 		try {
@@ -38,6 +39,7 @@ export const actions: Actions = {
 		}
 	},
 	disable: async ({ request, locals }) => {
+		requirePerm(locals, 'core.modules.manage');
 		const parsed = idSchema.safeParse({ id: (await request.formData()).get('id') });
 		if (!parsed.success) return invalid(parsed.error);
 		try {

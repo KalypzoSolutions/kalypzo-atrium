@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { FormField } from '$lib/components/layout';
+	import { FormField, PageTitle } from '$lib/components/layout';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -16,13 +16,13 @@
 	let loading = $state(false);
 </script>
 
-<svelte:head><title>Passwort vergessen</title></svelte:head>
+<PageTitle title="Passwort vergessen" />
 
 <main class="flex min-h-screen items-center justify-center bg-muted/40 p-4">
 	<Card class="w-full max-w-sm">
 		<CardHeader>
-			<CardTitle class="text-xl">Passwort vergessen</CardTitle>
-			<CardDescription>Wir senden Ihnen einen Link zum Zurücksetzen.</CardDescription>
+			<CardTitle level={1} class="text-section">Passwort vergessen</CardTitle>
+			<CardDescription>Wir senden dir einen Link zum Zurücksetzen.</CardDescription>
 		</CardHeader>
 		<CardContent>
 			{#if form?.sent}

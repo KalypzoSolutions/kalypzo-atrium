@@ -15,19 +15,28 @@
  * Filter braucht, werden geparst. Core-Services laufen nie innerhalb der offenen Transaktion (PGlite).
  */
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import { sql, type SQL } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getAuth } from '../auth';
-import { decryptSecret, keyedHash, sha256 } from '../crypto';
-import { getDb, type DbOrTx, type Tx } from '../database/client';
+import { decryptSecret, keyedHash } from '../crypto';
+import { getDb, type Tx } from '../database/client';
 import { CoreError, errors, isCoreError } from '../errors';
 import { pauseJobs, resumeJobs, runJobNow } from '../jobs';
+import { systemContext } from '../auth/context';
 import { allDefinitions, getDefinition } from '../modules/registry';
+import {
+	acceptedMigrationChecksums,
+	coreMigrationIdentifiers,
+	migrationChecksum,
+	readCoreMigrationFiles
+} from '../modules/migration-checksum';
 import { isModuleEnabled, runModuleMigrations } from '../modules/service';
 import { invalidateModuleStateCache } from '../modules/state';
 import { moduleSchemaName } from '../modules/types';
 import { ADMIN_ROLE_ID } from '../permissions/catalog';
+import { isAdministrator } from '../permissions/service';
 import { hit, peek, reset as resetRateLimit } from '../rate-limit';
 import { deleteObjectUnchecked, objectExistsUnchecked, putObjectUnchecked } from '../storage';
 import {
@@ -36,7 +45,7 @@ import {
 	verifyReauth
 } from '../system/maintenance';
 import { moduleDeleteOrder } from '../system/reset-areas';
-import { requireBackupUser } from './access';
+import { ADMIN_ONLY_RESTORE_REASON, ADMIN_ONLY_RESTORE_SCOPES, requireBackupUser } from './access';
 import {
 	ACCOUNT_GUARD_TABLES,
 	assessAccount,
@@ -88,10 +97,9 @@ import {
 	type RunStatus,
 	type TableInfo
 } from './types';
+import { rowsOf, type Row } from '../database/rows';
 
 export { appendUpload, createUpload } from './uploads';
-
-type Row = Record<string, unknown>;
 
 const BACKUP_PW_WINDOW_SEC = 10 * 60;
 const BACKUP_PW_MAX_FAILURES = 10;
@@ -99,10 +107,6 @@ const MAX_JSON_ENTRY = 64 * 1024 * 1024;
 const MAX_USER_REFS = 100_000;
 /** Spalten in Modultabellen, die (vermutlich) Benutzer-IDs enthalten */
 const USER_REF_COLUMN = /^(user_id|created_by|updated_by|owner_id|[a-z0-9_]+_user_id)$/;
-
-async function rowsOf(db: DbOrTx, query: SQL): Promise<Row[]> {
-	return ((await db.execute(query)) as unknown as { rows: Row[] }).rows;
-}
 
 const q = (name: string) => {
 	if (!IDENTIFIER.test(name)) throw new Error(`Ungültiger Bezeichner: ${name}`);
@@ -303,8 +307,18 @@ async function targetCoreMigrations(): Promise<string[]> {
 		sql`SELECT to_regclass('drizzle.__drizzle_migrations') IS NOT NULL AS ok`
 	);
 	if (!(has?.ok === true || has?.ok === 't')) return [];
-	const rows = await rowsOf(getDb(), sql`SELECT hash FROM drizzle.__drizzle_migrations`);
-	return rows.map((r) => String(r.hash));
+	const rows = await rowsOf(
+		getDb(),
+		sql`SELECT hash, created_at FROM drizzle.__drizzle_migrations`
+	);
+	// Gespeicherte Hashes + Zeilenenden-Varianten der lokalen Dateien (Sicherung aus CRLF-/LF-Build)
+	return coreMigrationIdentifiers(
+		rows.map((r) => ({
+			hash: String(r.hash),
+			createdAt: r.created_at == null ? null : Number(r.created_at)
+		})),
+		readCoreMigrationFiles(resolve(process.cwd(), 'drizzle'))
+	);
 }
 
 function whereSql(where: string | undefined): string {
@@ -454,7 +468,11 @@ export async function analyzeBackup(
 			const def = getDefinition(id);
 			modulesTarget[id] = {
 				registered: !!def,
-				migrations: (def?.migrations ?? []).map((m) => ({ name: m.name, checksum: sha256(m.sql) }))
+				migrations: (def?.migrations ?? []).map((m) => ({
+					name: m.name,
+					checksum: migrationChecksum(m.sql),
+					accepted: acceptedMigrationChecksums(m.sql)
+				}))
 			};
 		}
 		const compat = checkCompat(meta, {
@@ -470,6 +488,14 @@ export async function analyzeBackup(
 			account = await assessAccount(userId, data.password, guard);
 			if (account.blocked && compat.scopes['core:users']?.available) {
 				compat.scopes['core:users'] = { available: false, reason: account.blocked };
+			}
+		}
+		// Rechte-relevante Bereiche nur für Administrator*innen (#16)
+		if (!isAdministrator(ctx)) {
+			for (const s of ADMIN_ONLY_RESTORE_SCOPES) {
+				if (compat.scopes[s]?.available) {
+					compat.scopes[s] = { available: false, reason: ADMIN_ONLY_RESTORE_REASON };
+				}
 			}
 		}
 
@@ -707,7 +733,7 @@ export async function executeRestore(
 		}
 		if (!failure) {
 			status.phase = 'Abgleich';
-			await runPostRestoreJobs(ctx, chosen, result);
+			await runPostRestoreJobs(chosen, result);
 			status.state = 'done';
 			status.phase = 'Fertig';
 			status.result = result;
@@ -742,15 +768,12 @@ const POST_RESTORE_JOBS: { module: string; job: string }[] = [
 ];
 
 /** Nach Commit und `resumeJobs`, best-effort (Fehler → Warnung). Nur für wiederhergestellte, aktive Module. */
-async function runPostRestoreJobs(
-	ctx: RequestContext,
-	chosen: string[],
-	result: RestoreResult
-): Promise<void> {
+async function runPostRestoreJobs(chosen: string[], result: RestoreResult): Promise<void> {
 	for (const j of POST_RESTORE_JOBS) {
 		if (!chosen.includes(j.module) || !(await isModuleEnabled(j.module))) continue;
 		try {
-			await runJobNow(ctx, j.job);
+			// Abgleich nach der Wiederherstellung ist Systemarbeit – nicht an core.jobs.manage der Person binden
+			await runJobNow(systemContext('backup-restore'), j.job);
 		} catch (e) {
 			result.warnings.push(
 				`Abgleich ${j.job} konnte nicht ausgeführt werden (${errorText(e)}); er läuft beim nächsten Takt.`
@@ -916,6 +939,12 @@ async function runRestore(a: RunArgs): Promise<void> {
 		tableScopes(t).some((s) => chosenSet.has(s))
 	);
 	status.progress = { done: 0, total: fileKeys.length + dataTables.length + 1 };
+
+	// Bisherige (manuelle) Rollen der ausführenden Person: Ein Restore verleiht nie mehr Rechte als vorher –
+	// statt pauschal die Administrator-Rolle werden nur diese wieder zugeordnet (#16)
+	const ownRoleIds = (
+		await rowsOf(getDb(), sql`SELECT role_id FROM "public"."user_role" WHERE user_id = ${userId}`)
+	).map((r) => String(r.role_id));
 
 	// Alte Objekte (nur Wiederherstellen) vor der Transaktion merken
 	let oldObjectKeys: string[] = [];
@@ -1211,7 +1240,8 @@ async function runRestore(a: RunArgs): Promise<void> {
 					const hook = getDefinition(id)?.backup?.rehash;
 					if (!hook) continue;
 					const purpose = `module:${id}`;
-					await tx.execute(sql.raw(`SET LOCAL search_path TO ${q(moduleSchemaName(id))}, public`));
+					// nur das Modulschema: Hooks dürfen keine Core-Tabellen treffen (#73, 07-07)
+					await tx.execute(sql.raw(`SET LOCAL search_path TO ${q(moduleSchemaName(id))}`));
 					const r = await hook(tx as Tx, {
 						hash: (v) => keyedHash(v, purpose),
 						decrypt: (v) => decryptSecret(v, purpose)
@@ -1238,32 +1268,39 @@ async function runRestore(a: RunArgs): Promise<void> {
 					SELECT ${ADMIN_ROLE_ID}, key FROM "public"."permission" ON CONFLICT DO NOTHING`
 			);
 
-			// Eigenes Konto behält die Datensicherung
+			// Eigenes Konto: nie mehr Rechte als vorher (#16). Fehlt nach dem Wiederherstellen das Recht zur
+			// Datensicherung (oder bleibt das Konto im Fall `kept` erhalten), werden nur die BISHERIGEN Rollen
+			// der Person wieder zugeordnet (soweit es sie noch gibt) – nicht pauschal die Administrator-Rolle.
 			const [exists] = await rowsOf(
 				tx,
 				sql`SELECT EXISTS (SELECT 1 FROM "public"."user" WHERE id = ${effectiveUserId}) AS ok`
 			);
 			if (exists?.ok === true || exists?.ok === 't') {
-				const [has] = await rowsOf(
-					tx,
-					sql`SELECT EXISTS (
-						SELECT 1 FROM "public"."user_role" ur
-						LEFT JOIN "public"."role_permission" rp ON rp.role_id = ur.role_id
-						WHERE ur.user_id = ${effectiveUserId}
-							AND (ur.role_id = ${ADMIN_ROLE_ID} OR rp.permission_key = 'core.system.backup')
-					) AS ok`
-				);
-				const ok = has?.ok === true || has?.ok === 't';
-				if (keepOwn || !ok) {
-					await tx.execute(
-						sql`INSERT INTO "public"."user_role" (user_id, role_id)
-							VALUES (${effectiveUserId}, ${ADMIN_ROLE_ID}) ON CONFLICT DO NOTHING`
+				const hasBackupRight = async () => {
+					const [has] = await rowsOf(
+						tx,
+						sql`SELECT EXISTS (
+							SELECT 1 FROM "public"."user_role" ur
+							LEFT JOIN "public"."role_permission" rp ON rp.role_id = ur.role_id
+							WHERE ur.user_id = ${effectiveUserId}
+								AND (ur.role_id = ${ADMIN_ROLE_ID} OR rp.permission_key = 'core.system.backup')
+						) AS ok`
 					);
-					if (!ok && !keepOwn) {
-						result.warnings.push(
-							'Dem eigenen Konto fehlte nach dem Wiederherstellen das Recht zur Datensicherung; es hat die Administrator-Rolle erhalten.'
+					return has?.ok === true || has?.ok === 't';
+				};
+				if ((keepOwn || !(await hasBackupRight())) && effectiveUserId === userId) {
+					for (const roleId of ownRoleIds) {
+						await tx.execute(
+							sql`INSERT INTO "public"."user_role" (user_id, role_id)
+								SELECT ${userId}, id FROM "public"."role" WHERE id = ${roleId}
+								ON CONFLICT DO NOTHING`
 						);
 					}
+				}
+				if (!(await hasBackupRight())) {
+					result.warnings.push(
+						'Dem eigenen Konto fehlt nach dem Wiederherstellen das Recht zur Datensicherung. Es wurden keine zusätzlichen Rechte vergeben – bitte eine*n Administrator*in um die passende Rolle bitten.'
+					);
 				}
 			}
 

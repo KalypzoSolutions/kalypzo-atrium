@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
+import { settleMails } from '../helpers/settle';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { getAuth } from '$lib/server/core/auth';
 import { contextForUser } from '$lib/server/core/auth/context';
@@ -46,10 +47,8 @@ async function login(email: string, password = PW): Promise<Headers> {
 	return new Headers({ cookie, origin: ORIGIN });
 }
 
-async function flush(): Promise<void> {
-	// Mails werden "fire and forget" gesendet
-	await new Promise((r) => setTimeout(r, 50));
-}
+// Mails werden "fire and forget" gesendet: warten, bis alle laufenden Sendungen fertig sind (#75)
+const flush = settleMails;
 
 async function userByEmail(email: string) {
 	const [u] = await getDb().select().from(schema.user).where(eq(schema.user.email, email));
@@ -83,7 +82,8 @@ beforeAll(async () => {
 			permissions: ['rgtest.thing.view', 'rgtest.thing.edit'],
 			navigation: []
 		},
-		defaultRoleGrants: { Testrolle: ['rgtest.thing.view', 'rgtest.thing.edit', 'rgtest.unknown.x'] }
+		// unbekannte Rechte lehnt `syncModules` ab (validate.ts, #76) – siehe profile-extra.test.ts
+		defaultRoleGrants: { Testrolle: ['rgtest.thing.view', 'rgtest.thing.edit'] }
 	});
 	registerModule({
 		manifest: {

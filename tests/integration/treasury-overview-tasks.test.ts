@@ -14,8 +14,7 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { resetSyncThrottleForTests } from '$lib/modules/treasury/sync';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { RequestContext } from '$lib/sdk/types';
 import type { Account, Overview, OverviewTask } from '$lib/modules/treasury/schemas';
 
@@ -48,7 +47,6 @@ async function data<D>(res: Response, status = 200): Promise<D> {
 }
 
 async function tasks(who = 'kasse'): Promise<OverviewTask[]> {
-	resetSyncThrottleForTests();
 	return (await data<Overview>(await T('/overview', {}, who))).tasks;
 }
 const kinds = (list: OverviewTask[]) => list.map((t) => t.kind);
@@ -69,7 +67,7 @@ beforeAll(async () => {
 	admin = await ctxOf(u!.id);
 	for (const m of ['members', 'actions', 'treasury']) await enableModule(admin, m);
 	admin = await ctxOf(u!.id);
-	setTreasuryTodayForTests('2026-10-16');
+	setTodayForTests('2026-10-16');
 
 	const all = [...admin.permissions].filter((p) => /^(treasury|members|actions)\./.test(p));
 	const roles = {
@@ -92,7 +90,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 

@@ -4,6 +4,12 @@ import QRCode from 'qrcode';
 import { z } from 'zod';
 import { getAuth } from '$lib/server/core/auth';
 import {
+	limitAuthAction,
+	TOO_MANY_ATTEMPTS,
+	type AuthLimitKind
+} from '$lib/server/core/auth/auth-limits';
+import { clientAddress, withClientIp } from '$lib/server/core/auth/client-ip';
+import {
 	AVATAR_MAX_BYTES,
 	removeOwnAvatar,
 	requestEmailChange,
@@ -124,9 +130,22 @@ const passwordSchema = z
 
 const THEME_COOKIE_AGE = 60 * 60 * 24 * 365;
 
+/**
+ * Passwort-/2FA-Actions je IP und je Konto begrenzen (gleiche Werte wie die Better-Auth-Regeln, die
+ * hier nicht greifen). Liefert die Header mit gesetzter Client-IP oder `null` bei Überschreitung.
+ */
+function limitedHeaders(
+	event: { request: Request; locals: App.Locals; getClientAddress(): string },
+	kind: AuthLimitKind
+): Headers | null {
+	const ip = clientAddress(event);
+	if (!limitAuthAction(kind, { ip, target: event.locals.user?.id ?? null }).allowed) return null;
+	return withClientIp(event.request.headers, ip);
+}
+
 export const actions: Actions = {
-	changePassword: async ({ request }) => {
-		const f = await request.formData();
+	changePassword: async (event) => {
+		const f = await event.request.formData();
 		const current = String(f.get('currentPassword') ?? '');
 		const next = String(f.get('newPassword') ?? '');
 		if (next !== String(f.get('confirm') ?? '')) {
@@ -134,6 +153,8 @@ export const actions: Actions = {
 		}
 		const p = passwordSchema.safeParse(next);
 		if (!p.success) return fail(400, { section: 'password', error: p.error.issues[0]?.message });
+		const headers = limitedHeaders(event, 'changePassword');
+		if (!headers) return fail(429, { section: 'password', error: TOO_MANY_ATTEMPTS });
 		try {
 			await getAuth().api.changePassword({
 				body: {
@@ -141,7 +162,7 @@ export const actions: Actions = {
 					newPassword: next,
 					revokeOtherSessions: f.get('revokeOthers') === 'on'
 				},
-				headers: request.headers
+				headers
 			});
 		} catch (e) {
 			return fail(400, {
@@ -152,12 +173,14 @@ export const actions: Actions = {
 		return { section: 'password', success: 'Passwort wurde geändert.' };
 	},
 
-	enable2fa: async ({ request }) => {
-		const f = await request.formData();
+	enable2fa: async (event) => {
+		const f = await event.request.formData();
+		const headers = limitedHeaders(event, 'enableTwoFactor');
+		if (!headers) return fail(429, { section: '2fa', error: TOO_MANY_ATTEMPTS });
 		try {
 			const res = await getAuth().api.enableTwoFactor({
 				body: { password: String(f.get('password') ?? ''), method: 'totp' },
-				headers: request.headers
+				headers
 			});
 			if (!('totpURI' in res)) {
 				return fail(400, { section: '2fa', error: 'Aktivierung fehlgeschlagen.' });
@@ -177,12 +200,14 @@ export const actions: Actions = {
 		}
 	},
 
-	verify2fa: async ({ request }) => {
-		const f = await request.formData();
+	verify2fa: async (event) => {
+		const f = await event.request.formData();
+		const headers = limitedHeaders(event, 'verifyTotp');
+		if (!headers) return fail(429, { section: '2fa', error: TOO_MANY_ATTEMPTS });
 		try {
 			await getAuth().api.verifyTOTP({
 				body: { code: String(f.get('code') ?? '').replace(/\s+/g, '') },
-				headers: request.headers
+				headers
 			});
 		} catch (e) {
 			return fail(400, { section: '2fa', error: authErrorMessage(e, 'Code ungültig.') });
@@ -190,12 +215,14 @@ export const actions: Actions = {
 		return { section: '2fa', success: 'Zwei-Faktor-Authentifizierung ist aktiv.' };
 	},
 
-	disable2fa: async ({ request }) => {
-		const f = await request.formData();
+	disable2fa: async (event) => {
+		const f = await event.request.formData();
+		const headers = limitedHeaders(event, 'disableTwoFactor');
+		if (!headers) return fail(429, { section: '2fa', error: TOO_MANY_ATTEMPTS });
 		try {
 			await getAuth().api.disableTwoFactor({
 				body: { password: String(f.get('password') ?? '') },
-				headers: request.headers
+				headers
 			});
 		} catch (e) {
 			return fail(400, {

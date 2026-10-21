@@ -99,7 +99,7 @@
 
 <div class="space-y-3 {className}">
 	<div class="flex flex-wrap items-center justify-between gap-2">
-		<h2 class="text-lg font-semibold tracking-tight" aria-live="polite">{label}</h2>
+		<h2 class="text-section" aria-live="polite">{label}</h2>
 		<div class="flex items-center gap-1">
 			{#if loading}
 				<span class="text-muted-foreground mr-2 text-xs" role="status">Lädt …</span>
@@ -157,7 +157,7 @@
 							{#if onday}
 								<button
 									type="button"
-									class="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring/50 inline-flex size-6 items-center justify-center rounded-md opacity-0 outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3"
+									class="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring inline-flex size-6 items-center justify-center rounded-md opacity-0 outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3"
 									aria-label="Termin am {formatLongDate(date)} anlegen"
 									onclick={() => onday?.(date)}
 								>
@@ -194,7 +194,7 @@
 								onOpenChange={(o) => (openDay = o ? date : null)}
 							>
 								<Popover.Trigger
-									class="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring/50 absolute left-[3px] z-10 h-5 rounded-md px-1.5 text-left text-xs outline-none focus-visible:ring-3"
+									class="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring absolute left-[3px] z-10 h-5 rounded-md px-1.5 text-left text-xs outline-none focus-visible:ring-3"
 									style="top: {HEAD + MAX_LANES * LANE}rem"
 									aria-label="{hidden} weitere Termine am {formatLongDate(date)}"
 								>
@@ -207,7 +207,7 @@
 											<li>
 												<button
 													type="button"
-													class="hover:bg-muted focus-visible:ring-ring/50 flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm outline-none focus-visible:ring-3"
+													class="hover:bg-muted focus-visible:ring-ring flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm outline-none focus-visible:ring-3"
 													aria-label={describeItem(item)}
 													onclick={() => select(item)}
 												>
@@ -286,7 +286,7 @@
 								<li>
 									<button
 										type="button"
-										class="hover:bg-muted/50 focus-visible:ring-ring/50 flex w-full items-center gap-3 px-3 py-2 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-inset"
+										class="hover:bg-muted/50 focus-visible:ring-ring flex w-full items-center gap-3 px-3 py-2 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-inset"
 										aria-label={describeItem(item)}
 										onclick={() => select(item)}
 									>

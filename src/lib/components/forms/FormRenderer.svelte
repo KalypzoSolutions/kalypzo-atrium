@@ -174,7 +174,7 @@
 								href={f.href}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="text-primary underline underline-offset-2"
+								class="text-link underline underline-offset-2"
 								>{f.linkLabel || 'Mehr erfahren'}<span class="sr-only">
 									(öffnet in neuem Tab)</span
 								></a

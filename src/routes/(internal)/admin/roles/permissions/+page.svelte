@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PageTitle } from '$lib/components/layout';
 	import DataTable from '$lib/components/layout/DataTable.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Table from '$lib/components/ui/table';
@@ -13,11 +14,11 @@
 	});
 </script>
 
-<svelte:head><title>Berechtigungen</title></svelte:head>
+<PageTitle title="Berechtigungen" />
 
 <div class="space-y-6">
 	<div>
-		<h2 class="text-lg font-semibold">Berechtigungen</h2>
+		<h2 class="text-section">Berechtigungen</h2>
 		<p class="text-sm text-muted-foreground">
 			Übersicht aller von Core und Modulen registrierten Berechtigungen (Schema
 			<code>modul.ressource.aktion</code>).

@@ -287,6 +287,17 @@ export const ADMIN_ENTRIES: readonly AdminEntry[] = [
 		permission: 'core.system.backup',
 		keywords: ['Sicherung', 'Backup', 'Export', 'Import', 'Wiederherstellen', 'Umzug'],
 		nav: true
+	},
+	{
+		id: 'privacy',
+		section: 'people',
+		label: 'Datenauskunft',
+		description: 'Alle Daten einer Person exportieren (Auskunft und Datenübertragbarkeit, DSGVO).',
+		href: '/admin/privacy',
+		icon: 'shield',
+		permission: 'core.privacy.export',
+		keywords: ['DSGVO', 'Auskunft', 'Datenschutz', 'Art. 15', 'Art. 20', 'Export', 'Betroffene'],
+		nav: true
 	}
 ];
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
 	import * as Popover from '$lib/components/ui/popover/index.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
@@ -33,6 +34,11 @@
 		invalid?: boolean;
 		class?: string;
 	} = $props();
+
+	// Hinweis/Fehler des umgebenden FormField (#51); Kinder bekommen den Kontext nicht erneut
+	const field = claimFieldContext();
+	const fieldOwn = $derived(appliesTo(field, id) ? field : null);
+	const isInvalid = $derived(invalid || !!fieldOwn?.invalid);
 
 	const uid = $props.id();
 	const listId = `${uid}-list`;
@@ -106,8 +112,8 @@
 <div
 	data-slot="multi-select"
 	class={cn(
-		'border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex min-h-8 w-full min-w-0 items-center rounded-lg border bg-transparent text-sm transition-colors focus-within:ring-3',
-		invalid &&
+		'border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring flex min-h-8 w-full min-w-0 items-center rounded-lg border bg-transparent text-sm transition-colors focus-within:ring-3',
+		isInvalid &&
 			'border-destructive ring-destructive/20 dark:ring-destructive/40 dark:border-destructive/50 ring-3',
 		disabled && 'pointer-events-none opacity-50',
 		className
@@ -124,7 +130,7 @@
 						type="button"
 						{disabled}
 						aria-label={`${chip.label} entfernen`}
-						class="hover:bg-foreground/10 focus-visible:ring-ring/50 inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:ring-2"
+						class="hover:bg-foreground/10 focus-visible:ring-ring inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:ring-2"
 						onclick={() => remove(chip.value)}
 					>
 						<XIcon class="size-3" />
@@ -145,7 +151,9 @@
 			aria-expanded={open}
 			aria-haspopup="listbox"
 			aria-controls={open ? listId : undefined}
-			aria-invalid={invalid ? 'true' : undefined}
+			aria-invalid={isInvalid ? 'true' : undefined}
+			aria-describedby={fieldOwn?.describedby}
+			aria-required={fieldOwn?.required || undefined}
 			class="flex min-h-8 min-w-8 flex-1 cursor-pointer items-center justify-between gap-1 self-stretch rounded-lg px-2 text-left outline-none"
 		>
 			{#if selected.length === 0}
@@ -229,7 +237,7 @@
 				<button
 					type="button"
 					disabled={value.length === 0}
-					class="text-foreground focus-visible:ring-ring/50 rounded-sm outline-none hover:underline focus-visible:ring-2 disabled:no-underline disabled:opacity-50"
+					class="text-foreground focus-visible:ring-ring rounded-sm outline-none hover:underline focus-visible:ring-2 disabled:no-underline disabled:opacity-50"
 					onclick={() => commit([])}
 				>
 					Alle abwählen

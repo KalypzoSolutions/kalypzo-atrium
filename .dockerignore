@@ -1,5 +1,6 @@
 node_modules
 .git
+.github
 .svelte-kit
 build
 .env
@@ -8,7 +9,16 @@ build
 tests
 playwright-report
 test-results
+coverage
+.data
 .idea
 .vscode
+# Werkzeug-/Doku-Dateien gehören nicht ins Image (kleinerer Kontext, kein Cache-Bruch bei Doku-Änderungen)
+.claude
+docs
+scripts
+deploy
+*.md
+docker-compose*.yml
 # Stammeswebsite: eigenes Image (website/Dockerfile)
 website

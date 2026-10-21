@@ -1,21 +1,26 @@
 # Lokale Entwicklung: nur Infrastruktur (PostgreSQL + MinIO). Die App laeuft per `npm run dev`.
+# Ports nur auf 127.0.0.1 (Issue #74): Docker umgeht sonst die Host-Firewall und stellt die DB ins WLAN.
+# Hinweis: `minio/minio` wird nicht mehr auf Docker Hub veroeffentlicht; `bitnamilegacy/minio` ist eingefroren
+# (nur fuer lokale Entwicklung). Daten des frueheren Images (Volume `dev-minio`) sind damit nicht mehr eingebunden.
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
     environment:
       POSTGRES_DB: ep_intern
       POSTGRES_USER: ep_intern
       POSTGRES_PASSWORD: dev-password
-    ports: ['5432:5432']
+    ports: ['127.0.0.1:5432:5432']
     volumes: [dev-db:/var/lib/postgresql/data]
   minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5@sha256:6dabb4a2088c9a79908de3bc05f4586c23ad2182c8908e7e3acbf61c1467fb20
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-    ports: ['9000:9000', '9001:9001']
-    volumes: [dev-minio:/data]
+      MINIO_DEFAULT_BUCKETS: ep-intern-dev
+      MINIO_API_PORT_NUMBER: '9000'
+      MINIO_CONSOLE_PORT_NUMBER: '9001'
+    ports: ['127.0.0.1:9000:9000', '127.0.0.1:9001:9001']
+    volumes: [dev-minio-data:/bitnami/minio/data]
 volumes:
   dev-db:
-  dev-minio:
+  dev-minio-data:

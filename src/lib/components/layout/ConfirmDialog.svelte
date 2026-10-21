@@ -43,10 +43,7 @@
 		</AlertDialogHeader>
 		<AlertDialogFooter>
 			<AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
-			<AlertDialogAction
-				class={destructive ? 'bg-destructive text-white hover:bg-destructive/90' : ''}
-				onclick={confirm}
-			>
+			<AlertDialogAction variant={destructive ? 'destructive-solid' : 'default'} onclick={confirm}>
 				{confirmLabel}
 			</AlertDialogAction>
 		</AlertDialogFooter>

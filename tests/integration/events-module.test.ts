@@ -70,6 +70,7 @@ describe('Modul events (Smoke)', () => {
 		expect(perms.map((p) => p.key).sort()).toEqual([
 			'events.event.create',
 			'events.event.edit-all',
+			'events.event.publish',
 			'events.event.view',
 			'events.event.view-all',
 			'events.website.read'

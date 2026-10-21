@@ -9,13 +9,56 @@ import { logAudit } from '../audit/service';
 import { getDb, schema } from '../database/client';
 import { env } from '../env';
 import { sendMail } from '../mail';
-import { maskEmail } from './mask-email';
+import { maskEmail, maskEmailInput } from './mask-email';
 import { peek, reset, hit } from '../rate-limit';
 import { getSetting } from '../settings/service';
+import {
+	LOGIN_GLOBAL_MAX_FAILURES,
+	LOGIN_MAX_FAILURES,
+	LOGIN_WINDOW_SEC,
+	betterAuthCustomRules,
+	loginGlobalKey,
+	loginPairKey
+} from './auth-limits';
+import { CLIENT_IP_HEADER, currentClientIp } from './client-ip';
 
-/** Brute-Force-Schutz: pro Konto (E-Mail) und IP */
-const LOGIN_MAX_FAILURES = 5;
-const LOGIN_WINDOW_SEC = 15 * 60;
+/** Payload eines Bestätigungs-Tokens (JWT) lesen, ohne Prüfung – nur zur Unterscheidung der Abläufe. */
+function verificationPayload(token: string | null | undefined): {
+	email?: string;
+	updateTo?: string;
+} {
+	try {
+		const payload = JSON.parse(
+			Buffer.from(String(token ?? '').split('.')[1] ?? '', 'base64url').toString()
+		);
+		return payload && typeof payload === 'object' ? payload : {};
+	} catch {
+		return {};
+	}
+}
+
+/**
+ * Hinweis an die Kontoinhaber*in, wenn ein Konto wegen sehr vieler Fehlversuche (aus vielen IPs)
+ * für alle gesperrt wird. Höchstens eine Mail je Sperrfenster; Fehler werden nur geloggt.
+ */
+async function notifyAccountLocked(email: string): Promise<void> {
+	if (!hit(`login-locked-notice:${email}`, 1, LOGIN_WINDOW_SEC).allowed) return;
+	try {
+		const [u] = await getDb()
+			.select({ name: schema.user.name, active: schema.user.active })
+			.from(schema.user)
+			.where(eq(schema.user.email, email));
+		if (!u?.active) return;
+		const name = await getSetting<string>('core.system.name');
+		await sendMail({
+			to: email,
+			subject: `${name}: Anmeldung vorübergehend gesperrt`,
+			text: `Hallo ${u.name},\n\nfür dein Konto gab es in kurzer Zeit sehr viele fehlgeschlagene Anmeldeversuche. Die Anmeldung ist deshalb für etwa ${LOGIN_WINDOW_SEC / 60} Minuten für alle gesperrt.\n\nWarst du das nicht, ändere nach Ablauf der Sperre bitte dein Passwort, aktiviere die Zwei-Faktor-Authentifizierung und melde dich bei der Administration.`
+		});
+	} catch (err) {
+		console.error('[mail] Hinweis zur Kontosperre fehlgeschlagen:', (err as Error)?.message);
+	}
+}
 
 function createAuth(opts: { sveltekitCookies: boolean }) {
 	const e = env();
@@ -51,7 +94,7 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 				void sendMail({
 					to: user.email,
 					subject: `${name}: Passwort zurücksetzen`,
-					text: `Hallo ${user.name},\n\nueber den folgenden Link können Sie Ihr Passwort zurücksetzen (1 Stunde gültig):\n${url}\n\nWenn Sie das nicht angefordert haben, ignorieren Sie diese Nachricht.`
+					text: `Hallo ${user.name},\n\nüber den folgenden Link kannst du dein Passwort zurücksetzen (1 Stunde gültig):\n${url}\n\nWenn du das nicht angefordert hast, ignoriere diese Nachricht einfach.`
 				}).catch((err) => console.error('[mail] Passwort-Reset fehlgeschlagen:', err?.message));
 			},
 			resetPasswordTokenExpiresIn: 60 * 60
@@ -62,16 +105,24 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 			expiresIn: 60 * 60,
 			afterEmailVerification: async (user, request) => {
 				// Alte Adresse aus dem (bereits geprüften) Token lesen; nur maskiert protokollieren
-				let from = '';
+				let token = '';
 				try {
-					const token = new URL(request?.url ?? '', 'http://x').searchParams.get('token') ?? '';
-					const payload = JSON.parse(
-						Buffer.from(token.split('.')[1] ?? '', 'base64url').toString()
-					);
-					from = typeof payload.email === 'string' ? maskEmail(payload.email) : '';
+					token = new URL(request?.url ?? '', 'http://x').searchParams.get('token') ?? '';
 				} catch {
 					/* ohne Angabe */
 				}
+				const payload = verificationPayload(token);
+				if (!payload.updateTo) {
+					// Bestätigung eines selbst registrierten Kontos (Verknüpfungsbrief): ab jetzt Anmeldung möglich
+					await logAudit({
+						action: 'core.auth.email_verified',
+						actor: { type: 'user', id: user.id, name: maskEmail(user.email) },
+						target: user.id,
+						ip: currentClientIp(request?.headers)
+					});
+					return;
+				}
+				const from = typeof payload.email === 'string' ? maskEmail(payload.email) : '';
 				// Nach dem Wechsel alle ANDEREN Sessions beenden (wie beim Admin-Pfad)
 				let revoked = 0;
 				try {
@@ -97,8 +148,22 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 					metadata: { from, to: maskEmail(user.email), otherSessionsRevoked: revoked }
 				});
 			},
-			sendVerificationEmail: async ({ user, url }) => {
+			sendVerificationEmail: async ({ user, url, token }) => {
 				const name = await getSetting<string>('core.system.name');
+				if (!verificationPayload(token).updateTo) {
+					// Neues, selbst registriertes Konto: erst nach Bestätigung ist die Anmeldung möglich
+					void sendMail({
+						to: user.email,
+						subject: `${name}: E-Mail-Adresse bestätigen`,
+						text: `Hallo ${user.name},
+
+bitte bestätige mit dem folgenden Link deine E-Mail-Adresse (1 Stunde gültig). Erst danach kannst du dich anmelden:
+${url}
+
+Wenn du kein Konto angelegt hast, ignoriere diese Nachricht.`
+					}).catch((err) => console.error('[mail] Kontobestätigung fehlgeschlagen:', err?.message));
+					return;
+				}
 				void sendMail({
 					to: user.email,
 					subject: `${name}: Neue E-Mail-Adresse bestätigen`,
@@ -126,17 +191,13 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 			window: 60,
 			max: 100,
 			storage: 'memory',
-			customRules: {
-				'/sign-in/email': { window: 60, max: 10 },
-				'/request-password-reset': { window: 300, max: 5 },
-				'/two-factor/verify-totp': { window: 60, max: 10 },
-				'/change-email': { window: 300, max: 5 },
-				'/update-user': { window: 300, max: 20 }
-			}
+			// Gemeinsame Werte mit den Form-Actions (`auth-limits.ts`)
+			customRules: betterAuthCustomRules()
 		},
 		advanced: {
 			useSecureCookies: secure,
-			ipAddress: { ipAddressHeaders: ['x-forwarded-for', 'x-real-ip'] },
+			// Nur der von `hooks.server.ts` gesetzte Header (= `event.getClientAddress()`), nie X-Forwarded-For
+			ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] },
 			defaultCookieAttributes: { httpOnly: true, sameSite: 'lax', secure }
 		},
 		databaseHooks: {
@@ -144,11 +205,32 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 				create: {
 					before: async (session) => {
 						const [u] = await getDb()
-							.select({ active: schema.user.active })
+							.select({
+								active: schema.user.active,
+								emailVerified: schema.user.emailVerified,
+								email: schema.user.email
+							})
 							.from(schema.user)
 							.where(eq(schema.user.id, session.userId));
 						if (!u?.active) {
 							throw new APIError('FORBIDDEN', { message: 'Konto ist deaktiviert' });
+						}
+						// Selbst registrierte Konten erst nach Bestätigung der Adresse (greift nach der Passwortprüfung)
+						if (!u.emailVerified) {
+							// Neuer Bestätigungslink (höchstens einer je 5 min); das Passwort war richtig
+							if (hit(`verify-resend:${session.userId}`, 1, 300).allowed) {
+								void getAuth()
+									.api.sendVerificationEmail({
+										body: { email: u.email, callbackURL: '/login?verified=1' }
+									})
+									.catch((err) =>
+										console.error('[auth] Bestätigungslink nicht versendet:', err?.message)
+									);
+							}
+							throw new APIError('FORBIDDEN', {
+								message: 'E-Mail-Adresse ist noch nicht bestätigt',
+								code: 'EMAIL_NOT_VERIFIED'
+							});
 						}
 					}
 				}
@@ -164,8 +246,11 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 						message: 'Diese Änderung ist nur über das Profil möglich.'
 					});
 				}
-				// Bestätigungslink ohne gültige Session: keine Anmeldung über den Link (2FA-Umgehung)
+				// E-Mail-Wechsel-Link ohne gültige Session: keine Anmeldung über den Link (2FA-Umgehung).
+				// Bestätigung eines neuen Kontos (Token ohne `updateTo`) erzeugt keine Session und bleibt offen.
 				if (ctx.path === '/verify-email') {
+					const token = (ctx.query as { token?: string } | undefined)?.token;
+					if (!verificationPayload(token).updateTo) return;
 					const session = await getSessionFromCtx(ctx);
 					if (!session) throw ctx.redirect('/login');
 					return;
@@ -174,37 +259,63 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 				const email = String((ctx.body as { email?: string } | undefined)?.email ?? '')
 					.trim()
 					.toLowerCase();
-				if (email && peek(`login:${email}`, LOGIN_WINDOW_SEC) >= LOGIN_MAX_FAILURES) {
+				const ip = currentClientIp(ctx.headers ?? ctx.request?.headers);
+				// Sperre je (E-Mail, IP); für alle IPs erst ab der deutlich höheren globalen Schwelle
+				const pair = email ? peek(loginPairKey(email, ip), LOGIN_WINDOW_SEC) : 0;
+				const global = email ? peek(loginGlobalKey(email), LOGIN_WINDOW_SEC) : 0;
+				if (pair >= LOGIN_MAX_FAILURES || global >= LOGIN_GLOBAL_MAX_FAILURES) {
 					await logAudit({
 						action: 'core.auth.login_blocked',
-						actor: { type: 'user', id: null, name: email },
-						metadata: { reason: 'too_many_failures' }
+						actor: { type: 'user', id: null, name: maskEmailInput(email) },
+						ip,
+						metadata: {
+							reason: 'too_many_failures',
+							scope: global >= LOGIN_GLOBAL_MAX_FAILURES ? 'account' : 'ip'
+						}
 					});
+					if (global >= LOGIN_GLOBAL_MAX_FAILURES) await notifyAccountLocked(email);
 					throw new APIError('TOO_MANY_REQUESTS', {
 						message: 'Zu viele fehlgeschlagene Anmeldeversuche. Bitte später erneut versuchen.'
 					});
 				}
 			}),
 			after: createAuthMiddleware(async (ctx) => {
-				const ip = ctx.headers?.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+				const ip = currentClientIp(ctx.headers ?? ctx.request?.headers);
 				if (ctx.path === '/sign-in/email') {
 					const email = String((ctx.body as { email?: string } | undefined)?.email ?? '')
 						.trim()
 						.toLowerCase();
 					const session = ctx.context.newSession;
 					if (session) {
-						reset(`login:${email}`);
+						// Mit 2FA ist die Anmeldung erst mit dem Code vollständig (Protokoll und Zähler dort)
+						if ((session.user as { twoFactorEnabled?: boolean | null }).twoFactorEnabled) return;
+						reset(loginPairKey(email, ip));
 						await logAudit({
 							action: 'core.auth.login',
-							actor: { type: 'user', id: session.user.id, name: session.user.email },
+							actor: { type: 'user', id: session.user.id, name: maskEmail(session.user.email) },
 							ip
 						});
 					} else if (email) {
-						hit(`login:${email}`, 1000, LOGIN_WINDOW_SEC);
+						hit(loginPairKey(email, ip), 1000, LOGIN_WINDOW_SEC);
+						hit(loginGlobalKey(email), 1000, LOGIN_WINDOW_SEC);
 						await logAudit({
 							action: 'core.auth.login_failed',
-							actor: { type: 'user', id: null, name: email },
+							actor: { type: 'user', id: null, name: maskEmailInput(email) },
 							ip
+						});
+					}
+				} else if (
+					ctx.path === '/two-factor/verify-totp' ||
+					ctx.path === '/two-factor/verify-backup-code'
+				) {
+					const session = ctx.context.newSession;
+					if (session) {
+						reset(loginPairKey(session.user.email.toLowerCase(), ip));
+						await logAudit({
+							action: 'core.auth.login',
+							actor: { type: 'user', id: session.user.id, name: maskEmail(session.user.email) },
+							ip,
+							metadata: { twoFactor: true }
 						});
 					}
 				} else if (ctx.path === '/sign-out') {
@@ -217,7 +328,11 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 					const s = ctx.context.session ?? ctx.context.newSession;
 					await logAudit({
 						action: 'core.auth.password_changed',
-						actor: { type: 'user', id: s?.user.id ?? null, name: s?.user.email ?? '-' },
+						actor: {
+							type: 'user',
+							id: s?.user.id ?? null,
+							name: s?.user.email ? maskEmail(s.user.email) : '-'
+						},
 						ip
 					});
 				}

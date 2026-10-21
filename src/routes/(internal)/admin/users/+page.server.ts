@@ -5,10 +5,10 @@ import {
 	deleteUser,
 	listUsers,
 	setUserActive,
-	setUserRoles,
-	updateUser
+	updateUserFull
 } from '$lib/server/core/auth/users';
 import { AVATAR_MAX_BYTES, removeUserAvatar, setUserAvatar } from '$lib/server/core/auth/profile';
+import { canManageUser } from '$lib/server/core/auth/manage-guard';
 import { isCoreError } from '$lib/server/core/errors';
 import { resolvePageSize } from '$lib/server/core/settings/user-prefs';
 import { listRoles } from '$lib/server/core/permissions/roles';
@@ -37,8 +37,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	});
 	const canSeeRoles = locals.ctx.permissions.has('core.roles.view');
 	const roles = canSeeRoles ? await listRoles(locals.ctx) : [];
+	// Konten mit Rechten, die man selbst nicht hat, sind gesperrt (nur Anzeige; der Server prüft selbst)
+	const users = [];
+	for (const u of items) users.push({ ...u, manageable: await canManageUser(locals.ctx, u.id) });
 	return {
-		users: items,
+		users,
 		total,
 		page,
 		pageSize: PAGE_SIZE,
@@ -99,13 +102,12 @@ export const actions: Actions = {
 		});
 		if (!parsed.success) return invalid(parsed.error);
 		try {
-			await updateUser(locals.ctx, parsed.data.id, {
+			// atomar: scheitert die Rollenänderung, bleiben auch Name/E-Mail unverändert (#72, 06-08)
+			await updateUserFull(locals.ctx, parsed.data.id, {
 				name: parsed.data.name,
-				email: parsed.data.email
+				email: parsed.data.email,
+				roleIds: fd.get('rolesIncluded') === '1' ? fd.getAll('roleIds').map(String) : undefined
 			});
-			if (fd.get('rolesIncluded') === '1') {
-				await setUserRoles(locals.ctx, parsed.data.id, fd.getAll('roleIds').map(String));
-			}
 			return { success: true, message: 'Benutzer gespeichert' };
 		} catch (e) {
 			return toFail(e);

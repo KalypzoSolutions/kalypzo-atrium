@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { csvCell, csvCents } from '$lib/sdk/csv';
 import {
 	addDays,
 	computeDueOn,
-	csvCell,
 	daysBetween,
 	distribute,
 	groupByAddress,
@@ -469,9 +469,11 @@ describe('Mails', () => {
 });
 
 describe('CSV', () => {
-	it('Export schützt vor Formeln, lässt Zahlen in Ruhe', () => {
+	it('Export schützt vor Formeln, Beträge bleiben Zahlen (zentral in $lib/sdk/csv)', () => {
 		expect(csvCell('=SUMME(A1)')).toBe("'=SUMME(A1)");
-		expect(csvCell('-12,50')).toBe('-12,50');
+		expect(csvCell(csvCents(-1250))).toBe('-12,50');
+		// Texte werden immer geschützt – auch wenn sie wie Zahlen aussehen (#34)
+		expect(csvCell('-12,50')).toBe("'-12,50");
 		expect(csvCell('a;b')).toBe('"a;b"');
 	});
 	it('Parser: Anführungszeichen, Umbrüche, BOM', () => {

@@ -14,14 +14,20 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { stat } from 'node:fs/promises';
-import { sql, type SQL } from 'drizzle-orm';
+import { resolve } from 'node:path';
+import { sql } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import { version as APP_VERSION } from '../../../../../package.json';
 import { auditFromContext } from '../audit/service';
 import { getAuth } from '../auth';
-import { getDb, type DbOrTx, type Tx } from '../database/client';
+import { getDb, type Tx } from '../database/client';
 import { env } from '../env';
 import { errors, isCoreError } from '../errors';
+import {
+	canonicalChecksumFor,
+	canonicalCoreMigrationHash,
+	readCoreMigrationFiles
+} from '../modules/migration-checksum';
 import { getDefinition } from '../modules/registry';
 import { readObjectUnchecked } from '../storage';
 import {
@@ -57,12 +63,7 @@ import {
 	type PlannedTable,
 	type TableInfo
 } from './types';
-
-type Row = Record<string, unknown>;
-
-async function rowsOf(db: DbOrTx, query: SQL): Promise<Row[]> {
-	return ((await db.execute(query)) as unknown as { rows: Row[] }).rows;
-}
+import { rowsOf, type Row } from '../database/rows';
 
 // ---------------------------------------------------------------------------
 // Uhr und Download-Speicher
@@ -287,7 +288,33 @@ export async function startBackupExport(
 		]);
 	}
 
-	acquireMaintenanceLock('Datensicherung');
+	const built = await writeBackupFile(userId, {
+		scopes: resolved.scopes,
+		includeFiles: data.includeFiles,
+		backupPassword: data.backupPassword
+	});
+	return registerDownload(ctx, userId, built);
+}
+
+export interface BuiltBackup {
+	path: string;
+	fileName: string;
+	summary: ExportResult['summary'];
+	includeFiles: boolean;
+}
+
+/**
+ * Schreibt eine verschlüsselte Sicherung (`.epbackup`) der bereits aufgelösten Bereiche in eine Temp-Datei.
+ * **Keine** Rechte-/Re-Auth-Prüfung – nur für Core-Aufrufer, die selbst geprüft haben (Datensicherung,
+ * Pflicht-Export vor dem Zurücksetzen). Hält währenddessen die Wartungssperre. Aufrufer löscht die Datei.
+ */
+export async function writeBackupFile(
+	userId: string,
+	data: { scopes: string[]; includeFiles: boolean; backupPassword: string },
+	lockLabel = 'Datensicherung'
+): Promise<BuiltBackup> {
+	const resolved = { scopes: data.scopes };
+	acquireMaintenanceLock(lockLabel);
 	let path: string | null = null;
 	let rawSink: ByteSink | null = null;
 	let summary: ExportResult['summary'];
@@ -345,14 +372,25 @@ export async function startBackupExport(
 					tx,
 					sql`SELECT to_regclass('drizzle.__drizzle_migrations') IS NOT NULL AS ok`
 				);
+				// Zeilenendenunabhängig: Drizzle-Hash (roh, je nach Build CRLF/LF) → kanonischer Hash der
+				// lokalen Datei mit gleichem `created_at`, sofern er eine gültige Variante davon ist.
+				const coreFiles = readCoreMigrationFiles(resolve(process.cwd(), 'drizzle'));
 				const coreMigrations =
 					hasDrizzle?.ok === true || hasDrizzle?.ok === 't'
 						? (
 								await rowsOf(
 									tx,
-									sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at, id`
+									sql`SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at, id`
 								)
-							).map((r) => String(r.hash))
+							).map((r) =>
+								canonicalCoreMigrationHash(
+									{
+										hash: String(r.hash),
+										createdAt: r.created_at == null ? null : Number(r.created_at)
+									},
+									coreFiles
+								)
+							)
 						: [];
 
 				const modules: BackupMeta['modules'] = {};
@@ -366,14 +404,20 @@ export async function startBackupExport(
 						tx,
 						sql`SELECT name, checksum FROM "public"."module_migration" WHERE module_id = ${s} ORDER BY name`
 					);
+					const localSql = new Map(
+						(getDefinition(s)?.migrations ?? []).map((m) => [m.name, m.sql] as const)
+					);
 					modules[s] = {
 						name: getDefinition(s)?.manifest.name ?? s,
 						installedVersion: st?.installed_version == null ? null : String(st.installed_version),
 						enabled: st?.enabled === true || st?.enabled === 't',
-						migrations: migrations.map((m) => ({
-							name: String(m.name),
-							checksum: String(m.checksum)
-						}))
+						migrations: migrations.map((m) => {
+							const stored = String(m.checksum);
+							const local = localSql.get(String(m.name));
+							// alte Roh-/CRLF-Prüfsumme → kanonischer Wert (zeilenendenunabhängig)
+							const canonical = local === undefined ? null : canonicalChecksumFor(stored, local);
+							return { name: String(m.name), checksum: canonical ?? stored };
+						})
 					};
 				}
 
@@ -472,7 +516,15 @@ export async function startBackupExport(
 	} finally {
 		releaseMaintenanceLock();
 	}
+	return { path, fileName, summary, includeFiles: data.includeFiles };
+}
 
+async function registerDownload(
+	ctx: RequestContext,
+	userId: string,
+	built: BuiltBackup
+): Promise<ExportResult> {
+	const { path, fileName, summary } = built;
 	sweepDownloads();
 	const downloadId = randomBytes(24).toString('base64url');
 	downloads.set(hashToken(downloadId), {
@@ -490,7 +542,7 @@ export async function startBackupExport(
 			rows: summary.rows,
 			files: summary.files,
 			bytes: summary.bytes,
-			includesFiles: data.includeFiles
+			includesFiles: built.includeFiles
 		}
 	});
 	return { downloadId, fileName, summary };

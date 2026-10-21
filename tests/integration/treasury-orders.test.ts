@@ -21,7 +21,7 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import { treasuryService } from '$lib/modules/treasury/service';
 import type { RequestContext } from '$lib/sdk/types';
 import type { Account, InvoiceDetail, Payable, PayableList } from '$lib/modules/treasury/schemas';
@@ -100,7 +100,7 @@ beforeAll(async () => {
 	admin = await ctxOf(u!.id);
 	setMailTransportForTests({ sendMail: async (m) => void mails.push(m as Mail) });
 	setPdfRendererForTests(async () => new TextEncoder().encode('%PDF-fake'));
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 
 	const all = [...admin.permissions].filter((p) => /^(treasury|members|actions)\./.test(p));
 	const role = await createRole(admin, {
@@ -148,7 +148,7 @@ beforeAll(async () => {
 afterAll(async () => {
 	setMailTransportForTests(undefined);
 	setPdfRendererForTests(undefined);
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	uninstallFakeStorage();
 	await close();
 });
@@ -311,7 +311,7 @@ describe('Rechnungen aus Bestellungen', () => {
 			}),
 			201
 		);
-		setTreasuryTodayForTests('2026-07-05');
+		setTodayForTests('2026-07-05');
 		s = await treasuryService.invoiceStatus([invoiceId]);
 		expect(s[invoiceId]).toMatchObject({
 			status: 'partial',
@@ -319,7 +319,7 @@ describe('Rechnungen aus Bestellungen', () => {
 			openCents: 1700,
 			overdue: true
 		});
-		setTreasuryTodayForTests('2026-06-01');
+		setTodayForTests('2026-06-01');
 	});
 
 	it('entfallener bezahlter Posten bleibt mit 0 € stehen (Zahlung wird Guthaben)', async () => {

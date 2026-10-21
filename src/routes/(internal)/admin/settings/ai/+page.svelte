@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { DataTable } from '$lib/components/layout';
+	import { DataTable, PageTitle } from '$lib/components/layout';
+	import * as Alert from '$lib/components/ui/alert';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
@@ -17,12 +18,29 @@
 	const month = new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
 </script>
 
-<svelte:head><title>KI · Einstellungen</title></svelte:head>
+<PageTitle title="KI · Einstellungen" />
 
 <div class="space-y-6">
 	<p class="text-sm text-muted-foreground">
 		KI-Dienst (OpenAI): zentrale Konfiguration und Verbrauch aller Module.
 	</p>
+
+	<!-- #69: Übermittlung an Dritte -->
+	<Alert.Root variant="warning">
+		<Alert.Title>Datenschutz: Übermittlung an einen externen Dienst</Alert.Title>
+		<Alert.Description>
+			<p>
+				Alles, was Module an die KI schicken, geht an den eingetragenen Anbieter (Basis-URL) – ggf.
+				außerhalb der EU. Vor dem Einschalten ist ein Auftragsverarbeitungsvertrag (AV-Vertrag) mit
+				dem Anbieter nötig; bei Drittländern zusätzlich eine Grundlage für die Übermittlung.
+			</p>
+			<p>
+				Keine Gesundheitsdaten, keine Daten von Kindern und keine Kontaktdaten senden; Namen
+				möglichst durch Platzhalter ersetzen. Gespeichert werden hier nur Zähler (Anfragen, Tokens,
+				Kosten), keine Inhalte.
+			</p>
+		</Alert.Description>
+	</Alert.Root>
 
 	<Card.Root>
 		<Card.Header>

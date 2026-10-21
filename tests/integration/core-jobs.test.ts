@@ -89,20 +89,28 @@ afterAll(async () => {
 	await close();
 });
 
+/** Fällige Jobs ohne stündliche Core-Jobs (deren Zahl ändert sich mit dem Core) */
+async function runDaily(): Promise<string[]> {
+	const hourly = new Set(
+		(await listJobs()).filter((j) => j.schedule === 'hourly').map((j) => j.key)
+	);
+	return (await runDueJobs()).filter((k) => !hourly.has(k));
+}
+
 describe('Hintergrundjobs', () => {
-	it('laufen nur für aktive Module', async () => {
-		expect(await runDueJobs()).toEqual([]);
+	it('laufen nur für aktive Module (Core-Jobs immer)', async () => {
+		expect(await runDaily()).toEqual(['core.housekeeping']);
 		expect(runs).toBe(0);
 		await enableModule(admin, 'jobprov');
-		expect(await runDueJobs()).toEqual(['jobprov.tick']);
+		expect(await runDaily()).toEqual(['jobprov.tick']);
 		expect(runs).toBe(1);
 	});
 
 	it('laufen höchstens einmal je Intervall', async () => {
 		now = new Date('2026-10-16T20:00:00Z');
-		expect(await runDueJobs()).toEqual([]);
+		expect(await runDaily()).toEqual([]);
 		now = new Date('2026-10-17T08:00:00Z');
-		expect(await runDueJobs()).toEqual(['jobprov.tick']);
+		expect(await runDaily()).toEqual(['jobprov.tick', 'core.housekeeping']);
 		expect(runs).toBe(2);
 		const [info] = await listJobs();
 		expect(info).toMatchObject({ key: 'jobprov.tick', lastStatus: 'ok', lastMessage: 'Lauf 2' });
@@ -112,7 +120,7 @@ describe('Hintergrundjobs', () => {
 		fail = true;
 		const info = await runJobNow(admin, 'jobprov.tick');
 		expect(info.lastStatus).toBe('error');
-		expect(info.lastMessage).toBe('kaputt');
+		expect(info.lastMessage).toBe('Error: kaputt');
 		fail = false;
 		await expect(runJobNow(admin, 'jobprov.unbekannt')).rejects.toMatchObject({
 			code: 'not_found'

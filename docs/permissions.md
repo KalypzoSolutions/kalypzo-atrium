@@ -22,25 +22,47 @@
 | `core.roles.delete` | Rollen löschen |
 | `core.roles.assign` | Rollen an Benutzer zuweisen |
 | `core.modules.view` | Module ansehen |
-| `core.modules.manage` | Module aktivieren/deaktivieren |
+| `core.modules.manage` | Module aktivieren und deaktivieren |
+| `core.jobs.manage` | Hintergrundjobs ansehen und manuell auslösen (`GET /api/v1/jobs`, `POST /api/v1/jobs/:key/run`) |
 | `core.settings.view` | Systemeinstellungen ansehen |
 | `core.settings.manage` | Systemeinstellungen verwalten |
 | `core.api.view` | API-Keys ansehen |
 | `core.api.manage` | API-Keys verwalten |
-| `core.storage.read` / `write` / `delete` | Dateien im Core-Speicherbereich |
-| `core.storage.manage` | Storage konfigurieren; alle Speicherbereiche verwalten |
-| `core.pdf.generate` | PDF per API erzeugen |
+| `core.storage.read` | Dateien im Core-Speicherbereich lesen |
+| `core.storage.write` | Dateien im Core-Speicherbereich schreiben |
+| `core.storage.delete` | Dateien im Core-Speicherbereich löschen |
+| `core.storage.manage` | Storage konfigurieren und alle Speicherbereiche verwalten |
+| `core.pdf.generate` | PDF-Dokumente erzeugen (per API) |
 | `core.pdf.manage` | PDF-Vorlagen konfigurieren |
-| `core.ai.use` | KI im Core-Kontext nutzen |
-| `core.ai.manage` | KI konfigurieren |
+| `core.ai.use` | KI-Dienst im Core-Kontext nutzen |
+| `core.ai.manage` | KI-Dienst konfigurieren |
 | `core.ai.view` | KI-Nutzung ansehen |
 | `core.audit.view` | Audit-Logs ansehen |
+| `core.system.reset` | Datenbereiche zurücksetzen (`/admin/reset`: Vorschau, Passwort, Pflicht-Export, Bestätigungswort) – **admin-gleich** |
+| `core.system.backup` | Datensicherung: Gesamt-Export (verschlüsselt, inkl. Zugangsdaten) und Import (`/admin/backup`) – **admin-gleich** |
+| `core.privacy.export` | Datenauskunft (Art. 15/20 DSGVO, `/admin/privacy`): alle Daten einer Person aus allen Modulen exportieren (inkl. Gesundheitsdaten) – **admin-gleich** |
+
+Quelle: `CORE_PERMISSIONS` in `src/lib/server/core/permissions/catalog.ts`; die Tabelle muss jeden Schlüssel enthalten.
 
 ### Rolle „Mitglied“ und Standard-Rollenrechte
 
 Konten, die über den Verknüpfungslink des Moduls `members` entstehen (`core.users.registerWithRole`), bekommen die Rolle **„Mitglied“**. Sie wird
-über `defaultRoleGrants` des Moduls angelegt (kein System) und erhält `members.own.view` (eigene verknüpfte Mitglieder sehen) und `members.own.edit`
-(Kontakte, Zusatzfelder und Mail-Einstellungen dieser Mitglieder ändern; setzt `.view` voraus). Die Vergabe geschieht **einmalig** je
+über `defaultRoleGrants` der Module angelegt (Standardrolle mit Kennung `default:Mitglied`, kein System). Bei aktiven Modulen erhält sie:
+
+| Modul | Recht | Wirkung |
+|---|---|---|
+| `members` | `members.own.view` | eigene verknüpfte Mitglieder sehen (Profil „Meine Mitglieder“) |
+| `members` | `members.own.edit` | Kontakte, Zusatzfelder und Mail-Einstellungen dieser Mitglieder ändern (setzt `.view` voraus) |
+| `actions` | `actions.own.view` | eigene Anmeldungen (Dashboard „Meine Anmeldungen“, `GET /my/registrations`) |
+| `treasury` | `treasury.own.view` | eigene offene Rechnungen (Dashboard „Meine offenen Rechnungen“, `GET /my/invoices`) |
+| `events` | `events.event.view` | Termine ansehen (eigene und freigegebene) |
+| `galleries` | `galleries.gallery.view` | Galerien ansehen (eigene, freigegebene, öffentliche) |
+| `files` | `files.file.view` | eigene Dateien ablegen und Freigegebenes sehen |
+| `orders` | `orders.order.view`, `orders.order.create` | eigene Bestellungen sehen und für verknüpfte Mitglieder bestellen |
+
+Weitere Standardrollen: **„Amtsinhaber*in“** (`offices`: `offices.office.view`, wird Inhaber*innen über Ämter verliehen) und
+**„Kämmerer*in“** (`orders`: `orders.order.view`, `orders.order.create`, `orders.order.manage`, `orders.article.manage`, `orders.stock.manage`).
+Quelle: `defaultRoleGrants` in `src/lib/modules/*/module.ts`. Die Vergabe geschieht **einmalig** je
 (Modul, Rolle, Recht) (Tabelle `role_grant_applied`): ein bewusst entzogenes Recht kommt nicht zurück. Administrator*innen können die Rolle danach
 wie jede andere bearbeiten.
 
@@ -71,3 +93,45 @@ Die Rolle `Administrator` (ID `role_administrator`, `isSystem`) wird beim Start 
 ## API-Key-Scopes
 
 Scopes sind Berechtigungsschlüssel. Wirksame Rechte eines Keys = **Scopes ∩ aktuelle Rechte des Besitzers**. Verliert der Besitzer eine Berechtigung (Rolle entzogen, Benutzer deaktiviert, Modul deaktiviert), verliert der Key sie sofort. Scopes müssen existieren und vom Ersteller selbst gehalten werden.
+
+## Admin-gleiche (privilegierte) Rechte
+
+Manche Rechte führen faktisch zur Übernahme des ganzen Systems und gelten deshalb als **admin-gleich**
+(`PRIVILEGED_PERMISSIONS` in `src/lib/server/core/permissions/catalog.ts`):
+
+| Recht | Warum admin-gleich |
+|---|---|
+| `core.system.backup` | Gesamt-Export aller Daten inkl. Zugangsdaten; Import einer (mit dem eigenen Passwort entschlüsselbaren, also veränderbaren) Sicherung |
+| `core.system.reset` | Löschen beliebiger Datenbereiche inkl. Konten und Rollen; Pflicht-Export enthält alle betroffenen Daten |
+| `core.privacy.export` | Liest sämtliche Daten einer Person aus allen Modulen, auch Gesundheitsdaten |
+
+Regeln:
+
+- **Vergabe nur durch Administrator*innen** – beim Anlegen/Bearbeiten/Löschen einer Rolle, beim Zuweisen einer Rolle an Benutzer*innen,
+  bei API-Key-Scopes und bei Rollen über Module (Ämter). Umgesetzt zentral in `assertCanGrant` (`permissions/service.ts`), daher gilt es
+  für alle Wege ohne eigene Prüfung. Sonst 403 „Admin-gleiche Berechtigungen dürfen nur Administrator*innen vergeben“.
+- **Administrator*in** = Systemkontext oder wer **sämtliche Core-Rechte** wirksam besitzt (`isAdministrator`; die Rolle „Administrator“
+  hat sie immer). Ein API-Key mit eingeschränkten Scopes zählt nicht. Wer alle Core-Rechte hat, kann ohnehin alles – die Regel
+  verhindert, dass ein *delegiertes* Sicherungs- oder Reset-Recht weitergegeben wird.
+- Nicht-Admins können Rollen mit einem admin-gleichen Recht nur **ansehen** (nicht bearbeiten/löschen/zuweisen).
+- `/admin/roles` kennzeichnet diese Rechte mit dem Badge **„Admin-gleich“** (auch an Rollen-Karten) und zeigt im Dialog einen Warnhinweis.
+- **Datensicherung durch Nicht-Admins** (Altbestand, falls das Recht früher delegiert wurde): Die Bereiche `core:users`, `core:roles`,
+  `core:api-keys` und `offices` (Rollen-Verleihungen) sind beim Wiederherstellen **und** Zusammenführen gesperrt
+  (`ADMIN_ONLY_RESTORE_SCOPES` in `backup/access.ts`). Ein Restore verleiht der ausführenden Person nie zusätzliche Rollen: Im Fall `kept`
+  (eigenes Konto nicht in der Sicherung) und wenn das Sicherungsrecht danach fehlt, werden nur ihre **bisherigen** Rollen wieder zugeordnet –
+  nicht mehr pauschal die Administrator-Rolle (dann nur Warnung).
+- Bewusst **nicht** admin-gleich: `core.roles.*` (Vergabe bleibt auf eigene Rechte beschränkt), `core.settings.manage`
+  (Secrets lassen sich nicht mehr an fremde Ziele umleiten, siehe `security.md`), `core.users.*` (Schutz über `assertCanManageUser`).
+- Restrisiko: Wer bereits ein delegiertes Sicherungsrecht hat, kann Moduldaten (z. B. Kasse, Mitglieder) aus einer veränderten Sicherung
+  einspielen. Das Recht daher nur Administrator*innen geben.
+
+## Schreibrecht für Einstellungen
+
+Jede globale Einstellung hat ein Schreibrecht (`SettingDefinition.writePermission`), geprüft zentral in `setSettings`/`setSetting`
+(auch über `PUT /api/v1/settings`):
+
+- Core-Schlüssel: `core.settings.manage`.
+- Modul-Schlüssel: `ModuleSettingDefinition.writePermission`, sonst **`<modul>.settings.manage`, wenn das Modul dieses Recht deklariert**
+  (heute nur `treasury` → Bankverbindung und Mailtexte der Kasse), sonst `core.settings.manage` (bestehende Formulare unter
+  Einstellungen → Module bleiben unverändert).
+- Der Systemkontext darf alles (z. B. Kassen-Endpunkt, der `treasury.settings.manage` selbst prüft).

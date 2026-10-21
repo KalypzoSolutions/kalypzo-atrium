@@ -17,8 +17,8 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
-import { sendRun } from '$lib/modules/treasury/annual-fee.service';
+import { setTodayForTests } from '$lib/sdk/dates';
+import { sendRun, waitForAnnualSends } from '$lib/modules/treasury/annual-fee.service';
 import type { RequestContext } from '$lib/sdk/types';
 import type {
 	AnnualMailPreview,
@@ -64,6 +64,25 @@ async function data<D>(res: Response, status = 200): Promise<D> {
 	const body = await res.json();
 	expect(res.status, JSON.stringify(body)).toBe(status);
 	return body.data as D;
+}
+
+/**
+ * Versand läuft im Hintergrund (#24): POST → 202 mit Startstand, danach auf den Abschluss warten
+ * und die Zähler aus `lastResult` lesen.
+ */
+async function sendAndWait(path: string): Promise<AnnualSendResult> {
+	const started = await data<AnnualSendResult>(await T(path, { method: 'POST' }), 202);
+	expect(started.sending).toBe(true);
+	await waitForAnnualSends();
+	const runId = path.split('/')[2]!;
+	const r = (await data<AnnualRun>(await T(`/annual-fees/${runId}`))).lastResult!;
+	expect(r.sending).toBe(false);
+	return {
+		invoicesCreated: r.invoicesCreated,
+		mailsSent: r.mailsSent,
+		mailErrors: r.mailErrors,
+		withoutAddress: r.withoutAddress
+	};
 }
 
 async function ctxOf(userId: string) {
@@ -115,7 +134,7 @@ beforeAll(async () => {
 		lastHtml = html;
 		return new TextEncoder().encode('%PDF-fake');
 	});
-	setTreasuryTodayForTests('2026-10-16');
+	setTodayForTests('2026-10-16');
 	await core.settings.set(admin, 'treasury.bank.holder', 'Stamm Test');
 	await core.settings.set(admin, 'treasury.bank.iban', 'DE89370400440532013000');
 
@@ -193,7 +212,7 @@ beforeAll(async () => {
 afterAll(async () => {
 	setMailTransportForTests(undefined);
 	setPdfRendererForTests(undefined);
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 
@@ -314,10 +333,7 @@ describe('Jahresbeitrag', () => {
 
 	it('versendet: Rechnungen + Posten + Mails mit PDF; zweiter Versand 409', async () => {
 		mails.length = 0;
-		const res = await data<AnnualSendResult>(
-			await T(`/annual-fees/${run.id}/send`, { method: 'POST' }),
-			201
-		);
+		const res = await sendAndWait(`/annual-fees/${run.id}/send`);
 		expect(res).toEqual({ invoicesCreated: 3, mailsSent: 3, mailErrors: 0, withoutAddress: 0 });
 		expect(mails.map((m) => m.to).sort()).toEqual([
 			'familie.muster@example.test',
@@ -376,7 +392,7 @@ describe('Jahresbeitrag', () => {
 			entryDate: '2027-05-01',
 			emails: [{ name: 'Paul', value: 'paul@example.test' }]
 		});
-		setTreasuryTodayForTests('2027-05-02');
+		setTodayForTests('2027-05-02');
 		const p = await data<AnnualPreview>(await T(`/annual-fees/${run.id}/preview`));
 		expect(p.mode).toBe('catch-up');
 		expect(p.invoices.map((i) => [i.recipientName, i.totalCents])).toEqual([['Paul Neu', 1200]]);
@@ -386,10 +402,7 @@ describe('Jahresbeitrag', () => {
 		setPdfRendererForTests(async () => {
 			throw new Error('PDF kaputt');
 		});
-		const res = await data<AnnualSendResult>(
-			await T(`/annual-fees/${run.id}/catch-up`, { method: 'POST' }),
-			201
-		);
+		const res = await sendAndWait(`/annual-fees/${run.id}/catch-up`);
 		expect(res).toEqual({ invoicesCreated: 1, mailsSent: 0, mailErrors: 1, withoutAddress: 0 });
 		expect(mails).toEqual([]);
 		setPdfRendererForTests(async (html) => {
@@ -402,31 +415,15 @@ describe('Jahresbeitrag', () => {
 				throw new Error('SMTP weg');
 			}
 		});
-		const failed = await data<AnnualSendResult>(
-			await T(`/annual-fees/${run.id}/resend`, { method: 'POST' }),
-			201
-		);
+		const failed = await sendAndWait(`/annual-fees/${run.id}/resend`);
 		expect(failed).toEqual({ invoicesCreated: 0, mailsSent: 0, mailErrors: 1, withoutAddress: 0 });
 		setMailTransportForTests({ sendMail: async (m) => void mails.push(m as Mail) });
-		const retried = await data<AnnualSendResult>(
-			await T(`/annual-fees/${run.id}/resend`, { method: 'POST' }),
-			201
-		);
+		const retried = await sendAndWait(`/annual-fees/${run.id}/resend`);
 		expect(retried).toEqual({ invoicesCreated: 0, mailsSent: 1, mailErrors: 0, withoutAddress: 0 });
 		expect(mails.map((m) => m.to)).toEqual(['paul@example.test']);
 		// Alles zugestellt → Wiederholung sendet nichts mehr
-		expect(
-			(
-				await data<AnnualSendResult>(
-					await T(`/annual-fees/${run.id}/resend`, { method: 'POST' }),
-					201
-				)
-			).mailsSent
-		).toBe(0);
-		const again = await data<AnnualSendResult>(
-			await T(`/annual-fees/${run.id}/catch-up`, { method: 'POST' }),
-			201
-		);
+		expect((await sendAndWait(`/annual-fees/${run.id}/resend`)).mailsSent).toBe(0);
+		const again = await sendAndWait(`/annual-fees/${run.id}/catch-up`);
 		expect(again.invoicesCreated).toBe(0);
 		const list = await data<InvoiceList>(await T('/invoices?source=annual'));
 		const paul = list.items.find((i) => i.recipientName === 'Paul Neu')!;
@@ -436,7 +433,7 @@ describe('Jahresbeitrag', () => {
 	});
 
 	it('geplanter Versand: Job versendet erst am Datum', async () => {
-		setTreasuryTodayForTests('2027-05-02');
+		setTodayForTests('2027-05-02');
 		const r = await data<AnnualRun>(
 			await T('/annual-fees', { method: 'POST', json: { year: 2028 } }),
 			201
@@ -454,7 +451,7 @@ describe('Jahresbeitrag', () => {
 		expect(s).toMatchObject({ status: 'scheduled', sendOn: '2027-05-10' });
 		await runJobNow(admin, 'treasury.annual-fees');
 		expect((await data<AnnualRun>(await T(`/annual-fees/${r.id}`))).status).toBe('scheduled');
-		setTreasuryTodayForTests('2027-05-10');
+		setTodayForTests('2027-05-10');
 		mails.length = 0;
 		await runJobNow(admin, 'treasury.annual-fees');
 		const done = await data<AnnualRun>(await T(`/annual-fees/${r.id}`));
@@ -489,11 +486,61 @@ describe('Jahresbeitrag', () => {
 			201
 		);
 		expect(u).toMatchObject({ status: 'draft', sendOn: null });
-		setTreasuryTodayForTests('2027-06-01');
+		setTodayForTests('2027-06-01');
 		expect(await sendRun(admin, r.id, 'run', { scheduledOnly: true })).toBeNull();
 		expect((await data<AnnualRun>(await T(`/annual-fees/${r.id}`))).status).toBe('draft');
 		expect((await T(`/annual-fees/${r.id}`, { method: 'DELETE' })).status).toBe(200);
 		expect((await T(`/annual-fees/${r.id}`)).status).toBe(404);
+	});
+
+	it('Hintergrundversand (#24): 202 sofort, Fortschritt im Lauf, Doppelklick/Nachberechnung 409', async () => {
+		const r = await data<AnnualRun>(
+			await T('/annual-fees', { method: 'POST', json: { year: 2030 } }),
+			201
+		);
+		// PDF-Erzeugung hängt, bis der Test sie freigibt
+		let releasePdf!: () => void;
+		const pdfGate = new Promise<void>((res) => (releasePdf = res));
+		setPdfRendererForTests(async (html) => {
+			await pdfGate;
+			lastHtml = html;
+			return new TextEncoder().encode('%PDF-fake');
+		});
+		mails.length = 0;
+		try {
+			const t0 = Date.now();
+			const res = await T(`/annual-fees/${r.id}/send`, { method: 'POST' });
+			expect(Date.now() - t0).toBeLessThan(2000);
+			const started = await data<AnnualSendResult>(res, 202);
+			expect(started).toMatchObject({ sending: true, kind: 'run', processed: 0, mailsSent: 0 });
+			expect(started.total).toBe(started.invoicesCreated);
+			expect(started.total).toBeGreaterThan(0);
+			// Rechnungen sind schon angelegt, Mails noch nicht
+			const during = await data<AnnualRun>(await T(`/annual-fees/${r.id}`));
+			expect(during.status).toBe('sent');
+			expect(during.invoiceCount).toBe(started.invoicesCreated);
+			expect(during.lastResult?.sending).toBe(true);
+			expect(mails).toEqual([]);
+			// Doppelklick und parallele Nachberechnung/Wiederholung → 409
+			for (const path of ['send', 'catch-up', 'resend']) {
+				const again = await T(`/annual-fees/${r.id}/${path}`, { method: 'POST' });
+				expect(again.status, path).toBe(409);
+			}
+		} finally {
+			releasePdf();
+			await waitForAnnualSends();
+			setPdfRendererForTests(async (html) => {
+				lastHtml = html;
+				return new TextEncoder().encode('%PDF-fake');
+			});
+		}
+		const done = (await data<AnnualRun>(await T(`/annual-fees/${r.id}`))).lastResult!;
+		expect(done).toMatchObject({ sending: false, kind: 'run', mailErrors: 0 });
+		expect(done.processed).toBe(done.total);
+		expect(done.mailsSent).toBe(mails.length);
+		expect(done.mailsSent).toBeGreaterThan(0);
+		// Nach dem Abschluss ist die Wiederholung wieder möglich (nichts offen)
+		expect((await sendAndWait(`/annual-fees/${r.id}/resend`)).mailsSent).toBe(0);
 	});
 
 	it('Audit ohne personenbezogene Daten', async () => {

@@ -16,6 +16,7 @@ import eventsModule from '$lib/modules/events/module';
 import membersModule from '$lib/modules/members/module';
 import { todayBerlin } from '$lib/modules/events/website.endpoints';
 import { DEFAULT_STAMM_NAME } from '$lib/modules/events/schemas';
+import { websiteEventPageSchema, websiteEventSchema } from '$lib/modules/events/website.schemas';
 import type { RequestContext } from '$lib/sdk/types';
 
 const BASE = 'http://localhost:5173/api/v1/modules/events';
@@ -111,7 +112,12 @@ beforeAll(async () => {
 	editorKey = (
 		await createApiKey(admin, {
 			name: 'editor',
-			scopes: ['events.event.view', 'events.event.create', 'events.event.edit-all']
+			scopes: [
+				'events.event.view',
+				'events.event.create',
+				'events.event.edit-all',
+				'events.event.publish'
+			]
 		})
 	).key;
 
@@ -172,6 +178,8 @@ describe('GET /website/events', () => {
 	it('liefert nur Website-Termine ab heute, sortiert, nur öffentliche Felder', async () => {
 		const { status, body } = await get('/website/events', websiteKey);
 		expect(status, JSON.stringify(body)).toBe(200);
+		// Vertrag (#48): strikt gegen das exportierte Website-Schema
+		websiteEventSchema.array().parse(body.data);
 		const items = body.data as Record<string, unknown>[];
 		expect(items.map((e) => e.id)).toEqual([running, future, later]);
 		for (const item of items) {
@@ -327,6 +335,7 @@ describe('Website: Gruppenfilter und Detail', () => {
 	it('Detail: einmaliger Termin mit öffentlichen Feldern', async () => {
 		const { status, body } = await get(`/website/events/${single}`, websiteKey);
 		expect(status, JSON.stringify(body)).toBe(200);
+		websiteEventSchema.parse(body.data);
 		expect(body.data).toEqual({
 			id: single,
 			title: 'Stammesversammlung',
@@ -474,6 +483,7 @@ describe('Meta-Endpoints', () => {
 				color: null,
 				meetingWeekday: null,
 				meetingTime: null,
+				meetingEndTime: null,
 				meetingPlace: null
 			},
 			{
@@ -482,6 +492,7 @@ describe('Meta-Endpoints', () => {
 				color: null,
 				meetingWeekday: null,
 				meetingTime: null,
+				meetingEndTime: null,
 				meetingPlace: null
 			}
 		]);
@@ -495,6 +506,7 @@ describe('Meta-Endpoints', () => {
 				color: null,
 				meetingWeekday: null,
 				meetingTime: null,
+				meetingEndTime: null,
 				meetingPlace: null
 			}
 		]);
@@ -502,5 +514,75 @@ describe('Meta-Endpoints', () => {
 		const web = await get('/website/events?tag=lager', websiteKey);
 		expect(web.body.data[0].groups).toEqual([DEFAULT_STAMM_NAME]);
 		await enableModule(admin, 'members');
+	});
+});
+
+describe('Website: Paging (#48)', () => {
+	const FROM = '2030-01-01';
+	const TO = '2030-06-30';
+	const q = `from=${FROM}&to=${TO}&tag=paging`;
+
+	beforeAll(async () => {
+		// zwei tägliche Serien à 125 → 250 Vorkommen im Halbjahr (mehr als das Limit von 200)
+		for (const title of ['Serie A', 'Serie B']) {
+			const res = await send('POST', '/events', editorKey, {
+				title,
+				description: null,
+				location: null,
+				color: null,
+				startsOn: FROM,
+				startsTime: null,
+				endsOn: null,
+				endsTime: null,
+				tags: ['Paging'],
+				groupIds: [],
+				shares: [],
+				onWebsite: true,
+				recurrence: { freq: 'daily', interval: 1, end: { type: 'count', count: 125 } }
+			});
+			expect(res.status, JSON.stringify(res.body)).toBe(201);
+		}
+	});
+
+	it('ohne paged: Array wie bisher (gekappt auf limit), offset verschiebt', async () => {
+		const first = await get(`/website/events?${q}&limit=200`, websiteKey);
+		expect(first.status).toBe(200);
+		expect(Array.isArray(first.body.data)).toBe(true);
+		expect(first.body.data).toHaveLength(200);
+		const rest = await get(`/website/events?${q}&limit=200&offset=200`, websiteKey);
+		expect(rest.body.data).toHaveLength(50);
+	});
+
+	it('paged=1: alle 250 Vorkommen über Seiten, total/hasMore, ohne Lücken und Dubletten', async () => {
+		const keys: string[] = [];
+		let offset = 0;
+		let pages = 0;
+		for (;;) {
+			const { status, body } = await get(
+				`/website/events?${q}&limit=200&offset=${offset}&paged=1`,
+				websiteKey
+			);
+			expect(status, JSON.stringify(body)).toBe(200);
+			const page = websiteEventPageSchema.parse(body.data);
+			expect(page.total).toBe(250);
+			expect(page.offset).toBe(offset);
+			expect(page.limit).toBe(200);
+			keys.push(...page.items.map((e) => `${e.id}~${e.occurrenceDate}`));
+			pages++;
+			if (!page.hasMore) break;
+			offset += page.items.length;
+		}
+		expect(pages).toBe(2);
+		expect(keys).toHaveLength(250);
+		expect(new Set(keys).size).toBe(250);
+	});
+
+	it('paged=0 bzw. ungültiges Flag / negativer offset', async () => {
+		const plain = await get(`/website/events?${q}&limit=5&paged=0`, websiteKey);
+		expect(Array.isArray(plain.body.data)).toBe(true);
+		expect((await get(`/website/events?${q}&paged=ja`, websiteKey)).status).toBe(422);
+		expect((await get(`/website/events?${q}&offset=-1`, websiteKey)).status).toBe(422);
+		const beyond = await get(`/website/events?${q}&offset=1000&paged=1`, websiteKey);
+		expect(beyond.body.data).toMatchObject({ items: [], total: 250, hasMore: false });
 	});
 });

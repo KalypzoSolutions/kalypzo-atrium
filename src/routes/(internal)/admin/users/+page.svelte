@@ -4,13 +4,15 @@
 	import { toast } from 'svelte-sonner';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import {
+		BUSY_SAVE,
 		ConfirmDialog,
 		DataTable,
 		EntityAvatar,
 		FileField,
 		PageHeader,
 		Pagination,
-		SearchInput
+		SearchInput,
+		PageTitle
 	} from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -23,6 +25,10 @@
 	let { data }: { data: PageData } = $props();
 
 	type UserRow = PageData['users'][number];
+
+	/** Hinweis für Konten mit Rechten, die man selbst nicht besitzt (der Server lehnt Änderungen ab) */
+	const LOCKED_HINT =
+		'Dieses Konto hat Rechte, die du selbst nicht besitzt. Ändern, Deaktivieren und Löschen kann nur jemand mit mindestens denselben Rechten.';
 
 	let createOpen = $state(false);
 	let editOpen = $state(false);
@@ -94,7 +100,7 @@
 		};
 </script>
 
-<svelte:head><title>Benutzer</title></svelte:head>
+<PageTitle title="Benutzer" />
 
 <div class="space-y-6">
 	<PageHeader
@@ -109,6 +115,7 @@
 	</PageHeader>
 
 	<DataTable
+		mobile="cards"
 		caption="Benutzer"
 		empty={data.users.length === 0}
 		emptyTitle="Keine Benutzer gefunden."
@@ -133,6 +140,7 @@
 			</Table.Row>
 		{/snippet}
 		{#each data.users as u (u.id)}
+			{@const locked = !u.manageable}
 			<Table.Row>
 				<Table.Cell class="font-medium">
 					<span class="flex items-center gap-2">
@@ -156,21 +164,42 @@
 				<Table.Cell class="text-right">
 					<div class="flex justify-end gap-2">
 						{#if data.can.edit}
-							<Button size="sm" variant="outline" onclick={() => openEdit(u)}>Bearbeiten</Button>
+							<Button
+								size="sm"
+								variant="outline"
+								disabled={locked}
+								title={locked ? LOCKED_HINT : undefined}
+								onclick={() => openEdit(u)}>Bearbeiten</Button
+							>
 							{#if u.id !== data.selfId}
 								<form method="POST" action="?/setActive" use:enhance={submit()}>
 									<input type="hidden" name="id" value={u.id} />
 									<input type="hidden" name="active" value={String(!u.active)} />
-									<Button size="sm" variant="outline" type="submit" disabled={busy}>
+									<Button
+										size="sm"
+										variant="outline"
+										type="submit"
+										disabled={busy || locked}
+										title={locked ? LOCKED_HINT : undefined}
+									>
 										{u.active ? 'Deaktivieren' : 'Aktivieren'}
 									</Button>
 								</form>
 							{/if}
 						{/if}
 						{#if data.can.delete && u.id !== data.selfId}
-							<Button size="sm" variant="destructive" onclick={() => openDelete(u)}>Löschen</Button>
+							<Button
+								size="sm"
+								variant="destructive"
+								disabled={locked}
+								title={locked ? LOCKED_HINT : undefined}
+								onclick={() => openDelete(u)}>Löschen</Button
+							>
 						{/if}
 					</div>
+					{#if locked && (data.can.edit || data.can.delete)}
+						<p class="mt-1 text-xs text-muted-foreground">Mehr Rechte als du – nicht änderbar</p>
+					{/if}
 				</Table.Cell>
 			</Table.Row>
 		{/each}
@@ -230,7 +259,7 @@
 				<Button type="button" variant="outline" onclick={() => (createOpen = false)}
 					>Abbrechen</Button
 				>
-				<Button type="submit" disabled={busy}>{busy ? 'Speichere …' : 'Anlegen'}</Button>
+				<Button type="submit" disabled={busy}>{busy ? BUSY_SAVE : 'Anlegen'}</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>
@@ -335,7 +364,7 @@
 					<Button type="button" variant="outline" onclick={() => (editOpen = false)}
 						>Abbrechen</Button
 					>
-					<Button type="submit" disabled={busy}>{busy ? 'Speichere …' : 'Speichern'}</Button>
+					<Button type="submit" disabled={busy}>{busy ? BUSY_SAVE : 'Speichern'}</Button>
 				</Dialog.Footer>
 			</form>
 		{/if}
@@ -361,6 +390,11 @@
 				du das Konto deaktivieren.
 			</Dialog.Description>
 		</Dialog.Header>
+		<p class="text-sm text-muted-foreground">
+			Mit dem Konto werden auch die eigenen Dateien (samt öffentlicher Links), das Profilbild, Ämter
+			mit persönlicher Beschreibung und die Verknüpfungen zu Mitgliedern entfernt. Termine, Galerien
+			und Aktionen dieser Person gehen an dich über.
+		</p>
 		<form method="POST" action="?/delete" use:enhance={submit(() => (deleteOpen = false))}>
 			<input type="hidden" name="id" value={deleteUser?.id ?? ''} />
 			{#if formError}<p class="mb-3 text-sm text-destructive" role="alert">{formError}</p>{/if}

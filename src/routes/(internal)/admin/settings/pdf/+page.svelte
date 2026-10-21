@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PageTitle } from '$lib/components/layout';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Label } from '$lib/components/ui/label';
@@ -12,7 +13,7 @@
 	let template = $state<string | null>('default');
 </script>
 
-<svelte:head><title>PDF · Einstellungen</title></svelte:head>
+<PageTitle title="PDF · Einstellungen" />
 
 <div class="space-y-6">
 	<Card.Root>
@@ -37,7 +38,7 @@
 
 	<section class="space-y-4">
 		<div>
-			<h2 class="font-semibold">Vorlagen</h2>
+			<h2 class="text-section">Vorlagen</h2>
 			<p class="text-sm text-muted-foreground">
 				Vorlagen sind fest im Code hinterlegt (<code class="font-mono text-xs"
 					>src/lib/server/core/pdf/templates/</code

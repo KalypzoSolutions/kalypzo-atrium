@@ -21,10 +21,6 @@ export function releaseMaintenanceLock(): void {
 	running = null;
 }
 
-export function maintenanceRunning(): string | null {
-	return running;
-}
-
 const TOTP_WINDOW_SEC = 10 * 60;
 const TOTP_MAX_FAILURES = 5;
 const PASSWORD_MAX_FAILURES = 10;

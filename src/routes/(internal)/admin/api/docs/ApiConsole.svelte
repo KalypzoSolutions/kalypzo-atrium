@@ -83,10 +83,8 @@
 
 	const statusVariant = $derived.by(() => {
 		const s = result?.status ?? 0;
-		if (s >= 200 && s < 300)
-			return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400';
-		if (s >= 400 && s < 500)
-			return 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400';
+		if (s >= 200 && s < 300) return 'border-success-border bg-success-muted text-success';
+		if (s >= 400 && s < 500) return 'border-warning-border bg-warning-muted text-warning';
 		if (s >= 500) return 'border-destructive/40 bg-destructive/10 text-destructive';
 		return 'border-border bg-muted text-foreground';
 	});
@@ -198,9 +196,7 @@
 		</Alert>
 	{:else}
 		{#if mutating}
-			<Alert
-				class="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 *:data-[slot=alert-description]:text-amber-800 dark:*:data-[slot=alert-description]:text-amber-300"
-			>
+			<Alert variant="warning">
 				<TriangleAlert aria-hidden="true" />
 				<AlertDescription>
 					Anfragen laufen mit deiner Anmeldung und deinen Rechten. Schreibende Anfragen ändern echte

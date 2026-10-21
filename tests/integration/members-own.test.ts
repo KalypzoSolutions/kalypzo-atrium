@@ -17,7 +17,7 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { RequestContext } from '$lib/sdk/types';
 import type { InvoiceDetail, InvoiceList, Transaction } from '$lib/modules/treasury/schemas';
 
@@ -129,14 +129,14 @@ beforeAll(async () => {
 	keys.admin = (await createApiKey(admin, { name: 'a', scopes: [...admin.permissions] })).key;
 	userIds.admin = u!.id;
 	setMailTransportForTests({ sendMail: async (m) => void mails.push(m) });
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 	await mkUser('mutter', ['core.api.manage', 'members.own.view', 'members.own.edit']);
 	await mkUser('nurlesen', ['core.api.manage', 'members.own.view']);
 	await mkUser('ohne', ['core.api.manage']);
 });
 afterAll(async () => {
 	setMailTransportForTests(undefined);
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 beforeEach(() => resetAllForTests());

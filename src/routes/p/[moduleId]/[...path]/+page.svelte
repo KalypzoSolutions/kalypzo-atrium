@@ -2,6 +2,8 @@
 	import type { Component } from 'svelte';
 	import { page } from '$app/state';
 	import type { ModulePageProps } from '$lib/sdk/types/module-ui';
+	import LegalLinks from '$lib/components/layout/LegalLinks.svelte';
+	import { PageTitle } from '$lib/components/layout';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -11,12 +13,18 @@
 
 <svelte:head>
 	<meta name="robots" content="noindex,nofollow" />
-	<title>{data.moduleName}</title>
 </svelte:head>
+<PageTitle title={data.moduleName} />
 
 <div class="mx-auto w-full max-w-2xl px-4 py-8">
 	{#if systemName}
 		<p class="mb-6 text-sm font-medium text-muted-foreground">{systemName}</p>
 	{/if}
 	<Page params={data.params} path={data.path} />
+	<LegalLinks
+		privacyUrl={data.legal.privacyUrl}
+		imprintUrl={data.legal.imprintUrl}
+		notice
+		class="mt-10 border-t pt-6"
+	/>
 </div>

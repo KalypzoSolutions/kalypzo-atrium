@@ -3,9 +3,11 @@ import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { requireUser } from '../auth/context';
 import { getDb, schema } from '../database/client';
+import { isUniqueViolation } from '../db-errors';
 import { errors } from '../errors';
 import { newId } from '../util';
 import { ADMIN_ROLE_ID } from './catalog';
+import { assertRoleNameAllowed } from './default-roles';
 import { moduleGrantRoleIds } from './grants';
 import { assertCanGrant, existingKeys, permissionsOfRole, requirePermission } from './service';
 
@@ -105,6 +107,7 @@ export async function createRole(
 	input: { name: string; description?: string; permissions: string[] }
 ): Promise<string> {
 	await requirePermission(ctx, 'core.roles.create');
+	await assertRoleNameAllowed(input.name);
 	const perms = await validateKeys(input.permissions);
 	assertCanGrant(ctx, perms);
 	const id = newId();
@@ -129,8 +132,7 @@ export async function createRole(
 			);
 		});
 	} catch (e) {
-		if (String((e as { code?: string }).code) === '23505')
-			throw errors.conflict('Rollenname bereits vergeben');
+		if (isUniqueViolation(e)) throw errors.conflict('Rollenname bereits vergeben');
 		throw e;
 	}
 	return id;
@@ -147,6 +149,9 @@ export async function updateRole(
 	if (!role) throw errors.notFound('Rolle nicht gefunden');
 	if (role.isSystem && (input.name !== undefined || input.permissions !== undefined)) {
 		throw errors.forbidden('Systemrollen können nicht verändert werden');
+	}
+	if (input.name !== undefined && input.name.trim() !== role.name) {
+		await assertRoleNameAllowed(input.name, id);
 	}
 	const current = await permissionsOfRole(id);
 	// Eine Rolle darf nur bearbeiten, wer alle ihre Rechte selbst besitzt (sonst Rechte-Entzug/-Umgehung)
@@ -189,8 +194,7 @@ export async function updateRole(
 			);
 		});
 	} catch (e) {
-		if (String((e as { code?: string }).code) === '23505')
-			throw errors.conflict('Rollenname bereits vergeben');
+		if (isUniqueViolation(e)) throw errors.conflict('Rollenname bereits vergeben');
 		throw e;
 	}
 }

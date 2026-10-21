@@ -5,7 +5,7 @@
 import * as ai from './ai';
 import { createApiKey, listApiKeys, revokeApiKey } from './api/keys';
 import { defineEndpoint } from './api/registry';
-import { auditFromContext, listAudit, logAudit } from './audit/service';
+import { auditFromContext, listAuditByTargets, listModuleAudit, logAudit } from './audit/service';
 import { getAuth } from './auth';
 import {
 	anonymousContext,
@@ -14,11 +14,12 @@ import {
 	resolveSession,
 	systemContext
 } from './auth/context';
-import { registerUserWithRole, searchUserDirectory } from './auth/users';
+import { registerUserWithRole, searchUserDirectory, usersByIds } from './auth/users';
 import { decryptSecret, encryptSecret, isEncrypted, keyedHash } from './crypto';
-import { getDb } from './database/client';
-import { forModule, transaction } from './database/module-db';
+import { forModule } from './database/module-db';
+import { findDefaultRoleId } from './permissions/default-roles';
 import { allDefinitions } from './modules/registry';
+import { notifyMembersDeleted } from './privacy/member-hooks';
 import {
 	assertModuleEnabled,
 	disableModule,
@@ -50,7 +51,13 @@ import { sendMail } from './mail';
 import { errors } from './errors';
 import { env } from './env';
 import { qrDataUrl } from './qr';
-import { getPublicSettings, getSetting, getSettings, setSetting } from './settings/service';
+import {
+	listPublicSettingsFor,
+	getSetting,
+	getSettings,
+	setSetting,
+	setSettings
+} from './settings/service';
 import * as storage from './storage';
 import { processImage } from './images';
 import {
@@ -137,6 +144,11 @@ export const core = {
 		 */
 		directory: searchUserDirectory,
 		/**
+		 * Benutzer*innen zu IDs als Map (stückelt intern, gleiche Regeln wie `directory`; unbekannte/deaktivierte
+		 * fehlen). Statt eigener Schleifen um `directory` mit `ids` – Anzeige mit `userLabel(map, id)`.
+		 */
+		byIds: usersByIds,
+		/**
 		 * Legt ein Konto OHNE Rechteprüfung an (Rolle per Name, wird ohne Rechte angelegt). Nur aus
 		 * kontrollierten öffentlichen Pfaden (z. B. gültiger Verknüpfungscode) aufrufen.
 		 */
@@ -160,7 +172,12 @@ export const core = {
 		replaceModuleGrants: replaceModuleRoleGrants,
 		listModuleGrants: listModuleRoleGrants,
 		/** Wirft `forbidden`, wenn dem Kontext Rechte einer der Rollen fehlen (Rechteausweitung) */
-		assertCanGrant: assertCanGrantRoles
+		assertCanGrant: assertCanGrantRoles,
+		/**
+		 * ID der Standardrolle aus `defaultRoleGrants` (Kennung `default:<Name>`) oder `null` – statt Suche per
+		 * Name, die eine gleichnamige fremde Rolle treffen könnte (#67, 01a-07)
+		 */
+		defaultRoleId: (name: string) => findDefaultRoleId(name)
 	},
 	crypto: {
 		/** Verschlüsselung sensibler Modul-Daten (AES-256-GCM), Schlüssel je Modul abgeleitet */
@@ -192,6 +209,11 @@ export const core = {
 		use: useModuleService,
 		/** Wie `use`, für `optionalDependencies`: `null`, wenn der Anbieter nicht aktiv ist */
 		useOptional: useOptionalModuleService,
+		/**
+		 * Nur für `members`: gelöschte/anonymisierte Mitglieder melden → `onMemberDeleted` aller
+		 * anderen aktiven Module (nie in einer offenen Transaktion aufrufen). Rückgabe = Module mit Fehler.
+		 */
+		memberDeleted: notifyMembersDeleted,
 		navigationFor,
 		registered: () => allDefinitions().map((d) => d.manifest)
 	},
@@ -199,17 +221,20 @@ export const core = {
 		get: getSetting,
 		getMany: getSettings,
 		set: setSetting,
-		/** Für Clients: Secrets werden nie ausgeliefert */
-		listPublic: getPublicSettings
+		/** Mehrere Werte atomar (alle geprüft, eine Transaktion) */
+		setMany: setSettings,
+		/** Alle nicht geheimen Werte – nur mit `core.settings.view` (#67, 01a-12); Secrets nie */
+		listPublic: listPublicSettingsFor
 	},
 	api: {
 		defineEndpoint,
 		keys: { create: createApiKey, list: listApiKeys, revoke: revokeApiKey }
 	},
 	database: {
-		/** Core-interner Zugriff; Module verwenden `forModule(id)` */
-		db: getDb,
-		transaction,
+		/**
+		 * Nur Modul-Transaktionen mit Schema-Isolation. `db`/`transaction` (ohne `search_path`) sind
+		 * bewusst nicht mehr Teil des SDK (#67, 01a-12); Core-Code nutzt `database/client` direkt.
+		 */
 		forModule
 	},
 	pdf: {
@@ -229,7 +254,11 @@ export const core = {
 	storage: {
 		upload: storage.upload,
 		download: storage.download,
+		/** Wie `download`, aber als Stream (Objekt nicht komplett im Speicher) */
+		downloadStream: storage.downloadStream,
 		remove: storage.remove,
+		/** Viele Dateien auf einmal löschen (S3 DeleteObjects, ein Sammel-Audit) */
+		removeMany: storage.removeMany,
 		stat: storage.stat,
 		list: storage.list,
 		signedUploadUrl: storage.createSignedUploadUrl,
@@ -255,7 +284,14 @@ export const core = {
 		/** Öffentliche Basis-URL der Anwendung (`ORIGIN`, ohne abschließenden Schrägstrich) */
 		origin: () => env().ORIGIN.replace(/\/+$/, '')
 	},
-	audit: { log: logAudit, logFromContext: auditFromContext, list: listAudit },
+	audit: {
+		log: logAudit,
+		logFromContext: auditFromContext,
+		/** Einträge eines Moduls zu bekannten Objekten (Kontext, Modulpräfix, `targets` Pflicht) */
+		listForModule: listModuleAudit,
+		/** @deprecated `listForModule` verwenden – verlangt bereits `targets` (kein Gesamt-Log) */
+		list: listAuditByTargets
+	},
 	system: {
 		/** Admin-Reset (Recht `core.system.reset`, nur Session-Benutzer); siehe `system/reset.ts` */
 		reset: {

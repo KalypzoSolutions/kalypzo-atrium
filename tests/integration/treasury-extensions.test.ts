@@ -17,7 +17,7 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import { STANDARD_FORM_KEYS, type FormConfig } from '$lib/modules/actions/schemas';
 import type { RequestContext } from '$lib/sdk/types';
 import type {
@@ -94,7 +94,7 @@ beforeAll(async () => {
 	admin = await ctxOf(u!.id);
 	setMailTransportForTests({ sendMail: async (m) => void mails.push(m as Mail) });
 	setPdfRendererForTests(async () => new TextEncoder().encode('%PDF-fake'));
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 
 	const all = [...admin.permissions].filter((p) => /^(treasury|members|actions)\./.test(p));
 	const roles = {
@@ -153,7 +153,7 @@ beforeAll(async () => {
 afterAll(async () => {
 	setMailTransportForTests(undefined);
 	setPdfRendererForTests(undefined);
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	await close();
 });
 
@@ -233,8 +233,11 @@ describe('Zahler mit Bankverbindung und IBAN-Abgleich', () => {
 			}),
 			201
 		);
+		// Rechnung entsteht sofort (gezielter Abgleich nach dem Anlegen), der Vollabgleich findet nichts Neues
+		const lena = await data<InvoiceList>(await T('/invoices?status=all&search=Lena'));
+		expect(lena.total).toBe(1);
 		const sync = await data<{ created: number }>(await T('/sync', { method: 'POST' }), 201);
-		expect(sync.created).toBe(1);
+		expect(sync.created).toBe(0);
 		const csv = [
 			'"Buchungstag";"Verwendungszweck";"Beguenstigter/Zahlungspflichtiger";"Kontonummer/IBAN";"Betrag"',
 			`"02.06.26";"Lager";"P. M.";"${IBAN_FAMILY}";"185,00"`
@@ -301,6 +304,17 @@ describe('Rechnungs-PDF bei Anmeldung und geänderte Rechnung', () => {
 			}
 		});
 		expect(res.status).toBe(201);
+		// Double-Opt-in: Link aus der Bestätigungsbitte aufrufen, erst dann entsteht die Anmeldung
+		const optIn = mails.find((m) => /anmeldung-bestaetigen\/[0-9a-f]{64}/.test(m.text));
+		if (optIn) {
+			const confirmToken = /anmeldung-bestaetigen\/([0-9a-f]{64})/.exec(optIn.text)![1]!;
+			mails.splice(mails.indexOf(optIn), 1);
+			const ok = await api(`/modules/actions/public/registrations/${confirmToken}/confirm`, {
+				method: 'POST',
+				json: {}
+			});
+			expect(ok.status).toBe(201);
+		}
 		expect(mails).toHaveLength(1);
 		expect(mails[0]!.to).toBe('max.eltern@example.test');
 		expect(mails[0]!.text).toContain('im Anhang');
@@ -332,7 +346,8 @@ describe('Rechnungs-PDF bei Anmeldung und geänderte Rechnung', () => {
 		await data(await T('/sync', { method: 'POST' }), 201);
 		expect(mails).toHaveLength(1);
 		expect(mails[0]!.subject).toContain('Geänderte Rechnung');
-		expect(mails[0]!.text).toContain('185,00 € auf 90,00 €');
+		// Beträge über formatEuro (geschütztes Leerzeichen vor „€“, #34)
+		expect(mails[0]!.text).toContain('185,00\u00a0€ auf 90,00\u00a0€');
 		expect(mails[0]!.attachments!.some((a) => a.filename.endsWith('-v2.pdf'))).toBe(true);
 		await data(await T('/sync', { method: 'POST' }), 201);
 		expect(mails).toHaveLength(1);

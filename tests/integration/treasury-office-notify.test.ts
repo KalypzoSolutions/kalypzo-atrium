@@ -17,8 +17,7 @@ import membersModule from '$lib/modules/members/module';
 import treasuryModule from '$lib/modules/treasury/module';
 import officesModule from '$lib/modules/offices/module';
 import { resetTemplateCacheForTests } from '$lib/modules/offices/templates.service';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
-import { resetSyncThrottleForTests } from '$lib/modules/treasury/sync';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { Office } from '$lib/modules/offices/schemas';
 import type { RequestContext } from '$lib/sdk/types';
 
@@ -69,7 +68,6 @@ async function data<R>(res: Response, status = 200): Promise<R> {
 const kasseMails = () => sent.filter((m) => m.to === KASSE_MAIL);
 
 async function sync() {
-	resetSyncThrottleForTests();
 	await data(await T('/sync', { method: 'POST' }), 201);
 }
 
@@ -143,7 +141,7 @@ beforeAll(async () => {
 	admin = (await contextForUser(u!.id))!.ctx;
 	for (const m of ['members', 'actions', 'treasury', 'offices']) await enableModule(admin, m);
 	admin = (await contextForUser(u!.id))!.ctx;
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 	key = (await createApiKey(admin, { name: 'admin', scopes: [...admin.permissions] })).key;
 
 	const role = await createRole(admin, { name: 'Leserin', permissions: ['treasury.cash.view'] });
@@ -172,7 +170,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	setMailTransportForTests(undefined);
 	await close();
 });
@@ -188,17 +186,16 @@ describe('Amt „Kasse“ – Benachrichtigungen', () => {
 			}),
 			201
 		);
-		const mails = kasseMails();
+		const mails = kasseMails().filter((m) => m.subject.includes('Zwischenabrechnung'));
 		expect(mails).toHaveLength(1);
 		expect(mails[0]!.subject).toContain('Zwischenabrechnung Nr. 1');
 		expect(mails[0]!.subject).toContain('Pfingstlager');
 		expect(mails[0]!.text).toContain('/modules/treasury?tab=outgoing&view=accountings');
 	});
 
-	it('neue Auslage nach dem Abgleich → genau eine Mail mit Betrag, ohne IBAN', async () => {
-		sent.length = 0;
-		await sync();
-		const mails = kasseMails();
+	it('freigegebene Auslage → sofort genau eine Mail mit Betrag, ohne IBAN (ohne Job)', async () => {
+		// Die Zwischenabrechnung im Test davor hat den gezielten Abgleich der Aktion ausgelöst
+		const mails = kasseMails().filter((m) => m.subject.startsWith('Neue Überweisung'));
 		expect(mails).toHaveLength(1);
 		const m = mails[0]!;
 		expect(m.subject).toMatch(/^Neue Überweisung: 42,50\s€ an Anna Auslage$/);
@@ -239,6 +236,7 @@ describe('Amt „Kasse“ – Benachrichtigungen', () => {
 	});
 
 	it('offene Stamm-Ausgabe → Mail mit Zweck, ohne IBAN', async () => {
+		sent.length = 0;
 		const other = await createAction('Herbstfahrt');
 		await data(
 			await A(`/actions/${other.actionId}/accounting/entries`, {
@@ -259,7 +257,7 @@ describe('Amt „Kasse“ – Benachrichtigungen', () => {
 			}),
 			201
 		);
-		sent.length = 0;
+		// Sofort nach dem Erfassen (gezielter Abgleich der Aktion); ein Vollabgleich meldet nichts doppelt
 		await sync();
 		const mails = kasseMails();
 		expect(mails).toHaveLength(1);

@@ -1,0 +1,200 @@
+# CI für EP Intern 2.0 (Issue #11). Dokploy deployt aus `staging`/`main` – Branch-Protection muss
+# die Jobs `verify` und `website` als Pflicht-Checks verlangen (Einstellung im GitHub-Repository).
+name: CI
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+  schedule:
+    # nightly E2E (03:15 UTC)
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+    inputs:
+      e2e:
+        description: 'E2E-Tests (Playwright) ausführen'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Produktion läuft im Container ohne TZ (= UTC); Tests sollen dieselbe Zeitzone sehen
+  TZ: UTC
+  CI: 'true'
+  # Platzhalter wie im Dockerfile, nur für den Build
+  APP_SECRET: build-time-placeholder-build-time-placeholder
+
+jobs:
+  verify:
+    name: verify (Format, Typen, Lint, Tests, Build, Audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Lockfile enthält sharp für linux-x64
+        run: grep -q '"node_modules/@img/sharp-linux-x64"' package-lock.json
+
+      - name: Format (prettier)
+        run: npx prettier --check src tests docs
+
+      - name: Typprüfung (svelte-check)
+        run: npm run check
+
+      - name: Lint (eslint)
+        run: npx eslint .
+
+      - name: Unit- und Integrationstests mit Coverage
+        run: npx vitest run --coverage
+
+      - name: Coverage-Bericht hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Build
+        run: npm run build
+
+      - name: Audit Laufzeitabhängigkeiten (High/Critical blockieren)
+        run: npm audit --omit=dev --audit-level=high
+
+  website:
+    name: website (Check, Build, Audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Typprüfung (5 bekannte Altfehler, siehe .claude/rules/website.md)
+        # Altcode meldet bekannte Fehler; der Schritt bricht erst ab, wenn es MEHR werden.
+        run: |
+          set +e
+          npx svelte-kit sync
+          npx svelte-check --tsconfig ./tsconfig.json --output machine > svelte-check.log
+          tail -n 1 svelte-check.log
+          errors=$(grep -E '^[0-9]+ COMPLETED' svelte-check.log | sed -E 's/.* ([0-9]+) ERRORS.*/\1/')
+          if [ -z "$errors" ]; then echo "svelte-check lieferte kein Ergebnis"; exit 1; fi
+          if [ "$errors" -gt 5 ]; then
+            grep ' ERROR ' svelte-check.log
+            echo "Mehr als die 5 bekannten Fehler: $errors"
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Audit Laufzeitabhängigkeiten (High/Critical blockieren)
+        run: npm audit --omit=dev --audit-level=high
+
+  postgres:
+    # #60: Migrationen, Treiber (`pg`) und Nebenläufigkeit gegen echtes PostgreSQL derselben Version
+    # wie docker-compose.yml – PGlite (Job verify) hat nur eine Sitzung.
+    name: postgres (integration-pg, PostgreSQL 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      TEST_DATABASE_POOL_MAX: '4'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Nebenläufigkeit (Advisory-Sperren, Job-Claim, Migrationen, Treiber)
+        run: npx vitest run tests/integration/pg-concurrency.test.ts
+
+      - name: Smoke-Suite gegen PostgreSQL (alle Core- und Modul-Migrationen, Restore)
+        run: >-
+          npx vitest run
+          tests/integration/smoke.test.ts
+          tests/integration/core.test.ts
+          tests/integration/core-jobs.test.ts
+          tests/integration/module-migration-isolation.test.ts
+          tests/integration/treasury.test.ts
+          tests/integration/orders.test.ts
+          tests/integration/files.test.ts
+          tests/integration/backup-restore-smoke.test.ts
+
+  e2e:
+    name: e2e (Playwright)
+    needs: verify
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Chromium installieren
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E-Tests
+        run: npx playwright test --reporter=list,html
+
+      - name: Playwright-Bericht hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

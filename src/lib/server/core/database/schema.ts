@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
 	bigint,
 	boolean,
+	foreignKey,
 	index,
 	integer,
 	jsonb,
@@ -111,6 +112,11 @@ export const role = pgTable('role', {
 	description: text('description'),
 	/** Systemrollen (z. B. Administrator) sind nicht lösch- und nicht umbenennbar. */
 	isSystem: boolean('is_system').notNull().default(false),
+	/**
+	 * Stabile Kennung vom Core angelegter Rollen (`default:<Name>` für `defaultRoleGrants`, Migration 0008).
+	 * Modulrechte gehen nur an die Rolle mit dieser Kennung, nie an eine bloß gleichnamige.
+	 */
+	systemKey: text('system_key').unique(),
 	createdAt: createdAt(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
@@ -148,16 +154,26 @@ export const userRole = pgTable(
 export const userRoleGrant = pgTable(
 	'user_role_grant',
 	{
-		userId: text('user_id')
-			.notNull()
-			.references(() => user.id, { onDelete: 'cascade' }),
-		roleId: text('role_id')
-			.notNull()
-			.references(() => role.id, { onDelete: 'cascade' }),
+		userId: text('user_id').notNull(),
+		roleId: text('role_id').notNull(),
 		moduleId: text('module_id').notNull(),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 	},
-	(t) => [primaryKey({ columns: [t.userId, t.roleId, t.moduleId] })]
+	// Namen wie in drizzle/0006_user_role_grant.sql (Inline-REFERENCES → Postgres-Standardnamen `_fkey`)
+	(t) => [
+		primaryKey({ name: 'user_role_grant_pk', columns: [t.userId, t.roleId, t.moduleId] }),
+		foreignKey({
+			name: 'user_role_grant_user_id_fkey',
+			columns: [t.userId],
+			foreignColumns: [user.id]
+		}).onDelete('cascade'),
+		foreignKey({
+			name: 'user_role_grant_role_id_fkey',
+			columns: [t.roleId],
+			foreignColumns: [role.id]
+		}).onDelete('cascade'),
+		index('user_role_grant_module_idx').on(t.moduleId)
+	]
 );
 
 /**
@@ -172,7 +188,12 @@ export const roleGrantApplied = pgTable(
 		permissionKey: text('permission_key').notNull(),
 		appliedAt: timestamp('applied_at', { withTimezone: true }).notNull().defaultNow()
 	},
-	(t) => [primaryKey({ columns: [t.moduleId, t.roleName, t.permissionKey] })]
+	(t) => [
+		primaryKey({
+			name: 'role_grant_applied_pk',
+			columns: [t.moduleId, t.roleName, t.permissionKey]
+		})
+	]
 );
 
 // ---------------------------------------------------------------------------
@@ -271,7 +292,7 @@ export const apiLog = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Audit (append-only; UPDATE/DELETE werden per DB-Trigger verhindert)
+// Audit (append-only; UPDATE/DELETE per DB-Trigger verhindert, Ausnahmen: Reset 0005, Aufbewahrung 0007)
 // ---------------------------------------------------------------------------
 
 export const auditLog = pgTable(
@@ -291,7 +312,10 @@ export const auditLog = pgTable(
 	(t) => [
 		index('audit_log_created_idx').on(t.createdAt),
 		index('audit_log_action_idx').on(t.action),
-		index('audit_log_actor_idx').on(t.actorId)
+		index('audit_log_actor_idx').on(t.actorId),
+		// Migration 0007: Verlauf je Objekt und Präfixfilter auf Aktionen
+		index('audit_log_target_idx').on(t.target, t.createdAt.desc()),
+		index('audit_log_action_pattern_idx').on(t.action.op('text_pattern_ops'))
 	]
 );
 

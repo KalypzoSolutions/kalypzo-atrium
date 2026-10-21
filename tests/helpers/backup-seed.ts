@@ -391,6 +391,7 @@ export async function seedBackupWorld(): Promise<BackupWorld> {
 			title: 'Pfingstlager',
 			description: null,
 			visibility: 'public',
+			consentConfirmed: true,
 			shares: [],
 			eventIds: [eventId]
 		}),

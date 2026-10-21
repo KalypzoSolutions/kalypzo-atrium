@@ -79,6 +79,60 @@ export interface ModuleSearchProvider {
 	) => Promise<import('$lib/sdk/types/search').SearchHit[]>;
 }
 
+/** Angaben für `ModuleDefinition.onUserDeleted` */
+export interface UserDeletedInfo {
+	/** ID des gelöschten Kontos (die Core-Zeile existiert nicht mehr) */
+	userId: string;
+	/**
+	 * Konto der löschenden Person – Ziel für Daten, die nicht gelöscht, sondern übergeben werden
+	 * (z. B. Eigentum an Terminen). `null` bei Systemaufrufen.
+	 */
+	transferTo: string | null;
+}
+
+/** Rückgabe von `ModuleDefinition.onUserDeleted` */
+export interface UserDeletedResult {
+	/** Läuft nach dem Commit der Modul-Transaktion (z. B. Storage-Objekte entfernen, Core-Services) */
+	afterCommit?: () => Promise<void>;
+}
+
+/** Angaben für `ModuleDefinition.onMemberDeleted` */
+export interface MemberDeletedInfo {
+	/** IDs der gelöschten bzw. anonymisierten Mitglieder (Modul `members`) */
+	memberIds: string[];
+	/** `deleted` = Datensatz entfernt, `anonymized` = Datensatz bleibt ohne Personenbezug */
+	reason: 'deleted' | 'anonymized';
+}
+
+/**
+ * Betroffene Person einer Datenauskunft (Art. 15/20 DSGVO): ein Benutzerkonto und/oder Mitglieder.
+ * `ModuleSubjectExport.resolve` darf weitere Kennungen ergänzen (z. B. `members`: verknüpfte Mitglieder).
+ */
+export interface DataSubject {
+	userId: string | null;
+	memberIds: string[];
+}
+
+/** Treffer von `ModuleSubjectExport.findSubjects` (Anzeige auf `/admin/privacy`) */
+export interface SubjectCandidate {
+	label: string;
+	detail?: string;
+	subject: Partial<DataSubject>;
+}
+
+/**
+ * Beitrag eines Moduls zur Datenauskunft (`/admin/privacy`). Läuft nur bei aktivem Modul, nie in
+ * einer offenen Transaktion, ohne Rechteprüfung (die macht der Core: `core.privacy.export`).
+ * `run` liefert alle personenbezogenen Daten der Person im Modul als JSON (Klartext, keine
+ * Dateiinhalte, keine Daten Dritter) oder `null`, wenn es nichts gibt.
+ */
+export interface ModuleSubjectExport {
+	/** Personen ohne (bzw. zusätzlich zum) Konto finden, z. B. `members`: Mitglieder nach Name */
+	findSubjects?: (query: string, limit: number) => Promise<SubjectCandidate[]>;
+	resolve?: (subject: DataSubject) => Promise<Partial<DataSubject>>;
+	run: (subject: DataSubject) => Promise<Record<string, unknown> | null>;
+}
+
 export interface ModuleDefinition {
 	manifest: ModuleManifest;
 	settings?: ModuleSettingDefinition[];
@@ -89,9 +143,10 @@ export interface ModuleDefinition {
 	migrations?: ModuleMigration[];
 	/**
 	 * Dienste, die dieses Modul abhängigen Modulen anbietet (Funktionen; Typvertrag in `contract.ts`
-	 * des Moduls). Abruf nur über `core.modules.use(providerId, callerId)`.
+	 * des Moduls). Abruf nur über `core.modules.use(providerId, callerId)`. Angabe mit
+	 * `satisfies <Vertrag>` (kein `as unknown as`), damit fehlende Methoden beim Typcheck auffallen.
 	 */
-	provides?: Record<string, unknown>;
+	provides?: object;
 	/** Hintergrundjobs (siehe `core/jobs`) */
 	jobs?: ModuleJob[];
 	/**
@@ -107,6 +162,29 @@ export interface ModuleDefinition {
 	 * Modul-Transaktion mit `search_path` auf das Modulschema; `keepUserId` = ausführende*r Admin).
 	 */
 	resetUsers?: (tx: import('../database/client').Tx, keepUserId: string) => Promise<void>;
+	/**
+	 * Ein Benutzerkonto wurde gelöscht (`deleteUser`): Daten der Person im Modul löschen oder bewusst
+	 * übergeben. Läuft NACH dem Löschen der Core-Zeile je **aktivem** Modul in einer eigenen
+	 * Modul-Transaktion (`search_path` = Modulschema, keine Core-Services darin aufrufen). Arbeit, die
+	 * außerhalb der Transaktion laufen muss (Storage-Objekte entfernen, Core-Services), gehört in
+	 * `afterCommit`. Fehler werden je Modul protokolliert und brechen das Löschen nicht ab.
+	 */
+	onUserDeleted?: (
+		tx: import('../database/client').Tx,
+		info: UserDeletedInfo
+	) => Promise<UserDeletedResult | void>;
+	/**
+	 * Mitglieder (Modul `members`) wurden gelöscht oder anonymisiert: Kopien ihrer Daten im Modul
+	 * löschen bzw. anonymisieren. Ausgelöst von `members` über `core.modules.memberDeleted`; läuft
+	 * wie `onUserDeleted` je aktivem Modul in einer eigenen Modul-Transaktion (keine Core-Services
+	 * darin; dafür `afterCommit`). Fehler werden je Modul protokolliert.
+	 */
+	onMemberDeleted?: (
+		tx: import('../database/client').Tx,
+		info: MemberDeletedInfo
+	) => Promise<UserDeletedResult | void>;
+	/** Datenauskunft (Art. 15/20 DSGVO, siehe `core/privacy`) */
+	subjectExport?: ModuleSubjectExport;
 	/** Datensicherung (siehe `core/backup`) */
 	backup?: ModuleBackupHooks;
 	/** Globale Suche (Befehlspalette): Datensätze des Moduls, die die Person sehen darf */

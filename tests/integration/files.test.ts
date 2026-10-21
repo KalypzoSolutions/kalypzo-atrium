@@ -35,6 +35,7 @@ import {
 	type TrashItem
 } from '$lib/modules/files/schemas';
 import type { RequestContext } from '$lib/sdk/types';
+import { todayBerlin } from '$lib/sdk/dates';
 
 const ROOT = 'http://localhost:5173/api/v1/modules/files';
 const PW = 'a-long-enough-pw';
@@ -597,9 +598,8 @@ describe('Papierkorb', () => {
 		expect(tr.status).toBe(200);
 		const item = (tr.body.data as TrashItem[]).find((i) => i.id === id)!;
 		expect(item).toMatchObject({ kind: 'file', name: 'papier.txt', originalPath: ROOT_LABEL });
-		const expected = new Date(new Date(item.deletedAt).getTime() + 30 * 86_400_000)
-			.toISOString()
-			.slice(0, 10);
+		// Kalendertag in Europe/Berlin (#32)
+		const expected = todayBerlin(new Date(new Date(item.deletedAt).getTime() + 30 * 86_400_000));
 		expect(item.purgeOn).toBe(expected);
 		// fremde sehen den Eintrag nicht
 		const foreign = (await api('u1', 'GET', '/trash')).body.data as TrashItem[];

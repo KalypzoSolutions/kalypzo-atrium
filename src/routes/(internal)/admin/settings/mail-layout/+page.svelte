@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PageTitle } from '$lib/components/layout';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
@@ -10,7 +11,7 @@
 	let previewKey = $state(0);
 </script>
 
-<svelte:head><title>E-Mail-Layout · Einstellungen</title></svelte:head>
+<PageTitle title="E-Mail-Layout · Einstellungen" />
 
 <Card.Root>
 	<Card.Header>

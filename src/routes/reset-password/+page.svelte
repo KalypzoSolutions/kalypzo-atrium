@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { FormField } from '$lib/components/layout';
+	import { FormField, PageTitle } from '$lib/components/layout';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -16,17 +16,17 @@
 	let loading = $state(false);
 </script>
 
-<svelte:head><title>Passwort zurücksetzen</title></svelte:head>
+<PageTitle title="Passwort zurücksetzen" />
 
 <main class="flex min-h-screen items-center justify-center bg-muted/40 p-4">
 	<Card class="w-full max-w-sm">
 		<CardHeader>
-			<CardTitle class="text-xl">Neues Passwort</CardTitle>
+			<CardTitle level={1} class="text-section">Neues Passwort</CardTitle>
 			<CardDescription>Mindestens 12 Zeichen.</CardDescription>
 		</CardHeader>
 		<CardContent>
 			{#if form?.done}
-				<Alert><AlertDescription>Ihr Passwort wurde geändert.</AlertDescription></Alert>
+				<Alert><AlertDescription>Dein Passwort wurde geändert.</AlertDescription></Alert>
 				<Button href="/login" class="mt-4 w-full">Zur Anmeldung</Button>
 			{:else}
 				{#if form?.error}

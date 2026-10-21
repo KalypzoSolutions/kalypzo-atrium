@@ -62,6 +62,16 @@ export function formatEuro(cents: number): string {
 	return currency.format(cents / 100);
 }
 
+/**
+ * „-1234,50“ – ohne Tausenderpunkt und Währungszeichen, für CSV/Maschinenlesbares (Tabellenkalkulationen
+ * erkennen das als Zahl). Nicht ganzzahlige Eingaben werden kaufmännisch auf Cent gerundet, NaN/Infinity → „0,00“.
+ */
+export function centsPlain(cents: number): string {
+	const c = Number.isFinite(cents) ? Math.round(cents) : 0;
+	const abs = Math.abs(c);
+	return `${c < 0 ? '-' : ''}${Math.floor(abs / 100)},${String(abs % 100).padStart(2, '0')}`;
+}
+
 /** Rundet auf volle Euro auf (in Cent) */
 export function ceilToEuroCents(cents: number): number {
 	return Math.ceil(cents / 100) * 100;

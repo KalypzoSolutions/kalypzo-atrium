@@ -48,7 +48,9 @@ const baseShape = {
 	required: z.boolean().optional(),
 	locked: z.boolean().optional(),
 	hidden: z.boolean().optional(),
-	memberKey: z.string().regex(KEY_RE, 'Ungültiger Schlüssel').optional()
+	memberKey: z.string().regex(KEY_RE, 'Ungültiger Schlüssel').optional(),
+	mandatory: z.boolean().optional(),
+	health: z.boolean().optional()
 };
 
 const lengthSchema = z.number().int().min(1).max(10000).optional();

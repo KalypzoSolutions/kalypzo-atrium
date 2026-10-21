@@ -11,10 +11,40 @@ paths:
 - **Ruhig, hell, sachlich**: weißer Hintergrund (`bg-background`), Karten (`Card`) mit feiner Kontur, viel Weißraum,
   Radius `0.5rem` (`rounded-lg`/`rounded-md`). Dunkelmodus über die Tokens in `src/app.css` (nie feste Farben).
 - Primärfarbe = Akzentfarbe aus den Einstellungen (`--accent-color`, Standard `#2563eb`) → `bg-primary`, `ring-ring`.
+  `--primary-foreground` wird im CSS **automatisch** hell/dunkel nach Luminanz gewählt (`color(from var(--primary) srgb …)`,
+  Schwelle 0,18; gleiche Regel `primaryForeground()` in `ui/color-picker/contrast.ts`) – auch für die persönliche Farbe und
+  lokale Wrapper mit `style="--accent-color:…"`. Textlinks immer `text-link` (dunkel aufgehellt), nie `text-primary`.
   Destruktives rot (`destructive`), Hinweise gedämpft (`text-muted-foreground`). Statusfarben sparsam
   (grün = übernommen/gespeichert, amber = Warnung/Abzug).
-- Typografie: Standard `text-sm`; Seitentitel `text-2xl font-semibold tracking-tight`; Kartentitel `font-semibold`;
-  Hinweise `text-xs text-muted-foreground`; Zahlen/Beträge `tabular-nums`, rechtsbündig.
+- **Status-Tokens** (hell + dunkel in `app.css`; nie Palettenklassen wie `text-amber-700`/`bg-green-600`):
+
+  | Bedeutung | Text/Symbol | Volle Fläche | Getönte Fläche / Rand |
+  |---|---|---|---|
+  | Erfolg (gespeichert, bezahlt) | `text-success` | `bg-success text-success-foreground` | `bg-success-muted` / `border-success-border` |
+  | Warnung (Abzug, Frist, prüfen) | `text-warning` | `bg-warning text-warning-foreground` | `bg-warning-muted` / `border-warning-border` |
+  | Info (neutraler Hinweis) | `text-info` | `bg-info text-info-foreground` | `bg-info-muted` / `border-info-border` |
+  | Fehler/Löschen | `text-destructive` | `bg-destructive text-destructive-foreground` | `bg-destructive-muted` / `border-destructive-border` |
+
+  Hinweisboxen = `Alert variant="info|success|warning|destructive"` (info/success → `role="status"`, sonst `alert`),
+  Status-Chips = `Badge variant="success|warning|info|destructive"`. Bestätigungsknopf in Lösch-/Reset-Dialogen =
+  `Button variant="destructive-solid"` (`ConfirmDialog destructive` nutzt ihn selbst). `color-scheme` ist je Modus gesetzt
+  (native Datums-/Zeitfelder, Scrollleisten dunkel). Kontraste prüft `tests/unit/design-tokens-contrast.test.ts` (WCAG AA),
+  Rückfälle in `components`/`routes` `tests/unit/design-guard.test.ts` (Palettenklassen, `text-white`, `text-primary`,
+  native Checkbox/Textarea in `/admin`). Ausnahmen: Datenvisualisierung (`CostBar`), PDF-/Mail-Vorschau und QR-Code (`bg-white`).
+  Migriert und vom Guard erfasst: `actions`, `events`, `files`, `galleries`, `members`, `orders`, `offices`, `treasury`
+  (`MIGRATED_MODULES`, alle Fachmodule). Ausnahme `text-white`: Bildbetrachter mit immer dunkler Bühne (`files/FilePreview`, `galleries/ImageViewer`).
+  Akzentfarbige Symbole/Links = `text-link` (auch `text-link/80`), nie `text-primary`.
+- Typografie (#71, `@utility` in `app.css`, in `cn()` als Schriftgröße registriert): Seitentitel `text-title` (= 2xl semibold tight,
+  `PageHeader`), Abschnittsüberschrift `text-section` (lg semibold), Kleinschrift `text-caption`/`text-xs` – **nie** `text-[10px]/[11px]`.
+  `Card.Title` rendert eine Überschrift (`level`, Standard `h2`; Karten unter Abschnitt/in Dialogen `level={3}`; Login/Passwort `level={1}`),
+  ohne Größen-Override (`text-section` ist erlaubt); `DataTable titleLevel`. Hinweise `text-xs text-muted-foreground`;
+  Zahlen/Beträge `tabular-nums`, rechtsbündig.
+- Seitentitel: `PageTitle` (`$lib/components/layout`, `title`) → `<title>` „Seite – Systemname“ (`documentTitle`). Modulseiten bekommen ihn
+  zentral aus dem Navigationseintrag (`navLabelFor` in `modules/[moduleId]/[...path]`); eigene `PageTitle` (z. B. Datensatzname) überschreibt.
+- Fokus (#71): Token `--focus-ring` (volle Akzentfarbe, dunkel `--link`), globale `:focus-visible`-Outline 2 px + 2 px Abstand für alle
+  Elemente ohne eigenen Stil, Utility `focus-ring` für native Elemente; Core-Bausteine `focus-visible:ring-ring` (nie `/50`). Skip-Link
+  „Zum Inhalt springen“ (`.skip-link`) als erstes Element im `(internal)`-Layout. `prefers-reduced-motion` global in `app.css`
+  (Ladekreisel drehen langsam weiter). Ladetexte als Konstanten `BUSY_SAVE` („Speichert …“) & Co. (`layout/busy.ts`).
 - Layout: Sidebar links (`w-56`, Einträge `py-1.5`, Gruppen aufklappbar), Kopfzeile `h-14`, Inhalt in `max-w`-freier
   Spalte mit `p-4…8`. Abstände `space-y-4` (innerhalb) / `space-y-6` (Abschnitte). Raster: `grid gap-4 sm:grid-cols-2 lg:grid-cols-3`.
 - Texte deutsch, du-Ansprache, kurze Sätze. Gendern mit `*` (Teilnehmende*r, Besitzer*in). UI mit echten Umlauten.
@@ -33,7 +63,8 @@ wenn es nur ein Formular ist. Listen: Suche + Filter in der Toolbar der `DataTab
 | Tabellen-Karte (Toolbar, Laden/Fehler/Leer, Footer; `mobile="cards"`) | `DataTable` aus `$lib/components/layout` |
 | Fixierte Aktionsleiste mobil (Bulk) | `MobileActionBar` (`show`, `label`) |
 | PDF-Listen mit wählbaren Spalten | `PdfExportDialog` (`catalog`, `count`, `storageKey`, `onexport`) + `$lib/pdf-lists` |
-| Seitenkopf, Formularfeld, Leerzustand, Bestätigung | `PageHeader`, `FormField`, `EmptyState`, `ConfirmDialog` |
+| Seitenkopf, Formularfeld, Leerzustand, Bestätigung | `PageHeader`, `FormField` (`label`, `id`, `hint`, `error`, `required`), `EmptyState`, `ConfirmDialog` |
+| Ladezustand / Fehlerzustand beim Laden | `LoadingState` (`label`, `rows`, `rowClass`, `variant` rows/text; Skeleton + `role="status"` + sr „Lädt …“) / `ErrorState` (`title`, `message`, `onretry`, `busy`, `compact`, `details`; „Erneut versuchen“). `DataTable` (`error` + `onretry`) und `DashboardCard` nutzen sie intern. Nach Ladefehler **nie** leere Daten rendern |
 | Suche / Seitenwechsel (URL-basiert) | `SearchInput` (`param`, `resetParams`), `Pagination` (`pageParam`) |
 | Einfachauswahl / Mehrfachauswahl mit Suche | `SelectField` (`ui/select-field`, `emptyLabel`, `name`) / `MultiSelect` (`ui/multi-select`) |
 | Freie Tags/Schlagwörter (Chips, Vorschläge, „„x“ anlegen“) | `TagInput` (`ui/tag-input`; `bind:value: string[]`, `suggestions` oder `loadSuggestions(q)` (200 ms Debounce), `max` 20, `maxLength` 40, `label`, `invalid`, `describedby`, `onchange`; Enter/Komma legt an, Blur übernimmt, Backspace entfernt letzten; Logik `addTag()` in `tags.ts`) |
@@ -59,11 +90,17 @@ werden in `docs/module-development.md` (Tabelle) und hier ergänzt.
 
 ## UX-Regeln
 - Formulare: Label über dem Feld, Pflicht mit `*`, Fehler direkt darunter (`text-xs text-destructive`, `role="alert"`,
-  `aria-invalid`, `aria-describedby`). Client-Validierung mit denselben Zod-Schemas wie der Server, erstes fehlerhaftes
+  `aria-invalid`, `aria-describedby`). **`FormField` erledigt das selbst** (Kontext `ui/field/context.ts`): `Input`, `Textarea`,
+  `SelectField`, `MultiSelect`, `MoneyInput`, `NumberStepper`, `TagInput`, `ColorPicker` im Feld bekommen `aria-describedby`
+  (Hinweis + Fehler), `aria-invalid` und bei `required` `aria-required` – sofern ihre `id` gleich der `FormField`-`id` ist (oder
+  fehlt). Hinweis bleibt bei Fehler sichtbar. Eigene Angaben gewinnen (`aria-invalid`) bzw. werden zusammengeführt
+  (`aria-describedby`); manuelle Verknüpfungen in Modulen sind damit überflüssig. Native Elemente ohne Core-Baustein
+  verknüpfen weiterhin selbst (`{id}-hint`, `{id}-error`). Client-Validierung mit denselben Zod-Schemas wie der Server, erstes fehlerhaftes
   Feld fokussieren. Server-Fehler (`ApiClientError.details`) auf Felder abbilden, sonst im Dialog/Toast zeigen.
 - Mutationen: Button `disabled` + Text „Speichert …“ während `busy`; Erfolg als `toast.success`, Fehler `toast.error`.
   Löschen immer mit `ConfirmDialog` (destruktiv); wo sinnvoll Rückgängig-Toast.
-- Laden: `Skeleton`, Fehlerzustand mit „Erneut versuchen“, Leerzustand mit erklärendem Text und Aktion.
+- Laden: `LoadingState` (Skeleton in Zielform, Text „Lädt …“), Fehlerzustand `ErrorState` mit „Erneut versuchen“,
+  Leerzustand mit erklärendem Text und Aktion.
 - Autosave (Kalkulation): Debounce ~800 ms, Statuszeile mit `aria-live` („Gespeichert“, „Speichert …“, Fehler + Retry),
   ausstehende Änderungen beim Verlassen flushen, Server-Antworten überschreiben keine laufende Eingabe.
 - Berechnungen live und lokal (gleiche reinen Funktionen wie der Server), nie `NaN`, Eingaben klemmen statt abweisen.
@@ -73,7 +110,7 @@ werden in `docs/module-development.md` (Tabelle) und hier ergänzt.
   Zellen ohne Kopftext = Checkbox/Aktionen). Für Listen mit vielen Spalten Standard; breite Summen-/Vergleichstabellen bleiben
   `mobile="scroll"` (Default, horizontales Scrollen). `max-w-*`/`truncate` in Zellen wird in Karten umgebrochen.
   **Bulk-Leisten** mit `MobileActionBar` (unten fixiert, Inhalt braucht `pb-20`). **Dialoge** haben Standard-`max-h-[calc(100dvh-2rem)]`
-  mit Scroll; kein eigenes `vh` setzen. **Touch-Ziele** ≥ 36 px werden auf Touch-Geräten (`pointer: coarse`) in `app.css`
+  mit Scroll; kein eigenes `vh` setzen (Guard). Lange Formulare: `Dialog.Footer sticky` (Fußzeile bleibt beim Scrollen sichtbar). **Touch-Ziele** ≥ 36 px werden auf Touch-Geräten (`pointer: coarse`) in `app.css`
   erzwungen (Button, Input, Select, Tabs-Trigger, Checkbox) – Desktop bleibt kompakt. Wichtige Summen als fixierte Leiste unten.
 - Barrierefreiheit: Icon-Buttons mit `aria-label`, Gruppen mit `fieldset/legend`, Fokus sichtbar, Farbe nie alleiniger Träger.
 
@@ -81,7 +118,10 @@ werden in `docs/module-development.md` (Tabelle) und hier ergänzt.
 - **bits-ui setzt `data-state="open|closed|checked|unchecked|active"` und `data-orientation`.** shadcn-Vorlagen anderer
   Versionen nutzen `data-open:`/`data-checked:`/`data-horizontal:` → wirkungslos (unsichtbare Schalter, Tabs als Spalte).
   Immer `data-[state=open]:` / `data-[orientation=horizontal]:` verwenden; Vorlagen beim Einfügen anpassen.
-- Kein natives `<select>`, `<input type="color">`, `<input type="date">` nur dort, wo es bereits so gelöst ist (Datumsfelder).
+- Kein natives `<select>`, `<input type="color">`, `<input type="checkbox">`, `<textarea>` (→ `Checkbox` mit `name`/`value` für
+  Formular-POST, `Textarea`); `<input type="date">` nur dort, wo es bereits so gelöst ist (Datumsfelder).
+- Generisches `SettingsForm` (`/admin/settings/*`): Feldart `color` (`COLOR_KEYS` in `admin/_shared/group-form.server.ts`) →
+  `ColorPicker` + Vorschau + Kontrastanzeige; Beschreibungen über den `FormField`-Hinweis verknüpft.
 - Svelte 5: `$props`, `$state`, `$derived`, `$bindable`; keine `$effect`-Ketten für abgeleitete Werte; Snippets statt Slots;
   Event-Attribute `onclick={…}`; `{#each … (key)}` immer mit Schlüssel.
 - Popover/Dialog-Kombination: Inhalte werden portaliert; Select in Dialog funktioniert über die bits-ui-Layer.

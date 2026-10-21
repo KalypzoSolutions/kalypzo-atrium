@@ -26,7 +26,7 @@ import membersModule from '$lib/modules/members/module';
 import officesModule from '$lib/modules/offices/module';
 import ordersModule from '$lib/modules/orders/module';
 import treasuryModule from '$lib/modules/treasury/module';
-import { setTreasuryTodayForTests } from '$lib/modules/treasury/db';
+import { setTodayForTests } from '$lib/sdk/dates';
 import type { FileNode } from '$lib/modules/files/schemas';
 import type { InvoiceDetail } from '$lib/modules/treasury/schemas';
 import type { RequestContext } from '$lib/sdk/types';
@@ -174,7 +174,7 @@ beforeAll(async () => {
 	keys.admin = (await createApiKey(admin, { name: 'a', scopes: [...admin.permissions] })).key;
 	await installFakeStorage(admin);
 	setMailTransportForTests({ sendMail: async () => undefined });
-	setTreasuryTodayForTests('2026-06-01');
+	setTodayForTests('2026-06-01');
 
 	const base = ['core.api.manage', 'files.file.view', 'offices.office.view', 'orders.order.view'];
 	await mkUser('owner', 'Olivia Owner', [...base, 'orders.order.create', 'treasury.own.view']);
@@ -293,7 +293,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	setMailTransportForTests(undefined);
-	setTreasuryTodayForTests(null);
+	setTodayForTests(null);
 	uninstallFakeStorage();
 	await close();
 });

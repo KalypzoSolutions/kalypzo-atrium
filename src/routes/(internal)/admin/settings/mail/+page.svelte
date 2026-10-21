@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PageTitle } from '$lib/components/layout';
 	import * as Card from '$lib/components/ui/card';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
 	import TestMailCard from '../../_shared/TestMailCard.svelte';
@@ -7,7 +8,7 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<svelte:head><title>E-Mail-Versand · Einstellungen</title></svelte:head>
+<PageTitle title="E-Mail-Versand · Einstellungen" />
 
 <Card.Root>
 	<Card.Header>

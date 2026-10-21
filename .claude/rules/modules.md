@@ -23,6 +23,15 @@ src/lib/modules/<id>/
 └── pages/*.svelte            Seiten + Unterkomponenten
 ```
 
+## Erlaubte Importe (ESLint je Modul, #44/#47)
+- Erlaubt: eigene Moduldateien, `$lib/sdk/*`, `$lib/components/{ui,layout,forms}`, `$lib/forms`, `$lib/pdf-lists` (inkl.
+  `$lib/pdf-lists/member-columns` = Mitglieder-Spaltenkatalog), `$lib/utils`. Fremde Module **nur** `import type … from '$lib/modules/<id>/contract'`
+  (Laufzeit über `core.modules.use|useOptional`); andere Fremddateien und relative Pfade `../<anderes-modul>/…` → ESLint-Fehler.
+- Gemeinsame reine Hilfen in eine dieser Bibliotheken legen (oder als Dienst in den Vertrag), nie aus einem anderen Modul importieren.
+- `no-restricted-syntax`: `core.database.db`, `core.system.*`, `core.modules.enable|disable`, `core.auth.instance`, `forModule('<fremde-id>')` verboten.
+- Offene Ausnahmen: `OPEN_BOUNDARY_EXCEPTIONS` in `eslint.config.js` (mit Grund, beim Beheben löschen). Test: `tests/unit/module-boundaries.test.ts`.
+- Details: `docs/module-development.md` → „Erlaubte Importe“.
+
 ## Manifest und Rechte
 - `id`: `[a-z][a-z0-9-]{1,30}`, nicht `core|api|auth|admin|system`. Neue Module starten **deaktiviert**; Aktivierung in `/admin/modules`.
 - Berechtigungen: `<id>.<ressource>.<aktion>`, je Segment `[a-z][a-z0-9-]*` (**kein `_`**). Alle im Manifest deklarieren,
@@ -34,6 +43,13 @@ src/lib/modules/<id>/
   Icons stehen in `components/layout/icons.ts` (unbekannt → Box) – neue dort ergänzen.
   Eigene Einstellungsseite eines Moduls: Navigationseintrag mit `admin: true` → erscheint in der Verwaltung (Abschnitt „Module“, Befehlspalette)
   und unter Einstellungen → Module als Link; Module ohne eigene Seite bekommen dort automatisch ein Formular aus `settings`.
+- **Manifest-Verweise werden beim Start geprüft** (`core/modules/validate.ts` `validateModuleReferences`, aus `syncModules`; #76): Rechte in
+  `defaultRoleGrants` müssen im **eigenen** Manifest stehen; `navigation[].permission` und `search.permission|anyPermission` müssen bekannte Rechte
+  (Core oder ein registriertes Modul) sein; `resetAreas`-IDs `[a-z][a-z0-9-]*`, eindeutig, nicht leer; `implies` = `<modul>:<bereich>` und bei registriertem
+  Zielmodul ein existierender Bereich. Sonst wirft der Start. Zyklen über `optionalDependencies` (z. B. `actions` ⇄ `treasury`) → einmalige `console.warn`.
+  Test: `tests/unit/module-validate.test.ts`.
+- **Audit-Aktionen** wie Rechte mit Bindestrich (`orders.order.handed-out`); bestehende Namen mit Unterstrich (`treasury.invoice.marked_paid`,
+  `actions.accounting.club_paid` …) bleiben wegen der Historie – Filter müssen beide Schreibweisen kennen.
 
 ## Endpoints
 ```ts
@@ -45,10 +61,25 @@ defineEndpoint({
   handler: async ({ ctx, params, query, body, request }) => data | Response
 });
 ```
-- Array mit `as ApiEndpoint[]` abschließen (Generics sonst unhandlich).
+- Liste mit `as ApiEndpoint[]` abschließen oder – wenn Enum-Parameter/Body-Typen nicht zur Standard-Generik passen – als
+  `export const xEndpoints: AnyApiEndpoint[] = [defineEndpoint({…}), …];` deklarieren (`$lib/sdk/server`). **Kein** `as unknown as ApiEndpoint[]` (#46).
 - JSON-Antworten werden in `{ data }` verpackt; `POST` → 201. Rohe `Response` (Download) wird durchgereicht.
-- **Multipart/Upload**: kein `body`-Schema; im Handler `await request.formData()`; Typ/Größe selbst prüfen.
-- Objektzugriff: Basisrecht am Endpoint, danach `requireAccess(tx, ctx, id, 'read'|'edit'|'share')` (siehe `actions/access.ts`).
+- **Multipart/Upload** (#33): kein `body`-Schema; Einzeldatei `await readUpload(request, { maxBytes, allowedTypes, typesLabel, fallbackName })`
+  (`$lib/sdk/server`) → `{ bytes, contentType, name, size }`; Mehrfeld-Formular `readFormData(request)` + `takeUpload(form, rules)` (`required: false`
+  = optional), schon gelesene Bytes `checkUploadBytes`. Einheitlich: kaputter Body 400, Feld fehlt/leer/Typ/Inhalt ≠ Typ (Magic Bytes, `sniff`
+  Standard an) **422** Pfad `file`, zu groß **413**. Bilder: `sniff: false` + `detectMissingType` (Inhalt prüft `core.images.process`, 400).
+  Speicherpfad-Name `safeFileName(name)` (`$lib/sdk/file-names`, auch über `$lib/sdk/server`), Header `contentDisposition`/`secureFileResponse`.
+- **„Heute“ und Datum** (#32): nur `todayBerlin()` aus `$lib/sdk/dates` (Server und Browser, Europe/Berlin), nie `new Date().toISOString().slice(0, 10)`
+  oder Lokalzeit; dazu `addDays`, `daysBetween`, `isRealDate`, `formatDateDe`, `formatDateTimeDe`, `ageFromBirthDate`. Tests: `setTodayForTests(d|null)`
+  (einziger Override, gilt für alle Module) bzw. `vi.setSystemTime`. In SQL `${todayBerlin()}::date` statt `CURRENT_DATE` (DB läuft in UTC).
+- **CSV/Geld** (#34): CSV nur über `$lib/sdk/csv` (`csvDocument`, `csvFromRecords`, `csvCell`; BOM, `;`, CRLF, Formelschutz für **alle** Texte mit
+  `= + - @ Tab CR`), Beträge als `csvCents(cents)` (Zahl „-1234,50“). Anzeige/PDF/Mail `formatEuro` (`$lib/components/layout/money`, „1.234,50 €“ mit
+  geschütztem Leerzeichen), maschinenlesbar `centsPlain`. Kein eigenes `toFixed(2).replace`.
+- Objektzugriff: Basisrecht am Endpoint, danach `requireAccess(tx, ctx, id, 'read'|'edit'|'share')` (siehe `actions/access.ts`). Objekte mit
+  Principal-Freigaben (`<obj>_shares`): **nicht** selbst schreiben, sondern `createShareAccess(...)` aus `$lib/sdk/server` (Muster `events/access.ts`,
+  Details `architecture.md` → „Freigabe an Principals“).
+- DB-Grundhelfer (`moduleDb`, `rowsOf`, `inList`, `toIso`, `str`, `num`, `type Row`) und Namen (`core.users.byIds` + `userLabel`) nur aus dem SDK,
+  keine lokalen Kopien. IBAN-Prüfung/-Maske nur `$lib/sdk/iban` (`isValidIban`, `normalizeIban`, `formatIban`, `ibanLast`, `maskFromLast`, `maskIbanTail`).
 
 ## Handler-Muster (wichtig)
 ```ts
@@ -86,8 +117,18 @@ return result;
   `hooks.server.ts`, Tick 5 min, nicht bei `JOBS_DISABLED=1`), nur für aktive Module, Systemkontext, Sperre per atomarem
   Upsert auf `job_run` (keine offene Transaktion). Rückgabe = Statusmeldung. Admin: `GET /api/v1/jobs`,
   `POST /api/v1/jobs/<modul>.<job>/run` (`core.jobs.manage`). Tests: `runDueJobs`, `runJobNow`, `setJobClockForTests`.
+  `daily` = einmal je Tag im Fenster `JOBS_DAILY_WINDOW` (Standard `6-20`, Europe/Berlin), nach Fehler neuer Versuch nach 15 min,
+  Heartbeat jede Minute, abgebrochen erst nach 10 min ohne Heartbeat. Jobs trotzdem **idempotent** bauen (Abbruch mitten im Lauf möglich).
 - `manifest.optionalDependencies` + `core.modules.useOptional(provider, caller)` → `null`, wenn der Anbieter nicht aktiv ist
   (für Rückkanäle ohne Zyklus, z. B. `actions` liest Zahlungen aus `treasury`). Harte Abhängigkeiten bleiben `dependencies`.
+  Andere Fehler von `useOptional` (fehlende Deklaration) **nicht** per `try { … } catch { return null }` schlucken (#46, Muster `orders/db.ts`).
+- `provides` mit `satisfies <Vertrag aus contract.ts>` angeben (`ModuleDefinition.provides?: object`), **nie** `as unknown as Record<…>` – sonst fällt eine
+  fehlende Methode erst zur Laufzeit auf. Vertrag des Principal-Dienstes: `PrincipalProvider`/`PrincipalGroupRef` in `$lib/sdk/types/sharing.ts` ist die
+  einzige Quelle; `members/contract.ts` `MembersService extends PrincipalProvider`.
+
+## KI und externe Dienste (#69)
+- `core.ai.use` schickt den Prompt an einen externen Anbieter: keine Art.-9-Daten (Gesundheit), keine Kinder-/Kontaktdaten/IBAN, Namen durch
+  Platzhalter ersetzen (Pseudonymisierung), Hinweis in der Oberfläche. Jeder neue externe Empfänger kommt in `docs/security.md` → „Externe Empfänger“.
 
 ## Globale Suche
 - `defineModule({ search: { permission?, anyPermission?, run(ctx, query, limit) } })` (`ModuleSearchProvider`, Datei `search.ts`): Treffer
@@ -105,7 +146,9 @@ return result;
 - `ui.ts` `profileSections: [{ id, title, order?, permission?, component: () => import(…) }]` → Karte auf `/profile`
   (Komponente bekommt `{ userId }`, lädt Daten per `apiFetch`; Auswahl/Sortierung: `selectProfileSections` in
   `$lib/sdk/client/profile-sections`). Typ `ProfileSection` in `$lib/sdk/types/module-ui`.
-- `defaultRoleGrants: { Rollenname: [Rechte] }` (Manifest oder `defineModule`): Rolle per Name suchen/anlegen, Rechte
+- `defaultRoleGrants: { Rollenname: [Rechte] }` (Manifest oder `defineModule`): Rolle über Kennung `role.system_key = default:<Name>` suchen/anlegen
+  (Core-Migration 0008, #67; gleichnamige Rolle ohne Kennung bekommt **nichts**, Name ist reserviert; im Modul `core.roles.defaultRoleId(name)`
+  statt Namenssuche), Rechte
   **einmalig** je (Modul, Rolle, Recht) vergeben (Marker `role_grant_applied`, Core-Migration 0004) – entzogene Rechte
   kommen nicht zurück. Rechte müssen im Manifest stehen.
 
@@ -123,6 +166,9 @@ return result;
 - Änderungen an bestehenden Tabellen: `ALTER TABLE … ADD COLUMN IF NOT EXISTS`; CHECK-Constraints ersetzen mit
   `DROP CONSTRAINT IF EXISTS` + `ADD CONSTRAINT` (Namen: `<tabelle>_<spalte>_check`).
 - Der Runner führt pro Modul beim Aktivieren **und** beim Start (für aktive Module) ausstehende Migrationen aus.
+- `search_path` ist dabei **nur** `mod_<id>` (kein `public`): Core-Tabellen sind auch in Migrationen nicht erreichbar.
+- Neue Geldspalten `bigint`, FK-Spalten mit Index, Formate als `CHECK` (nachträglich `NOT VALID` → bereinigen → `VALIDATE`, Muster `events/migrations/0003_checks.sql`).
+- `MAX(position)+1` nur unter `pg_advisory_xact_lock(hashtext('<modul>:<container>'))` (Muster `orders/articles.endpoints.ts`).
 
 ## UI-Seiten
 - Seiten bekommen `{ params, path }` (`ModulePageProps`), **keine** Daten: alles per `apiFetch('/modules/<id>/…')` laden.

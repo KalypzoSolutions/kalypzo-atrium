@@ -3,7 +3,12 @@ import type { RequestContext } from '$lib/sdk/types';
 import { getDb, schema, type DbOrTx } from '../database/client';
 import { errors } from '../errors';
 import { enabledModuleIds } from '../modules/state';
-import { ADMIN_ROLE_ID, PERMISSION_PATTERN } from './catalog';
+import {
+	ADMIN_ROLE_ID,
+	CORE_PERMISSIONS,
+	PERMISSION_PATTERN,
+	PRIVILEGED_PERMISSIONS
+} from './catalog';
 
 export function assertPermissionKey(key: string): void {
 	if (!PERMISSION_PATTERN.test(key)) {
@@ -34,7 +39,8 @@ export async function getUserPermissions(userId: string, tx?: DbOrTx): Promise<S
 		.innerJoin(schema.rolePermission, eq(schema.rolePermission.roleId, schema.userRoleGrant.roleId))
 		.innerJoin(schema.permission, eq(schema.permission.key, schema.rolePermission.permissionKey))
 		.where(eq(schema.userRoleGrant.userId, userId));
-	const enabled = await enabledModuleIds(db);
+	// Ohne übergebene Transaktion den kurzen Modulstatus-Cache nutzen (#23: je Request eine Query weniger)
+	const enabled = await enabledModuleIds(tx);
 	return new Set(
 		[...rows, ...granted.filter((g) => enabled.has(g.grantModuleId))]
 			.filter((r) => r.moduleId === 'core' || enabled.has(r.moduleId))
@@ -62,13 +68,47 @@ export async function requireAny(ctx: RequestContext, keys: string[]): Promise<v
 	if (!hasAny(ctx, keys)) throw errors.forbidden(`Berechtigung fehlt: ${keys.join(' | ')}`);
 }
 
-/** Schutz vor Rechteausweitung: nur eigene Berechtigungen dürfen vergeben werden. */
+/**
+ * Administrator*in im Sinne der privilegierten Rechte: System-Kontext oder wer **sämtliche** Core-Rechte
+ * wirksam besitzt (die Rolle „Administrator“ bekommt sie immer). Synchron aus dem Kontext, damit jede
+ * Vergabe-Prüfung (`assertCanGrant`) ohne Datenbankzugriff auskommt. Ein API-Key mit eingeschränkten
+ * Scopes zählt nicht.
+ */
+export function isAdministrator(ctx: RequestContext): boolean {
+	if (ctx.actor.type === 'system') return true;
+	return Object.keys(CORE_PERMISSIONS).every((k) => ctx.permissions.has(k));
+}
+
+/** Admin-gleiches Recht (`PRIVILEGED_PERMISSIONS`)? */
+export function isPrivilegedPermission(key: string): boolean {
+	return PRIVILEGED_PERMISSIONS.has(key);
+}
+
+/** Darf `ctx` dieses Recht vergeben? (selbst besitzen; privilegierte nur als Administrator*in) */
+export function canGrantPermission(ctx: RequestContext, key: string): boolean {
+	if (ctx.actor.type === 'system') return true;
+	if (!ctx.permissions.has(key)) return false;
+	return !isPrivilegedPermission(key) || isAdministrator(ctx);
+}
+
+/**
+ * Schutz vor Rechteausweitung: nur eigene Berechtigungen dürfen vergeben werden; admin-gleiche Rechte
+ * (`PRIVILEGED_PERMISSIONS`) nur von Administrator*innen. Gilt für Rollen anlegen/bearbeiten/löschen,
+ * Rollen zuweisen (auch über Ämter) und API-Key-Scopes.
+ */
 export function assertCanGrant(ctx: RequestContext, keys: Iterable<string>): void {
 	if (ctx.actor.type === 'system') return;
-	const missing = [...keys].filter((k) => !ctx.permissions.has(k));
+	const list = [...keys];
+	const missing = list.filter((k) => !ctx.permissions.has(k));
 	if (missing.length) {
 		throw errors.forbidden(
 			`Rechteausweitung nicht erlaubt: Sie besitzen diese Berechtigungen nicht (${missing.join(', ')})`
+		);
+	}
+	const privileged = [...new Set(list.filter(isPrivilegedPermission))];
+	if (privileged.length && !isAdministrator(ctx)) {
+		throw errors.forbidden(
+			`Admin-gleiche Berechtigungen dürfen nur Administrator*innen vergeben (${privileged.join(', ')})`
 		);
 	}
 }

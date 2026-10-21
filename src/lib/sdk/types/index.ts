@@ -44,6 +44,11 @@ export interface ModuleSettingDefinition {
 	schema: z.ZodType;
 	default?: unknown;
 	secret?: boolean;
+	/**
+	 * Recht zum Schreiben dieser Einstellung (auch über `PUT /api/v1/settings`). Ohne Angabe:
+	 * `<modul>.settings.manage`, falls das Modul dieses Recht deklariert, sonst `core.settings.manage`.
+	 */
+	writePermission?: string;
 }
 
 export interface ModuleManifest {

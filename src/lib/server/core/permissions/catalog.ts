@@ -29,9 +29,24 @@ export const CORE_PERMISSIONS: Record<string, string> = {
 	'core.system.reset':
 		'Datenbereiche zurücksetzen (Vorschau, Passwort, Pflicht-Export und Bestätigungswort)',
 	'core.system.backup':
-		'Datensicherung: Gesamt-Export (verschlüsselt, inkl. Zugangsdaten) und Import (Wiederherstellen/Zusammenführen)'
+		'Datensicherung: Gesamt-Export (verschlüsselt, inkl. Zugangsdaten) und Import (Wiederherstellen/Zusammenführen)',
+	'core.privacy.export':
+		'Datenauskunft (Art. 15/20 DSGVO): alle Daten einer Person aus allen Modulen exportieren (inkl. Gesundheitsdaten)'
 };
 
 export const PERMISSION_PATTERN = /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/;
 
 export const ADMIN_ROLE_ID = 'role_administrator';
+
+/**
+ * Admin-gleiche („privilegierte“) Rechte (#16): Sie führen faktisch zur Vollübernahme des Systems
+ * (Datensicherung = alle Daten lesen und beliebige Daten einspielen; Zurücksetzen = Daten und Konten
+ * löschen). Vergeben (Rolle anlegen/bearbeiten, Rolle zuweisen, API-Key-Scope, Ämter-Rollen) dürfen sie
+ * nur Administrator*innen – siehe `isAdministrator`/`assertCanGrant` in `service.ts`.
+ */
+export const PRIVILEGED_PERMISSIONS: ReadonlySet<string> = new Set([
+	'core.system.backup',
+	'core.system.reset',
+	// Liest sämtliche Daten einer Person, auch Gesundheitsdaten (#30)
+	'core.privacy.export'
+]);

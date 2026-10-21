@@ -1,5 +1,5 @@
 import { allDefinitions } from '../modules/registry';
-import type { ApiEndpoint, HttpMethod, RegisteredEndpoint } from './types';
+import type { ApiEndpoint, RegisteredEndpoint } from './types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type AnyEndpoint = ApiEndpoint<any, any, any>;
@@ -91,15 +91,24 @@ export interface Match {
 	params: Record<string, string>;
 }
 
+/**
+ * Sucht den Endpunkt zu Methode und Pfad. Bei mehreren passenden Mustern gewinnt das spezifischere
+ * (statisches Segment vor `:param`, von links nach rechts verglichen) – unabhängig von der
+ * Registrierungsreihenfolge. `HEAD` nutzt einen GET-Endpunkt, wenn es keinen eigenen gibt.
+ * `allowed` = alle Methoden mit passendem Pfad (für den `Allow`-Header bei 405).
+ */
 export function matchEndpoint(
 	method: string,
 	pathname: string
-): { match?: Match; pathExists: boolean } {
+): { match?: Match; pathExists: boolean; allowed: string[] } {
 	const segs = normalize(pathname);
-	let pathExists = false;
+	const wanted = method.toUpperCase();
+	const allowed = new Set<string>();
+	let best: { match: Match; rank: number[]; exact: boolean } | undefined;
 	for (const e of allEndpoints()) {
 		if (e.segments.length !== segs.length) continue;
 		const params: Record<string, string> = {};
+		const rank: number[] = [];
 		let ok = true;
 		for (let i = 0; i < segs.length; i++) {
 			const pat = e.segments[i] as string;
@@ -111,15 +120,30 @@ export function matchEndpoint(
 					ok = false;
 					break;
 				}
+				rank.push(0);
 			} else if (pat !== seg) {
 				ok = false;
 				break;
-			}
+			} else rank.push(1);
 		}
 		if (!ok) continue;
-		pathExists = true;
-		if (e.method === (method.toUpperCase() as HttpMethod))
-			return { match: { endpoint: e, params }, pathExists };
+		allowed.add(e.method);
+		const exact = e.method === wanted;
+		if (!exact && !(wanted === 'HEAD' && e.method === 'GET')) continue;
+		const better =
+			!best ||
+			compareRank(rank, best.rank) > 0 ||
+			(compareRank(rank, best.rank) === 0 && exact && !best.exact);
+		if (better) best = { match: { endpoint: e, params }, rank, exact };
 	}
-	return { pathExists };
+	if (allowed.has('GET')) allowed.add('HEAD');
+	return { match: best?.match, pathExists: allowed.size > 0, allowed: [...allowed] };
+}
+
+function compareRank(a: number[], b: number[]): number {
+	for (let i = 0; i < a.length; i++) {
+		const d = (a[i] ?? 0) - (b[i] ?? 0);
+		if (d !== 0) return d;
+	}
+	return 0;
 }

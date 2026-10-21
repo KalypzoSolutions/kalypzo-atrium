@@ -4,6 +4,9 @@
  * Alle Daten sind `YYYY-MM-DD`-Strings, Monate `YYYY-MM`; gerechnet wird in UTC (keine Zeitzonen-Sprünge).
  */
 
+import { parseHex, readableOn, relativeLuminance } from '$lib/components/ui/color-picker/contrast';
+import { todayBerlin } from '$lib/sdk/dates';
+
 export interface CalendarItem {
 	id: string;
 	title: string;
@@ -82,9 +85,9 @@ export function isValidMonth(month: string | null | undefined): month is string 
 	return !!m && Number(m[2]) >= 1 && Number(m[2]) <= 12;
 }
 
-/** Lokales Datum (Browser-/Server-Zeitzone) als YYYY-MM-DD. */
-export function localToday(now: Date = new Date()): string {
-	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+/** „Heute“ als YYYY-MM-DD – Kalendertag in Europe/Berlin (`todayBerlin`, #32). */
+export function localToday(now?: Date): string {
+	return todayBerlin(now);
 }
 
 export function monthOf(date: string): string {
@@ -240,42 +243,19 @@ export function buildAgenda(month: string, items: CalendarItem[]): AgendaDay[] {
 
 /** Parst `#rgb` / `#rrggbb` (ohne Alpha); sonst null. */
 export function parseHexColor(color: string | null | undefined): [number, number, number] | null {
-	if (!color) return null;
-	const c = color.trim();
-	const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(c);
-	if (short)
-		return [short[1]!, short[2]!, short[3]!].map((h) => parseInt(h + h, 16)) as [
-			number,
-			number,
-			number
-		];
-	const long = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c);
-	if (long)
-		return [long[1]!, long[2]!, long[3]!].map((h) => parseInt(h, 16)) as [number, number, number];
-	return null;
+	return parseHex(color);
 }
 
-/** Relative Luminanz nach WCAG 2.x (0 = schwarz, 1 = weiß). */
-export function relativeLuminance([r, g, b]: [number, number, number]): number {
-	const lin = (v: number) => {
-		const s = v / 255;
-		return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-	};
-	return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-}
+/** Relative Luminanz nach WCAG 2.x (0 = schwarz, 1 = weiß) – gemeinsame Funktion aus `contrast.ts`. */
+export { relativeLuminance };
 
 /**
  * Lesbare Schriftfarbe auf einer Hintergrundfarbe: `#ffffff` oder `#111827`, je nachdem,
  * welche den höheren Kontrast hat. Ungültige Farbe → null (Aufrufer nutzt Token-Farben).
  */
 export function contrastTextColor(color: string | null | undefined): string | null {
-	const rgb = parseHexColor(color);
-	if (!rgb) return null;
-	const l = relativeLuminance(rgb);
-	const dark = relativeLuminance([17, 24, 39]);
-	const contrastWhite = 1.05 / (l + 0.05);
-	const contrastDark = (l + 0.05) / (dark + 0.05);
-	return contrastDark >= contrastWhite ? '#111827' : '#ffffff';
+	if (!parseHex(color)) return null;
+	return readableOn(color!, '#ffffff', '#111827');
 }
 
 /** „Oktober 2026“ */

@@ -37,6 +37,10 @@ interface BaseField {
 	hidden?: boolean;
 	/** Bindung an ein Zusatzfeld des Mitglieds (Modul `members`): vorausgefüllt, Änderungen werden dort gespeichert */
 	memberKey?: string;
+	/** Pflicht-Standardfeld des Hosts (z. B. Datenschutz): weder ausblendbar noch optional */
+	mandatory?: boolean;
+	/** Antwort enthält Gesundheitsdaten (Art. 9 DSGVO): der Host speichert sie besonders geschützt */
+	health?: boolean;
 }
 
 export interface TextField extends BaseField {

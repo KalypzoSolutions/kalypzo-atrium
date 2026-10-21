@@ -73,7 +73,7 @@ test('API-Key: erstellen, einmalig anzeigen, verwenden, widerrufen', async ({ pa
 		.click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Name').fill(`Key ${run}`);
-	await dialog.locator('input[name="scopes"][value="core.users.view"]').check();
+	await dialog.getByRole('checkbox', { name: 'core.users.view', exact: true }).click();
 	await dialog.getByRole('button', { name: 'Erstellen' }).click();
 	const keyDialog = page.getByRole('dialog').filter({ hasText: 'erstellt' });
 	await expect(keyDialog).toBeVisible();

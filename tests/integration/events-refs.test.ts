@@ -82,7 +82,12 @@ beforeAll(async () => {
 			roleIds: [roleId]
 		});
 	};
-	await mk('alice', ['core.api.manage', 'events.event.view', 'events.event.create']);
+	await mk('alice', [
+		'core.api.manage',
+		'events.event.view',
+		'events.event.create',
+		'events.event.publish'
+	]);
 	await mk('bob', ['events.event.view']);
 	await mk('carol', ['events.event.view', 'events.event.view-all']);
 	await mk('dave', ['events.website.read']);
@@ -90,7 +95,7 @@ beforeAll(async () => {
 	aliceKey = (
 		await createApiKey(await ctxOf(users.alice!), {
 			name: 'alice',
-			scopes: ['events.event.view', 'events.event.create']
+			scopes: ['events.event.view', 'events.event.create', 'events.event.publish']
 		})
 	).key;
 

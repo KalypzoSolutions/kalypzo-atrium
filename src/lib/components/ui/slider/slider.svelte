@@ -53,6 +53,6 @@
 		index={0}
 		aria-label={label}
 		data-slot="slider-thumb"
-		class="block size-4.5 shrink-0 rounded-full border-2 border-primary bg-background shadow-sm transition-[box-shadow,transform] outline-none hover:ring-4 hover:ring-ring/30 focus-visible:ring-4 focus-visible:ring-ring/50 active:scale-110 disabled:pointer-events-none"
+		class="block size-4.5 shrink-0 rounded-full border-2 border-primary bg-background shadow-sm transition-[box-shadow,transform] outline-none hover:ring-4 hover:ring-ring/30 focus-visible:ring-4 focus-visible:ring-ring active:scale-110 disabled:pointer-events-none"
 	/>
 </SliderPrimitive.Root>

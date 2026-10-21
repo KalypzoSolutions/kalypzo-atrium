@@ -76,8 +76,11 @@ test('Mitglied anlegen: „Weiteres Mitglied anlegen“ lässt den Dialog offen'
 		'aria-selected',
 		'false'
 	);
-	await page.waitForTimeout(400);
-	await page.screenshot({ path: 'test-results/keep-open-member-after.png' });
+	// Animationen beim Screenshot beenden statt fest zu warten (#75)
+	await page.screenshot({
+		path: 'test-results/keep-open-member-after.png',
+		animations: 'disabled'
+	});
 
 	await dialog.getByRole('button', { name: 'Fertig' }).click();
 	await expect(page.getByRole('dialog')).toHaveCount(0);

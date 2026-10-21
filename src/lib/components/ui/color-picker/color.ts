@@ -1,4 +1,5 @@
 /** Reine Farbfunktionen (ohne Svelte). Ausgabe immer `#rrggbb` in Kleinbuchstaben. */
+import { readableOn } from './contrast';
 
 export type Rgb = { r: number; g: number; b: number };
 /** h: 0-360, s und v: 0-1 */
@@ -85,13 +86,5 @@ export function hsvToHex(hsv: Hsv): string {
 
 /** Lesbare Textfarbe (schwarz/weiß) auf der Hintergrundfarbe `hex` (WCAG-Kontrast). */
 export function contrastTextColor(hex: string): '#000000' | '#ffffff' {
-	const rgb = hexToRgb(hex);
-	if (!rgb) return '#000000';
-	const lin = (c: number) => {
-		const s = c / 255;
-		return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-	};
-	const L = 0.2126 * lin(rgb.r) + 0.7152 * lin(rgb.g) + 0.0722 * lin(rgb.b);
-	// Kontrast zu Schwarz ((L + 0.05) / 0.05) vs. Weiß (1.05 / (L + 0.05))
-	return (L + 0.05) / 0.05 >= 1.05 / (L + 0.05) ? '#000000' : '#ffffff';
+	return readableOn(hex, '#ffffff', '#000000') ?? '#000000';
 }

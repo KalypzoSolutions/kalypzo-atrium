@@ -50,6 +50,20 @@
       "when": 1792396800000,
       "tag": "0006_user_role_grant",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792483200000,
+      "tag": "0007_log_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792569600000,
+      "tag": "0008_role_system_key",
+      "breakpoints": true
     }
   ]
 }

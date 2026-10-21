@@ -93,7 +93,7 @@
 									{s.description}
 								</p>
 								{#if imp}
-									<p class="text-xs text-amber-700 dark:text-amber-500">
+									<p class="text-xs text-warning">
 										Wird mitgesichert, weil „{labelOf(imp.by)}“ gewählt ist – {imp.reason}
 									</p>
 								{/if}

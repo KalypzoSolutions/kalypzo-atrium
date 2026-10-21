@@ -65,11 +65,7 @@
 	);
 
 	const strengthClass = $derived(
-		strength.score <= 1
-			? 'bg-destructive'
-			: strength.score === 2
-				? 'bg-amber-500'
-				: 'bg-green-600 dark:bg-green-500'
+		strength.score <= 1 ? 'bg-destructive' : strength.score === 2 ? 'bg-warning' : 'bg-success'
 	);
 
 	function openDialog() {
@@ -137,7 +133,7 @@
 	<Card.Root>
 		<Card.Header>
 			<Card.Title class="flex items-center gap-2">
-				<CircleCheck class="size-5 text-green-600 dark:text-green-500" aria-hidden="true" />
+				<CircleCheck class="size-5 text-success" aria-hidden="true" />
 				Sicherung erstellt
 			</Card.Title>
 			<Card.Description>
@@ -165,8 +161,8 @@
 				</div>
 			</dl>
 			{#if result.summary.warnings.length}
-				<Alert.Root>
-					<TriangleAlert class="text-amber-600" aria-hidden="true" />
+				<Alert.Root variant="warning">
+					<TriangleAlert aria-hidden="true" />
 					<Alert.Title>Hinweise</Alert.Title>
 					<Alert.Description>
 						<ul class="list-disc space-y-1 pl-4">
@@ -233,8 +229,8 @@
 				>
 			</Card.Header>
 			<Card.Content class="space-y-4">
-				<Alert.Root>
-					<TriangleAlert class="text-amber-600" aria-hidden="true" />
+				<Alert.Root variant="warning">
+					<TriangleAlert aria-hidden="true" />
 					<Alert.Title>Gut aufbewahren</Alert.Title>
 					<Alert.Description>
 						Ohne dieses Passwort lässt sich die Sicherung nicht wiederherstellen. Datei + Passwort

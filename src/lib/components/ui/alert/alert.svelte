@@ -7,7 +7,13 @@
 			variant: {
 				default: 'bg-card text-card-foreground',
 				destructive:
-					'text-destructive bg-card *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current'
+					'text-destructive bg-card *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current',
+				// Statusvarianten: getönte Fläche + Statusrand, Text in Statusfarbe (Kontrast per Token-Test)
+				info: 'border-info-border bg-info-muted text-info *:data-[slot=alert-description]:text-info',
+				success:
+					'border-success-border bg-success-muted text-success *:data-[slot=alert-description]:text-success',
+				warning:
+					'border-warning-border bg-warning-muted text-warning *:data-[slot=alert-description]:text-warning'
 			}
 		},
 		defaultVariants: {
@@ -36,7 +42,7 @@
 <div
 	bind:this={ref}
 	data-slot="alert"
-	role="alert"
+	role={variant === 'info' || variant === 'success' ? 'status' : 'alert'}
 	class={cn(alertVariants({ variant }), className)}
 	{...restProps}
 >

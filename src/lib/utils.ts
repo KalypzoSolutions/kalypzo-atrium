@@ -1,5 +1,13 @@
 import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { extendTailwindMerge } from 'tailwind-merge';
+
+/**
+ * Typo-Skala aus `app.css` (`text-title`, `text-section`, `text-caption`) als Schriftgröße bekannt machen –
+ * sonst hielte tailwind-merge sie für Textfarben und würfe sie neben `text-muted-foreground` weg.
+ */
+const twMerge = extendTailwindMerge({
+	extend: { classGroups: { 'font-size': [{ text: ['title', 'section', 'caption'] }] } }
+});
 
 export function cn(...inputs: ClassValue[]): string {
 	return twMerge(clsx(inputs));

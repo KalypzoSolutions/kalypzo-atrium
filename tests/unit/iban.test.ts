@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	ibanLast,
-	isValidIban,
-	maskFromLast,
-	maskIban,
-	normalizeIban
-} from '$lib/modules/actions/iban';
+import { ibanLast, isValidIban, maskFromLast, normalizeIban } from '$lib/modules/actions/iban';
 
 describe('isValidIban', () => {
 	it.each([
@@ -46,14 +40,6 @@ describe('normalizeIban', () => {
 });
 
 describe('Maskierung', () => {
-	it('maskIban: Land+Prüfziffer, Punkte in 4er-Gruppen, letzte 6 als 4+2', () => {
-		expect(maskIban('DE89 3704 0044 0532 0130 00')).toBe('DE89 •••• •••• •••• 0130 00');
-	});
-
-	it('maskIban: zu kurz', () => {
-		expect(maskIban('DE89')).toBe('••••');
-	});
-
 	it('ibanLast: letzte Stellen normalisiert', () => {
 		expect(ibanLast('de89 3704 0044 0532 0130 00')).toBe('013000');
 		expect(ibanLast('DE89370400440532013000', 4)).toBe('3000');

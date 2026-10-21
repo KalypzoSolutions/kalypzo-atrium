@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { PageTitle } from '$lib/components/layout';
 	import { enhance } from '$app/forms';
+	import * as Alert from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import * as Card from '$lib/components/ui/card';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
@@ -37,6 +40,14 @@
 
 	const locked = $derived(editing ? !editable(editing) : !data.can.create);
 
+	const privilegedSet = $derived(
+		new Set(data.permissions.filter((p) => p.privileged).map((p) => p.key))
+	);
+	// Hinweis zeigen, wenn admin-gleiche Rechte gewählt sind oder man sie nicht vergeben darf
+	const hasPrivileged = $derived(
+		privilegedSet.size > 0 && (!data.isAdministrator || selected.some((k) => privilegedSet.has(k)))
+	);
+
 	function openCreate() {
 		editing = null;
 		selected = [];
@@ -67,12 +78,12 @@
 		});
 </script>
 
-<svelte:head><title>Rollen</title></svelte:head>
+<PageTitle title="Rollen" />
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<h2 class="text-lg font-semibold">Rollen</h2>
+			<h2 class="text-section">Rollen</h2>
 			<p class="text-sm text-muted-foreground">
 				Berechtigungen bündeln und Benutzer*innen zuweisen.
 			</p>
@@ -87,6 +98,9 @@
 					<Card.Title class="flex items-center gap-2">
 						{r.name}
 						{#if r.isSystem}<Badge variant="secondary">System</Badge>{/if}
+						{#if !r.isSystem && r.permissions.some((p) => privilegedSet.has(p))}
+							<Badge variant="destructive">Admin-gleich</Badge>
+						{/if}
 					</Card.Title>
 					<Card.Description>{r.description || 'Keine Beschreibung'}</Card.Description>
 				</Card.Header>
@@ -115,7 +129,7 @@
 </div>
 
 <Dialog.Root bind:open={formOpen}>
-	<Dialog.Content class="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+	<Dialog.Content class="sm:max-w-2xl">
 		<Dialog.Header>
 			<Dialog.Title>
 				{editing ? (locked ? 'Rolle ansehen' : 'Rolle bearbeiten') : 'Rolle anlegen'}
@@ -128,6 +142,16 @@
 				{/if}
 			</Dialog.Description>
 		</Dialog.Header>
+		{#if hasPrivileged}
+			<Alert.Root variant="warning">
+				<Alert.Title>Admin-gleiche Rechte</Alert.Title>
+				<Alert.Description>
+					Mit „Admin-gleich“ markierte Berechtigungen (Datensicherung, Zurücksetzen) erlauben
+					faktisch die Übernahme des ganzen Systems und aller Daten. Nur Administrator*innen können
+					sie vergeben{data.isAdministrator ? '' : ' – du kannst sie hier nicht ändern'}.
+				</Alert.Description>
+			</Alert.Root>
+		{/if}
 		<form
 			method="POST"
 			action={editing ? '?/update' : '?/create'}
@@ -166,12 +190,12 @@
 							{#if !locked}
 								<button
 									type="button"
-									class="text-xs font-normal text-primary underline"
+									class="text-xs font-normal text-link underline"
 									onclick={() => toggleGroup(items, true)}>alle</button
 								>
 								<button
 									type="button"
-									class="text-xs font-normal text-primary underline"
+									class="text-xs font-normal text-link underline"
 									onclick={() => toggleGroup(items, false)}>keine</button
 								>
 							{/if}
@@ -179,24 +203,29 @@
 						<div class="grid gap-1 sm:grid-cols-2">
 							{#each items as p (p.key)}
 								{@const on = selected.includes(p.key)}
-								<label
-									class="flex items-start gap-2 text-sm"
-									class:opacity-50={!p.grantable && !on}
-								>
-									<input
-										type="checkbox"
-										class="mt-1"
+								{@const cid = `perm-${p.key.replace(/[^a-z0-9-]/g, '-')}`}
+								<div class="flex items-start gap-2 text-sm" class:opacity-50={!p.grantable && !on}>
+									<Checkbox
+										id={cid}
+										class="mt-0.5"
+										aria-label={p.key}
+										aria-describedby={p.description ? `${cid}-desc` : undefined}
 										checked={on}
 										disabled={locked || !p.grantable}
-										onchange={(e) => toggle(p.key, e.currentTarget.checked)}
+										onCheckedChange={(v) => toggle(p.key, v)}
 									/>
-									<span>
+									<label for={cid}>
 										<code class="text-xs">{p.key}</code>
-										{#if p.description}
-											<span class="block text-xs text-muted-foreground">{p.description}</span>
+										{#if p.privileged}
+											<Badge variant="destructive" class="ml-1">Admin-gleich</Badge>
 										{/if}
-									</span>
-								</label>
+										{#if p.description}
+											<span id={`${cid}-desc`} class="block text-xs text-muted-foreground"
+												>{p.description}</span
+											>
+										{/if}
+									</label>
+								</div>
 							{/each}
 						</div>
 					</fieldset>
@@ -210,7 +239,7 @@
 					{locked ? 'Schließen' : 'Abbrechen'}
 				</Button>
 				{#if !locked}
-					<Button type="submit" disabled={busy}>{busy ? 'Speichere …' : 'Speichern'}</Button>
+					<Button type="submit" disabled={busy}>{busy ? 'Speichert …' : 'Speichern'}</Button>
 				{/if}
 			</Dialog.Footer>
 		</form>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
 	import { cn } from '$lib/utils';
 	import { formatCents, parseEuroToCents } from './money';
 
@@ -26,6 +27,11 @@
 		class?: string;
 		placeholder?: string;
 	} = $props();
+
+	// Hinweis/Fehler des umgebenden FormField (#51); Kinder bekommen den Kontext nicht erneut
+	const field = claimFieldContext();
+	const fieldOwn = $derived(appliesTo(field, id) ? field : null);
+	const isInvalid = $derived(invalid || !!fieldOwn?.invalid);
 
 	let focused = $state(false);
 	let text = $state('');
@@ -59,8 +65,8 @@
 
 <div
 	class={cn(
-		'border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex h-8 w-full min-w-28 items-center rounded-lg border bg-transparent px-2.5 transition-colors focus-within:ring-3',
-		invalid &&
+		'border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring flex h-8 w-full min-w-28 items-center rounded-lg border bg-transparent px-2.5 transition-colors focus-within:ring-3',
+		isInvalid &&
 			'border-destructive ring-destructive/20 dark:border-destructive/50 dark:ring-destructive/40 ring-3',
 		disabled && 'pointer-events-none cursor-not-allowed opacity-50',
 		className
@@ -72,7 +78,9 @@
 		inputmode="decimal"
 		autocomplete="off"
 		aria-label={label}
-		aria-invalid={invalid || undefined}
+		aria-invalid={isInvalid || undefined}
+		aria-describedby={fieldOwn?.describedby}
+		aria-required={fieldOwn?.required || undefined}
 		{disabled}
 		{placeholder}
 		value={text}

@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNotNull, notLike } from 'drizzle-orm';
 import { z } from 'zod';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
@@ -8,9 +8,11 @@ import { sendMail } from '../mail';
 import { requirePermission } from '../permissions/service';
 import { hit, peek, reset } from '../rate-limit';
 import { getSetting } from '../settings/service';
+import { processImage, type ImageVariantSpec } from '../images';
 import * as storage from '../storage';
 import { requireUser, systemContext } from './context';
 import { getAuth } from './index';
+import { assertCanManageUser } from './manage-guard';
 import { maskEmail } from './mask-email';
 
 export { maskEmail };
@@ -111,6 +113,45 @@ export const AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const avatarPath = (userId: string) => `avatars/${userId}`;
 
+/**
+ * Gespeichert wird immer eine neu kodierte WebP-Variante (≤ 512 px, Qualität 82) aus `core.images`:
+ * EXIF-gedreht, **ohne Metadaten (EXIF/GPS/ICC-Kommentare)**, nie das Original (#19).
+ */
+const AVATAR_VARIANT: ImageVariantSpec = {
+	name: 'avatar',
+	maxEdge: 512,
+	format: 'webp',
+	quality: 82
+};
+export const AVATAR_STORED_TYPE = 'image/webp';
+/** Marker im `user.image`-Wert: Bild wurde bereinigt (Bestands-Job verarbeitet nur Bilder ohne ihn) */
+const NORMALIZED_MARK = 'n=1';
+const avatarUrl = (userId: string) => `/avatar/${userId}?v=${Date.now()}&${NORMALIZED_MARK}`;
+
+const FORMAT_OF_TYPE: Record<string, string> = {
+	'image/png': 'png',
+	'image/jpeg': 'jpeg',
+	'image/webp': 'webp'
+};
+
+/**
+ * Bild prüfen und bereinigen. `type` = angegebener Typ (oder `null` für Bestandsdaten); das von
+ * `core.images` erkannte Format muss dazu passen, sonst 400.
+ */
+async function normalizeAvatar(data: Uint8Array, type: string | null): Promise<Uint8Array> {
+	const processed = await processImage(data, {
+		variants: [AVATAR_VARIANT],
+		maxInputBytes: AVATAR_MAX_BYTES
+	});
+	if (type && FORMAT_OF_TYPE[type] !== processed.format) {
+		throw errors.badRequest('Die Datei ist kein gültiges PNG-, JPEG- oder WebP-Bild');
+	}
+	if (!type && !Object.values(FORMAT_OF_TYPE).includes(processed.format)) {
+		throw errors.badRequest('Die Datei ist kein gültiges PNG-, JPEG- oder WebP-Bild');
+	}
+	return processed.variants[0]!.bytes;
+}
+
 /** Magic-Bytes-Prüfung (PNG, JPEG, WebP) – `file.type` kommt vom Client und ist nicht vertrauenswürdig. */
 export function matchesImageSignature(data: Uint8Array, type: string): boolean {
 	const at = (off: number, bytes: number[]) => bytes.every((b, i) => data[off + i] === b);
@@ -160,6 +201,8 @@ async function requireEditableUser(ctx: RequestContext, userId: string): Promise
 		.from(schema.user)
 		.where(eq(schema.user.id, userId));
 	if (!u) throw errors.notFound('Benutzer nicht gefunden');
+	// Kein Bearbeiten von Konten mit mehr Rechten (Schutz vor Rechteausweitung)
+	await assertCanManageUser(ctx, userId);
 }
 
 /** Audit-Zusatz, wenn jemand das Bild eines anderen Kontos ändert */
@@ -181,14 +224,16 @@ async function writeAvatar(
 	if (!matchesImageSignature(file.data, type)) {
 		throw errors.badRequest('Die Datei ist kein gültiges PNG-, JPEG- oder WebP-Bild');
 	}
+	// Neu kodieren (Metadaten/GPS entfernt); ungültige oder nicht passende Bilder → 400
+	const bytes = await normalizeAvatar(file.data, type);
 	await storage.upload(systemContext('avatar'), {
 		module: 'core',
 		path: avatarPath(userId),
-		file: file.data,
-		contentType: type,
+		file: bytes,
+		contentType: AVATAR_STORED_TYPE,
 		name: 'avatar'
 	});
-	const image = `/avatar/${userId}?v=${Date.now()}`;
+	const image = avatarUrl(userId);
 	await getDb()
 		.update(schema.user)
 		.set({ image, updatedAt: new Date() })
@@ -205,7 +250,18 @@ async function deleteAvatar(ctx: RequestContext, userId: string): Promise<void> 
 		.update(schema.user)
 		.set({ image: null, updatedAt: new Date() })
 		.where(eq(schema.user.id, userId));
-	// Datei entfernen; ohne S3 oder ohne Datei ist nichts zu tun, andere Fehler werden protokolliert
+	await removeAvatarObject(userId);
+	await auditFromContext(ctx, 'core.user.avatar_removed', {
+		target: userId,
+		metadata: byAdmin(ctx, userId)
+	});
+}
+
+/**
+ * Profilbild-Objekt im Storage entfernen (auch beim Löschen eines Kontos). Ohne S3 oder ohne Datei
+ * ist nichts zu tun, andere Fehler werden protokolliert (wirft nie).
+ */
+export async function removeAvatarObject(userId: string): Promise<void> {
 	await storage
 		.remove(systemContext('avatar'), { module: 'core', path: avatarPath(userId) })
 		.catch((err) => {
@@ -213,10 +269,6 @@ async function deleteAvatar(ctx: RequestContext, userId: string): Promise<void> 
 				console.error('[avatar] Entfernen fehlgeschlagen:', err?.message);
 			}
 		});
-	await auditFromContext(ctx, 'core.user.avatar_removed', {
-		target: userId,
-		metadata: byAdmin(ctx, userId)
-	});
 }
 
 /** `true`, wenn `image` auf das eigene Profilbild (`/avatar/<userId>` mit optionaler Query) zeigt. */
@@ -255,4 +307,77 @@ export async function readAvatar(
 	} catch {
 		return null;
 	}
+}
+
+export interface AvatarReprocessResult {
+	processed: number;
+	removed: number;
+	skipped: number;
+}
+
+/**
+ * Bestand bereinigen (#19, Core-Job `core.avatars-reprocess`, stündlich, idempotent): Profilbilder ohne
+ * Marker `n=1` im `user.image`-Wert werden geladen, über `core.images` neu kodiert (WebP, ohne
+ * Metadaten) und ersetzt. Nicht lesbare Bilder werden entfernt (`user.image = NULL`), weil ihr Inhalt
+ * nicht geprüft werden kann. Ohne Storage passiert nichts. Je Lauf höchstens `limit` Konten.
+ */
+export async function reprocessLegacyAvatars(
+	ctx: RequestContext,
+	limit = 200
+): Promise<AvatarReprocessResult> {
+	const rows = await getDb()
+		.select({ id: schema.user.id, image: schema.user.image })
+		.from(schema.user)
+		.where(and(isNotNull(schema.user.image), notLike(schema.user.image, `%${NORMALIZED_MARK}%`)))
+		.limit(limit);
+	const result: AvatarReprocessResult = { processed: 0, removed: 0, skipped: 0 };
+	const sys = systemContext('avatar');
+	for (const u of rows) {
+		if (!isOwnAvatarPath(u.image, u.id)) {
+			// Fremde/alte URL (nie ausgeliefert, siehe `readAvatar`): Verweis entfernen
+			await getDb().update(schema.user).set({ image: null }).where(eq(schema.user.id, u.id));
+			result.removed++;
+			continue;
+		}
+		let buffer: Uint8Array;
+		try {
+			({ buffer } = await storage.download(sys, { module: 'core', path: avatarPath(u.id) }));
+		} catch (err) {
+			const code = (err as { code?: string })?.code;
+			if (code === 'unavailable') return result; // kein Storage: später erneut
+			if (code !== 'not_found') {
+				result.skipped++;
+				continue;
+			}
+			// Datei fehlt: Verweis entfernen
+			await getDb().update(schema.user).set({ image: null }).where(eq(schema.user.id, u.id));
+			result.removed++;
+			continue;
+		}
+		const bytes = await normalizeAvatar(buffer, null).catch(() => null);
+		if (!bytes) {
+			await getDb().update(schema.user).set({ image: null }).where(eq(schema.user.id, u.id));
+			await removeAvatarObject(u.id);
+			result.removed++;
+			continue;
+		}
+		await storage.upload(sys, {
+			module: 'core',
+			path: avatarPath(u.id),
+			file: bytes,
+			contentType: AVATAR_STORED_TYPE,
+			name: 'avatar'
+		});
+		await getDb()
+			.update(schema.user)
+			.set({ image: avatarUrl(u.id) })
+			.where(eq(schema.user.id, u.id));
+		result.processed++;
+	}
+	if (result.processed || result.removed) {
+		await auditFromContext(ctx, 'core.user.avatars_reprocessed', {
+			metadata: { processed: result.processed, removed: result.removed }
+		});
+	}
+	return result;
 }

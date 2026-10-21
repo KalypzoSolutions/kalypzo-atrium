@@ -5,7 +5,8 @@
 - Der Nutzer schreibt oft knapp und mit Tippfehlern – Absicht sinnvoll deuten, bei echten Mehrdeutigkeiten gezielt (kurz,
   mit Empfehlung) per `AskUserQuestion` nachfragen; Vorgaben des Nutzers nicht ungefragt umdeuten.
 - Größere Vorhaben: Plan erstellen und freigeben lassen, dann in **Phasen** umsetzen; jede Phase lauffähig + geprüft.
-- Nichts committen/pushen ohne Aufforderung (aktuell gibt es noch keinen Commit auf `master`; `main` ist die Zielbranch).
+- Nichts committen/pushen ohne Aufforderung. Git (Stand 2026-10-21): Hauptbranch `main`, Arbeitsbranch `staging` (beide auch auf `origin`),
+  Historie ab „Initial commit: EP Intern 2.0“ (34 Commits). Einen Branch `master` gibt es nicht mehr.
 
 ## Demo-Server (Port 4300, PGlite, Daten in `.data/pglite`)
 ```bash
@@ -23,7 +24,8 @@ touch .data/stop                    # SAUBER beenden (Server räumt auf und been
   Geschwistern, Aktionen „Kopenhagen 2026“/„Herbstfahrt 2026“, Module aktivieren) → `setup-demo-storage.mjs`, `setup-demo-mail.mjs`
   → `seed-demo-receipts.mjs` → `node scripts/seed-demo-treasury.mjs` (Konten, Zahler, Buchungen, Sammelzahlung, überfällige
   Rechnung, Beispiel-Kontoauszug `.data/demo-kontoauszug.csv`) → `node scripts/seed-demo-galleries.mjs` (Galerien mit
-  Beispielbildern, braucht MinIO). `npx playwright install chromium` ist für PDFs nötig.
+  Beispielbildern, braucht MinIO). Weitere Seeds: `seed-demo-treasury-extras.mjs`, `seed-demo-offices.mjs`, `seed-demo-orders.mjs`,
+  `seed-demo-files.mjs`, `seed-demo-website.mjs` (Website-Demodaten + API-Key, siehe `website.md`). `npx playwright install chromium` ist für PDFs nötig.
 - Demo-Daten: Admin `admin@demo.test`; weitere Beispielbenutzer/Aktionen lege per API an (Login `POST /api/auth/sign-in/email`
   mit Header `Origin: http://localhost:4300`, danach Cookie-Jar für `/api/v1/…`).
 

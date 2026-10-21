@@ -6,16 +6,27 @@
  *   drizzle-Tabelle), gibt es nur eine Warnung.
  * - Core-Bereiche: jede Spalte der gesicherten Tabelle muss im Ziel existieren (aktuelle Struktur).
  * - Module: registriert; die Migrationen der Sicherung sind ein Präfix der Ziel-Migrationen mit gleicher
- *   Prüfsumme (das Schema wird beim Wiederherstellen auf genau diesen Stand gebracht). Der Anteil in
+ *   Prüfsumme (zeilenendenunabhängig, siehe `modules/migration-checksum.ts`; das Schema wird beim Wiederherstellen auf genau diesen Stand gebracht). Der Anteil in
  *   `public.file` wird wie eine Core-Tabelle geprüft.
  */
 import { CORE_SCOPE_KEYS, type BackupMeta, type TableInfo } from './types';
 
 export interface CompatTarget {
+	/**
+	 * Kennungen der angewendeten Core-Migrationen: gespeicherte Drizzle-Hashes plus die gültigen
+	 * Zeilenenden-Varianten der lokalen Dateien (`coreMigrationIdentifiers`).
+	 */
 	coreMigrations: string[];
 	modules: Record<
 		string,
-		{ registered: boolean; migrations: { name: string; checksum: string }[] }
+		{
+			registered: boolean;
+			/**
+			 * `checksum` = kanonische Prüfsumme (zeilenendenunabhängig); `accepted` = weitere gültige
+			 * Varianten (Roh-/CRLF-Hash), damit ältere Sicherungen aus Windows-/Linux-Builds passen.
+			 */
+			migrations: { name: string; checksum: string; accepted?: string[] }[];
+		}
 	>;
 	/** aktuelle Struktur, Schlüssel `schema.tabelle` */
 	tables: Map<string, TableInfo>;
@@ -116,7 +127,7 @@ export function checkCompat(meta: BackupMeta, target: CompatTarget): CompatResul
 					: 'Sicherung ist neuer als dieses Modul';
 				break;
 			}
-			if (t.checksum !== b.checksum) {
+			if (t.checksum !== b.checksum && !t.accepted?.includes(b.checksum)) {
 				reason = `Migration ${b.name} weicht von diesem Server ab`;
 				break;
 			}

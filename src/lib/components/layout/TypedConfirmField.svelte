@@ -59,7 +59,7 @@
 		/>
 		{#if matches}
 			<CircleCheck
-				class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-green-600 dark:text-green-500"
+				class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-success"
 				aria-hidden="true"
 			/>
 		{/if}

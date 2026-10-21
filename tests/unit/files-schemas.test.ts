@@ -88,6 +88,10 @@ describe('linkCreateInput', () => {
 		bad(linkCreateInput, { expiresOn: '2026-1-5', password: null });
 		bad(linkCreateInput, { expiresOn: '2026-12-31T00:00', password: null });
 		bad(linkCreateInput, { expiresOn: '', password: null });
+		// echtes Kalenderdatum (#72, 06-13)
+		bad(linkCreateInput, { expiresOn: '2026-02-31', password: null });
+		bad(linkCreateInput, { expiresOn: '2026-13-01', password: null });
+		ok(linkCreateInput, { expiresOn: '2028-02-29', password: null });
 	});
 
 	it('Felder sind Pflicht, keine Zusatzfelder', () => {

@@ -11,6 +11,8 @@ export type DbOrTx = Db | Tx;
 interface State {
 	db: Db;
 	close: () => Promise<void>;
+	/** Mehrere Verbindungen (echter `pg`-Pool mit `max > 1`) – parallele Abfragen sinnvoll */
+	concurrent: boolean;
 }
 
 const globalKey = Symbol.for('ep-intern.db');
@@ -24,7 +26,11 @@ function create(): State {
 		);
 	}
 	const pool = new pg.Pool({ connectionString: e.DATABASE_URL, max: e.DATABASE_POOL_MAX });
-	return { db: drizzle(pool, { schema }), close: () => pool.end() };
+	return {
+		db: drizzle(pool, { schema }),
+		close: () => pool.end(),
+		concurrent: e.DATABASE_POOL_MAX > 1
+	};
 }
 
 /** Zentrale Datenbankverbindung (Singleton pro Prozess). */
@@ -34,9 +40,25 @@ export function getDb(): Db {
 	return g[globalKey].db;
 }
 
-/** Ersetzt die Verbindung (Tests, PGlite). */
-export function setDb(db: Db, close: () => Promise<void> = async () => {}): void {
-	(globalThis as G)[globalKey] = { db, close };
+/**
+ * Ersetzt die Verbindung (Tests, PGlite). `concurrent: true` nur für einen echten Pool mit
+ * mehreren Verbindungen (PGlite hat eine Sitzung → Standard `false`).
+ */
+export function setDb(
+	db: Db,
+	close: () => Promise<void> = async () => {},
+	opts: { concurrent?: boolean } = {}
+): void {
+	(globalThis as G)[globalKey] = { db, close, concurrent: opts.concurrent ?? false };
+}
+
+/**
+ * Dürfen unabhängige Abfragen parallel laufen? Nur mit echtem Pool (> 1 Verbindung); PGlite und
+ * `DATABASE_POOL_MAX=1` (Demo) arbeiten strikt nacheinander (#68, globale Suche).
+ */
+export function databaseAllowsParallelQueries(): boolean {
+	getDb();
+	return (globalThis as G)[globalKey]?.concurrent ?? false;
 }
 
 export async function closeDb(): Promise<void> {

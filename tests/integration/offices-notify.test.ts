@@ -359,6 +359,57 @@ describe('Einstellungen je Person', () => {
 		expect(mails[0]!.subject).toBe('Tageszusammenfassung: 1 Hinweis');
 	});
 
+	const queueRows = async () =>
+		(
+			(await core.database
+				.forModule('offices')
+				.transaction((tx) =>
+					tx.execute(sql`SELECT id, attempts FROM notification_queue WHERE user_id = ${utaId}`)
+				)) as unknown as { rows: { id: string; attempts: number }[] }
+		).rows;
+
+	it('Digest: verwirft Einträge nach 14 Tagen und protokolliert die Anzahl', async () => {
+		await (await service()).notify(admin, [event('payable-created', 'Uralt')]);
+		await core.database
+			.forModule('offices')
+			.transaction((tx) =>
+				tx.execute(
+					sql`UPDATE notification_queue SET created_at = now() - interval '15 days' WHERE user_id = ${utaId}`
+				)
+			);
+		failMail = true;
+		const info = await runJobNow(admin, 'offices.notify-digest');
+		expect(info.lastMessage).toContain('davon 1 wegen Alter/Versuchen');
+		expect(await queueRows()).toHaveLength(0);
+		failMail = false;
+		await runJobNow(admin, 'offices.notify-digest');
+		expect(mails).toHaveLength(0);
+
+		const [entry] = await getDb()
+			.select({ metadata: schema.auditLog.metadata })
+			.from(schema.auditLog)
+			.where(eq(schema.auditLog.action, 'offices.notification.sent'))
+			.orderBy(sql`created_at DESC`)
+			.limit(1);
+		expect(entry!.metadata).toMatchObject({ digest: true, sent: 0, expired: 1 });
+	});
+
+	it('Digest: zählt Fehlversuche und verwirft nach 5 Versuchen (fehlschlagender Mailer)', async () => {
+		await (await service()).notify(admin, [event('payable-created', 'Unzustellbar')]);
+		failMail = true;
+		for (let i = 1; i <= 4; i++) {
+			const info = await runJobNow(admin, 'offices.notify-digest');
+			expect(info.lastMessage).toContain('1 fehlgeschlagen');
+			expect((await queueRows()).map((r) => Number(r.attempts))).toEqual([i]);
+		}
+		const last = await runJobNow(admin, 'offices.notify-digest');
+		expect(last.lastMessage).toContain('davon 1 wegen Alter/Versuchen');
+		expect(await queueRows()).toHaveLength(0);
+		failMail = false;
+		await runJobNow(admin, 'offices.notify-digest');
+		expect(mails).toHaveLength(0);
+	});
+
 	it('PUT immediate entfernt die Abweichung', async () => {
 		const r = await setPref(utaKey, 'payable-created', 'immediate');
 		expect(r.status).toBe(200);

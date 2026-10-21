@@ -1,15 +1,32 @@
-/** Datensicherung – temporäre Dateien unter `os.tmpdir()/ep-backup` (Export, Upload). */
+/**
+ * Datensicherung – temporäre Dateien (Export, Upload) unter `BACKUP_TMP_DIR`, ohne Angabe unter
+ * `os.tmpdir()/ep-backup`. Im Container zeigt `BACKUP_TMP_DIR` auf ein Plattenvolume
+ * (`/var/tmp/ep-backup`), weil `/tmp` dort ein kleiner tmpfs im Arbeitsspeicher ist (Issue #38).
+ */
 import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, rm, stat, statfs } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join, normalize } from 'node:path';
 import { errors } from '../errors';
 import { BACKUP_LIMITS } from './types';
 
 const EXT = /^\.[a-z0-9]{1,16}$/;
 
+/**
+ * Verzeichnis für Temp-Dateien: absoluter Pfad aus `BACKUP_TMP_DIR`, sonst `os.tmpdir()/ep-backup`.
+ * Relative oder leere Angaben gelten als nicht gesetzt (`env()` bricht den Start bei relativen Pfaden ab).
+ */
+export function resolveBackupTempDir(
+	value: string | undefined = process.env.BACKUP_TMP_DIR,
+	fallbackBase: string = tmpdir()
+): string {
+	const v = value?.trim();
+	if (v && isAbsolute(v)) return normalize(v);
+	return join(fallbackBase, 'ep-backup');
+}
+
 export async function backupTempDir(): Promise<string> {
-	const dir = join(tmpdir(), 'ep-backup');
+	const dir = resolveBackupTempDir();
 	await mkdir(dir, { recursive: true, mode: 0o700 });
 	return dir;
 }

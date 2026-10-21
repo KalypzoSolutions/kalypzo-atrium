@@ -1,6 +1,29 @@
 # Modulentwicklung
 
-Module liegen unter `src/lib/modules/<id>/` und greifen **ausschließlich** über `$lib/sdk/*` auf den Core zu. Eine ESLint-Regel (`eslint.config.js`) verbietet Importe aus `$lib/server/*`, `$lib/core/*` und `$lib/components/*` in Modulen.
+Module liegen unter `src/lib/modules/<id>/` und greifen **ausschließlich** über `$lib/sdk/*` auf den Core zu. ESLint (`eslint.config.js`, je Modul ein Block) erzwingt die erlaubte Oberfläche – siehe „Erlaubte Importe“.
+
+## Erlaubte Importe
+
+In `src/lib/modules/<id>/**` sind nur diese Importe erlaubt (Regel `@typescript-eslint/no-restricted-imports`, Test `tests/unit/module-boundaries.test.ts`):
+
+| Ziel | Erlaubt | Zweck |
+|---|---|---|
+| eigene Moduldateien (`./…`, `$lib/modules/<id>/…`) | ja | |
+| `$lib/sdk/*` | ja | Core-Schnittstelle (`server`, `client`, `types`) |
+| `$lib/components/ui`, `$lib/components/layout`, `$lib/components/forms` | ja | UI-Bausteine, Formular-Builder |
+| `$lib/forms` | ja | Formular-Typen, Feldtypen, Validierung |
+| `$lib/pdf-lists` | ja | PDF-Listen: Spaltenauswahl, Layout, `composeListBlocks`, Formatierer, `listSelectionInput`; `$lib/pdf-lists/member-columns` = Mitglieder-Spaltenkatalog (`members` + `actions`) |
+| `$lib/utils` | ja | `cn` & Co. |
+| `$lib/modules/<anderes>/contract` | **nur** `import type` | Vertrag; Laufzeit über `core.modules.use`/`useOptional` |
+| andere Dateien fremder Module (`$lib/modules/<anderes>/…`, `../<anderes>/…`) | nein | |
+| `$lib/server/*`, `$lib/core/*`, alle übrigen `$lib/*` | nein | |
+
+Gemeinsam gebrauchte, reine Hilfen gehören in eine dieser neutralen Bibliotheken (oder in den Vertrag als Dienst), nicht in ein Modul, das ein anderes dann importiert.
+Zusätzlich meldet `no-restricted-syntax` in `src/lib/modules/**` direkte Zugriffe auf Core-Interna: `core.database.db`, `core.database.transaction`,
+`core.system.*`, `core.modules.enable|disable`, `core.auth.instance` und `forModule('<andere-id>')` mit einem String-Literal ungleich der eigenen
+Modul-ID (nur statisch erkennbare Zugriffe; Destrukturieren/Aliasse erkennt die Regel nicht – Code-Review bleibt nötig). Das ist eine Leitplanke,
+keine Sandbox: Module sind **vertrauenswürdiger Code** im selben Prozess.
+Offene Ausnahmen stehen mit Begründung in `OPEN_BOUNDARY_EXCEPTIONS` (`eslint.config.js`) und sind dort zu löschen, sobald sie behoben sind.
 
 ## Verzeichnislayout
 
@@ -77,7 +100,7 @@ Registrierte Einstellungen sind typisiert (Zod) und mit `core.settings.get/set` 
 
 - Jedes Modul besitzt das Schema `mod_<id>` (Bindestriche → Unterstriche). Es wird beim Aktivieren automatisch angelegt.
 - Migrationen: Liste `{ name, sql }`, in Reihenfolge, einmalig, in einer Transaktion mit `search_path = mod_<id>`. Tabellen daher **unqualifiziert** anlegen. Prüfsummen in `module_migration`; nachträgliche Änderung angewendeter Migrationen wird abgelehnt – neue Datei anlegen.
-- Zugriff im Code: `core.database.forModule('<id>').transaction(async (tx) => …)`. Tabellen anderer Module sind nicht erreichbar; modulübergreifende Zugriffe laufen über definierte Service-Schnittstellen des anderen Moduls.
+- Zugriff im Code: `core.database.forModule('<id>').transaction(async (tx) => …)`. Tabellen anderer Module und des Core sind nur **unqualifiziert** nicht erreichbar: `search_path` ist eine Konvention, kein Sicherheitsmechanismus – schemaqualifizierte Zugriffe (`mod_x.tabelle`, `public.user`) wären technisch möglich und sind verboten. `forModule` nur mit der eigenen `MODULE_ID` (ESLint, siehe „Erlaubte Importe“). Modulübergreifende Zugriffe laufen über definierte Service-Schnittstellen des anderen Moduls (`provides` + `contract.ts`).
 - Drizzle-Tabellen können mit `pgSchema('mod_members')` definiert werden.
 
 ## 5. API-Endpunkte
@@ -136,7 +159,7 @@ Uploads laufen als `multipart/form-data` über einen normalen Modul-Endpunkt. De
 
 ### UI-Komponenten in Modulen
 
-Modulseiten dürfen die gemeinsamen Komponenten aus `$lib/components/ui` und `$lib/components/layout` importieren (ESLint erlaubt dies zusätzlich zu `$lib/sdk/*`). Core-interne Server-Module bleiben tabu.
+Modulseiten dürfen die gemeinsamen Komponenten aus `$lib/components/ui`, `$lib/components/layout` und `$lib/components/forms` importieren (siehe „Erlaubte Importe“). Core-interne Server-Module bleiben tabu.
 
 Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seiten verwenden diese statt eigener Varianten (keine nativen `<select>`, keine selbstgebauten Tabellen-Karten):
 
@@ -161,7 +184,8 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 | `MoneyInput` | `$lib/components/layout` | Euro-Eingabe in Cent (deutsch tolerant); Helfer in `money.ts` (`parseEuroToCents`, `formatEuro`) |
 | `SummaryList` | `$lib/components/layout` | Ausgerichtete Betragsliste mit Hinweisen, Abzügen und einklappbaren Details |
 | `CostBar` | `$lib/components/layout` | Gestapelter Kostenbalken mit Legende (Betrag und Prozent) |
-| `FormField`, `PageHeader`, `ConfirmDialog`, `EmptyState` | `$lib/components/layout` | Formular- und Seitenbausteine |
+| `FormField`, `PageHeader`, `ConfirmDialog`, `EmptyState` | `$lib/components/layout` | Formular- und Seitenbausteine (`FormField` verknüpft Hinweis/Fehler selbst per `aria-describedby`/`aria-invalid`, `required` → `*`) |
+| `LoadingState`, `ErrorState` | `$lib/components/layout` | Einheitlicher Lade-/Fehlerzustand (`role="status"` + „Lädt …“; Fehler mit „Erneut versuchen“ über `onretry`) |
 | `SearchInput`, `Pagination` | `$lib/components/layout` | URL-basierte Suche und Seitenwechsel; `param`/`resetParams` bzw. `pageParam` (Seitenzahl statt `offset`) passen sie an die Server-Logik an |
 
 ### Routen mit Parametern
@@ -208,6 +232,46 @@ await core.database.forModule('events').transaction(async (tx) =>
   Systemkontext, Rückgabe = kurze Statusmeldung). Details: `docs/core-services.md` → „Hintergrundjobs“. Beispiel: `treasury/module.ts`.
 - Rückkanäle zwischen Modulen ohne Zyklus: `manifest.optionalDependencies` + `core.modules.useOptional` (liefert `null`, wenn der
   Anbieter aus ist). Beispiel: `actions` → `treasury` (Ist-Beiträge in der Abrechnung).
+
+### Benutzerkonto gelöscht (`onUserDeleted`) – Pflicht für Module mit `user_id`-Spalten
+
+Module speichern Benutzer-IDs ohne Fremdschlüssel (anderes Schema), daher gibt es keine Kaskade. Wer Spalten wie `user_id`,
+`owner_id`, `created_by` oder Freigaben an `user:<id>` führt, implementiert den Hook (Datei `user-deleted.ts`):
+
+```ts
+export const onUserDeleted: ModuleDefinition['onUserDeleted'] = async (tx, { userId, transferTo }) => {
+	await tx.execute(sql`DELETE FROM <obj>_shares WHERE principal_type = 'user' AND principal_id = ${userId}`);
+	if (transferTo) await tx.execute(sql`UPDATE <obj> SET owner_id = ${transferTo} WHERE owner_id = ${userId}`);
+	await tx.execute(sql`UPDATE <obj> SET created_by = NULL WHERE created_by = ${userId}`);
+	return { afterCommit: () => removeObjects(paths) }; // optional: Storage, Core-Services
+};
+```
+
+- Aufruf: `deleteUser` (Core) **nach** dem Löschen der Core-Zeile, je **aktivem** Modul in einer eigenen Modul-Transaktion
+  (`search_path` = Modulschema, keine Core-Services darin). `afterCommit` läuft danach (Storage-Objekte entfernen, Core-Services
+  wie `core.roles.replaceModuleGrants`). Fehler eines Moduls werden protokolliert und im Audit `core.user.deleted` als
+  `cleanupFailed: [modul]` vermerkt; das Löschen bricht nicht ab.
+- Entscheidung je Daten: **persönliche** Daten löschen (Dateien, Bio, Benachrichtigungs-Einstellungen, Konto-Verknüpfungen),
+  **Stammesdaten** behalten und Eigentum an `transferTo` (= löschende Person; `null` bei Systemaufrufen) übergeben,
+  Zuordnungs-Spalten (`created_by` …) auf `NULL` setzen. Im Kopfkommentar von `user-deleted.ts` dokumentieren.
+- Gemeinsame SQL-Logik mit `resetUsers` wiederverwenden (Muster: `offices/reset.ts` `deletePersonRows`, `members/reset.ts` `unlinkUsers`).
+- Umgesetzt in `files` (Ablage samt Links/Freigaben und Storage-Objekten löschen), `offices` (Inhaber*innen, Bio, Einstellungen,
+  Warteschlange, danach `syncGrants`), `members` (Verknüpfungen lösen), `events`, `galleries`, `actions` (Eigentum übergeben,
+  Benutzer-Freigaben weg, Anmeldungen ohne Kontobezug), `orders` (Zuordnungen `NULL`). `treasury` speichert nur Zuordnungs-Spalten
+  (`created_by`, `filed_by`) und hat (noch) keinen Hook. Der Core entfernt zusätzlich das Profilbild (`core/avatars/<id>`).
+- Test: `tests/integration/user-deletion-cleanup.test.ts`.
+
+### Mitglied gelöscht (`onMemberDeleted`) und Datenauskunft (`subjectExport`)
+
+- `onMemberDeleted(tx, { memberIds, reason: 'deleted' | 'anonymized' })`: Pflicht für Module, die **Kopien** von Mitgliedsdaten
+  (`member_id`-Spalten) halten. Ausgelöst nur von `members` (`core.modules.memberDeleted`) nach dem Löschen bzw. Anonymisieren,
+  Aufruf wie `onUserDeleted` (eigene Transaktion je aktivem Modul, `afterCommit`, Fehler werden protokolliert). Muster: `actions/privacy.ts`.
+- `subjectExport: { findSubjects?, resolve?, run }` (`ModuleSubjectExport`): Beitrag zur Datenauskunft `/admin/privacy`
+  (Art. 15/20). `run({ userId, memberIds })` liefert alle Daten der Person im Modul als JSON oder `null` – eigene Transaktion,
+  keine Rechteprüfung (Core prüft `core.privacy.export`), keine Dateiinhalte, keine Daten Dritter. `resolve` ergänzt Kennungen
+  (members: Konto → verknüpfte Mitglieder), `findSubjects` macht Personen ohne Konto auffindbar. Umgesetzt in allen acht Modulen
+  (`members`, `actions`, `treasury`, `events`, `galleries`, `offices`, `orders`, `files`; Dateien `subject-export.ts` bzw. `actions/privacy.ts`).
+  Details: `docs/security.md` → „Löschkonzept“.
 
 ### Ämter als Vorlage und Benachrichtigungen (Modul `offices`)
 
@@ -300,6 +364,55 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 `/dashboard`), `core.user.pageSize` (10–200), `core.user.dashboard` (`{ order, hidden }` mit Kachel-Schlüsseln `<modul>:<id>`, `null` = Standard). Listen-Loads nutzen `resolvePageSize(locals, fallback)`
 (`core/settings/user-prefs`): ausdrücklich gespeicherter Wert, sonst die Standardgröße der Seite.
 
+## Weitere Modul-Hooks
+
+Übersicht aller optionalen Felder von `ModuleDefinition` (`src/lib/server/core/modules/types.ts`), der relevanten
+`ModuleManifest`-Felder (`$lib/sdk/types`) und der `ModuleUi`-Felder (`$lib/sdk/types/module-ui`). Pflicht sind nur `manifest`
+(mit `id`, `name`, `version`, `dependencies`, `permissions`, `navigation`) und in `ui.ts` `routes`.
+
+### `defineModule({ … })` (`module.ts`)
+
+| Feld | Zweck | Vorbild |
+|---|---|---|
+| `settings` | Typisierte Einstellungen (`ModuleSettingDefinition`: Zod-Schema, `default`, `secret`, `writePermission`), Schlüssel mit Präfix `<id>.`; ohne eigene Seite erscheinen sie unter Einstellungen → Module. | `treasury`, `files` |
+| `endpoints` | REST-Endpunkte unter `/api/v1/modules/<id>/…` (`defineEndpoint`); feste Pfade vor `:id`-Mustern deklarieren. | alle |
+| `migrations` | `{ name, sql }[]` im Schema `mod_<id>`, additiv und unveränderlich (Prüfsumme). | alle |
+| `provides` | Dienste für andere Module (Laufzeit über `core.modules.use`/`useOptional`). **Regel:** Objekt mit `satisfies <Vertrag>` angeben (`provides: officesService satisfies OfficesService`), nie `as unknown as` – sonst fallen Abweichungen zwischen Vertrag (`contract.ts`) und Umsetzung nicht auf. | `offices`, `events`, `treasury` |
+| `jobs` | Hintergrundjobs `{ id, summary, schedule: 'hourly' \| 'daily', run(ctx) }`, nur bei aktivem Modul, Systemkontext (siehe [Core-Services](core-services.md#hintergrundjobs-moduledefinitionjobs-corejobs)). | `treasury`, `offices` |
+| `defaultRoleGrants` | Rollenname → Rechte, einmalig je (Modul, Rolle, Recht); gleichwertig zu `manifest.defaultRoleGrants` (siehe oben). | `members`, `orders` |
+| `resetAreas` | Bereiche für `/admin/reset` (`ResetArea`: `id`, `label`, `description`, `tables` in Löschreihenfolge, `storagePrefixes`, `implies` = zwingend mitgelöschte Bereiche auch fremder Module, `rebuild` = Schema neu aufbauen inkl. Startdaten). In der `description` nennen, welche Verweise anderer Module verwaisen. | `offices/reset.ts`, `actions/reset.ts` |
+| `resetUsers(tx, keepUserId)` | Beim Reset der Benutzer*innen Verweise auf gelöschte Konten bereinigen (Modul-Transaktion, keine Core-Services). | `offices/reset.ts`, `members/reset.ts` |
+| `onUserDeleted(tx, { userId, transferTo })` | Konto gelöscht: persönliche Daten löschen, Stammesdaten übergeben (siehe oben). Pflicht bei `user_id`-/`created_by`-Spalten. | `files/user-deleted.ts` |
+| `onMemberDeleted(tx, { memberIds, reason })` | Mitglied gelöscht/anonymisiert: Kopien der Mitgliedsdaten löschen bzw. anonymisieren (siehe oben). | `actions/privacy.ts` |
+| `subjectExport` | Beitrag zur Datenauskunft `/admin/privacy` (`findSubjects?`, `resolve?`, `run`, siehe oben). | `members/subject-export.ts` |
+| `backup.rehash(tx, { hash, decrypt })` | Nach Wiederherstellen/Zusammenführen einer Sicherung mit **anderem Schlüssel** (`APP_SECRET`): schlüsselgebundene Hashes mit dem Zielschlüssel neu berechnen; idempotent, Rückgabe `{ updated, unrecoverable }`, keine Core-Services. **Pflicht für jede neue `*_hash`-Spalte mit `core.crypto.forModule(id).hash(…)`.** Ohne Hook passen die Hashes nach dem Umzug auf einen anderen Server zu keiner Eingabe mehr: Lookups über den Hash (Link-Token, Verknüpfungscode, IBAN-Abgleich) finden nichts, Links/Codes sind tot, Zuordnungen fehlen still. Werte ohne entschlüsselbare Quelle als `unrecoverable` auf `NULL` setzen. | `treasury/backup.ts` (IBAN), `files/backup.ts`, `members`/`actions` (`link-tokens.ts`) |
+| `search` | Quelle für die globale Suche (Befehlspalette, `ModuleSearchProvider { permission?, anyPermission?, run(ctx, query, limit) }`): `run` filtert selbst objektbezogen (Freigaben, eigene Daten), liefert nur sichtbare Felder und relative Links; Fehler überspringen die Quelle. | `events/search.ts`, `members/search.ts` |
+| `onEnable(ctx)` / `onDisable(ctx)` | Laufen **nach** dem Aktivieren (Migrationen + Audit, außerhalb der Transaktion) bzw. Deaktivieren über `core.modules.enable|disable`; nicht beim Start und nicht beim Übernehmen des Modulstatus aus einer Sicherung. Für einmalige Nacharbeiten (z. B. Altbestand verschlüsseln/hashen). | `actions`, `members` (`onEnable`); `onDisable` nutzt derzeit kein Modul |
+
+### Manifest
+
+| Feld | Zweck | Vorbild |
+|---|---|---|
+| `optionalDependencies` | Module, deren Dienste genutzt werden, **wenn** sie aktiv sind (`core.modules.useOptional` → sonst `null`); keine Aktivierungsreihenfolge. Rückkanäle ohne harte Abhängigkeit. | `actions` → `treasury`, Module → `offices` |
+| `permissionDescriptions` | Beschreibung je Recht (Anzeige unter Rollen/Berechtigungen und bei API-Key-Scopes). | `offices`, `files` |
+| `offices` | Amt-Vorlagen `{ key, name, description?, notifications[] }` für das Modul `offices` (siehe „Ämter als Vorlage“). | `treasury` (`kasse`), `orders` (`kaemmerer`) |
+| `navigation[].admin` | `admin: true` stellt den Eintrag in die Gruppe „Administration“ (Abschnitt „Module“ unter `/admin`, Befehlspalette); Einstellungen des Moduls erscheinen dann unter Einstellungen → Module nur als Link. | `treasury` (Kassen-Einstellungen) |
+| `navigation[].group` / `groupIcon` | Aufklappbare Gruppe in der Seitenleiste (siehe oben). | |
+
+### `ui.ts` (`ModuleUi`)
+
+| Feld | Zweck | Vorbild |
+|---|---|---|
+| `publicRoutes` | Seiten ohne Login unter `/p/<id>/<pfad>`, nur mit öffentlichen Endpunkten (siehe oben). | `actions` (Anmeldung), `files` (Links) |
+| `profileSections` | Karten auf `/profile` (siehe oben). | `members`, `offices` |
+| `dashboardWidgets` | Kacheln auf `/dashboard` (siehe oben). | `events`, `treasury` |
+
+### Audit-Aktionsnamen
+
+Neue Audit-Aktionen folgen dem Schema der Rechte: `modul.ressource.aktion`, mehrteilige Aktionen mit **Bindestrich**
+(`offices.office.holders-changed`, `orders.order.handed-out`). Bestehende Namen mit Unterstrich (z. B. `treasury.invoice.marked_paid`,
+`actions.accounting.club_paid`) bleiben wegen der Historie im Audit-Log unverändert – Filter müssen beide Schreibweisen kennen.
+
 ## 7. Tests
 
 ```ts
@@ -324,3 +437,8 @@ Vorlage: `tests/integration/core.test.ts` (Modulaktivierung, Abhängigkeiten, AP
 - [ ] Migrationen idempotent im Modulschema
 - [ ] Jede Operation mit `ctx` und `core.permissions.require`
 - [ ] Tests für Rechte und Modulstatus
+- [ ] `onUserDeleted`, wenn das Modul Benutzer-IDs speichert
+- [ ] `onMemberDeleted` bei Kopien von Mitgliedsdaten, `subjectExport` bei personenbezogenen Daten
+- [ ] `backup.rehash` für jede `*_hash`-Spalte mit `core.crypto.forModule(id).hash`
+- [ ] `resetAreas`/`resetUsers`, `search` und `provides … satisfies <Vertrag>` (siehe „Weitere Modul-Hooks“)
+- [ ] Neue Audit-Aktionen mit Bindestrich (`modul.ressource.aktion-mit-bindestrich`)

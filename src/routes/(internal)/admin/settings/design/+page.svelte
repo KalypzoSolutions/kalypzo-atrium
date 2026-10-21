@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { FileField } from '$lib/components/layout';
+	import { FileField, PageTitle } from '$lib/components/layout';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Label } from '$lib/components/ui/label';
@@ -14,7 +14,7 @@
 	const logoHandler = submitHandler({ busy: (b) => (logoBusy = b) });
 </script>
 
-<svelte:head><title>Design · Einstellungen</title></svelte:head>
+<PageTitle title="Design · Einstellungen" />
 
 <Card.Root>
 	<Card.Header>

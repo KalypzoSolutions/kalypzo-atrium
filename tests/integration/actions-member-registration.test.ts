@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
+import { confirmIfNeeded } from '../helpers/registration-optin';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
 import { createRole } from '$lib/server/core/permissions/roles';
@@ -16,6 +17,7 @@ import { core } from '$lib/sdk/server';
 import actionsModule from '$lib/modules/actions/module';
 import membersModule from '$lib/modules/members/module';
 import { STANDARD_FORM_KEYS as K } from '$lib/modules/actions/schemas';
+import { decryptHealthText } from '$lib/modules/actions/health';
 import type { FormConfig, PublicForm, PublicSubmitResult } from '$lib/modules/actions/schemas';
 import type { RequestContext } from '$lib/sdk/types';
 
@@ -51,17 +53,20 @@ const pubGet = (who?: string) => {
 	resetAllForTests();
 	return api(`/modules/actions/public/forms/${token}`, { token: who ? keys[who] : undefined });
 };
-const pubSubmit = (
+/** Anmelden; ohne Mitglied (Double-Opt-in) über den Link aus der Mail bestätigen */
+const pubSubmit = async (
 	who: string | undefined,
 	values: Record<string, unknown>,
 	extra: object = {}
 ) => {
 	resetAllForTests();
-	return api(`/modules/actions/public/forms/${token}/submit`, {
+	const before = sent.length;
+	const res = await api(`/modules/actions/public/forms/${token}/submit`, {
 		method: 'POST',
 		token: who ? keys[who] : undefined,
 		json: { values, ...extra }
 	});
+	return confirmIfNeeded(res, sent, api, before);
 };
 async function data<T>(res: Response, status = 200): Promise<T> {
 	const body = await res.json();
@@ -100,7 +105,12 @@ async function participantRows() {
 					diet, allergies, contact_email, member_id, user_id, source
 				FROM action_participants WHERE action_id = ${actionId} ORDER BY created_at, name`
 		)) as unknown as { rows: Record<string, unknown>[] };
-		return r.rows;
+		// Gesundheitsfelder sind verschlüsselt gespeichert
+		return r.rows.map((row): Record<string, unknown> => ({
+			...row,
+			diet: decryptHealthText(row.diet),
+			allergies: decryptHealthText(row.allergies)
+		}));
 	});
 }
 

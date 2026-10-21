@@ -6,7 +6,7 @@
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import Lock from '@lucide/svelte/icons/lock';
 	import { toast } from 'svelte-sonner';
-	import { ConfirmDialog, PageHeader } from '$lib/components/layout';
+	import { ConfirmDialog, PageHeader, PageTitle } from '$lib/components/layout';
 	import TypedConfirmField from '$lib/components/layout/TypedConfirmField.svelte';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
@@ -177,7 +177,23 @@
 	}
 
 	const totpValid = $derived(!data.twoFactorEnabled || /^\d{6}$/.test(totp));
-	const canExport = $derived(!!preview && password.length > 0 && totpValid && !busy);
+	// Verschlüsselte Sicherung: Passwort wie bei der Datensicherung (mind. 12 Zeichen, zweimal)
+	const BACKUP_PW_MIN = 12;
+	let backupPassword = $state('');
+	let backupPassword2 = $state('');
+	const backupPwError = $derived(
+		backupPassword.length > 0 && backupPassword.length < BACKUP_PW_MIN
+			? `Mindestens ${BACKUP_PW_MIN} Zeichen`
+			: backupPassword2.length > 0 && backupPassword2 !== backupPassword
+				? 'Die Passwörter stimmen nicht überein'
+				: ''
+	);
+	const backupPwValid = $derived(
+		backupPassword.length >= BACKUP_PW_MIN && backupPassword === backupPassword2
+	);
+	const canExport = $derived(
+		!!preview && password.length > 0 && totpValid && backupPwValid && !busy
+	);
 
 	async function downloadExport() {
 		if (!preview || !canExport) return;
@@ -191,6 +207,7 @@
 				body: JSON.stringify({
 					token: preview.token,
 					password,
+					backupPassword,
 					...(data.twoFactorEnabled ? { totp } : {})
 				})
 			});
@@ -201,7 +218,7 @@
 			}
 			const name =
 				/filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ??
-				'ep-intern-sicherung.json';
+				'ep-intern-reset.epbackup';
 			const blob = await res.blob();
 			const href = URL.createObjectURL(blob);
 			const a = document.createElement('a');
@@ -214,6 +231,8 @@
 			exportedFile = name;
 			password = '';
 			totp = '';
+			backupPassword = '';
+			backupPassword2 = '';
 			toast.success('Sicherung heruntergeladen');
 		} catch {
 			error = 'Export fehlgeschlagen';
@@ -251,6 +270,8 @@
 		error = '';
 		password = '';
 		totp = '';
+		backupPassword = '';
+		backupPassword2 = '';
 		exportedFile = null;
 		confirmValue = '';
 		result = null;
@@ -266,7 +287,7 @@
 	);
 </script>
 
-<svelte:head><title>Zurücksetzen</title></svelte:head>
+<PageTitle title="Zurücksetzen" />
 
 <div class="mx-auto max-w-4xl space-y-6">
 	<PageHeader
@@ -278,7 +299,7 @@
 		<Card.Root>
 			<Card.Header>
 				<Card.Title class="flex items-center gap-2">
-					<CircleCheck class="size-5 text-green-600 dark:text-green-500" aria-hidden="true" />
+					<CircleCheck class="size-5 text-success" aria-hidden="true" />
 					Zurücksetzen abgeschlossen
 				</Card.Title>
 				<Card.Description>
@@ -307,8 +328,8 @@
 					{/each}
 				</ul>
 				{#if result.warnings.length}
-					<Alert.Root>
-						<TriangleAlert class="text-amber-600" aria-hidden="true" />
+					<Alert.Root variant="warning">
+						<TriangleAlert aria-hidden="true" />
 						<Alert.Title>Hinweise</Alert.Title>
 						<Alert.Description>
 							<ul class="list-disc space-y-1 pl-4">
@@ -347,7 +368,7 @@
 						step
 							? 'border-primary bg-primary text-primary-foreground'
 							: n === step
-								? 'border-primary text-primary'
+								? 'border-primary text-link'
 								: ''}"
 					>
 						{n}
@@ -421,7 +442,7 @@
 										</Label>
 										<p id="{cid}-desc" class="text-xs text-muted-foreground">{a.description}</p>
 										{#if imp}
-											<p class="text-xs text-amber-700 dark:text-amber-500">
+											<p class="text-xs text-warning">
 												Wird mit zurückgesetzt, weil „{labelOf(imp.by)}“ gewählt ist – {imp.reason}
 											</p>
 										{/if}
@@ -554,8 +575,10 @@
 						<Card.Description>
 							Bestätige mit deinem Passwort{data.twoFactorEnabled
 								? ' und dem Code deiner Authenticator-App'
-								: ''}. Die Sicherung enthält alle Daten der gewählten Bereiche als JSON-Datei (ohne
-							hochgeladene Dateien).
+								: ''}. Die Sicherung ist mit einem eigenen Sicherungs-Passwort verschlüsselt (Format
+							der Datensicherung, ohne hochgeladene Dateien) und enthält die gewählten Bereiche bzw.
+							die ganzen betroffenen Module. Wiederherstellen über Verwaltung → Datensicherung →
+							Import. Ohne das Sicherungs-Passwort lässt sie sich nicht öffnen.
 						</Card.Description>
 					</Card.Header>
 					<Card.Content>
@@ -593,6 +616,43 @@
 									/>
 								</div>
 							{/if}
+							<div class="grid gap-1.5">
+								<Label for="reset-backup-pw">Sicherungs-Passwort *</Label>
+								<Input
+									id="reset-backup-pw"
+									type="password"
+									autocomplete="new-password"
+									minlength={BACKUP_PW_MIN}
+									maxlength={200}
+									bind:value={backupPassword}
+									disabled={busy}
+									aria-describedby="reset-backup-pw-hint"
+									required
+								/>
+								<p id="reset-backup-pw-hint" class="text-xs text-muted-foreground">
+									Mindestens {BACKUP_PW_MIN} Zeichen. Gut aufbewahren – ohne dieses Passwort ist die Sicherung
+									wertlos.
+								</p>
+							</div>
+							<div class="grid gap-1.5">
+								<Label for="reset-backup-pw2">Sicherungs-Passwort wiederholen *</Label>
+								<Input
+									id="reset-backup-pw2"
+									type="password"
+									autocomplete="new-password"
+									maxlength={200}
+									bind:value={backupPassword2}
+									disabled={busy}
+									aria-invalid={backupPwError ? true : undefined}
+									aria-describedby={backupPwError ? 'reset-backup-pw-error' : undefined}
+									required
+								/>
+								{#if backupPwError}
+									<p id="reset-backup-pw-error" class="text-xs text-destructive" role="alert">
+										{backupPwError}
+									</p>
+								{/if}
+							</div>
 							<div>
 								<Button type="submit" disabled={!canExport}>
 									<Download aria-hidden="true" />
@@ -601,10 +661,7 @@
 							</div>
 						</form>
 						{#if exportedFile}
-							<p
-								class="mt-4 flex items-center gap-2 text-sm text-green-700 dark:text-green-500"
-								role="status"
-							>
+							<p class="mt-4 flex items-center gap-2 text-sm text-success" role="status">
 								<CircleCheck class="size-4" aria-hidden="true" />
 								Sicherung „{exportedFile}“ heruntergeladen. Prüfe, ob die Datei vollständig
 								gespeichert ist.
@@ -636,7 +693,7 @@
 					<Card.Footer class="flex flex-wrap justify-between gap-2">
 						<Button variant="outline" onclick={() => (step = 3)} disabled={busy}>Zurück</Button>
 						<Button
-							class="bg-destructive text-white hover:bg-destructive/90"
+							variant="destructive-solid"
 							disabled={!confirmed || busy || expired}
 							onclick={() => (dialogOpen = true)}
 						>

@@ -32,7 +32,9 @@ Spalten“, Endpoints, Rechte. Der Builder kennt weder Datenbank noch API.
 ```ts
 interface FormDefinition { version: 1; title?: string; intro?: string; fields: FieldDefinition[]; submitLabel?: string }
 interface BaseField { id: string; key: string; type: string; label: string; help?: string; required?: boolean;
-                      locked?: boolean /* Standardfeld: nicht löschbar, Typ fix */; hidden?: boolean }
+                      locked?: boolean /* Standardfeld: nicht löschbar, Typ fix */; hidden?: boolean;
+                      mandatory?: boolean /* Pflicht-Standardfeld: weder ausblendbar noch optional (Host erzwingt) */;
+                      health?: boolean /* Antwort = Gesundheitsdaten (Host speichert geschützt), Schalter im FieldEditor */ }
 // Typen: text{maxLength} · textarea{maxLength} · number{min,max,step} · email · phone · date{min,max}
 //        select{options} · multiselect{options,min,max} · boolean · info{text} · consent{text,required}
 // `key` ist stabil (snake/camel, eindeutig) – Antworten werden unter `key` gespeichert, nicht unter `id`.

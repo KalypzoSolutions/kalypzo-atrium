@@ -8,13 +8,13 @@ import {
 	formatDateDe,
 	formatFieldValue,
 	listTemplateInput
-} from '$lib/modules/members/member-list';
+} from '$lib/pdf-lists';
 import {
 	buildMemberCatalog,
 	buildPresets,
 	emergencyPhone,
 	rowFromMember
-} from '$lib/modules/members/sheet-columns';
+} from '$lib/pdf-lists/member-columns';
 
 const defs: MemberFieldDefinition[] = [
 	{

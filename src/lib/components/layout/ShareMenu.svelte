@@ -106,7 +106,7 @@
 								{#if p.image}
 									<AvatarImage src={p.image} alt="" />
 								{/if}
-								<AvatarFallback class="text-[10px]">
+								<AvatarFallback class="text-xs">
 									{#if Icon}
 										<Icon class="size-3.5" aria-hidden="true" />
 									{:else}
@@ -117,7 +117,7 @@
 						{/each}
 						{#if hidden > 0}
 							<Avatar class="size-6">
-								<AvatarFallback class="text-[10px]">+{hidden}</AvatarFallback>
+								<AvatarFallback class="text-xs">+{hidden}</AvatarFallback>
 							</Avatar>
 						{/if}
 					</AvatarGroup>

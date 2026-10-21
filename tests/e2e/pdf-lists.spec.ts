@@ -59,11 +59,13 @@ test('Mitgliederliste (PDF): Dialog, Voreinstellung Fahrt, Spalte ändern, Erzeu
 		emails: []
 	});
 
-	await page.goto('/modules/members');
-	await page.getByPlaceholder(/Name suchen/).fill(lastName);
-	const row = page.getByRole('row').filter({ hasText: lastName });
-	await expect(row).toHaveCount(1);
-	await row.getByRole('checkbox').check();
+	// Filter direkt über die URL: Tippen vor der Hydration bzw. das verzögerte URL-Update der Suche konkurrierte
+	// mit dem Anhaken (ein Filterwechsel leert die Auswahl) – die Suche selbst prüft search.spec.ts (#62)
+	await page.goto(`/modules/members?search=${lastName}`);
+	const pick = page.getByRole('checkbox', { name: `Lena ${lastName} auswählen` });
+	await expect(pick).toHaveCount(1);
+	await pick.check();
+	await expect(pick).toBeChecked();
 
 	await page.getByRole('button', { name: 'Mitgliederliste (PDF)' }).click();
 	const dialog = page.getByRole('dialog', { name: 'Mitgliederliste (PDF)' });
@@ -104,8 +106,24 @@ test('Mitgliederliste (PDF): Dialog passt auf ein Handy-Display', async ({ page 
 	await page.setViewportSize({ width: 390, height: 844 });
 	await login(page);
 	await ensureModules(page, ['members']);
-	await page.goto('/modules/members');
-	await page.getByRole('checkbox').nth(1).check();
+	// eigenes Mitglied statt positionsbasierter Auswahl fremder Daten (#62)
+	const lastName = `Handy${run}`;
+	await api(page, 'POST', '/modules/members/members', {
+		firstName: 'Mia',
+		lastName,
+		birthDate: '2014-04-04',
+		street: 'Am Wall 2',
+		postalCode: '28195',
+		city: 'Bremen',
+		country: 'DE',
+		stage: 'woelfling',
+		phones: [],
+		emails: []
+	});
+	await page.goto(`/modules/members?search=${lastName}`);
+	const pick = page.getByRole('checkbox', { name: `Mia ${lastName} auswählen` });
+	await expect(pick).toHaveCount(1);
+	await pick.check();
 	await page.getByRole('button', { name: 'Mitgliederliste (PDF)' }).click();
 	const dialog = page.getByRole('dialog', { name: 'Mitgliederliste (PDF)' });
 	await expect(dialog).toBeVisible();

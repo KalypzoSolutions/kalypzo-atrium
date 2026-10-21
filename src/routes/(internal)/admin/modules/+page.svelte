@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { PageHeader } from '$lib/components/layout';
+	import { PageHeader, PageTitle } from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -20,7 +20,7 @@
 	}
 </script>
 
-<svelte:head><title>Module</title></svelte:head>
+<PageTitle title="Module" />
 
 <div class="space-y-6">
 	<PageHeader

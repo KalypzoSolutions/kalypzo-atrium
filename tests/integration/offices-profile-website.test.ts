@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { contextForUser } from '$lib/server/core/auth/context';
@@ -13,9 +13,11 @@ import { createApiKey } from '$lib/server/core/api/keys';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
 import officesModule from '$lib/modules/offices/module';
 import type { MyOffices, Office, WebsiteOffice } from '$lib/modules/offices/schemas';
+import { websiteOfficeSchema } from '$lib/modules/offices/website.schemas';
 import type { RequestContext } from '$lib/sdk/types';
 
-// Persönliche Beschreibung (eine je Person) und Website-API des Moduls „Ämter“.
+// Persönliche Beschreibung (eine je Person), Website-Zustimmung (Opt-in, #27), Website-API und
+// Datenauskunft des Moduls „Ämter“.
 
 const BASE = 'http://localhost:5173/api/v1/modules/offices';
 const ctxOf = async (id: string) => (await contextForUser(id))!.ctx;
@@ -233,6 +235,87 @@ describe('GET /me und PUT /me/bio', () => {
 	});
 });
 
+describe('PUT /me/website (Opt-in für die Stammeswebsite, #27)', () => {
+	const holdersOnWebsite = async () => {
+		const r = await api<WebsiteOffice[]>(websiteKey, 'GET', '/website/offices');
+		expect(r.status, JSON.stringify(r.error)).toBe(200);
+		return { data: r.data, raw: r.raw };
+	};
+
+	it('ohne Zustimmung: Ämter ohne Personen, weder Name noch Bio noch Bild', async () => {
+		// Ingo (inaktiv) hat zugestimmt – bleibt trotzdem verborgen
+		await getDb().execute(
+			sql`INSERT INTO mod_offices.holder_profiles (user_id, show_on_website, show_on_website_at)
+				VALUES (${ingoId}, true, now()) ON CONFLICT (user_id) DO NOTHING`
+		);
+		const me = await api<MyOffices>(hannaKey, 'GET', '/me');
+		expect(me.data.showOnWebsite).toBe(false);
+		const { data, raw } = await holdersOnWebsite();
+		expect(data.length).toBe(3);
+		for (const o of data) expect(o.holders).toEqual([]);
+		expect(raw).not.toContain(hannaId);
+		expect(raw).not.toContain('Hanna');
+		expect(raw).not.toContain('Leidenschaft');
+		expect(raw).not.toContain('avatar');
+	});
+
+	it('Zustimmung: Person erscheint, Beschreibung bleibt erhalten', async () => {
+		const r = await api<MyOffices>(hannaKey, 'PUT', '/me/website', { showOnWebsite: true });
+		expect(r.status, JSON.stringify(r.error)).toBe(200);
+		expect(r.data.showOnWebsite).toBe(true);
+		expect(r.data.bio).toBe('Kassenwartin aus Leidenschaft');
+		const { data } = await holdersOnWebsite();
+		expect(data.find((o) => o.id === officeA.id)!.holders.map((h) => h.id)).toEqual([hannaId]);
+	});
+
+	it('Widerruf: Person verschwindet sofort, Zeitpunkt der Änderung wird gespeichert', async () => {
+		const before = await getDb().execute(
+			sql`SELECT show_on_website_at FROM mod_offices.holder_profiles WHERE user_id = ${hannaId}`
+		);
+		const r = await api<MyOffices>(hannaKey, 'PUT', '/me/website', { showOnWebsite: false });
+		expect(r.status, JSON.stringify(r.error)).toBe(200);
+		expect(r.data.showOnWebsite).toBe(false);
+		const { data, raw } = await holdersOnWebsite();
+		for (const o of data) expect(o.holders).toEqual([]);
+		expect(raw).not.toContain('Hanna');
+		const after = await getDb().execute(
+			sql`SELECT show_on_website, show_on_website_at FROM mod_offices.holder_profiles
+				WHERE user_id = ${hannaId}`
+		);
+		const row = (after as unknown as { rows: Record<string, unknown>[] }).rows[0]!;
+		const prev = (before as unknown as { rows: Record<string, unknown>[] }).rows[0]!;
+		expect(row.show_on_website).toBe(false);
+		expect(row.show_on_website_at).not.toBeNull();
+		expect(new Date(String(row.show_on_website_at)).getTime()).toBeGreaterThanOrEqual(
+			new Date(String(prev.show_on_website_at)).getTime()
+		);
+
+		// Für die folgenden Website-Tests wieder zustimmen
+		const again = await api<MyOffices>(hannaKey, 'PUT', '/me/website', { showOnWebsite: true });
+		expect(again.data.showOnWebsite).toBe(true);
+	});
+
+	it('ohne Amt → 403, ungültige Eingabe → 422', async () => {
+		const r = await api(ninaKey, 'PUT', '/me/website', { showOnWebsite: true });
+		expect(r.status).toBe(403);
+		expect(r.error?.code).toBe('forbidden');
+		const bad = await api(hannaKey, 'PUT', '/me/website', { showOnWebsite: 'ja' });
+		expect(bad.status).toBe(422);
+	});
+
+	it('Audit offices.profile.website-changed nur mit dem Schalterwert', async () => {
+		const rows = await getDb()
+			.select({ metadata: schema.auditLog.metadata, target: schema.auditLog.target })
+			.from(schema.auditLog)
+			.where(eq(schema.auditLog.action, 'offices.profile.website-changed'));
+		expect(rows.length).toBe(3);
+		for (const r of rows) {
+			expect(r.target).toBe(hannaId);
+			expect(Object.keys(r.metadata as object)).toEqual(['showOnWebsite']);
+		}
+	});
+});
+
 describe('GET /website/offices', () => {
 	it('nur mit Scope offices.website.read', async () => {
 		expect((await api(noScopeKey, 'GET', '/website/offices')).status).toBe(403);
@@ -246,6 +329,8 @@ describe('GET /website/offices', () => {
 	it('liefert Ämter in Reihenfolge mit öffentlichen Feldern', async () => {
 		const r = await api<WebsiteOffice[]>(websiteKey, 'GET', '/website/offices');
 		expect(r.status, JSON.stringify(r.error)).toBe(200);
+		// Vertrag (#48): strikt gegen das exportierte Website-Schema
+		websiteOfficeSchema.array().parse(r.data);
 		expect(r.data.map((o) => o.id)).toEqual([officeA.id, officeB.id, officeC.id]);
 
 		const a = r.data[0]!;
@@ -313,6 +398,15 @@ describe('GET /website/offices/holders/:userId/avatar', () => {
 		expect((await avatar(admin.userId!)).status).toBe(404);
 	});
 
+	it('404 ohne Zustimmung zur Website-Anzeige (auch mit Bild)', async () => {
+		await api(hannaKey, 'PUT', '/me/website', { showOnWebsite: false });
+		try {
+			expect((await avatar(hannaId)).status).toBe(404);
+		} finally {
+			await api(hannaKey, 'PUT', '/me/website', { showOnWebsite: true });
+		}
+	});
+
 	it('404 für inaktive Inhaber*innen und ohne verfügbares Bild (kein Storage im Test)', async () => {
 		expect((await avatar(ingoId)).status).toBe(404);
 		expect((await avatar(hannaId)).status).toBe(404);
@@ -351,5 +445,26 @@ describe('Modul deaktiviert', () => {
 		} finally {
 			await enableModule(admin, 'offices');
 		}
+	});
+});
+
+describe('Datenauskunft (subjectExport)', () => {
+	it('liefert Ämter, Beschreibung und Website-Zustimmung der Person', async () => {
+		const run = officesModule.subjectExport!.run;
+		const data = (await run({ userId: hannaId, memberIds: [] }))!;
+		expect(data).not.toBeNull();
+		const offices = data.offices as { id: string; name: string; since: string | null }[];
+		expect(offices.map((o) => o.id).sort()).toEqual([officeA.id, officeB.id].sort());
+		expect(offices.find((o) => o.id === officeA.id)!.since).toBe('2024-09-01');
+		const profile = data.profile as { bio: string; showOnWebsite: boolean };
+		expect(profile.bio).toBe('Kassenwartin aus Leidenschaft');
+		expect(profile.showOnWebsite).toBe(true);
+		expect(JSON.stringify(data)).not.toContain('Ingo');
+	});
+
+	it('null ohne Konto bzw. ohne Daten', async () => {
+		const run = officesModule.subjectExport!.run;
+		expect(await run({ userId: null, memberIds: ['egal'] })).toBeNull();
+		expect(await run({ userId: ninaId, memberIds: [] })).toBeNull();
 	});
 });

@@ -313,6 +313,7 @@ describe('Kosten-Link: öffentliche Einreichung', () => {
 		const receipt = await as('owner', `/actions/${id}/expense-submissions/${sub.id}/receipt`);
 		expect(receipt.status).toBe(200);
 		expect(receipt.headers.get('x-content-type-options')).toBe('nosniff');
+		expect(receipt.headers.get('content-security-policy')).toBe("default-src 'none'; sandbox");
 		expect(receipt.headers.get('content-disposition')).toContain('attachment');
 
 		const cfg = await data<ExpenseLinkConfig>(await as('owner', `/actions/${id}/expense-link`));
@@ -352,8 +353,12 @@ describe('Kosten-Link: öffentliche Einreichung', () => {
 
 		const person = sent.find((m) => m.to === 'erika@example.test')!;
 		expect(person).toBeTruthy();
-		for (const t of ['Brot', 'Bastelmaterial', 'Fahrkarte', '43,80']) {
+		// Kein Freitext an die unbestätigte Adresse (Issue #17): nur Kategorie, Datum, Betrag
+		for (const t of ['Verpflegung', '43,80', 'Pfingstlager']) {
 			expect(person.text).toContain(t);
+		}
+		for (const t of ['Brot', 'Bastelmaterial', 'Fahrkarte', 'Erika']) {
+			expect(person.text).not.toContain(t);
 		}
 		expect(person.text).not.toContain('DE89');
 		expect(person.text).not.toContain('013000');
@@ -564,6 +569,27 @@ describe('Kosten-Link: öffentliche Einreichung', () => {
 		// 48 + 2 = 50 → erlaubt
 		expect((await submit(token, fields({}, [item(), item()]), [pdf(), pdf()])).status).toBe(201);
 		expect((await submit(token, fields())).status).toBe(409);
+	});
+
+	it('Tageslimit je Link (Issue #17): Einreichung gespeichert, aber keine Mails mehr', async () => {
+		const id = await newAction('Limitlager');
+		const token = await enableLink(id);
+		const { sql } = await import('drizzle-orm');
+		await core.database.forModule('actions').transaction((tx) =>
+			tx.execute(
+				sql`INSERT INTO public_mail_counters (action_id, kind, day, count)
+					VALUES (${id}, 'expense-confirm', CURRENT_DATE, 30),
+						(${id}, 'expense-owner', CURRENT_DATE, 30)`
+			)
+		);
+		sent.length = 0;
+		const out = await data<PublicExpenseBatchResult>(
+			await submit(token, fields({}, [item()]), [pdf('a.pdf')]),
+			201
+		);
+		expect(out.emailSent).toBe(false);
+		expect(sent).toHaveLength(0);
+		expect(await list(id)).toHaveLength(1);
 	});
 });
 

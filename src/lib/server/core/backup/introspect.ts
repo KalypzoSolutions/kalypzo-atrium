@@ -2,18 +2,13 @@
  * Datensicherung – Struktur der Datenbank lesen (pg_catalog, läuft unter PostgreSQL und PGlite)
  * und Tabellen/Zeilen in Einfüge-Reihenfolge bringen (Fremdschlüssel-Eltern zuerst).
  */
-import { sql, type SQL } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import type { DbOrTx } from '../database/client';
 import type { ColumnInfo, ForeignKeyInfo, TableInfo } from './types';
-
-type Row = Record<string, unknown>;
+import { rowsOf } from '../database/rows';
 
 /** Erlaubte SQL-Bezeichner (Schemas, Tabellen, Spalten) */
 export const IDENTIFIER = /^[a-z_][a-z0-9_]*$/;
-
-async function rowsOf(db: DbOrTx, query: SQL): Promise<Row[]> {
-	return ((await db.execute(query)) as unknown as { rows: Row[] }).rows;
-}
 
 function jsonArray(v: unknown): string[] {
 	if (Array.isArray(v)) return v.map(String);

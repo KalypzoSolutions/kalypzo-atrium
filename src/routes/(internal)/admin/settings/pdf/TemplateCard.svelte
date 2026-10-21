@@ -2,7 +2,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { LoadingState } from '$lib/components/layout';
 
 	interface Part {
 		id: string;
@@ -93,7 +93,12 @@
 			]}
 		>
 			{#if !loaded && !failed}
-				<Skeleton class="absolute inset-0 rounded-none" />
+				<LoadingState
+					label="Vorschau"
+					rows={1}
+					rowClass="h-full w-full rounded-none"
+					class="absolute inset-0"
+				/>
 			{/if}
 			{#if failed}
 				<div

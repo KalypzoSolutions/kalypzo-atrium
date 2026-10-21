@@ -333,7 +333,9 @@ describe('Export', () => {
 			entries: 4,
 			receipts: 1,
 			payees: 1,
-			includesBank: true
+			includesBank: true,
+			// ohne `members.data.export` keine Gesundheitsdaten
+			includesHealth: false
 		});
 		expect(p.document.payees[0]!.iban).toBe(IBAN_PLAIN);
 		expect(p.document.accounting.closed).toBe(true);
@@ -414,12 +416,17 @@ describe('Import und Round-Trip', () => {
 		// Original unberührt und für Importierende nicht sichtbar
 		expect((await as('importer', `/actions/${full.id}`)).status).toBe(404);
 
-		const oldForm = await dbRows(sql`SELECT token FROM action_forms WHERE action_id = ${full.id}`);
+		const oldForm = await dbRows(
+			sql`SELECT token_hash FROM action_forms WHERE action_id = ${full.id}`
+		);
 		const newForm = await dbRows(
-			sql`SELECT token, enabled FROM action_forms WHERE action_id = ${imp.id}`
+			sql`SELECT token, token_hash, enabled FROM action_forms WHERE action_id = ${imp.id}`
 		);
 		expect(newForm[0]!.enabled).toBe(false);
-		expect(newForm[0]!.token).not.toBe(oldForm[0]!.token);
+		// Token nur als Hash gespeichert (#67, 01b-14), neuer Link beim Import
+		expect(newForm[0]!.token).toBeNull();
+		expect(newForm[0]!.token_hash).toBeTruthy();
+		expect(newForm[0]!.token_hash).not.toBe(oldForm[0]!.token_hash);
 
 		const ids = await dbRows(
 			sql`SELECT (SELECT count(*)::int FROM action_participants WHERE id IN
@@ -557,12 +564,12 @@ describe('Ungültige Archive', () => {
 		expect((await importZip('importer', new Uint8Array())).status).toBe(422);
 	});
 
-	it('falscher Content-Type -> 422, Feld fehlt -> 400', async () => {
+	it('falscher Content-Type -> 422, Feld fehlt -> 422 (einheitliche Upload-Regel, #33)', async () => {
 		expect((await importZip('importer', fullBytes, 'text/plain')).status).toBe(422);
 		const fd = new FormData();
 		fd.set('other', 'x');
 		expect((await as('importer', '/actions/import', { method: 'POST', body: fd })).status).toBe(
-			400
+			422
 		);
 	});
 

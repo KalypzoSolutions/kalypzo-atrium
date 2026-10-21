@@ -1,8 +1,8 @@
 import { fail } from '@sveltejs/kit';
-import { getDefinition, getPublicSettings, setSetting } from '$lib/server/core/settings/service';
+import { getDefinition, getPublicSettings, setSettings } from '$lib/server/core/settings/service';
 import { isCoreError } from '$lib/server/core/errors';
 
-export type FieldKind = 'text' | 'number' | 'boolean' | 'list' | 'json' | 'select';
+export type FieldKind = 'text' | 'number' | 'boolean' | 'list' | 'json' | 'select' | 'color';
 
 export interface FieldDescriptor {
 	key: string;
@@ -22,6 +22,9 @@ const SELECT_OPTIONS: Record<string, string[]> = {
 	'core.pdf.defaultOrientation': ['portrait', 'landscape']
 };
 
+/** Farbfelder (`#rrggbb`): Oberfläche mit ColorPicker und Kontrastanzeige */
+const COLOR_KEYS = new Set(['core.design.accentColor']);
+
 const MULTILINE_KEYS = new Set(['core.mail.signature', 'core.mail.footerText']);
 
 /** Mehrzeilig: bekannte Textfelder oder Texte mit Zeilenumbruch (z. B. Mail-Vorlagen aus Modulen). */
@@ -33,6 +36,7 @@ function isMultiline(key: string, value: unknown): boolean {
 
 function kindOf(key: string): FieldKind {
 	if (SELECT_OPTIONS[key]) return 'select';
+	if (COLOR_KEYS.has(key)) return 'color';
 	const d = getDefinition(key).default;
 	if (typeof d === 'boolean') return 'boolean';
 	if (typeof d === 'number') return 'number';
@@ -128,11 +132,20 @@ export async function saveFields(
 		updates.push([key, value]);
 	}
 
+	let cleared: string[];
 	try {
-		for (const [key, value] of updates) await setSetting(locals.ctx, key, value);
+		// Atomar: alles oder nichts; geänderte Ziele (Host, URL …) verwerfen gespeicherte Secrets
+		({ clearedSecrets: cleared } = await setSettings(locals.ctx, Object.fromEntries(updates)));
 	} catch (e) {
 		if (isCoreError(e)) return fail(e.status, { message: e.message });
 		throw e;
+	}
+	if (cleared.length) {
+		const labels = cleared.map((k) => getDefinition(k).label).join(', ');
+		return {
+			success: true,
+			message: `Einstellungen gespeichert. Weil sich das Ziel geändert hat, wurde Folgendes verworfen – bitte neu eingeben: ${labels}`
+		};
 	}
 	return { success: true, message: 'Einstellungen gespeichert' };
 }

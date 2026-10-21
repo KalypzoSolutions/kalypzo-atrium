@@ -5,7 +5,9 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
+import sharp from 'sharp';
 import { useTestDatabase } from '../helpers/db';
+import { settleMails } from '../helpers/settle';
 import { fakeObjects, installFakeStorage, uninstallFakeStorage } from '../helpers/fake-storage';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { getAuth } from '$lib/server/core/auth';
@@ -42,7 +44,8 @@ let admin: RequestContext;
 let close: () => Promise<void>;
 
 const ctxOf = async (userId: string) => (await contextForUser(userId))!.ctx;
-const flush = () => new Promise((r) => setTimeout(r, 50));
+// wartet ereignisbasiert auf „fire and forget“ gesendete Mails (#75)
+const flush = settleMails;
 
 async function login(email: string): Promise<Headers> {
 	const res = await getAuth().api.signInEmail({
@@ -350,11 +353,21 @@ describe('Startseite', () => {
 describe('Profilbild', () => {
 	let id: string;
 	let other: string;
-	const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
-	const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2]);
-	const webp = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 1]);
+	// Echte kleine Bilder: Profilbilder laufen durch `core.images` (#19)
+	let png: Uint8Array;
+	let jpeg: Uint8Array;
+	let webp: Uint8Array;
+	const make = async (format: 'png' | 'jpeg' | 'webp') =>
+		new Uint8Array(
+			await sharp({ create: { width: 8, height: 8, channels: 3, background: '#aa3300' } })
+				.toFormat(format)
+				.toBuffer()
+		);
 
 	beforeAll(async () => {
+		png = await make('png');
+		jpeg = await make('jpeg');
+		webp = await make('webp');
 		id = await createUser(admin, { name: 'Ava', email: 'ava-sec@example.test', password: PW });
 		other = await createUser(admin, { name: 'Ole', email: 'ole@example.test', password: PW });
 		await installFakeStorage(admin);
@@ -388,7 +401,8 @@ describe('Profilbild', () => {
 			[webp, 'image/webp']
 		] as [Uint8Array, string][]) {
 			await setOwnAvatar(ctx, { data, contentType });
-			expect((await readAvatar(id))?.contentType).toBe(contentType);
+			// gespeichert wird immer neu kodiertes WebP
+			expect((await readAvatar(id))?.contentType).toBe('image/webp');
 		}
 	});
 

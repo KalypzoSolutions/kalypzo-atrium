@@ -7,8 +7,9 @@
  *   - Konto mit gleicher ID oder gleicher E-Mail in der Sicherung → Passwort aus der Sicherung muss zum
  *     eingegebenen Passwort passen, das Konto muss aktiv sein und das Recht `core.system.backup` haben
  *     (Administrator-Rolle zählt immer) → Fall `same`; sonst gesperrt (nicht umgehbar).
- *   - kein Treffer → Fall `kept`: das aktuelle Konto (mit Sitzung) bleibt zusätzlich erhalten und bekommt
- *     die Administrator-Rolle.
+ *   - kein Treffer → Fall `kept`: das aktuelle Konto (mit Sitzung) bleibt zusätzlich erhalten und behält
+ *     seine bisherigen Rollen (keine zusätzlichen, #16). `core:users`/`core:roles` dürfen ohnehin nur
+ *     Administrator*innen wiederherstellen (`ADMIN_ONLY_RESTORE_SCOPES` in `access.ts`).
  */
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../auth';

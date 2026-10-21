@@ -3,9 +3,10 @@
 # Danach: node scripts/setup-demo-storage.mjs   (hinterlegt die Verbindung im laufenden Demo-System)
 # Hinweis: Das offizielle Image `minio/minio` wird nicht mehr auf Docker Hub veroeffentlicht;
 # `bitnamilegacy/minio` ist ein eingefrorenes, funktionsfaehiges MinIO-Image fuer lokale Tests.
+# Feste Versionen + Digest (Issue #74); 2025.7.23 entspricht dem bisherigen `latest`.
 services:
   minio:
-    image: bitnamilegacy/minio:latest
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5@sha256:6dabb4a2088c9a79908de3bc05f4586c23ad2182c8908e7e3acbf61c1467fb20
     environment:
       MINIO_ROOT_USER: demo-access
       MINIO_ROOT_PASSWORD: demo-secret-key-2026
@@ -19,7 +20,7 @@ services:
       - demo-minio:/bitnami/minio/data
   # Mail-Fänger: nimmt alle E-Mails an und zeigt sie unter http://localhost:8026 (nichts wird wirklich versendet)
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.31.6@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
     ports:
       - '127.0.0.1:1026:1025'
       - '127.0.0.1:8026:8025'
