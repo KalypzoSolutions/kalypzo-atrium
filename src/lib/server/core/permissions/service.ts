@@ -55,6 +55,40 @@ export async function getUserPermissions(userId: string, tx?: DbOrTx): Promise<S
 	);
 }
 
+/**
+ * IDs aller **aktiven** Benutzer*innen, deren wirksame Rechte `key` enthalten (Rollen, von aktiven Modulen
+ * verliehene Rollen, Einzelrechte). Ohne Rechteprüfung – für Systemfunktionen wie Benachrichtigungen.
+ * Rechte inaktiver Module liefern eine leere Liste.
+ */
+export async function usersWithPermission(key: string, tx?: DbOrTx): Promise<string[]> {
+	const db = tx ?? getDb();
+	const [perm] = await db
+		.select({ moduleId: schema.permission.moduleId })
+		.from(schema.permission)
+		.where(eq(schema.permission.key, key));
+	if (!perm) return [];
+	const enabled = await enabledModuleIds(tx);
+	if (perm.moduleId !== 'core' && !enabled.has(perm.moduleId)) return [];
+	const grantModules = [...enabled];
+	const res = await db.execute(sql`
+		SELECT u.id FROM "user" u WHERE u.active AND (
+			EXISTS (SELECT 1 FROM user_role ur JOIN role_permission rp ON rp.role_id = ur.role_id
+				WHERE ur.user_id = u.id AND rp.permission_key = ${key})
+			OR EXISTS (SELECT 1 FROM user_permission up WHERE up.user_id = u.id AND up.permission_key = ${key})
+			OR EXISTS (SELECT 1 FROM user_role_grant g JOIN role_permission rp ON rp.role_id = g.role_id
+				WHERE g.user_id = u.id AND rp.permission_key = ${key}
+					AND g.module_id IN (${
+						grantModules.length
+							? sql.join(
+									grantModules.map((m) => sql`${m}`),
+									sql`, `
+								)
+							: sql`NULL`
+					})))
+		ORDER BY u.id`);
+	return ((res as unknown as { rows: { id: unknown }[] }).rows ?? []).map((r) => String(r.id));
+}
+
 export function has(ctx: RequestContext, key: string): boolean {
 	return ctx.actor.type === 'system' || ctx.permissions.has(key);
 }

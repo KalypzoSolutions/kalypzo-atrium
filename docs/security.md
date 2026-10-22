@@ -262,6 +262,7 @@ Nutzer*innen spricht keine Dritten an); die Dienste sehen die Server-Adresse, ni
 | KI-Anbieter (OpenAI-kompatibel, `core.ai.baseUrl`) | nur, wenn ein Modul `core.ai.use` aufruft und das Modul freigegeben ist (`core.ai.allowedModules`); derzeit nutzt **kein** Modul die KI automatisch | der Prompt des Moduls (Inhalt bestimmt das Modul) | Warnhinweis auf `/admin/settings/ai` |
 | SMTP-Server (`core.smtp.*`) | jede Mail (Bestätigungen, Rechnungen, Erinnerungen, Benachrichtigungen) | Empfängeradresse, Betreff, Text, Anhänge (z. B. Rechnungs-PDF) | – (eigener bzw. beauftragter Mailserver) |
 | SMTP-Server (Modul `messages`) | jede Nachricht an Mitglieder/Gruppen, einzeln je Empfänger | Empfängeradresse, Betreff, Text, Anhänge, frei wählbare Absender-/Antwortadresse (vom Server auf erlaubte Absender geprüft) | – (eigener bzw. beauftragter Mailserver) |
+| IMAP-Server (Modul `messages`, `messages.imap.*`) | Abruf des Catch-all-Postfachs jede Minute (nur wenn eingeschaltet) | Zugangsdaten (Passwort verschlüsselt gespeichert, an Server/Port/Benutzer gebunden); empfangene Mails werden in der App gespeichert | Einstellungsbeschreibung (Einstellungen → Module → Nachrichten) |
 | S3-Speicher (`core.storage.*`) | Uploads (Belege, Bilder, Dateien, Profilbilder) | Dateiinhalte | – (eigener bzw. beauftragter Speicher) |
 | Stammeswebsite (`website/`) | Kartenkacheln `tile.openstreetmap.org` erst nach Klick („Zwei-Klick-Karte“, #31) | IP-Adresse des Browsers der Besucher*in | Hinweis an der Karte und in der Datenschutzerklärung der Website |
 

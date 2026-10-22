@@ -427,3 +427,24 @@ Das Modul `messages` sendet jede Mail einzeln über den SMTP-Server aus den Syst
   Reverse-DNS (rDNS) der Server-IP. Neue Domains langsam „aufwärmen“ (zuerst kleine Gruppen).
 - **Inhalt**: Aussehen „Einfach“ verursacht den geringsten Spam-Wert; Betreff nicht in Großbuchstaben und ohne viele Ausrufezeichen; keine Link-Verkürzer.
 - Prüfen mit einer Testmail an einen Spam-Checker (z. B. mail-tester.com). Der Spam-Wert hängt am Mailserver und DNS, nicht nur an der Anwendung.
+
+### Posteingang (Antworten empfangen, Catch-all per IMAP)
+
+Damit Antworten auf persönliche, Amts-, Gruppen- und Stamm-Adressen ankommen, ruft das Modul ein **Catch-all-Postfach** per IMAP ab und
+ordnet jede Mail dem passenden Postfach zu (Oberfläche: Nachrichten → Posteingang).
+
+1. Beim Mailanbieter ein Postfach (z. B. `catchall@stamm.de`) anlegen und als **Catch-all** der Domain einrichten: Mails an alle Adressen
+   ohne eigenes Postfach landen dort. Adressen mit echtem Postfach bekommen ihre Mails weiterhin dort (nicht im Posteingang der App).
+2. Administration → Einstellungen → Module → Nachrichten: `Posteingang: …` – IMAP-Server, Port (993 = TLS), Benutzer, Passwort, Ordner
+   (`INBOX`) und Ablageordner (`Importiert`, wird angelegt). Danach „Catch-all-Postfach abrufen“ einschalten.
+3. Mit dem Recht `messages.inbox.manage` „Jetzt abrufen“ im Posteingang prüfen; Fehler stehen dort als Hinweis „Letzter Abruf fehlgeschlagen“.
+
+- Der Job `messages.inbox-poll` läuft **jede Minute**. Übernommene Mails werden auf dem Server in den Ablageordner verschoben (Sicherung);
+  die Aufbewahrung in der App steuert `messages.inbox.retentionDays` (Standard 365 Tage), nicht zugeordnete Mails und Papierkorb 30 Tage.
+- Zuordnung über `Delivered-To`/`X-Original-To` (auch Bcc) und An/Cc. Der Mailserver sollte einen dieser Kopfzeilen setzen (bei
+  Catch-all üblich). Spam-Bewertung kommt vom Mailserver (`X-Spam-Flag`), die Absenderprüfung aus `Authentication-Results`.
+- Mit eingeschaltetem Posteingang gehen Antworten immer an die **Absenderadresse** (nicht mehr an die Konto-Adresse).
+- Benachrichtigungen gehen an die Konto-Adresse; liegt diese selbst auf der Catch-all-Domain, wird die Benachrichtigung beim Abruf
+  übersprungen (Kopfzeile `X-EP-Intern`) – keine Schleife, die Person sieht die Mail im Posteingang.
+- Nur **eine** Instanz darf abrufen (Sperre je Prozess; mehrere Instanzen würden über die Job-Sperre trotzdem nur einmal je Minute laufen).
+- Demo: `docker compose -f docker-compose.demo.yml up -d` (GreenMail auf `127.0.0.1:1143`), dann `node scripts/seed-demo-inbox.mjs`.

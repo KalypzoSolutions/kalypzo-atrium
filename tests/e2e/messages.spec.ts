@@ -41,7 +41,7 @@ test('Verlauf lädt nur einmal je Aufruf, auch nach mehrfachem Neuladen', async 
 	});
 	for (let i = 0; i < 4; i++) {
 		requests = 0;
-		await page.goto('/modules/messages');
+		await page.goto('/modules/messages/sent');
 		await expect(page.getByRole('heading', { name: 'Nachrichten', exact: true })).toBeVisible();
 		await expect(
 			page.getByText(/noch keine nachrichten/i).or(page.getByRole('row').nth(1))
@@ -51,6 +51,33 @@ test('Verlauf lädt nur einmal je Aufruf, auch nach mehrfachem Neuladen', async 
 		expect(requests, `Aufruf ${i + 1}`).toBe(1);
 		await expect(page.getByText('Zu viele Anfragen')).toHaveCount(0);
 	}
+});
+
+test('Posteingang: Postfächer laden einmal, Hinweis ohne IMAP, Reiter zu „Gesendet“', async ({
+	page
+}) => {
+	await login(page);
+	await ensureModules(page, ['members', 'messages']);
+	let requests = 0;
+	page.on('request', (r) => {
+		if (/\/api\/v1\/modules\/messages\/mailboxes(\?|$)/.test(r.url())) requests++;
+	});
+	await page.goto('/modules/messages');
+	const tabs = page.getByRole('navigation', { name: 'Bereiche der Nachrichten' });
+	await expect(tabs.getByRole('link', { name: 'Posteingang' })).toHaveAttribute(
+		'aria-current',
+		'page'
+	);
+	await expect(page.getByText(/Posteingang ist noch nicht eingerichtet/)).toBeVisible();
+	// Begründete feste Wartezeit (#75): Eine Effekt-Endlosschleife zeigt sich nur über die Zeit.
+	await page.waitForTimeout(1500);
+	expect(requests).toBe(1);
+	await tabs.getByRole('link', { name: 'Gesendet' }).click();
+	await page.waitForURL(/\/modules\/messages\/sent$/);
+	await expect(tabs.getByRole('link', { name: 'Gesendet' })).toHaveAttribute(
+		'aria-current',
+		'page'
+	);
 });
 
 test('Seitenleiste: flache Liste, Mitglieder vor Nachrichten, Administration zu', async ({

@@ -18,7 +18,11 @@ export interface ModuleJob {
 	/** `[a-z][a-z0-9-]*`; vollständiger Schlüssel ist `<modul>.<id>` */
 	id: string;
 	summary: string;
-	schedule: 'hourly' | 'daily';
+	/**
+	 * `hourly`, `daily` (Zeitfenster) oder `{ everyMinutes }` (1–60) für kurze Abstände, z. B. Postfach-Abruf.
+	 * Der Zeitgeber prüft jede Minute; Intervall-Jobs laufen frühestens nach Ablauf des Abstands erneut.
+	 */
+	schedule: 'hourly' | 'daily' | { everyMinutes: number };
 	run: (ctx: RequestContext) => Promise<string | void>;
 }
 

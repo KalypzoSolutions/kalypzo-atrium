@@ -191,9 +191,10 @@ Beispiel: `actions` liest über `TreasuryService` die tatsächlich eingegangenen
 
 ## Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`)
 
-`defineModule({ …, jobs: [{ id: 'reminders', summary: '…', schedule: 'hourly' | 'daily', run: async (ctx) => 'Statusmeldung' }] })`.
-Der Runner startet nach der Initialisierung in `hooks.server.ts` (nicht beim Build, nicht mit `JOBS_DISABLED=1`), prüft alle 5 Minuten
-und führt fällige Jobs **aktiver** Module mit Systemkontext aus (`hourly` ≥ 55 min seit dem letzten Start; `daily` einmal je Kalendertag
+`defineModule({ …, jobs: [{ id: 'reminders', summary: '…', schedule: 'hourly' | 'daily' | { everyMinutes: 1–60 }, run: async (ctx) => 'Statusmeldung' }] })`.
+Der Runner startet nach der Initialisierung in `hooks.server.ts` (nicht beim Build, nicht mit `JOBS_DISABLED=1`), prüft **jede Minute**
+und führt fällige Jobs **aktiver** Module mit Systemkontext aus (`{ everyMinutes: n }` frühestens n Minuten nach dem letzten Start, z. B.
+Postfach-Abruf in `messages`; `hourly` ≥ 55 min seit dem letzten Start; `daily` einmal je Kalendertag
 im Zeitfenster `JOBS_DAILY_WINDOW`, Standard `6-20` = 06:00 bis vor 20:00 Uhr Europe/Berlin). Nach einem **Fehlschlag** folgt ein neuer
 Versuch schon nach 15 min (`RETRY_MS`, bei `daily` nur im Fenster). Die Sperre ist ein atomares Upsert auf `job_run` – mehrere Instanzen
 laufen nicht doppelt, und es bleibt keine Transaktion offen (PGlite). Laufende Jobs schreiben jede Minute einen **Heartbeat** (während

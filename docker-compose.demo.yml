@@ -24,5 +24,13 @@ services:
     ports:
       - '127.0.0.1:1026:1025'
       - '127.0.0.1:8026:8025'
+  # IMAP-Server als Catch-all-Postfach für den Posteingang des Moduls Nachrichten (IMAP ohne TLS auf
+  # 127.0.0.1:1143, jedes Passwort wird angenommen). Befüllen: node scripts/seed-demo-inbox.mjs
+  greenmail:
+    image: greenmail/standalone:2.1.2@sha256:572d22796908375678119a13fabfcdc5416c9003404ab975fe824692fe02ba03
+    environment:
+      GREENMAIL_OPTS: '-Dgreenmail.setup.test.imap -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled'
+    ports:
+      - '127.0.0.1:1143:3143'
 volumes:
   demo-minio:

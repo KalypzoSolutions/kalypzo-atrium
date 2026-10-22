@@ -117,8 +117,8 @@ return result;
 - Mehrfachwerte (Telefone/E-Mails): eigene Tabelle mit `position`; Listen komplett ersetzen statt diffen.
 
 ## Hintergrundjobs und optionale Abhängigkeiten
-- `defineModule({ jobs: [{ id, summary, schedule: 'hourly'|'daily', run(ctx) }] })`: Runner in `core/jobs` (Start in
-  `hooks.server.ts`, Tick 5 min, nicht bei `JOBS_DISABLED=1`), nur für aktive Module, Systemkontext, Sperre per atomarem
+- `defineModule({ jobs: [{ id, summary, schedule: 'hourly'|'daily'|{ everyMinutes: 1–60 }, run(ctx) }] })`: Runner in `core/jobs` (Start in
+  `hooks.server.ts`, Tick **1 min** (seit 2026-10-22), nicht bei `JOBS_DISABLED=1`), nur für aktive Module, Systemkontext, Sperre per atomarem
   Upsert auf `job_run` (keine offene Transaktion). Rückgabe = Statusmeldung. Admin: `GET /api/v1/jobs`,
   `POST /api/v1/jobs/<modul>.<job>/run` (`core.jobs.manage`). Tests: `runDueJobs`, `runJobNow`, `setJobClockForTests`.
   `daily` = einmal je Tag im Fenster `JOBS_DAILY_WINDOW` (Standard `6-20`, Europe/Berlin), nach Fehler neuer Versuch nach 15 min,

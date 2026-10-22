@@ -27,6 +27,9 @@ export function validateDefinition(def: ModuleDefinition): void {
 		if (!s.key.startsWith(`${m.id}.`)) {
 			throw new Error(`Modul ${m.id}: Einstellung "${s.key}" muss mit "${m.id}." beginnen`);
 		}
+		if (s.secretBoundTo && (!s.secret || s.secretBoundTo.some((k) => !k.startsWith(`${m.id}.`)))) {
+			throw new Error(`Modul ${m.id}: secretBoundTo von "${s.key}" nur für eigene Secrets`);
+		}
 	}
 	for (const n of m.navigation) {
 		if (!n.path.startsWith(`/modules/${m.id}`)) {
@@ -37,6 +40,12 @@ export function validateDefinition(def: ModuleDefinition): void {
 	for (const j of def.jobs ?? []) {
 		if (!/^[a-z][a-z0-9-]*$/.test(j.id) || jobIds.has(j.id)) {
 			throw new Error(`Modul ${m.id}: ungültige oder doppelte Job-ID "${j.id}"`);
+		}
+		if (typeof j.schedule === 'object') {
+			const n = j.schedule.everyMinutes;
+			if (!Number.isInteger(n) || n < 1 || n > 60) {
+				throw new Error(`Modul ${m.id}: Job "${j.id}" braucht everyMinutes zwischen 1 und 60`);
+			}
 		}
 		jobIds.add(j.id);
 	}

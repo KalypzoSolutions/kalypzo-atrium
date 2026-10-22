@@ -11,6 +11,8 @@
  *   Heartbeat der Start) älter als `STALE_MS` ist, gilt der Lauf als abgebrochen.
  * - `ok`/`error`: Lauf beendet, `last_finished_at` = Ende. Nach `error` folgt ein neuer Versuch
  *   schon nach `RETRY_MS` statt erst nach dem vollen Intervall.
+ * - Intervall-Jobs (`{ everyMinutes }`) starten frühestens `everyMinutes` nach ihrem letzten Start
+ *   (der Zeitgeber prüft jede Minute).
  * - `daily`-Jobs starten nur im Zeitfenster `JOBS_DAILY_WINDOW` (volle Stunden in Europe/Berlin,
  *   Standard `6-20` = 06:00 bis vor 20:00) und höchstens einmal je Kalendertag.
  */
@@ -40,7 +42,7 @@ const HEARTBEAT_MS = 60_000;
 export const STALE_MS = 10 * 60_000;
 const DAILY_TIME_ZONE = 'Europe/Berlin';
 const DEFAULT_DAILY_WINDOW = { from: 6, to: 20 };
-const TICK_MS = 5 * 60_000;
+const TICK_MS = 60_000;
 const FIRST_TICK_MS = 30_000;
 
 let clock: () => Date = () => new Date();
@@ -160,6 +162,10 @@ function berlinTimeToday(now: Date, hour: number): Date {
  */
 export function dueBefore(schedule: ModuleJob['schedule'], now: Date): Date | null {
 	if (schedule === 'hourly') return new Date(now.getTime() - HOURLY_MS + 1);
+	if (typeof schedule === 'object') {
+		// 5 s Spielraum, damit ein Minuten-Job bei leicht verspätetem Tick nicht eine Runde aussetzt
+		return new Date(now.getTime() - schedule.everyMinutes * 60_000 + 5_000);
+	}
 	const { from, to } = dailyWindow();
 	const start = berlinTimeToday(now, from);
 	if (now < start || now >= berlinTimeToday(now, to)) return null;

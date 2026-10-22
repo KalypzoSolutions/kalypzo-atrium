@@ -28,7 +28,15 @@ export interface MailMessage {
 	 * Werte ohne Zeilenumbrüche.
 	 */
 	headers?: Record<string, string>;
+	/**
+	 * Vorgegebene `Message-ID` (`<id@domain>`, z. B. damit ein Modul Antworten zuordnen kann); ohne Angabe
+	 * erzeugt der Core eine mit der Domain des Absenders.
+	 */
+	messageId?: string;
 }
+
+/** Gültige `Message-ID` (`<lokal@domain>`, ohne Leer-/Steuerzeichen) */
+export const MESSAGE_ID_RE = /^<[^\s<>@]{1,200}@[^\s<>@]{1,200}>$/;
 
 export interface MailTransport {
 	sendMail(msg: {
@@ -201,7 +209,7 @@ export function smtpTransportOptions(s: Record<string, unknown>) {
 export { invalidateMailTransportCache } from './mail-cache';
 
 /** Laufende `sendMail`-Aufrufe (auch „fire and forget“), für `mailIdleForTests` */
-const pendingSends = new Set<Promise<void>>();
+const pendingSends = new Set<Promise<unknown>>();
 
 /**
  * Für Tests (#75): wartet, bis alle laufenden `sendMail`-Aufrufe abgeschlossen sind – statt einer
@@ -211,7 +219,8 @@ export async function mailIdleForTests(): Promise<void> {
 	while (pendingSends.size > 0) await Promise.allSettled([...pendingSends]);
 }
 
-export function sendMail(msg: MailMessage): Promise<void> {
+/** Sendet eine Mail; liefert die verwendete `Message-ID` (falls der Core sie gesetzt hat). */
+export function sendMail(msg: MailMessage): Promise<string | undefined> {
 	const p = sendMailNow(msg);
 	pendingSends.add(p);
 	p.then(
@@ -252,9 +261,21 @@ export function formatSender(address: string, name?: string): string {
 	return clean ? `"${clean}" <${address}>` : address;
 }
 
-async function sendMailNow(msg: MailMessage): Promise<void> {
+async function sendMailNow(msg: MailMessage): Promise<string | undefined> {
 	const { t, from: defaultFrom, pooled } = await transport();
-	const { layout, files = [], from: fromAddress, fromName, replyTo, headers, ...mail } = msg;
+	const {
+		layout,
+		files = [],
+		from: fromAddress,
+		fromName,
+		replyTo,
+		headers,
+		messageId: givenId,
+		...mail
+	} = msg;
+	if (givenId !== undefined && !MESSAGE_ID_RE.test(givenId)) {
+		throw errors.badRequest('Ungültige Message-ID');
+	}
 	const from = fromAddress ? formatSender(fromAddress, fromName) : defaultFrom;
 	if (replyTo !== undefined && (replyTo.length > 254 || !SENDER_ADDRESS.test(replyTo))) {
 		throw errors.badRequest('Ungültige Antwortadresse');
@@ -262,8 +283,9 @@ async function sendMailNow(msg: MailMessage): Promise<void> {
 	const reply = replyTo ? { replyTo } : {};
 	// Message-ID mit der Domain der Absenderadresse (passt zu SPF/DKIM, weniger Spam-Punkte)
 	const domain = fromAddress?.split('@')[1];
+	const messageId = givenId ?? (domain ? `<${crypto.randomUUID()}@${domain}>` : undefined);
 	const extra = {
-		...(domain ? { messageId: `<${crypto.randomUUID()}@${domain}>` } : {}),
+		...(messageId ? { messageId } : {}),
 		...(headers && Object.keys(headers).length ? { headers } : {})
 	};
 	const options = await loadMailLayoutOptions();
@@ -275,7 +297,7 @@ async function sendMailNow(msg: MailMessage): Promise<void> {
 			...extra,
 			...(files.length ? { attachments: files } : {})
 		});
-		return;
+		return messageId;
 	}
 	const rendered = renderMailLayout(mail, options);
 	await deliver(t, pooled, {
@@ -287,4 +309,5 @@ async function sendMailNow(msg: MailMessage): Promise<void> {
 		...rendered,
 		attachments: [...rendered.attachments, ...files]
 	});
+	return messageId;
 }

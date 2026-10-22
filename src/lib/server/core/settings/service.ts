@@ -25,6 +25,19 @@ export function writePermissionOf(def: SettingDefinition): string {
 	return def.writePermission ?? CORE_WRITE_PERMISSION;
 }
 
+/** Ziel-gebundene Secrets: Core (`SECRET_BINDINGS`) plus `secretBoundTo` aus Modul-Einstellungen */
+function secretBindings(): { targets: string[]; secrets: string[] }[] {
+	const out = [...SECRET_BINDINGS];
+	for (const m of allDefinitions()) {
+		for (const s of m.settings ?? []) {
+			if (s.secret && s.secretBoundTo?.length) {
+				out.push({ targets: s.secretBoundTo, secrets: [s.key] });
+			}
+		}
+	}
+	return out;
+}
+
 function definitionMap(): Map<string, SettingDefinition> {
 	const map = new Map<string, SettingDefinition>();
 	for (const d of CORE_SETTINGS) map.set(d.key, d);
@@ -176,7 +189,7 @@ export interface SetSettingsResult {
  * - Globale Einstellungen brauchen ihr `writePermission` (Standard `core.settings.manage`, Modul-Schlüssel
  *   ggf. `<modul>.settings.manage`); benutzerspezifische dürfen nur für den eigenen Benutzer gesetzt werden.
  * - Secrets: `undefined`/leerer String behält den bisherigen Wert; `null` löscht.
- * - Ändert sich ein Ziel aus `SECRET_BINDINGS` (z. B. SMTP-Host), wird das zugehörige Secret gelöscht,
+ * - Ändert sich ein Ziel aus `SECRET_BINDINGS` oder einem Modul-`secretBoundTo` (z. B. SMTP-Host), wird das zugehörige Secret gelöscht,
  *   sofern es nicht im selben Aufruf neu gesetzt wird.
  * - Mehr als `MAX_SETTINGS_PER_WRITE` Schlüssel → 422.
  */
@@ -242,7 +255,8 @@ export async function setSettings(
 	const touched = new Map<string, WriteOp>(
 		ops.filter((o) => o.scopeId === '').map((o) => [o.key, o])
 	);
-	const targetKeys = SECRET_BINDINGS.flatMap((b) => b.targets).filter((k) => touched.has(k));
+	const bindings = secretBindings();
+	const targetKeys = bindings.flatMap((b) => b.targets).filter((k) => touched.has(k));
 	if (targetKeys.length) {
 		const rows = await getDb()
 			.select()
@@ -252,7 +266,7 @@ export async function setSettings(
 			const row = rows.find((r) => r.key === k);
 			return row ? row.value : getDefinition(k).default;
 		};
-		for (const b of SECRET_BINDINGS) {
+		for (const b of bindings) {
 			const changed = b.targets.some((k) => {
 				const op = touched.get(k);
 				if (!op) return false;

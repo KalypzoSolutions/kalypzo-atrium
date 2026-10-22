@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-21)
+# Projektstand (zuletzt aktualisiert: 2026-10-22)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -210,7 +210,14 @@
   Administration › Module (`admin: true`); `settingsPage: true` markiert echte Einstellungsseiten (Kasse) für Einstellungen → Module. „Administration“
   ist nach jedem Laden zu (Gruppenknopf hervorgehoben, wenn die aktive Seite darin liegt). Rechte filtern wie bisher.
 
+- **Posteingang in `messages` (2026-10-22, v1.1.0, Migr. 0003)**: Catch-all-Postfach per IMAP (Job jede Minute), Zuordnung zu persönlichen/Amts-/Gruppen-/
+  Stamm-Postfächern (Sichtbarkeit wie Absenderrechte), „Nicht zugeordnet“ für die Verwaltung, Antworten/Weiterleiten mit Verlauf (In-Reply-To),
+  Benachrichtigungen „Neue Nachricht“ und „… hat geantwortet“ je Person im Profil abschaltbar. Core: Intervall-Jobs, Message-ID/In-Reply-To beim Versand,
+  `core.permissions.usersWith`, `secretBoundTo`. Details: `module-messages.md` → „Posteingang“.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Posteingang (2026-10-22): IMAP-Abruf eines Catch-all-Postfachs (kein Webhook); Sichtbarkeit wie Absenderrechte; Unzuordenbares in einen Sammelordner
+  für die Verwaltung; nach dem Import auf dem Mailserver in den Ablageordner verschieben (nicht löschen).
 - Gruppenleitung (2026-10-21): Rechte **automatisch** über die Leitung einer Gruppe; Leitungen dürfen Dokumente verwalten und PDF-Listen erzeugen,
   **Gesundheitsfelder sehen/bearbeiten**, aber **keine Gruppenzuordnung** ändern und keine Mitglieder anlegen/löschen.
 - Programm: Pro-Kopf-Preis wird **aufgerundet** auf volle Euro. Puffer in **Prozent**. Team zahlt einen **Prozentsatz**,

@@ -37,7 +37,8 @@ import {
 	hasAny,
 	listPermissions,
 	requireAny,
-	requirePermission
+	requirePermission,
+	usersWithPermission
 } from './permissions/service';
 import { roleDirectory, roleIdsForUser } from './permissions/roles';
 import {
@@ -47,7 +48,7 @@ import {
 } from './permissions/grants';
 import { readAvatar } from './auth/profile';
 import * as pdf from './pdf';
-import { previewMailHtml, sendMail } from './mail';
+import { MESSAGE_ID_RE, previewMailHtml, sendMail } from './mail';
 import { errors } from './errors';
 import { env } from './env';
 import { qrDataUrl } from './qr';
@@ -81,6 +82,11 @@ async function sendModuleMail(msg: {
 	html?: string;
 	/** Nur PDF, höchstens 3 Dateien und 5 MB gesamt */
 	attachments?: { filename: string; contentType: 'application/pdf'; data: Uint8Array }[];
+	/**
+	 * Automatische Benachrichtigung: setzt `Auto-Submitted: auto-generated` (RFC 3834, keine
+	 * Abwesenheitsnotizen) und `X-EP-Intern: notification` (Schleifenschutz beim Postfach-Abruf).
+	 */
+	autoSubmitted?: boolean;
 }): Promise<void> {
 	if (typeof msg.to !== 'string' || msg.to.length > 254 || !EMAIL_RE.test(msg.to)) {
 		throw errors.validation([{ path: ['to'], message: 'Ungültige E-Mail-Adresse' }]);
@@ -122,10 +128,18 @@ async function sendModuleMail(msg: {
 		contentType: 'application/pdf',
 		content: Buffer.from(a.data)
 	}));
-	const { attachments: _a, ...rest } = msg;
+	const { attachments: _a, autoSubmitted, ...rest } = msg;
 	void _a;
-	await sendMail({ ...rest, files });
+	await sendMail({
+		...rest,
+		files,
+		...(autoSubmitted ? { headers: AUTO_HEADERS } : {})
+	});
 }
+
+const AUTO_HEADERS = { 'Auto-Submitted': 'auto-generated', 'X-EP-Intern': 'notification' };
+/** Höchstzahl Einträge in `References` (ältere werden verworfen) */
+const MAX_REFERENCES = 20;
 
 const MESSAGE_MAX_FILES = 10;
 const MESSAGE_MAX_BYTES = 20 * 1024 * 1024;
@@ -151,8 +165,29 @@ async function sendModuleMessage(msg: {
 	/** Adresse für den `List-Unsubscribe`-Header (`mailto:`) – senkt den Spam-Wert */
 	unsubscribe?: string;
 	attachments?: { filename: string; contentType: string; data: Uint8Array }[];
-}): Promise<void> {
+	/** Vorgegebene `Message-ID` (`<id@domain>`), z. B. um Antworten später zuzuordnen */
+	messageId?: string;
+	/** `In-Reply-To` (Message-ID der beantworteten Mail) */
+	inReplyTo?: string;
+	/** `References` (Message-IDs des Verlaufs, älteste zuerst; höchstens die letzten 20 werden gesendet) */
+	references?: string[];
+}): Promise<{ messageId: string | null }> {
 	const bad = (path: string, message: string) => errors.validation([{ path: [path], message }]);
+	for (const [k, v] of [
+		['messageId', msg.messageId],
+		['inReplyTo', msg.inReplyTo]
+	] as const) {
+		if (v !== undefined && (typeof v !== 'string' || !MESSAGE_ID_RE.test(v))) {
+			throw bad(k, 'Ungültige Message-ID');
+		}
+	}
+	if (
+		msg.references !== undefined &&
+		(!Array.isArray(msg.references) ||
+			msg.references.some((r) => typeof r !== 'string' || !MESSAGE_ID_RE.test(r)))
+	) {
+		throw bad('references', 'Ungültige Message-ID');
+	}
 	if (typeof msg.to !== 'string' || msg.to.length > 254 || !EMAIL_RE.test(msg.to)) {
 		throw bad('to', 'Ungültige E-Mail-Adresse');
 	}
@@ -203,13 +238,19 @@ async function sendModuleMessage(msg: {
 			: 'application/octet-stream',
 		content: Buffer.from(a.data)
 	}));
-	const { attachments: _a, unsubscribe, ...rest } = msg;
+	const { attachments: _a, unsubscribe, inReplyTo, references, ...rest } = msg;
 	void _a;
-	await sendMail({
+	const headers: Record<string, string> = {};
+	if (unsubscribe) headers['List-Unsubscribe'] = `<mailto:${unsubscribe}>`;
+	if (inReplyTo) headers['In-Reply-To'] = inReplyTo;
+	const refs = (references ?? []).slice(-MAX_REFERENCES);
+	if (refs.length) headers['References'] = refs.join(' ');
+	const messageId = await sendMail({
 		...rest,
 		files,
-		...(unsubscribe ? { headers: { 'List-Unsubscribe': `<mailto:${unsubscribe}>` } } : {})
+		...(Object.keys(headers).length ? { headers } : {})
 	});
+	return { messageId: messageId ?? null };
 }
 
 export const core = {
@@ -282,6 +323,8 @@ export const core = {
 		hasAny,
 		assertCanGrant,
 		forUser: getUserPermissions,
+		/** Aktive Benutzer*innen mit diesem wirksamen Recht (ohne Rechteprüfung, für Systemfunktionen) */
+		usersWith: usersWithPermission,
 		list: listPermissions
 	},
 	modules: {

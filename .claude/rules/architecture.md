@@ -23,7 +23,7 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
 → „Unbekannt“ – **keine** eigenen 30er-Schleifen um `directory`), `users.directory(ctx,{search,ids,limit,includeEmail?})` (aktive Benutzer: id/name/email/image, ab 2 Zeichen, max 30; **E-Mail nur** für System,
 `core.users.view`, das eigene Konto oder `includeEmail: true` nach eigener Prüfung eines Verwaltungsrechts – sonst `''`, Suche dann nur im Namen),
 `crypto.forModule(id)` (`encrypt/decrypt/isEncrypted`, AES-256-GCM), `permissions` (`require`, `has`, …),
-`modules` (`use`, `useOptional` für `optionalDependencies`), `settings`, `api`, `database.forModule(id).transaction`, `pdf`, `ai`, `storage`
+`modules` (`use`, `useOptional` für `optionalDependencies`), `settings` (Modul-Secrets mit `secretBoundTo` an Ziel-Schlüssel gebunden), `api`, `database.forModule(id).transaction`, `pdf`, `ai`, `storage`
 (`upload/download/remove/stat/list/signed*`; braucht `<modul>.storage.read|write|delete` – internes Recht für Modul-Endpunkte mit Objektprüfung;
 die generische REST-API `/api/v1/storage/*` verlangt `core.storage.manage`, 403 vor 503), `audit.logFromContext`.
 Seit 2026-10-20 (#23/#24): `storage.downloadStream` (Inhalt als `ReadableStream`, `file.size` = Länge – für Bild-/Datei-Auslieferung),
@@ -31,6 +31,8 @@ Seit 2026-10-20 (#23/#24): `storage.downloadStream` (Inhalt als `ReadableStream`
 `{ removed, missing, failed }`, Metadaten fehlgeschlagener Objekte bleiben). Storage-Konfiguration 10 s gecacht, `setSettings` mit `core.storage.*`
 invalidiert sofort (`invalidateStorageConfigCache`, `storage/config-cache.ts`). `getUserPermissions` nutzt den Modulstatus-Cache (3 s),
 `principalKeysFor` ist je Kontextobjekt + Modul memoisiert (WeakMap, 5 s). Bild-Endpunkte: `IMAGE_RATE_LIMIT` (1200/60 s) aus `$lib/sdk/server`.
+Seit 2026-10-22: `permissions.usersWith(key)` (aktive Konten mit wirksamem Recht, ohne Prüfung, für Benachrichtigungen), `mail.sendMessage`
+mit `messageId`/`inReplyTo`/`references` → `{ messageId }`, `mail.send({ autoSubmitted })` (`Auto-Submitted` + `X-EP-Intern`).
 `images.process(bytes, { variants })` (sharp, nur Core): Inhalt prüfen (JPEG/PNG/WebP/AVIF/GIF, ≤ 50 MP), nach EXIF drehen,
 **alle Metadaten inkl. GPS entfernen**, Varianten (WebP/JPEG/PNG) mit Maßen; Typen `ImageVariantSpec` & Co. über `$lib/sdk/server`.
 
