@@ -14,7 +14,7 @@ Design, Texte und Seitenaufbau der alten Seite bleiben unverändert – keine Ne
 - Eigenes Projekt (`package.json` „web“, SvelteKit 2 / Svelte 5 im **Legacy-Modus** mit `export let`, Tailwind 4, `adapter-node`, Port 3001,
   `Dockerfile`, `.dockerignore`). Root-Werkzeuge ignorieren `website/`. Die Website importiert **nichts** aus `src/`.
 - Befehle im Ordner `website/`: `npm run dev` / `npm run check` / `npm run build`, Start `WEBSITE_API_KEY=… PORT=3001 node build`.
-  `npm run check` meldet **5 Fehler + Warnungen aus dem alten Code** (Leaflet-Typen, implizites `any`, `keepfocus`, a11y) – bekannt,
+  `npm run check` meldet **3 Fehler + Warnungen aus dem alten Code** (Leaflet-Typen, implizites `any` in Navbar/Startseite, a11y) – bekannt,
   nicht neu einführen. Es gibt kein `lint`/`test` in `website/`; reine Module (`event-pages.ts`, `backend-types.ts`) testet die Root-Suite
   (`tests/unit/website-event-pages.test.ts`, `website-contract.test.ts`).
 - Der API-Key steht **nur** in `WEBSITE_API_KEY` (Server). Nie im Browser abfragen: Daten über `+page.server.ts` bzw. Server-Routen.
@@ -42,23 +42,23 @@ Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` m
 - **IDs vorab prüfen**: Termin `EVENT_KEY_RE`, Galerie/Bild `UUID_RE`, Slug `SLUG_RE`; zusätzlich gegen die zwischengespeicherten Listen
   (`isListedEvent`, `isListedGallery`, `isKnownGalleryImage`, Gruppenliste) – unbekannte IDs erreichen das Backend nicht (ist die Liste gerade nicht
   abrufbar, wird direkt gefragt). Folge: `/termine/<id>` kennt nur Termine im Bereich der Terminseite (2023 bis Ende nächsten Jahres).
-- Liefert die **PocketBase-Form**, die die Seiten kennen: `Appointment { id, title, description, date, end_date, location, pictures,
-  tags, expand: { tags: Tag[] } }`.
-  - `date`/`end_date` = lokale Zeit `YYYY-MM-DDTHH:MM:00` aus `startsOn`/`startsTime`.
-  - **Serien**: jedes Vorkommen einzeln, `id = <id>~<YYYY-MM-DD>`; `/termine/[id]` zerlegt das wieder (`occurrence`).
-  - `expand.tags` = Gruppen (`g:<groupId>`, Farbe aus `members/website/groups`) + Themen-Tags (`t:<name>`, ohne Farbe).
-  - `pictures` = Bild-URLs `/bilder/galerie/<galleryId>/<imageId>/web` aus allen Galerien, die mit dem Termin verknüpft sind.
-- `fetchAppointments()` (2023 bis Ende nächsten Jahres, Halbjahres-Fenster parallel, je Fenster `paged=1` à 200 nachgeladen bis `hasMore = false`,
-  Obergrenze 50 Seiten mit Log; altes Backend ohne Paging → ein Abruf, volle Seite wird geloggt; `event-pages.ts`, rein), `fetchAppointmentById`, `collectTags`,
-  `fetchUpcomingForGroup(slug)`, `fetchGalleryAppointments()` (Galerien als „Termine mit Bildern“, `pictures[0]` = Titelbild `thumb`,
-  Datum = frühester verknüpfter Termin), `fetchGalleryAppointment(id)`.
+- **Seitenform** (2026-10-23, `src/lib/site-types.ts`, client-tauglich): `SiteEvent` (`key` = `<id>` bzw. bei Serien `<id>~<YYYY-MM-DD>`,
+  Datum/Uhrzeit als `YYYY-MM-DD`/`HH:MM`, Ort, Farbe, `recurring`, `groups` mit Farbe + Gruppenseite, Themen-`tags`, verknüpfte `galleries`),
+  `SiteGallery`/`SiteGalleryDetail` (Titelbild mit Maßen, Datum = frühester verknüpfter Termin, `events`, `groups` der Termine, Bilder mit
+  `thumbUrl`/`webUrl`/Maßen/Beschreibung). Loader: `fetchEvents()` (2023 bis Ende nächsten Jahres, Halbjahres-Fenster parallel, je Fenster `paged=1`
+  à 200, `event-pages.ts`), `fetchEvent(key)`, `fetchGalleries()`, `fetchGallery(id)`.
+- Alte PocketBase-Form `Appointment` nur noch für `fetchUpcomingForGroup(slug)` (`/api/termine` → `AppointmentPreview` der Gruppenseite).
+- Reine Hilfen (Root-Tests `website-event-view`, `website-month-calendar`): `lib/dates.ts` (Formate ohne Zeitzonenfallen, `todayBerlin`),
+  `lib/event-view.ts` (Filter, Serien zusammenfassen inkl. Rhythmus aus den Abständen, Monate), `lib/month-calendar.ts` = **Kopie** von
+  `src/lib/components/layout/month-calendar.ts` (Test hält beide gleich – Änderungen an beiden Stellen).
 
 ## Seiten und Routen
 | Route | Quelle |
 |---|---|
 | `/` | FAQ fest in `src/lib/faqs.ts` (früher PocketBase `faqs`); Ferienhinweis statisch im Markup; Gruppenkarten aus dem Backend |
-| `/termine`, `/termine/[id]` | `+page.server.ts` → `fetchAppointments` / `fetchAppointmentById` (404 unbekannt, 503 Backend weg) |
-| `/galerie`, `/galerie/[id]` | `+page.server.ts` → `fetchGalleryAppointments` / `fetchGalleryAppointment` (ID = Galerie-ID) |
+| `/termine` | `fetchEvents`; Ansichten **Kalender** (Standard, `MonthCalendar.svelte`, mobil Agenda) / **Kacheln** / **Liste** (nach Monaten), Wahl in `?ansicht=` + `localStorage`; Filter-Chips Gruppen/Themen + Suche (`?gruppe=&thema=&q=&monat=`, alte `?tags=` der Gruppenseite gelten weiter); Serien in Kacheln/Liste einmal als „Regelmäßige Termine“, Vergangene aufklappbar |
+| `/termine/[id]` | `fetchEvent` (404 unbekannt, 503 Backend weg): Datum/Uhrzeit, Ort mit Link „In Karte öffnen“ (OSM-Suche, nur Link), Gruppen → Gruppenseite, verknüpfte Galerien, Teilen, OG-Tags |
+| `/galerie`, `/galerie/[id]` | `fetchGalleries` / `fetchGallery`: Karten mit Titelbild (Maße, lazy), Bildanzahl, Gruppen; Filter Jahr/Gruppe/Suche (`?jahr=&gruppe=&q=`); Detail mit Bildern in Spalten (`thumb`, echte Seitenverhältnisse, Alt-Text = Bildbeschreibung), Lightbox (`web`, Unterschrift, Zähler, Tastatur/Wischen), Links zu den Terminen |
 | `/meute/[slug]`, `/sippe/[slug]` | **aus dem Intern-Bereich** (`fetchGroup`, gemeinsamer Loader `lib/server/group-page.ts`, Vorlage `GroupPage.svelte` im Aufbau der alten Meute-Seite; Gruppenfarbe statt fester Farben). Falscher Typ → 308 auf `/<type>/<slug>`; `/meute` → 307 auf die erste Meute. `AppointmentPreview` (`gruppe` = Titel, `slug`) lädt per `fetch('/api/termine?gruppe=<slug>')` |
 | Menü, Startseite („Unsere Gruppen“, `#gruppen`), Kontakt (Gruppen-Ansprechpartner) | `data.groups` aus `+layout.server.ts` (`fetchGroups`, ohne Backend leere Liste); Ämter auf `/kontakt` bleiben statisch |
 | `/bilder/gruppe/[slug]` | Bild-Proxy fürs Gruppenbild (Cache je Slug + aktueller Version aus der Gruppenliste, `?v=` der Anfrage zählt nicht); ohne Bild im Backend nimmt `toGroup` das alte statische Bild je Slug |
@@ -92,6 +92,6 @@ cd website && npm run build && PORT=3001 node --env-file=.env build
   Empfängeradresse `kontakt@` (alt: Tippfehler „kotakt@“) vom Nutzer bestätigen lassen. Datenschutztext rechtlich nicht geprüft.
 - Caches und Rate-Limits nur im Arbeitsspeicher je Prozess (Neustart leert sie).
 - Datenschutztext, Ferienhinweis (statisch, Termine darin veraltet) und FAQ-Texte pflegen sich nur im Code.
-- Wöchentliche Gruppenstunden erscheinen auf `/termine` als einzelne Kacheln (die alte Seite kannte keine Serien).
-- Galerie-Datum `toLocaleDateString()` ohne Locale (alter Code) → Format hängt vom Browser ab.
+- Serien-Rhythmus wird aus den Abständen der Vorkommen geraten (das Backend liefert die Regel nicht); ungewöhnliche Rhythmen → „regelmäßig“.
+- `/termine` lädt alle Vorkommen 2023 bis Ende nächsten Jahres auf einmal (bei vielen Serien wächst die Seite).
 - Altes `ecosystem.config.cjs` (PM2) unverändert übernommen, ungeprüft.
