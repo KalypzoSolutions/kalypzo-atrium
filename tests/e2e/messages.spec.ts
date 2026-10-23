@@ -139,3 +139,45 @@ test('Neue Nachricht: freie Adresse als Chip, Vorschau zeigt die Mail', async ({
 	await page.getByRole('tab', { name: 'Schreiben' }).click();
 	await expect(page.getByLabel('Betreff')).toHaveValue('Hallo Gäste');
 });
+
+test('Posteingang: Ordner anlegen, per Rechtsklick umbenennen und löschen', async ({ page }) => {
+	await login(page);
+	await ensureModules(page, ['members', 'messages']);
+	// Stamm-Adresse → Stamm-Postfach für die Verwaltung
+	const set = await page.request.fetch('/api/v1/settings', {
+		method: 'PUT',
+		headers: { origin: ORIGIN, 'content-type': 'application/json' },
+		data: { values: { 'core.organization.email': 'stamm@example.test' } }
+	});
+	expect(set.ok()).toBe(true);
+	await page.goto('/modules/messages?mailbox=stamm');
+	const tree = page.getByRole('navigation', { name: 'Postfächer und Ordner' });
+	await tree.getByRole('button', { name: 'Ordner anlegen' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Ordner anlegen' });
+	await expect(dialog.getByText(/Sichtbar für alle mit Zugriff/)).toBeVisible();
+	await dialog.getByLabel('Name *').fill('Lager 2026');
+	await dialog.getByRole('button', { name: 'Anlegen' }).click();
+	const folder = tree.getByRole('button', { name: /Lager 2026/ }).first();
+	await expect(folder).toBeVisible();
+
+	// Rechtsklick → Umbenennen
+	await folder.click({ button: 'right' });
+	await page.getByRole('menuitem', { name: 'Umbenennen' }).click();
+	const rename = page.getByRole('dialog', { name: 'Ordner umbenennen' });
+	await rename.getByLabel('Name *').fill('Sommerlager 2026');
+	await rename.getByRole('button', { name: 'Umbenennen' }).click();
+	const renamed = tree.getByRole('button', { name: /Sommerlager 2026/ }).first();
+	await expect(renamed).toBeVisible();
+
+	// Ordner öffnen: Kopf zeigt den Namen, Leerzustand erklärt das Einsortieren
+	await renamed.click();
+	await expect(page).toHaveURL(/folder=/);
+	await expect(page.getByText(/Dieser Ordner ist leer/)).toBeVisible();
+
+	// Rechtsklick → Löschen mit Bestätigung
+	await renamed.click({ button: 'right' });
+	await page.getByRole('menuitem', { name: 'Ordner löschen …' }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Ordner löschen' }).click();
+	await expect(tree.getByRole('button', { name: /Sommerlager 2026/ })).toHaveCount(0);
+	await expect(page).not.toHaveURL(/folder=/);
+});

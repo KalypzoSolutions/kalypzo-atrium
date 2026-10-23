@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-22)
+# Projektstand (zuletzt aktualisiert: 2026-10-23)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -215,7 +215,12 @@
   Benachrichtigungen „Neue Nachricht“ und „… hat geantwortet“ je Person im Profil abschaltbar. Core: Intervall-Jobs, Message-ID/In-Reply-To beim Versand,
   `core.permissions.usersWith`, `secretBoundTo`. Details: `module-messages.md` → „Posteingang“.
 
+- **Ordner im Posteingang (2026-10-23, `messages` v1.2.0, Migr. 0004)**: Ordner mit Unterordnern (≤ 3 Ebenen) je Postfach, in gemeinsamen
+  Postfächern für alle mit Zugriff gemeinsam; Drag & Drop (Mails und Ordner), Rechtsklick-Menüs, Sammelaktionen, Rückgängig. Details:
+  `module-messages.md` → „Ordner im Posteingang“.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Posteingang-Ordner (2026-10-23): Ordner je Postfach; alle mit Zugriff auf ein gemeinsames Postfach sehen und bearbeiten dieselben Ordner.
 - Posteingang (2026-10-22): IMAP-Abruf eines Catch-all-Postfachs (kein Webhook); Sichtbarkeit wie Absenderrechte; Unzuordenbares in einen Sammelordner
   für die Verwaltung; nach dem Import auf dem Mailserver in den Ablageordner verschieben (nicht löschen).
 - Gruppenleitung (2026-10-21): Rechte **automatisch** über die Leitung einer Gruppe; Leitungen dürfen Dokumente verwalten und PDF-Listen erzeugen,
