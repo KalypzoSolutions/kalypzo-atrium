@@ -3,6 +3,10 @@
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import type { SubmitFunction } from '@sveltejs/kit';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import UserCheckIcon from '@lucide/svelte/icons/user-check';
+	import UserXIcon from '@lucide/svelte/icons/user-x';
 	import {
 		BUSY_SAVE,
 		ConfirmDialog,
@@ -229,38 +233,41 @@
 				<Table.Cell>{u.twoFactorEnabled ? 'Ja' : 'Nein'}</Table.Cell>
 				<Table.Cell>{fmt(u.createdAt)}</Table.Cell>
 				<Table.Cell class="text-right">
-					<div class="flex justify-end gap-2">
+					<div class="flex justify-end gap-1">
 						{#if data.can.edit}
 							<Button
-								size="sm"
+								size="icon-sm"
 								variant="outline"
 								disabled={locked}
-								title={locked ? LOCKED_HINT : undefined}
-								onclick={() => openEdit(u)}>Bearbeiten</Button
+								aria-label="Bearbeiten"
+								title={locked ? LOCKED_HINT : 'Bearbeiten'}
+								onclick={() => openEdit(u)}><PencilIcon /></Button
 							>
 							{#if u.id !== data.selfId}
 								<form method="POST" action="?/setActive" use:enhance={submit()}>
 									<input type="hidden" name="id" value={u.id} />
 									<input type="hidden" name="active" value={String(!u.active)} />
 									<Button
-										size="sm"
+										size="icon-sm"
 										variant="outline"
 										type="submit"
 										disabled={busy || locked}
-										title={locked ? LOCKED_HINT : undefined}
+										aria-label={u.active ? 'Deaktivieren' : 'Aktivieren'}
+										title={locked ? LOCKED_HINT : u.active ? 'Deaktivieren' : 'Aktivieren'}
 									>
-										{u.active ? 'Deaktivieren' : 'Aktivieren'}
+										{#if u.active}<UserXIcon />{:else}<UserCheckIcon />{/if}
 									</Button>
 								</form>
 							{/if}
 						{/if}
 						{#if data.can.delete && u.id !== data.selfId}
 							<Button
-								size="sm"
+								size="icon-sm"
 								variant="destructive"
 								disabled={locked}
-								title={locked ? LOCKED_HINT : undefined}
-								onclick={() => openDelete(u)}>Löschen</Button
+								aria-label="Löschen"
+								title={locked ? LOCKED_HINT : 'Löschen'}
+								onclick={() => openDelete(u)}><Trash2Icon /></Button
 							>
 						{/if}
 					</div>

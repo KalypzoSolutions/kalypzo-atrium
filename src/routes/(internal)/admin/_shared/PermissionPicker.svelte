@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/ui/badge';
 	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { Input } from '$lib/components/ui/input';
+	import Search from '@lucide/svelte/icons/search';
 
 	export interface PickerPermission {
 		key: string;
@@ -24,9 +26,27 @@
 		disabled?: boolean;
 	} = $props();
 
+	/** Suche ab dieser Anzahl Rechte einblenden */
+	const SEARCH_FROM = 8;
+	let query = $state('');
+
+	/** Kleinschreibung, Umlaute/ß gefaltet, damit „gebuhr“ auch „Gebühr“ findet */
+	const fold = (t: string) =>
+		t.toLocaleLowerCase('de-DE').replace(/ß/g, 'ss').normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+	/** Alle Wörter müssen in Schlüssel, Modul oder Beschreibung vorkommen */
+	const visible = $derived.by(() => {
+		const words = fold(query).split(/s+/).filter(Boolean);
+		if (!words.length) return permissions;
+		return permissions.filter((p) => {
+			const hay = fold(`${p.key} ${p.moduleId} ${p.description ?? ''}`);
+			return words.every((w) => hay.includes(w));
+		});
+	});
+
 	const groups = $derived.by(() => {
 		const map = new Map<string, PickerPermission[]>();
-		for (const p of permissions) map.set(p.moduleId, [...(map.get(p.moduleId) ?? []), p]);
+		for (const p of visible) map.set(p.moduleId, [...(map.get(p.moduleId) ?? []), p]);
 		return [...map.entries()];
 	});
 
@@ -42,6 +62,28 @@
 </script>
 
 <div class="space-y-3">
+	{#if permissions.length >= SEARCH_FROM}
+		<div class="relative">
+			<Search
+				class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+				aria-hidden="true"
+			/>
+			<Input
+				type="search"
+				class="pl-8"
+				aria-label="Berechtigungen durchsuchen"
+				placeholder="Berechtigung suchen, z. B. „kasse“ oder „löschen“ …"
+				bind:value={query}
+			/>
+		</div>
+		{#if query.trim()}
+			<p class="text-xs text-muted-foreground" aria-live="polite">
+				{visible.length} von {permissions.length} Berechtigungen{visible.length
+					? ' – „alle“/„keine“ wirken nur auf die Treffer.'
+					: '.'}
+			</p>
+		{/if}
+	{/if}
 	{#each groups as [moduleId, items] (moduleId)}
 		<fieldset class="rounded-lg border p-3">
 			<legend class="flex items-center gap-3 px-1 text-sm font-semibold">

@@ -54,7 +54,7 @@ test('Benutzerverwaltung: anlegen, deaktivieren', async ({ page }) => {
 	).toContainText('Deaktiviert');
 });
 
-test('Benutzer bearbeiten: Reiter Konto und Rollen, einmal speichern', async ({ page }) => {
+test('Benutzer bearbeiten: Reiter Konto und Rechte, einmal speichern', async ({ page }) => {
 	await login(page);
 	await page.goto('/admin/users');
 	await page.getByRole('button', { name: 'Benutzer anlegen' }).click();
@@ -71,12 +71,13 @@ test('Benutzer bearbeiten: Reiter Konto und Rollen, einmal speichern', async ({ 
 	await dialog.getByLabel('Name').fill(`Reiter neu ${run}`);
 	await expect(dialog.getByRole('tab', { name: /Konto/ })).toContainText('ungespeichert');
 	await dialog.getByRole('tab', { name: /Rollen & Rechte/ }).click();
-	await dialog.getByRole('checkbox', { name: 'Administrator', exact: true }).click();
+	await dialog.getByLabel('Berechtigungen durchsuchen').fill('core.users.view');
+	await dialog.getByRole('checkbox', { name: 'core.users.view', exact: true }).click();
 	await dialog.getByRole('button', { name: 'Speichern' }).click();
 	await expect(dialog).toBeHidden();
 	const updated = page.getByRole('row', { name: new RegExp(`reiter-${run}@example.test`) });
 	await expect(updated).toContainText(`Reiter neu ${run}`);
-	await expect(updated).toContainText('Administrator');
+	await expect(updated).toContainText('+1 Einzelrecht');
 });
 
 test('Rollenverwaltung: Rolle anlegen', async ({ page }) => {
