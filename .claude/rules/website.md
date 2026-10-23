@@ -25,7 +25,7 @@ Design, Texte und Seitenaufbau der alten Seite bleiben unverändert – keine Ne
 | Variable | Bedeutung |
 |---|---|
 | `WEBSITE_API_URL` | Basis-URL des Intern-Bereichs, serverseitig (Standard `http://app:3000`, Demo `http://127.0.0.1:4300`) |
-| `WEBSITE_API_KEY` | Key mit `events.website.read galleries.website.read members.website.read` |
+| `WEBSITE_API_KEY` | Key mit `events.website.read galleries.website.read members.website.read offices.website.read` |
 | `ORIGIN` | öffentliche Adresse (adapter-node, CSRF) |
 | `ADDRESS_HEADER`, `XFF_DEPTH` | hinter nginx `X-Forwarded-For` / `1` – sonst zählt das IP-Rate-Limit alle Besucher*innen als eine IP (Proxy) |
 | `IMAGE_CACHE_MB`, `IMAGE_CACHE_TTL_SEC` | Bild-Cache im Arbeitsspeicher (Standard 48 MB, 3600 s; 0 = aus) |
@@ -67,6 +67,8 @@ Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` m
 | `/meute/[slug]`, `/sippe/[slug]` | **aus dem Intern-Bereich** (`fetchGroup`, gemeinsamer Loader `lib/server/group-page.ts`, Vorlage `GroupPage.svelte` im Aufbau der alten Meute-Seite; Gruppenfarbe statt fester Farben). Falscher Typ → 308 auf `/<type>/<slug>`; `/meute` → 307 auf die erste Meute. `AppointmentPreview` (`gruppe` = Titel, `slug`) lädt per `fetch('/api/termine?gruppe=<slug>')` |
 | Menü, Startseite („Unsere Gruppen“, `#gruppen`), Kontakt (Gruppen-Ansprechpartner) | `data.groups` aus `+layout.server.ts` (`fetchGroups`, ohne Backend leere Liste); Ämter auf `/kontakt` bleiben statisch |
 | `/bilder/gruppe/[slug]` | Bild-Proxy fürs Gruppenbild (Cache je Slug + aktueller Version aus der Gruppenliste, `?v=` der Anfrage zählt nicht); ohne Bild im Backend nimmt `toGroup` das alte statische Bild je Slug |
+| `/team` | „Unser Team“ (2026-10-24, Menüpunkt vor Kontakt): `fetchTeam` = Ämter in Reihenfolge des Intern-Bereichs (ohne Personen **und** ohne Adresse weggelassen), je Amt Beschreibung, Inhaber*innen (**nur Vorname**, Profilbild oder Initiale, „seit <Jahr>“, Bio mit „Mehr lesen“), Amts-Adressen mit `EmailButtons` |
+| `/bilder/team/[userId]` | Bild-Proxy für Profilbilder (`teamImage`, Cache je Person + `?v=` aus `avatarPath`); nur Personen, die mit Bild in der Ämterliste stehen, sonst 404 ohne Backend-Abruf |
 | `/api/termine` | Server-Route: nächste 3 Termine der Gruppe (`fetchUpcomingForGroup`) |
 | `/bilder/galerie/[id]/[imageId]/[variant]` | Bild-Proxy (`thumb`/`web`) mit Cache, `public, max-age=86400`, ETag |
 | `/download[/…]` | **entfernt** (Nutzerentscheidung) → 308 auf `/` (`src/hooks.server.ts`), Menüpunkt gelöscht |
@@ -82,7 +84,8 @@ Allgemein: Wochentag, Uhrzeit, Ende, Treffpunkt, Farbe; Leitung nur mit Vornamen
 ## Einwilligungen (#27, 2026-10-20)
 - Leitende erscheinen nur mit Website-Einwilligung des Mitglieds (`consentWebsite`); ohne Einwilligung fehlen sie in `leaders` – leere Liste
   ist erlaubt (`joinNames([])` → `''`, `GroupPage.svelte` blendet „Ansprechpartner“ dann aus). Demo: Leitende brauchen `consentWebsite: true`.
-- Ämter-API (`/website/offices`, noch **nicht** von der Website genutzt): nur Inhaber*innen mit eigenem Opt-in im Profil, sonst `holders: []`.
+- Ämter-API (`/website/offices`, Seite „Unser Team“): nur Inhaber*innen mit eigenem Opt-in im Profil, sonst `holders: []`; **nur Vornamen**
+  (`firstName` = erstes Wort des Kontonamens, Nutzerwunsch 2026-10-24) – der Nachname verlässt den Intern-Server nicht.
 - Galerien sind erst nach dokumentierter Einwilligungs-Bestätigung öffentlich (`consentConfirmed`).
 
 ## Demo

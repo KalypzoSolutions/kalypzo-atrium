@@ -369,7 +369,8 @@ fest im Code (`website/src/lib/faqs.ts`), die Download-Seite entfällt (`/downlo
 Browser; Galeriebilder liefert die Website über `/bilder/galerie/…` aus, die Terminvorschau der Gruppenseiten über `/api/termine`.
 
 1. **API-Key anlegen**: im Intern-Bereich unter **Administration → API-Keys** einen Key mit den Scopes
-   `events.website.read galleries.website.read members.website.read` erstellen (ein Benutzerkonto, das diese Rechte hat).
+   `events.website.read galleries.website.read members.website.read offices.website.read` erstellen (ein Benutzerkonto, das diese
+   Rechte hat; `offices.website.read` für die Seite „Unser Team“).
    Die Module müssen aktiv sein, sonst liefert die API `404 module_disabled`.
 2. **Umgebungsvariablen** (Vorlage `website/.env.example`):
 

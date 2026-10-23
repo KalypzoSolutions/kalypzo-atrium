@@ -9,11 +9,14 @@ import type {
 	BackendEventPage,
 	BackendGallery,
 	BackendGalleryDetail,
-	BackendGroup
+	BackendGroup,
+	BackendOffice
 } from '../../website/src/lib/server/backend-types';
 import type { WebsiteEvent } from '$lib/modules/events/schemas';
 import type { WebsiteGallery, WebsiteGalleryDetail } from '$lib/modules/galleries/schemas';
 import type { WebsiteGroup } from '$lib/modules/members/schemas';
+import type { WebsiteOffice } from '$lib/modules/offices/schemas';
+import { websiteOfficeSchema } from '$lib/modules/offices/website.schemas';
 import {
 	websiteEventPageSchema,
 	websiteEventSchema,
@@ -46,6 +49,7 @@ describe('Website-Typen = Modul-DTOs', () => {
 		expectTypeOf<BackendGallery>().toEqualTypeOf<WebsiteGallery>();
 		expectTypeOf<BackendGalleryDetail>().toEqualTypeOf<WebsiteGalleryDetail>();
 		expectTypeOf<BackendGroup>().toEqualTypeOf<WebsiteGroup>();
+		expectTypeOf<BackendOffice>().toEqualTypeOf<WebsiteOffice>();
 	});
 
 	it('Beispielobjekte der Website parsen gegen die Modul-Schemas', () => {
@@ -88,6 +92,17 @@ describe('Website-Typen = Modul-DTOs', () => {
 			imagePath: null
 		};
 		expect(websiteGroupSchema.parse(group)).toEqual(group);
+		const office: BackendOffice = {
+			id: 'o1',
+			name: 'Stammesführung',
+			description: null,
+			position: 0,
+			emails: [{ label: null, email: 'stafue@stamm.example' }],
+			holders: [
+				{ id: 'u1', firstName: 'Larissa', bio: null, since: '2024-09-01', avatarPath: null }
+			]
+		};
+		expect(websiteOfficeSchema.parse(office)).toEqual(office);
 	});
 
 	it('umbenanntes Feld fällt beim Parsen auf (strikte Schemas)', () => {

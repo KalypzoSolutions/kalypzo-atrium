@@ -110,22 +110,20 @@ Erstattete Auslagen sind für `PUT`/`DELETE` gesperrt (`409`); die Erstattung ei
 
 ## Stammeswebsite
 
-Die öffentliche Stammeswebsite (eigene App `website/`, siehe `docs/deployment.md`) liest ihre Inhalte **serverseitig** aus drei
-Modulen (`events`, `galleries`, `members`; `website/src/lib/server/backend.ts`). Die Ämter-Endpunkte (`offices`) gibt es ebenfalls, die Website
-nutzt sie derzeit **nicht** (Ämter dort statisch). Alle Website-Endpunkte sind normale Modul-Endpunkte (`/api/v1/modules/<id>/website/…`), brauchen einen **API-Key** mit dem
+Die öffentliche Stammeswebsite (eigene App `website/`, siehe `docs/deployment.md`) liest ihre Inhalte **serverseitig** aus vier
+Modulen (`events`, `galleries`, `members`, `offices` für „Unser Team“; `website/src/lib/server/backend.ts`). Alle Website-Endpunkte sind normale Modul-Endpunkte (`/api/v1/modules/<id>/website/…`), brauchen einen **API-Key** mit dem
 passenden Scope und liefern nur öffentliche Felder. Ein Key **nur** mit diesen Scopes bekommt auf alle internen Endpunkte `403`.
 
 | Modul | Scope | Inhalt |
 |---|---|---|
 | `events` | `events.website.read` | Termine mit „Auf der Stammeswebsite anzeigen“ |
 | `galleries` | `galleries.website.read` | Galerien mit Sichtbarkeit „öffentlich“ und deren Bilder (`thumb`/`web`) |
-| `offices` | `offices.website.read` | Ämter mit Beschreibung, Amts-E-Mails, Inhaber*innen (Name, Bio, Profilbild) – von der Stammeswebsite derzeit nicht genutzt |
+| `offices` | `offices.website.read` | Ämter mit Beschreibung, Amts-E-Mails, Inhaber*innen mit Zustimmung im Profil (**nur Vorname** `firstName`, Bio, „seit“, Profilbild) – Seite „Unser Team“ |
 | `members` | `members.website.read` | Gruppen mit „Auf der Website zeigen“ (Steckbrief, Bild) |
 
 **Einrichtung:** Ein*e Benutzer*in, die diese Rechte hat (z. B. Administrator), legt unter Administration → API-Keys
 (`POST /api/v1/api-keys`, nur Session) **einen** Key mit genau den benötigten Scopes an:
-`events.website.read galleries.website.read members.website.read` (Least Privilege; `offices.website.read` erst ergänzen, wenn die
-Website Ämter lädt). Rechte des Keys = Scopes ∩ Rechte der
+`events.website.read galleries.website.read members.website.read offices.website.read` (Least Privilege). Rechte des Keys = Scopes ∩ Rechte der
 Besitzer*in – verliert die Besitzer*in ein Recht, antwortet der Endpunkt mit `403`. Der Key steht nur einmal in der Antwort und
 gehört in die Umgebung der Website (`WEBSITE_API_KEY`), **nie** in den Browser. Es gibt **kein CORS**; die Website ruft alles
 serverseitig ab und liefert Bilder über eigene Proxy-Routen aus. Deaktiviertes Modul → `404 module_disabled`.
