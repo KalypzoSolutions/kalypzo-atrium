@@ -35,8 +35,13 @@ Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` m
 `WEBSITE_API_KEY: ${WEBSITE_API_KEY}`, `ORIGIN: ${WEBSITE_ORIGIN}`.
 
 ## Backend-Anbindung (`src/lib/server/backend.ts`)
-- `getJson` (nur Pfade `/api/v1/modules/<x>/website/…`, Bearer-Key, Timeout 5 s) über `createCachedLoader` (`lib/server/cache.ts`, rein, #20):
-  Erfolge 60 s, 404/422 60 s **negativ** gemerkt, gleichzeitige Abrufe **zusammengelegt**, bei Ausfall letzter Stand (neuer Versuch nach 5 s), ≤ 1000 Einträge.
+- `getJson` (nur Pfade `/api/v1/modules/<x>/website/…`, Bearer-Key) über `createCachedLoader` (`lib/server/cache.ts`, rein, #20):
+  Erfolge 60 s, 404/422 60 s **negativ** gemerkt, gleichzeitige Abrufe **zusammengelegt**, bei Ausfall letzter Stand (neuer Versuch nach 2 s), ≤ 1000 Einträge.
+- **Wiederholung** (2026-10-24, `lib/server/retry.ts`, Test `website-retry`): jede Backend-Anfrage (auch Bilder) bis zu 3 Versuche, 4 s Timeout je Versuch,
+  Pausen 300/1000 ms, bei Netzwerkfehler (z. B. geschlossene Keep-alive-Verbindung „other side closed“), Timeout und 408/429/502/503/504 (`Retry-After` ≤ 2 s).
+  Jeder Fehlversuch und jeder endgültige Fehler steht im Log (`[backend] <Pfad ohne Query>: …`). Ursache der früheren sporadischen 503: einzelne Aussetzer
+  (Neustart beim Autodeploy, Keep-alive) wurden ohne Wiederholung sofort zur Fehlerseite und 5 s gemerkt.
+- **Fehlerseite** `routes/+error.svelte`: 404 mit Links; 502/503/504 „Gerade nicht erreichbar“ mit automatischem Neuladen (`invalidateAll`) nach 5/10/20 s und Knopf „Jetzt erneut versuchen“, `noindex`.
   `fetchImage`/`fetchGroupImage` roh; gecacht wird im Bild-Proxy (`lib/server/images.ts` + `image-cache.ts`: LRU nach Bytes, 1 h, 404 60 s, ETag/304,
   nur `image/*` außer SVG, ≤ 15 MB).
 - **IDs vorab prüfen**: Termin `EVENT_KEY_RE`, Galerie/Bild `UUID_RE`, Slug `SLUG_RE`; zusätzlich gegen die zwischengespeicherten Listen
