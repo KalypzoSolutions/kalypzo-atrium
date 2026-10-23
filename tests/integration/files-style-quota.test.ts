@@ -261,7 +261,7 @@ describe('Kontingent je Person', () => {
 		const r = await api('qa', 'GET', `/quotas/${ids.u2}`);
 		expect(r.status).toBe(200);
 		expect(r.body.data).toEqual({
-			userId: ids.u2,
+			userId: ids.u2!,
 			mode: 'default',
 			customMb: null,
 			defaultBytes: 1024 * MB,
