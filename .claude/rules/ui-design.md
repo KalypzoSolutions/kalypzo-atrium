@@ -69,6 +69,7 @@ wenn es nur ein Formular ist. Listen: Suche + Filter in der Toolbar der `DataTab
 | Einfachauswahl / Mehrfachauswahl mit Suche | `SelectField` (`ui/select-field`, `emptyLabel`, `name`) / `MultiSelect` (`ui/multi-select`) |
 | Freie Tags/Schlagwörter (Chips, Vorschläge, „„x“ anlegen“) | `TagInput` (`ui/tag-input`; `bind:value: string[]`, `suggestions` oder `loadSuggestions(q)` (200 ms Debounce), `max` 20, `maxLength` 40, `label`, `invalid`, `describedby`, `onchange`; Enter/Komma legt an, Blur übernimmt, Backspace entfernt letzten; Logik `addTag()` in `tags.ts`) |
 | Farbe | `ColorPicker` (`ui/color-picker`), `ColorBadge`, `EntityAvatar` |
+| Icon wählen / per Name anzeigen (alle ~1.900 Lucide-Icons) | `IconPicker` (`ui/icon-picker`; `bind:value` = Name, Suche englisch + deutsch, Vorschläge nach Themen, „Alle Icons“ in 240er-Schritten, Pfeiltasten mit einem Tab-Stopp), `DynamicIcon` (`name`, `class`, `strokeWidth`, `fallback`); Daten lazy aus `$lib/sdk/icons` (eigener Chunk, `iconStore.ensure()`), deutsche Begriffe/Vorschläge in `sdk/icons/keywords-de.ts`. Nach Lucide-Update `node scripts/generate-icon-data.mjs` (Test `icon-data.test.ts` meldet es) |
 | Zahl mit −/+ , Regler, Geld | `NumberStepper`, `Slider` (`ui/slider`), `MoneyInput` (`money.ts`: `formatEuro`, `parseEuroToCents`) |
 | Datei-Upload, Kontaktliste (stapelt unter 640 px) | `FileField`, `ContactListField` |
 | Zusammenfassung, Kostenbalken | `SummaryList`, `CostBar` |

@@ -180,6 +180,7 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 | `FileField` | `$lib/components/layout` | Datei-Feld mit Typ-/Größenprüfung, vorhandener Datei und Entfernen |
 | `ContactListField` | `$lib/components/layout` | Dynamische Liste benannter Kontakte (Telefon, E-Mail); `readonly` + `emptyText` für Ansichten |
 | `RichTextEditor` | `$lib/components/ui/rich-text-editor` | Text-Editor (Tiptap): Fett/Kursiv/Unterstrichen/Durchgestrichen, Überschriften, Listen, Zitat, Link, Trennlinie, Rückgängig; `bind:value` = HTML (nur einfache Formatierung; der Server muss es mit `sanitize-html` bereinigen, Muster `messages/html.ts`) |
+| `IconPicker`, `DynamicIcon` | `$lib/components/ui/icon-picker` | Icon-Auswahl aus **allen Lucide-Icons** (Suche englisch + deutsch, Vorschläge, Pfeiltasten; `bind:value` = Icon-Name) und Anzeige per Name (`name`, `class`, `fallback`); Daten lazy aus `$lib/sdk/icons` (`loadIconSet`, `searchIcons`, `iconLabel`), Server prüft mit `(await loadIconSet()).has(name)` |
 | `TagInput` | `$lib/components/ui/tag-input` | Freie Tags als Chips (`bind:value`, `suggestions` oder `loadSuggestions(q)`, `max`, `maxLength`); Logik in `tags.ts` (`addTag`, `normalizeTag`) |
 | `MonthCalendar` | `$lib/components/layout` | Monatsraster Mo–So mit mehrtägigen Balken, mobil Agenda; `items: CalendarItem[]`, `bind:month`, `onselect`, `onday` |
 | `ShareDialog` | `$lib/components/layout` | Freigabe an Benutzer oder – mit `type` – an Principals (Stamm, Gruppe, Rolle, Mitglied): suchen, Stufe wählen, ändern, entfernen (Persistenz über Callbacks); `everyoneLabel` für „alle“ |
@@ -341,6 +342,11 @@ filtert und sortiert mit `selectProfileSections` (`$lib/sdk/client/profile-secti
 (`{ key: '<moduleId>:<id>', moduleId, id, title, order, component }`) zurück. Die Komponente lädt ihre Daten selbst per
 `apiFetch`; Rechte werden serverseitig an den Endpoints durchgesetzt.
 
+**`userAdminSections`** (in `ui.ts`, gleiche Form, Props `{ userId, userName }`) erscheinen als eigener Abschnitt im Dialog
+„Benutzer bearbeiten“ unter `/admin/users` (nur aktive Module, nur mit `permission`). Sie laden **und speichern selbst**
+(eigener Knopf, unabhängig vom Formular des Dialogs). Auswahl: `selectUserAdminSections`, Laden in `admin/users/+page.ts`.
+Vorbild: `files` (Speicherkontingent, Recht `files.quota.manage`).
+
 ### Dashboard-Kacheln
 
 **`dashboardWidgets`** (in `ui.ts`) fügen dem Dashboard `/dashboard` Kacheln hinzu. Das Dashboard zeigt nur Kacheln **aktiver**
@@ -418,6 +424,7 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 |---|---|---|
 | `publicRoutes` | Seiten ohne Login unter `/p/<id>/<pfad>`, nur mit öffentlichen Endpunkten (siehe oben). | `actions` (Anmeldung), `files` (Links) |
 | `profileSections` | Karten auf `/profile` (siehe oben). | `members`, `offices` |
+| `userAdminSections` | Abschnitte im Dialog „Benutzer bearbeiten“ (`/admin/users`, siehe oben). | `files` |
 | `dashboardWidgets` | Kacheln auf `/dashboard` (siehe oben). | `events`, `treasury` |
 
 ### Audit-Aktionsnamen

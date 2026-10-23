@@ -154,6 +154,8 @@ return result;
 - Persönliche Daten über eigene „meine“-Endpunkte (`/my/...`) mit eigenem Recht (`<id>.own.view`, `defaultRoleGrants` Mitglied); nie fremde Daten.
 
 ## Profil-Abschnitte und Standard-Rollenrechte
+- `ui.ts` `userAdminSections: [{ id, title, order?, permission?, component }]` → Abschnitt im Dialog „Benutzer bearbeiten“
+  (`/admin/users`, Props `{ userId, userName }`, lädt und speichert selbst; Auswahl `selectUserAdminSections`). Muster: `files/pages/UserQuotaSection.svelte`.
 - `ui.ts` `profileSections: [{ id, title, order?, permission?, component: () => import(…) }]` → Karte auf `/profile`
   (Komponente bekommt `{ userId }`, lädt Daten per `apiFetch`; Auswahl/Sortierung: `selectProfileSections` in
   `$lib/sdk/client/profile-sections`). Typ `ProfileSection` in `$lib/sdk/types/module-ui`.

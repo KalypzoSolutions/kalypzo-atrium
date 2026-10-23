@@ -219,7 +219,14 @@
   Postfächern für alle mit Zugriff gemeinsam; Drag & Drop (Mails und Ordner), Rechtsklick-Menüs, Sammelaktionen, Rückgängig. Details:
   `module-messages.md` → „Ordner im Posteingang“.
 
+- **Dateien: Ordner-Aussehen und Kontingent je Person (2026-10-23, `files` v1.2.0, Migr. 0004)**: Ordner mit Icon (alle Lucide-Icons über die neue
+  Core-Icon-Bibliothek `IconPicker`/`DynamicIcon`, `$lib/sdk/icons`) und Farbe (Vorschläge + `ColorPicker`), für alle mit Zugriff gleich; Rasteransicht mit
+  gleich hohen Karten und Umbrüchen an `_ - .` (auch öffentliche Link-Seite); Kontingent je Person im Dialog „Benutzer bearbeiten“ (neuer Core-Mechanismus
+  `userAdminSections`, Recht `files.quota.manage`). Details: `module-files.md`.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Dateien (2026-10-23): Ordner-Icon und -Farbe gelten für alle mit Zugriff; Kontingent je Person wird im Benutzer-Dialog gesetzt (Standard 1 GB);
+  Icon-Bibliothek mit möglichst vielen Icons (alle Lucide-Icons).
 - Posteingang-Ordner (2026-10-23): Ordner je Postfach; alle mit Zugriff auf ein gemeinsames Postfach sehen und bearbeiten dieselben Ordner.
 - Posteingang (2026-10-22): IMAP-Abruf eines Catch-all-Postfachs (kein Webhook); Sichtbarkeit wie Absenderrechte; Unzuordenbares in einen Sammelordner
   für die Verwaltung; nach dem Import auf dem Mailserver in den Ablageordner verschieben (nicht löschen).

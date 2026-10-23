@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { selectProfileSections } from '$lib/sdk/client/profile-sections';
+import { selectProfileSections, selectUserAdminSections } from '$lib/sdk/client/profile-sections';
 import type { ProfileSection } from '$lib/sdk/types/module-ui';
 
 const comp = async () => ({ default: (() => null) as never });
@@ -42,5 +42,29 @@ describe('selectProfileSections', () => {
 
 	it('ignoriert Module ohne Abschnitte und unbekannte aktive Module', () => {
 		expect(selectProfileSections({ m: undefined }, ['m', 'nope'], [])).toEqual([]);
+	});
+});
+
+describe('selectUserAdminSections', () => {
+	it('gleiche Regeln: aktive Module, Recht, Sortierung', () => {
+		const r = selectUserAdminSections(
+			{
+				files: [
+					{ id: 'quota', title: 'Kontingent', permission: 'files.quota.manage', component: comp }
+				],
+				other: [{ id: 'x', title: 'X', order: 5, component: comp }],
+				off: [{ id: 'y', title: 'Y', component: comp }]
+			},
+			['files', 'other'],
+			['files.quota.manage']
+		);
+		expect(r.map((s) => s.key)).toEqual(['other:x', 'files:quota']);
+		expect(
+			selectUserAdminSections(
+				{ files: [{ id: 'quota', title: 'K', permission: 'files.quota.manage', component: comp }] },
+				['files'],
+				[]
+			)
+		).toEqual([]);
 	});
 });

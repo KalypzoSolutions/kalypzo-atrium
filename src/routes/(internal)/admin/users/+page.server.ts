@@ -11,6 +11,7 @@ import { AVATAR_MAX_BYTES, removeUserAvatar, setUserAvatar } from '$lib/server/c
 import { canManageUser } from '$lib/server/core/auth/manage-guard';
 import { isCoreError } from '$lib/server/core/errors';
 import { resolvePageSize } from '$lib/server/core/settings/user-prefs';
+import { enabledModuleIds } from '$lib/server/core/modules/state';
 import { listRoles } from '$lib/server/core/permissions/roles';
 import {
 	canGrantPermission,
@@ -76,7 +77,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			delete: locals.ctx.permissions.has('core.users.delete'),
 			assign: locals.ctx.permissions.has('core.roles.assign')
 		},
-		selfId: locals.user?.id ?? null
+		selfId: locals.user?.id ?? null,
+		/** Für `userAdminSections` der Module (`+page.ts`) */
+		activeModules: [...(await enabledModuleIds())].sort(),
+		ownPermissions: [...locals.ctx.permissions].sort()
 	};
 };
 

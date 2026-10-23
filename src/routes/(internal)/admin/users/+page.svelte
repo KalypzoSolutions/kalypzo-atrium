@@ -8,7 +8,9 @@
 		ConfirmDialog,
 		DataTable,
 		EntityAvatar,
+		ErrorState,
 		FileField,
+		LoadingState,
 		PageHeader,
 		Pagination,
 		SearchInput,
@@ -71,6 +73,19 @@
 		preview = url;
 		return () => URL.revokeObjectURL(url);
 	});
+
+	// --- Abschnitte aus Modulen (`userAdminSections`), Komponente je Schlüssel nur einmal laden
+	const userSections = $derived(data.userSections);
+	type UserSection = (typeof userSections)[number];
+	const loadedSections = new Map<string, ReturnType<UserSection['component']>>();
+	function sectionComponent(s: UserSection) {
+		let p = loadedSections.get(s.key);
+		if (!p) {
+			p = s.component();
+			loadedSections.set(s.key, p);
+		}
+		return p;
+	}
 
 	function openDelete(u: UserRow) {
 		deleteUser = u;
@@ -348,6 +363,21 @@
 				</form>
 				<p class="text-xs text-muted-foreground">PNG, JPEG oder WebP, höchstens 2 MB.</p>
 			</section>
+			{#each userSections as s (s.key)}
+				<section class="space-y-3 rounded-md border p-3" aria-labelledby="e-sec-{s.key}">
+					<h3 id="e-sec-{s.key}" class="text-sm font-medium">{s.title}</h3>
+					{#await sectionComponent(s)}
+						<LoadingState label={s.title} rows={1} rowClass="h-16 w-full" />
+					{:then mod}
+						{@const Section = mod.default}
+						{#key editUser.id}
+							<Section userId={editUser.id} userName={editUser.name} />
+						{/key}
+					{:catch}
+						<ErrorState compact message="Dieser Bereich konnte nicht geladen werden." />
+					{/await}
+				</section>
+			{/each}
 			<form
 				method="POST"
 				action="?/update"
