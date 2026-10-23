@@ -193,6 +193,12 @@ export interface ModuleDefinition {
 	backup?: ModuleBackupHooks;
 	/** Globale Suche (Befehlspalette): Datensätze des Moduls, die die Person sehen darf */
 	search?: ModuleSearchProvider;
+	/**
+	 * Zahl am Navigationseintrag des Moduls in der Seitenleiste (z. B. ungelesene Mails). Nur für Personen,
+	 * die den Eintrag sehen; 0 = kein Zähler. `path` wählt den Eintrag (Standard: erster ohne `admin`).
+	 * `count` muss schnell sein (Zeitbudget 1,5 s), Core-Dienste nie in einer offenen Modul-Transaktion.
+	 */
+	navBadge?: { path?: string; count: (ctx: RequestContext) => Promise<number> };
 	onEnable?: (ctx: RequestContext) => Promise<void>;
 	onDisable?: (ctx: RequestContext) => Promise<void>;
 }

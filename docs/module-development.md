@@ -232,6 +232,13 @@ await core.database.forModule('events').transaction(async (tx) =>
 - `members` in `optionalDependencies` aufnehmen; ohne aktives `members` entfallen Gruppen und Mitglieder.
 - UI: `SharePanel`/`ShareMenu`/`ShareDialog` mit `type` an Einträgen/Kandidaten. Vorlage: Modul `events`.
 
+### Zähler in der Seitenleiste (`navBadge`)
+
+`defineModule({ navBadge: { count: async (ctx) => n } })` zeigt eine runde Zahl am Navigationseintrag des Moduls (ab 10 „9+“, `CountBadge`).
+Der Core ruft `count` nur für aktive Module und sichtbare Einträge auf (Zeitbudget 1,5 s), beim Seitenaufbau und über `GET /api/v1/nav/badges`
+(Aktualisierung nach jeder Navigation, jede Minute und per `refreshNavBadges()` aus `$lib/sdk/client/nav-badges.svelte`). Beispiel: `messages`
+(ungelesene Mails).
+
 ### Hintergrundjobs und optionale Abhängigkeiten
 
 - Regelmäßige Aufgaben (Abgleich, Erinnerungs-Mails) als `jobs` im `defineModule` deklarieren (`schedule: 'hourly' | 'daily' | { everyMinutes }`,

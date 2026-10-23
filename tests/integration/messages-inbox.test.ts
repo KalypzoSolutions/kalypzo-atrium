@@ -29,11 +29,13 @@ import officesModule from '$lib/modules/offices/module';
 import messagesModule from '$lib/modules/messages/module';
 import { deliveriesIdleForTests } from '$lib/modules/messages/delivery.service';
 import { setImapConnectorForTests } from '$lib/modules/messages/imap.client';
+import { navBadgeCounts } from '$lib/server/core/navigation/badges';
 import type {
 	ComposePrefill,
 	InboxDetail,
 	InboxListResponse,
 	MailboxesResponse,
+	MailboxSentResponse,
 	MessageDetail,
 	MyInboxNotifications,
 	PollResult
@@ -813,6 +815,84 @@ describe('Verwaltung', () => {
 		} finally {
 			await setSetting(admin, 'messages.imap.enabled', true);
 		}
+	});
+});
+
+describe('Gesendet je Postfach', () => {
+	it('gemeinsames Postfach: alle Inhaber*innen sehen, was aus dem Amt gesendet wurde; Fremde nicht', async () => {
+		const sent = await data<MessageDetail>(
+			await sendForm('otto', {
+				senderKey: officeKey,
+				subject: 'Aus der Kasse',
+				bodyHtml: '<p>Hallo</p>',
+				addresses: ['extern1@extern.example', 'extern2@extern.example']
+			}),
+			201
+		);
+		await deliveriesIdleForTests();
+		const q = `/mailboxes/sent?mailbox=${encodeURIComponent(officeKey)}`;
+		const olga = await data<MailboxSentResponse>(await M('olga', q));
+		const item = olga.items.find((i) => i.id === sent.id)!;
+		expect(item.subject).toBe('Aus der Kasse');
+		expect(item.createdByName).toBe('Otto Amt');
+		expect(item.recipients).toBe(2);
+		expect(item.to).toBe('extern1@extern.example');
+		// Detail darf Olga über das Postfach öffnen, Anna nicht
+		expect((await data<MessageDetail>(await M('olga', `/messages/${sent.id}`))).id).toBe(sent.id);
+		expect(await errCode(await M('anna', `/messages/${sent.id}`), 404)).toBe('not_found');
+		expect(await errCode(await M('anna', q), 404)).toBe('not_found');
+		expect(await errCode(await M('admin', '/mailboxes/sent?mailbox=unassigned'), 404)).toBe(
+			'not_found'
+		);
+		// Suche nach Empfänger
+		const found = await data<MailboxSentResponse>(await M('olga', `${q}&search=extern2`));
+		expect(found.items.some((i) => i.id === sent.id)).toBe(true);
+	});
+
+	it('persönlich: nur eigene; Altbestand ohne Postfach über die Absenderadresse', async () => {
+		const own = await data<MessageDetail>(
+			await sendForm('anna', {
+				senderKey: 'personal',
+				subject: 'Persönlich',
+				bodyHtml: '<p>x</p>',
+				addresses: ['x@extern.example']
+			}),
+			201
+		);
+		await deliveriesIdleForTests();
+		await moduleDb('messages').transaction((tx) =>
+			tx.execute(sql`UPDATE messages SET mailbox_key = NULL WHERE id = ${own.id}`)
+		);
+		const res = await data<MailboxSentResponse>(
+			await M('anna', `/mailboxes/sent?mailbox=${encodeURIComponent('personal:' + userIds.anna)}`)
+		);
+		expect(res.items.some((i) => i.id === own.id)).toBe(true);
+		expect(await errCode(await M('otto', `/messages/${own.id}`), 404)).toBe('not_found');
+	});
+});
+
+describe('Zähler in der Seitenleiste', () => {
+	it('ungelesene Mails der eigenen Postfächer, ohne „Nicht zugeordnet“; sinkt nach dem Lesen', async () => {
+		const path = '/modules/messages';
+		const before = (await navBadgeCounts(await ctxOf(userIds.olga!)))[path] ?? 0;
+		deliver(eml({ to: 'kasse@pfadfinder.test', subject: 'Zähler 1' }));
+		deliver(eml({ to: 'kasse@pfadfinder.test', subject: 'Zähler 2' }));
+		deliver(eml({ to: 'niemand@pfadfinder.test', subject: 'Zähler unassigned' }));
+		await poll();
+		const olgaCtx = await ctxOf(userIds.olga!);
+		expect((await navBadgeCounts(olgaCtx))[path]).toBe(before + 2);
+		const id = (await list('olga', officeKey)).items.find((i) => i.subject === 'Zähler 1')!.id;
+		await data(await M('olga', `/inbox/${id}`));
+		expect((await navBadgeCounts(olgaCtx))[path]).toBe(before + 1);
+		// Über die API (nur Anmeldung nötig)
+		const viaApi = await data<Record<string, number>>(
+			await api('/nav/badges', { token: keys.olga })
+		);
+		expect(viaApi[path]).toBe(before + 1);
+		// Ohne Recht auf das Modul kein Eintrag
+		expect(await navBadgeCounts(await ctxOf(userIds.nina!))).toEqual({});
+		// Ohne Anmeldung 401
+		expect((await api('/nav/badges')).status).toBe(401);
 	});
 });
 

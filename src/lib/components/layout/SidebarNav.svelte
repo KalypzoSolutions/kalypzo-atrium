@@ -11,6 +11,8 @@
 		type ModuleNavEntry
 	} from './nav';
 	import { iconFor } from './icons';
+	import CountBadge from './CountBadge.svelte';
+	import { navBadges } from '$lib/sdk/client/nav-badges.svelte';
 
 	let {
 		permissions,
@@ -35,6 +37,13 @@
 	type Entry = { kind: 'link'; link: Link } | Group;
 
 	const ADMIN_ID = 'core:admin';
+
+	/** Zähler je Pfad (z. B. ungelesene Mails): beim SSR aus dem Layout, danach aus dem Store */
+	const badgeCounts = $derived<Record<string, number>>(
+		navBadges.seeded
+			? navBadges.counts
+			: ((page.data.navBadges as Record<string, number> | undefined) ?? {})
+	);
 
 	const primary = $derived(PRIMARY_NAV.filter((i) => canSeeNavItem(permissions, i)));
 
@@ -120,6 +129,8 @@
 		<span class="min-w-0 truncate">{item.label}</span>
 		{#if item.hint}
 			<span class="ml-auto shrink-0 text-xs font-normal text-muted-foreground">{item.hint}</span>
+		{:else if badgeCounts[item.href]}
+			<CountBadge count={badgeCounts[item.href] ?? 0} class="ml-auto" />
 		{/if}
 	</a>
 {/snippet}

@@ -238,7 +238,7 @@ describe('POST /members/sheets.pdf', () => {
 	it('Validierung: leere/zu lange/ungültige Liste → 422, unbekannte ID → 404', async () => {
 		expect((await post('/members/sheets.pdf', fullKey, { ids: [] })).status).toBe(422);
 		expect((await post('/members/sheets.pdf', fullKey, { ids: ['kein-uuid'] })).status).toBe(422);
-		const many = Array.from({ length: 201 }, () => crypto.randomUUID());
+		const many = Array.from({ length: 2001 }, () => crypto.randomUUID());
 		expect((await post('/members/sheets.pdf', fullKey, { ids: many })).status).toBe(422);
 		const unknown = await post('/members/sheets.pdf', fullKey, { ids: [crypto.randomUUID()] });
 		expect(unknown.status).toBe(404);

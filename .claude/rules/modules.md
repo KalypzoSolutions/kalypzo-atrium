@@ -134,6 +134,13 @@ return result;
 - `core.ai.use` schickt den Prompt an einen externen Anbieter: keine Art.-9-Daten (Gesundheit), keine Kinder-/Kontaktdaten/IBAN, Namen durch
   Platzhalter ersetzen (Pseudonymisierung), Hinweis in der Oberfläche. Jeder neue externe Empfänger kommt in `docs/security.md` → „Externe Empfänger“.
 
+## Zähler in der Seitenleiste
+- `defineModule({ navBadge: { path?, count(ctx) } })` → runde Zahl am Navigationseintrag (z. B. ungelesene Mails, `messages`), ab 10 „9+“.
+  Core `core/navigation/badges.ts` `navBadgeCounts(ctx)`: nur aktive Module, nur wenn die Person den Eintrag sieht, Zeitbudget 1,5 s, Fehler
+  geloggt und übersprungen. Ausgabe im Root-Layout (`navBadges`) und `GET /api/v1/nav/badges` (nur Anmeldung, 120/min); Client-Store
+  `$lib/sdk/client/nav-badges.svelte` (`refreshNavBadges()` nach Aktionen, die den Zähler ändern; das `(internal)`-Layout aktualisiert nach jeder
+  Navigation und jede Minute). `count` schnell halten, Core-Dienste nicht in einer offenen Modul-Transaktion.
+
 ## Globale Suche
 - `defineModule({ search: { permission?, anyPermission?, run(ctx, query, limit) } })` (`ModuleSearchProvider`, Datei `search.ts`): Treffer
   `SearchHit { id, title, subtitle?, href, icon?, type }` für die Befehlspalette. `run` filtert **objektbezogen** wie die Listen-Endpunkte,

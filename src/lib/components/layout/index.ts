@@ -23,6 +23,8 @@ export { default as SharePanel } from './SharePanel.svelte';
 export type { ShareCandidate, ShareEntry, ShareLevel, ShareOwner } from './share-types';
 export { CORE_NAV, hasPermission, isActive, type NavItem } from './nav';
 export { default as LinkTabs } from './LinkTabs.svelte';
+export { default as CountBadge } from './CountBadge.svelte';
+export { formatCount } from './count';
 export * from './admin-registry';
 export { iconFor } from './icons';
 export { default as NumberStepper } from './NumberStepper.svelte';

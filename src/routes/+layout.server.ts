@@ -1,4 +1,5 @@
 import { navigationFor } from '$lib/server/core/modules/service';
+import { navBadgeCounts } from '$lib/server/core/navigation/badges';
 import { getSetting } from '$lib/server/core/settings/service';
 import { loadUserPrefs, safeHexColor } from '$lib/server/core/settings/user-prefs';
 import type { LayoutServerLoad } from './$types';
@@ -10,10 +11,13 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		locals.user ? loadUserPrefs(locals.user.id) : Promise.resolve(null)
 	]);
 	const navigation = locals.user ? await navigationFor(locals.ctx) : [];
+	const navBadges = locals.user ? await navBadgeCounts(locals.ctx) : {};
 	return {
 		user: locals.user,
 		permissions: [...locals.ctx.permissions].sort(),
 		navigation,
+		/** Zähler der Seitenleiste (Pfad → Zahl), Aktualisierung über `GET /api/v1/nav/badges` */
+		navBadges,
 		systemName,
 		/** Wirksame Akzentfarbe: eigene (falls gesetzt), sonst die des Systems */
 		accentColor: prefs?.accentColor || safeHexColor(systemAccent) || '#2563eb',
