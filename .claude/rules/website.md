@@ -7,14 +7,28 @@ paths: ["website/**", "scripts/seed-demo-website.mjs", "src/lib/modules/*/websit
 **Stand 2026-10-19 (Nutzerentscheidung):** `website/` ist die **alte Website** aus
 `https://github.com/CrayonGamerHD-Philipp/edelweisspiraten-website` (Ordner `web/`, Stand `ba0b441`), bei der **nur das Backend
 getauscht** ist: statt PocketBase holt sie Termine und Galerien **serverseitig** aus den Website-Endpunkten des Intern-Bereichs.
-Design, Texte und Seitenaufbau der alten Seite bleiben unverändert – keine Neugestaltung ohne ausdrücklichen Auftrag.
 (Die zwischenzeitlich neu gebaute Website mit Figuren/Motiven wurde verworfen; sie steht noch in der Git-Historie.)
+**Überarbeitung 2026-10-24 (Nutzerauftrag):** schlichtes Design nach dem Konzept-Artifact „Stammeswebsite – Grafisches Konzept“
+(weißer Grund, Indigo-Schriftzug, Hero mit Wappen bleibt; eine Textspalte, Gliederung über Überschriften/Linien statt Karten, Gruppenfarbe
+nur für Namen, keine Schatten/Verläufe/Emojis/Überzeilen – „soll nicht nach KI aussehen“) plus **Dunkelmodus**. Texte bleiben.
+
+## Gestaltung und Dunkelmodus
+- Farben als Tailwind-Theme in `src/app.css`: `text-ink|body|muted`, `bg-page|surface|subtle|notice`, `border-line|line-strong|notice-line`,
+  `text-brand`, `text-link` (+ Klasse `.text-link` für unterstrichene Links), Gruppenname `.group-name` mit `style="--g: <farbe>"`
+  (hell abgedunkelt, dunkel aufgehellt). Neue Bausteine nur mit diesen Namen.
+- Dunkelmodus = `html.dark`: Cookie `theme` (`light|dark`, 1 Jahr, nur bei ausdrücklicher Wahl über `ThemeToggle.svelte` in der Navigation)
+  → `hooks.server.ts` setzt die Klasse (`%ep.theme%` in `app.html`); ohne Cookie setzt ein Inline-Skript mit `%sveltekit.nonce%` `dark` nach
+  `prefers-color-scheme` vor dem ersten Zeichnen. Datenschutz nennt Cookie und `localStorage` (Abschnitt Cookies, Stand 24.10.2026).
+- Ältere Seiten (Termine, Galerie, CPD, Datenschutz …) mit `gray-*`-Klassen laufen über **umgedrehte Grauskala** in `html.dark` plus
+  Einzelregeln (`.bg-white`, `text-blue-*`, rot/grün-Hinweise). Folge: `bg-white` wird im Dunkeln dunkel – für echtes Weiß `bg-[#fff]`.
+- Bausteine: `EventList.svelte` (Datum links, Titel/Uhrzeit/Ort rechts; `null` = Ladefehler-Hinweis), `EmailButtons` (ohne Farb-Prop),
+  `Map` (Prop `height`). Instagram-Kasten entfällt (Link in der Fußzeile), `AppointmentPreview` und `/api/termine` entfernt.
 
 ## Grundregeln
 - Eigenes Projekt (`package.json` „web“, SvelteKit 2 / Svelte 5 im **Legacy-Modus** mit `export let`, Tailwind 4, `adapter-node`, Port 3001,
   `Dockerfile`, `.dockerignore`). Root-Werkzeuge ignorieren `website/`. Die Website importiert **nichts** aus `src/`.
 - Befehle im Ordner `website/`: `npm run dev` / `npm run check` / `npm run build`, Start `WEBSITE_API_KEY=… PORT=3001 node build`.
-  `npm run check` meldet **3 Fehler + Warnungen aus dem alten Code** (Leaflet-Typen, implizites `any` in Navbar/Startseite, a11y) – bekannt,
+  `npm run check` meldet **1 Fehler + Warnungen aus dem alten Code** (Leaflet-Typen; a11y in `Share.svelte`) – bekannt,
   nicht neu einführen. Es gibt kein `lint`/`test` in `website/`; reine Module (`event-pages.ts`, `backend-types.ts`) testet die Root-Suite
   (`tests/unit/website-event-pages.test.ts`, `website-contract.test.ts`).
 - Der API-Key steht **nur** in `WEBSITE_API_KEY` (Server). Nie im Browser abfragen: Daten über `+page.server.ts` bzw. Server-Routen.
@@ -52,7 +66,9 @@ Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` m
   `SiteGallery`/`SiteGalleryDetail` (Titelbild mit Maßen, Datum = frühester verknüpfter Termin, `events`, `groups` der Termine, Bilder mit
   `thumbUrl`/`webUrl`/Maßen/Beschreibung). Loader: `fetchEvents()` (2023 bis Ende nächsten Jahres, Halbjahres-Fenster parallel, je Fenster `paged=1`
   à 200, `event-pages.ts`), `fetchEvent(key)`, `fetchGalleries()`, `fetchGallery(id)`.
-- Alte PocketBase-Form `Appointment` nur noch für `fetchUpcomingForGroup(slug)` (`/api/termine` → `AppointmentPreview` der Gruppenseite).
+- **Nächste Termine** (Startseite, Gruppenseite): `fetchUpcomingEvents({ limit, groupSlug? })` – ein kleiner Abruf `from=heute`, `to=+180 Tage`,
+  `limit=100` (ohne `paged`), **ohne Serien** (Gruppenstunden stehen bei den Gruppen), serverseitig im Loader mit `.catch(() => null)`:
+  ohne Backend bleibt die Seite erreichbar und zeigt einen Hinweis. Die Gruppenseite selbst braucht weiter die Gruppe (sonst 503-Fehlerseite).
 - Reine Hilfen (Root-Tests `website-event-view`, `website-month-calendar`): `lib/dates.ts` (Formate ohne Zeitzonenfallen, `todayBerlin`),
   `lib/event-view.ts` (Filter, Serien zusammenfassen inkl. Rhythmus aus den Abständen, Monate), `lib/month-calendar.ts` = **Kopie** von
   `src/lib/components/layout/month-calendar.ts` (Test hält beide gleich – Änderungen an beiden Stellen).
@@ -60,16 +76,15 @@ Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` m
 ## Seiten und Routen
 | Route | Quelle |
 |---|---|
-| `/` | FAQ fest in `src/lib/faqs.ts` (früher PocketBase `faqs`); Ferienhinweis statisch im Markup; Gruppenkarten aus dem Backend |
+| `/` | Hero, Ferienhinweis (statisch, Objekt `ferien` oben in `+page.svelte`, `show: false` blendet aus), Gruppen als Liste (Bild, Alter, Zeit, Teaser), Nächste Termine (`fetchUpcomingEvents`), Über uns, FAQ (`src/lib/faqs.ts`) + Karte |
 | `/termine` | `fetchEvents`; Ansichten **Kalender** (Standard, `MonthCalendar.svelte`, mobil Agenda) / **Kacheln** / **Liste** (nach Monaten), Wahl in `?ansicht=` + `localStorage`; Filter-Chips Gruppen/Themen + Suche (`?gruppe=&thema=&q=&monat=`, alte `?tags=` der Gruppenseite gelten weiter); Serien in Kacheln/Liste einmal als „Regelmäßige Termine“, Vergangene aufklappbar |
 | `/termine/[id]` | `fetchEvent` (404 unbekannt, 503 Backend weg): Datum/Uhrzeit, Ort mit Link „In Karte öffnen“ (OSM-Suche, nur Link), Gruppen → Gruppenseite, verknüpfte Galerien, Teilen, OG-Tags |
 | `/galerie`, `/galerie/[id]` | `fetchGalleries` / `fetchGallery`: Karten mit Titelbild (Maße, lazy), Bildanzahl, Gruppen; Filter Jahr/Gruppe/Suche (`?jahr=&gruppe=&q=`); Detail mit Bildern in Spalten (`thumb`, echte Seitenverhältnisse, Alt-Text = Bildbeschreibung), Lightbox (`web`, Unterschrift, Zähler, Tastatur/Wischen), Links zu den Terminen |
-| `/meute/[slug]`, `/sippe/[slug]` | **aus dem Intern-Bereich** (`fetchGroup`, gemeinsamer Loader `lib/server/group-page.ts`, Vorlage `GroupPage.svelte` im Aufbau der alten Meute-Seite; Gruppenfarbe statt fester Farben). Falscher Typ → 308 auf `/<type>/<slug>`; `/meute` → 307 auf die erste Meute. `AppointmentPreview` (`gruppe` = Titel, `slug`) lädt per `fetch('/api/termine?gruppe=<slug>')` |
+| `/meute/[slug]`, `/sippe/[slug]` | **aus dem Intern-Bereich** (`fetchGroup`, gemeinsamer Loader `lib/server/group-page.ts`, Vorlage `GroupPage.svelte`: Kopf mit Bild/Name, Eckdaten, Text, nächste Termine der Gruppe serverseitig, Kontakt, Karte). Falscher Typ → 308 auf `/<type>/<slug>`; `/meute` → 307 auf die erste Meute |
 | Menü, Startseite („Unsere Gruppen“, `#gruppen`), Kontakt (Gruppen-Ansprechpartner) | `data.groups` aus `+layout.server.ts` (`fetchGroups`, ohne Backend leere Liste); Ämter auf `/kontakt` bleiben statisch |
 | `/bilder/gruppe/[slug]` | Bild-Proxy fürs Gruppenbild (Cache je Slug + aktueller Version aus der Gruppenliste, `?v=` der Anfrage zählt nicht); ohne Bild im Backend nimmt `toGroup` das alte statische Bild je Slug |
 | `/team` | „Unser Team“ (2026-10-24, Menüpunkt vor Kontakt): `fetchTeam` = Ämter in Reihenfolge des Intern-Bereichs (ohne Personen **und** ohne Adresse weggelassen), je Amt Beschreibung, Inhaber*innen (**nur Vorname**, Profilbild oder Initiale, „seit <Jahr>“, Bio mit „Mehr lesen“), Amts-Adressen mit `EmailButtons` |
 | `/bilder/team/[userId]` | Bild-Proxy für Profilbilder (`teamImage`, Cache je Person + `?v=` aus `avatarPath`); nur Personen, die mit Bild in der Ämterliste stehen, sonst 404 ohne Backend-Abruf |
-| `/api/termine` | Server-Route: nächste 3 Termine der Gruppe (`fetchUpcomingForGroup`) |
 | `/bilder/galerie/[id]/[imageId]/[variant]` | Bild-Proxy (`thumb`/`web`) mit Cache, `public, max-age=86400`, ETag |
 | `/download[/…]` | **entfernt** (Nutzerentscheidung) → 308 auf `/` (`src/hooks.server.ts`), Menüpunkt gelöscht |
 | `/kontakt` | Formular-Action `+page.server.ts` (#31, statt formsubmit.co): `parseContactForm`/`buildContactMessage` (`lib/server/contact.ts`), Versand mit eigenem SMTP-Client (`lib/server/smtp.ts`, nur `node:net`/`node:tls`, STARTTLS/465, AUTH nur mit TLS). Mail-Relay-Schutz: Empfänger/Absender/Betreff nur aus der Konfiguration, Eingaben nur im Base64-Text + `Reply-To` (geprüft), keine Auto-Antwort, Honeypot `website`, 5 / 10 min je IP + 30 / h gesamt, CSRF über `ORIGIN`. Erfolg → 303 `?success=1` |
