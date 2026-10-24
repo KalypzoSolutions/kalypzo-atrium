@@ -382,7 +382,7 @@ Browser; Galeriebilder liefert die Website über `/bilder/galerie/…` aus, die 
 
 3. **Starten**: Die Website ist als Dienst `website` in `docker-compose.yml` und `docker-compose.dokploy.yml` enthalten
    und startet mit dem Stack als **eigener Container** (Build aus `website/`, Port 3001, nur im internen Netz mit `app`
-   verbunden: `WEBSITE_API_URL=http://app:3000`). Variablen im Stack:
+   verbunden: `WEBSITE_API_URL=http://app:3000`, in Dokploy `http://ep-intern-<DEPLOY_ENV>-app:3000`, siehe unten). Variablen im Stack:
 
    | Variable | Bedeutung |
    |---|---|
@@ -392,6 +392,17 @@ Browser; Galeriebilder liefert die Website über `/bilder/galerie/…` aus, die 
 
    Erstinstallation: Stack starten → im Intern-Bereich Key anlegen → `WEBSITE_API_KEY` setzen → `docker compose up -d website`
    (Dokploy: Variable eintragen, neu deployen). Der Container läuft als Benutzer `node`, schreibgeschützt, Healthcheck auf `/`.
+
+   **Mehrere Stacks auf einem Dokploy-Server (Staging + Produktion)**: `app` und `website` hängen im gemeinsamen
+   `dokploy-network`, in dem auch die gleichnamigen Dienste des anderen Stacks stecken. Ein Name wie `app` löst dort reihum
+   auf **beide** Stacks auf – Folge waren sporadische 401 „API-Key wird nicht akzeptiert“ (Anfrage landete im anderen Stack
+   mit eigener Datenbank) und damit 503-Fehlerseiten. Deshalb setzt jeder Stack `DEPLOY_ENV` (`prod`, `staging`, Standard
+   `prod`); die Dienste sprechen sich über Aliase im stackeigenen Netz `internal` an: `ep-intern-<DEPLOY_ENV>-app`, `-db`,
+   `-storage`. Prüfen im Website-Container: `getent hosts ep-intern-prod-app` liefert genau **eine** Adresse.
+   Bestehende Installationen: `DEPLOY_ENV` setzen und neu deployen genügt (Volumes und internes Netz behalten ihre Namen).
+   Der gespeicherte Speicher-Endpunkt `http://storage:9000` bleibt gültig – mehrdeutig sind nur Dienste im gemeinsamen Netz
+   (`app`, `website`), `db`/`storage` hängen nur im stackeigenen Netz. Ein Umstellen auf `ep-intern-<DEPLOY_ENV>-storage` ist
+   optional und verwirft den gespeicherten Secret-Key (Ziel-Bindung, neu eintragen).
 
    Einzeln ohne Compose:
 

@@ -45,8 +45,11 @@ nur für Namen, keine Schatten/Verläufe/Emojis/Überzeilen – „soll nicht na
 | `IMAGE_CACHE_MB`, `IMAGE_CACHE_TTL_SEC` | Bild-Cache im Arbeitsspeicher (Standard 48 MB, 3600 s; 0 = aus) |
 | `CONTACT_TO`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Kontaktformular (#31): Versand per SMTP an **eine feste** Adresse; ohne `SMTP_HOST`/`SMTP_FROM`/`CONTACT_TO` → Hinweis auf stafues@ (503) |
 
-Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` mit `WEBSITE_API_URL: http://app:3000`,
-`WEBSITE_API_KEY: ${WEBSITE_API_KEY}`, `ORIGIN: ${WEBSITE_ORIGIN}`.
+Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` mit `WEBSITE_API_KEY: ${WEBSITE_API_KEY}`,
+`ORIGIN: ${WEBSITE_ORIGIN}`; `WEBSITE_API_URL` = `http://app:3000` (docker-compose.yml) bzw. `http://ep-intern-${DEPLOY_ENV:-prod}-app:3000`
+(Dokploy). **Dokploy (2026-10-25):** `app`/`website` hängen im gemeinsamen `dokploy-network`, wo `app`/`db`/`storage` eines zweiten Stacks
+(Staging) reihum mit auflösten → sporadische 401 „API-Key wird nicht akzeptiert“ → 503. Daher `DEPLOY_ENV` je Stack und Aliase
+`ep-intern-<env>-app|db|storage` im stackeigenen `internal`; neue Verbindungen zwischen Diensten nur über diese Aliase.
 
 ## Backend-Anbindung (`src/lib/server/backend.ts`)
 - `getJson` (nur Pfade `/api/v1/modules/<x>/website/…`, Bearer-Key) über `createCachedLoader` (`lib/server/cache.ts`, rein, #20):
