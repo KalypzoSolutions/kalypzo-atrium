@@ -227,7 +227,13 @@
 - **Lagerbeiträge in Aktionen (2026-10-24, `actions` v1.4.0, Migr. 0021)**: Kategorien „Lagerbeitrag Gau / Landesmark / Bund“ in Kalkulation (Gruppe
   „Lagerbeiträge“, Standard pro Person) und Abrechnung (Ausgaben, Soll/Ist, eigener PDF-Abschnitt, offene Stamm-Ausgabe → Auszahlung in der Kasse).
 
+- **Spam-Schutz im Posteingang (2026-10-24, `messages` v1.3.0, Migr. 0005)**: eigene Bewertung beim Abruf (Punkte + Gründe: gefälschte Absender,
+  gefährliche Anhänge, irreführende Links, Massenversand …), bekannte Absender nie Spam (außer Absenderprüfung schlägt fehl), „Spam“/„Kein Spam“ mit
+  gemeinsamer Sperr-/Vertrauensliste, Verwaltung „Spam-Schutz“, Links in Spam unklickbar, Spam nach 30 Tagen gelöscht. Details: `module-messages.md`.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Spam-Schutz (2026-10-24): eindeutiger Spam in den Spam-Ordner (nie verwerfen); eine Sperr-/Vertrauensliste für alle Postfächer; jede*r mit
+  Zugriff darf „Spam“/„Kein Spam“ klicken und damit die Liste ändern.
 - Dateien (2026-10-23): Ordner-Icon und -Farbe gelten für alle mit Zugriff; Kontingent je Person wird im Benutzer-Dialog gesetzt (Standard 1 GB);
   Icon-Bibliothek mit möglichst vielen Icons (alle Lucide-Icons).
 - Posteingang-Ordner (2026-10-23): Ordner je Postfach; alle mit Zugriff auf ein gemeinsames Postfach sehen und bearbeiten dieselben Ordner.

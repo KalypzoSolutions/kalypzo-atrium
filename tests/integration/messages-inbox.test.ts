@@ -708,8 +708,10 @@ describe('Benachrichtigungen', () => {
 		);
 
 		mails = [];
+		// Unbekannter Absender: bekannte (schon angeschriebene) Absender stuft der Spam-Schutz nie als Spam ein
 		deliver(
 			eml({
+				from: 'Fremd <fremd@spam.example>',
 				to: 'anna.mueller@pfadfinder.test',
 				subject: 'Spam',
 				headers: { 'X-Spam-Flag': 'YES' }
