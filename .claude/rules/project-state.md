@@ -231,7 +231,12 @@
   gefährliche Anhänge, irreführende Links, Massenversand …), bekannte Absender nie Spam (außer Absenderprüfung schlägt fehl), „Spam“/„Kein Spam“ mit
   gemeinsamer Sperr-/Vertrauensliste, Verwaltung „Spam-Schutz“, Links in Spam unklickbar, Spam nach 30 Tagen gelöscht. Details: `module-messages.md`.
 
+- **Kalender-Abo (iCal) im internen Bereich (2026-10-24, `events` v1.3.0, Migr. 0004)**: mehrere Abos je Person mit geheimem Link (Hash + verschlüsselt,
+  erneuerbar), Filter nach Gruppen/Tags, Termine (Serien je Vorkommen, Absagen/Änderungen) und Aktionen (sichtbare + eigene Anmeldungen), Profilkarte und
+  Dialog auf der Terminseite, Webcal/Google-Links. Details: `module-events.md` → „Kalender-Abo“.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Kalender-Abo (2026-10-24): Termine **und** Aktionen; mehrere Abos je Person mit Filter.
 - Spam-Schutz (2026-10-24): eindeutiger Spam in den Spam-Ordner (nie verwerfen); eine Sperr-/Vertrauensliste für alle Postfächer; jede*r mit
   Zugriff darf „Spam“/„Kein Spam“ klicken und damit die Liste ändern.
 - Dateien (2026-10-23): Ordner-Icon und -Farbe gelten für alle mit Zugriff; Kontingent je Person wird im Benutzer-Dialog gesetzt (Standard 1 GB);
