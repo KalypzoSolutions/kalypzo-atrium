@@ -284,6 +284,72 @@ describe('Abrechnung: Zustand', () => {
 	});
 });
 
+describe('Lagerbeiträge an übergeordnete Ebenen', () => {
+	it('gelten in Kalkulation, Plan und Abrechnung je Ebene', async () => {
+		const id = await createAction();
+		const calc = await data<CalculationDto>(
+			await as('owner', `/actions/${id}/calculation`, {
+				method: 'PUT',
+				json: {
+					participants: 10,
+					team: 2,
+					teamPercent: 0,
+					nights: 3,
+					bufferPercent: 0,
+					includeSubsidy: false,
+					lodgingType: 'external',
+					konfi: false,
+					freizeitType: 'kids',
+					bremenChildren: 0,
+					bremenYouth: 0,
+					teamWithJuleica: 0,
+					teamWithoutJuleica: 0,
+					teamYouth: 0,
+					checklist: {},
+					items: [
+						{
+							id: 'b',
+							category: 'camp_fee_bund',
+							label: 'Bundeslager',
+							amountCents: 2500,
+							basis: 'per_person'
+						},
+						{
+							id: 'g',
+							category: 'camp_fee_gau',
+							label: 'Gaulager',
+							amountCents: 5000,
+							basis: 'flat'
+						}
+					]
+				}
+			})
+		);
+		// 25 € × 12 Personen (Team zählt mit) + 50 € pauschal
+		expect(calc.result.totalCents).toBe(30000 + 5000);
+		expect(calc.settings.items.map((i) => i.category)).toEqual(['camp_fee_bund', 'camp_fee_gau']);
+		expect(calc.result.byCategory.map((c) => c.category)).toEqual([
+			'camp_fee_gau',
+			'camp_fee_bund'
+		]);
+
+		const s = await state(id);
+		expect(s.plan!.expenseByCategory.camp_fee_bund).toBe(30000);
+		expect(s.plan!.expenseByCategory.camp_fee_gau).toBe(5000);
+
+		const e = await addEntry(
+			id,
+			expense({ category: 'camp_fee_bund', description: 'Lagerbeitrag', amountCents: 27500 })
+		);
+		expect(e.category).toBe('camp_fee_bund');
+		const s2 = await state(id);
+		const bund = s2.summary.byCategory.find((c) => c.category === 'camp_fee_bund');
+		expect(bund).toMatchObject({ type: 'expense', plannedCents: 30000, actualCents: 27500 });
+		const gau = s2.summary.byCategory.find((c) => c.category === 'camp_fee_gau');
+		expect(gau).toMatchObject({ plannedCents: 5000, actualCents: 0 });
+	});
+});
+
 describe('Abrechnung: Buchungen', () => {
 	it('legt Einnahmen und Ausgaben an, summiert und zählt fehlende Belege', async () => {
 		const id = await createAction();
