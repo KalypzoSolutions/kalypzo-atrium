@@ -114,6 +114,46 @@ function uniqueIds(list: readonly Principal[], type: PrincipalType): string[] {
 }
 
 /**
+ * Konten hinter Freigaben (für Benachrichtigungen): `user` direkt, `role` über `core.roles.userIds`,
+ * `member`/`group` über `members` (verknüpfte Konten der Mitglieder bzw. der Gruppenmitglieder und
+ * Leitungen), `everyone` nur mit `everyone: true`. Es bleiben nur aktive Konten mit `permission`
+ * (Leserecht des Moduls); `exclude` (z. B. die handelnde Person) fällt weg. Ohne Rechteprüfung des Aufrufers.
+ */
+export async function principalUserIds(
+	moduleId: string,
+	principals: readonly Principal[],
+	opts: { permission: string; exclude?: (string | null | undefined)[]; everyone?: boolean }
+): Promise<string[]> {
+	const allowed = new Set(await core.permissions.usersWith(opts.permission));
+	const out = new Set<string>();
+	if (opts.everyone && principals.some((p) => p.type === 'everyone')) {
+		for (const id of allowed) out.add(id);
+	}
+	for (const id of uniqueIds(principals, 'user')) out.add(id);
+	const roleIds = uniqueIds(principals, 'role');
+	if (roleIds.length) for (const id of await core.roles.userIds(roleIds)) out.add(id);
+	const memberIds = uniqueIds(principals, 'member');
+	const groupIds = uniqueIds(principals, 'group');
+	if (memberIds.length || groupIds.length) {
+		const provider = await membersProvider(moduleId);
+		if (provider) {
+			for (const id of await provider.userIdsForPrincipals({ memberIds, groupIds })) out.add(id);
+		}
+	}
+	const excluded = new Set(opts.exclude?.filter((x): x is string => !!x));
+	return [...out].filter((id) => allowed.has(id) && !excluded.has(id));
+}
+
+/** Neu hinzugekommene Freigaben (Schlüssel `typ:id`), z. B. nach `replaceShares` */
+export function addedPrincipals<T extends Principal>(
+	before: readonly Principal[],
+	after: readonly T[]
+): T[] {
+	const old = new Set(before.map((p) => `${p.type}:${p.id}`));
+	return after.filter((p) => !old.has(`${p.type}:${p.id}`));
+}
+
+/**
  * Principal-Schlüssel des Aufrufers (`typ:id`): immer `everyone:*` (bei angemeldeter Identität),
  * `user:<id>`, alle `role:<id>`, sowie `member:<id>`/`group:<id>` über verknüpfte Mitglieder.
  * Ohne `userId` (z. B. System) nur `everyone:*`.

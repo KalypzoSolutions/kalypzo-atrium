@@ -277,6 +277,11 @@ const r = await core.notifications.send(ctx, MODULE_ID, [
 - Mails gehen mit `Auto-Submitted`/`X-EP-Intern` (Schleifenschutz im Posteingang) und Hinweis auf die Profil-Einstellung.
 - Alte Modul-Einstellungen übernehmen: `core.notifications.migratePreferences(MODULE_ID, rows)` (idempotent, vorhandene Wahl bleibt).
 
+**Empfänger aus Freigaben**: `principalUserIds(MODULE_ID, principals, { permission, exclude: [ctx.userId], everyone? })` (`$lib/sdk/server`)
+liefert die Konten hinter Freigaben (Person, Rolle, Gruppe, Mitglied; „ganzer Stamm“ nur mit `everyone: true`), gefiltert auf aktive Konten mit dem
+Leserecht des Moduls; `addedPrincipals(before, after)` ermittelt neu hinzugekommene Freigaben. Dafür neu: `core.roles.userIds(roleIds)` und
+`PrincipalProvider.userIdsForPrincipals` (`members`).
+
 **Web Push**: `web-push` (fest gepinnt) mit **VAPID-Schlüsseln**, die beim ersten Bedarf automatisch erzeugt und in den Einstellungen gespeichert
 werden (`core.push.vapidPublicKey`, `core.push.vapidPrivateKey` verschlüsselt). Schalter `core.push.enabled` und „Schlüssel neu erzeugen“ unter
 **Einstellungen → Benachrichtigungen** (`/admin/settings/notifications`; neue Schlüssel entfernen alle Geräte). Geräte in `push_subscription`

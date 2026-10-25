@@ -40,7 +40,7 @@ import {
 	requirePermission,
 	usersWithPermission
 } from './permissions/service';
-import { roleDirectory, roleIdsForUser } from './permissions/roles';
+import { roleDirectory, roleIdsForUser, userIdsForRoles } from './permissions/roles';
 import {
 	assertCanGrantRoles,
 	listModuleRoleGrants,
@@ -304,7 +304,9 @@ export const core = {
 		 * ID der Standardrolle aus `defaultRoleGrants` (Kennung `default:<Name>`) oder `null` – statt Suche per
 		 * Name, die eine gleichnamige fremde Rolle treffen könnte (#67, 01a-07)
 		 */
-		defaultRoleId: (name: string) => findDefaultRoleId(name)
+		defaultRoleId: (name: string) => findDefaultRoleId(name),
+		/** Aktive Konten mit einer der Rollen (manuell + von aktiven Modulen verliehen), ohne Rechteprüfung */
+		userIds: userIdsForRoles
 	},
 	crypto: {
 		/** Verschlüsselung sensibler Modul-Daten (AES-256-GCM), Schlüssel je Modul abgeleitet */

@@ -9,6 +9,7 @@ import { newId } from '../util';
 import { ADMIN_ROLE_ID } from './catalog';
 import { assertRoleNameAllowed } from './default-roles';
 import { moduleGrantRoleIds } from './grants';
+import { enabledModuleIds } from '../modules/state';
 import { assertCanGrant, existingKeys, permissionsOfRole, requirePermission } from './service';
 
 const ROLE_DIRECTORY_MAX = 30;
@@ -59,6 +60,36 @@ export async function roleIdsForUser(userId: string): Promise<string[]> {
 		moduleGrantRoleIds(userId)
 	]);
 	return [...new Set([...rows.map((r) => r.roleId), ...granted])];
+}
+
+/**
+ * Aktive Konten mit einer der Rollen (manuell oder von aktiven Modulen verliehen), ohne Rechteprüfung –
+ * z. B. für Benachrichtigungen an Freigaben „Rolle“.
+ */
+export async function userIdsForRoles(roleIds: string[]): Promise<string[]> {
+	const ids = [...new Set(roleIds)].slice(0, 100);
+	if (!ids.length) return [];
+	const enabled = [...(await enabledModuleIds())];
+	const db = getDb();
+	const manual = await db
+		.selectDistinct({ id: schema.userRole.userId })
+		.from(schema.userRole)
+		.innerJoin(schema.user, eq(schema.user.id, schema.userRole.userId))
+		.where(and(inArray(schema.userRole.roleId, ids), eq(schema.user.active, true)));
+	const granted = enabled.length
+		? await db
+				.selectDistinct({ id: schema.userRoleGrant.userId })
+				.from(schema.userRoleGrant)
+				.innerJoin(schema.user, eq(schema.user.id, schema.userRoleGrant.userId))
+				.where(
+					and(
+						inArray(schema.userRoleGrant.roleId, ids),
+						inArray(schema.userRoleGrant.moduleId, enabled),
+						eq(schema.user.active, true)
+					)
+				)
+		: [];
+	return [...new Set([...manual, ...granted].map((r) => r.id))];
 }
 
 export interface RoleItem {

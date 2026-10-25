@@ -159,6 +159,9 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   oder eigener Knoten; actions: `edit-all` oder eigene Aktion), Rate-Limit `PRINCIPAL_SEARCH_RATE_LIMIT` (60/60 s). Test `principals-privacy.test.ts`.
 - Core: `core.roles.directory(ctx, { search, ids, limit })` (id/name, nur Anmeldung nötig, Suche ab 2 Zeichen, max. 30) und
   `core.users.roleIds(userId)`. UI: `SharePanel`/`ShareMenu`/`ShareDialog` mit `type` und `everyoneLabel` (siehe `ui-design.md`).
+- **Benachrichtigungs-Empfänger** (2026-10-25): `principalUserIds(modul, principals, { permission, exclude?, everyone? })` (SDK) → aktive Konten mit Leserecht
+  (`user` direkt, `role` über `core.roles.userIds`, `member`/`group` über `PrincipalProvider.userIdsForPrincipals` = verknüpfte Konten der Mitglieder bzw.
+  Gruppenmitglieder und Leitungen, `everyone` nur mit `everyone: true`); `addedPrincipals(before, after)` für „neu geteilt“.
 - **Zugriffsbaustein** (#35, `$lib/sdk/server/share-access.ts`): `createShareAccess({ table, shareTable, fk, ownerColumn?, perms: { viewAll, editAll },
   readIf?: { column, equals }, notFoundText, forbiddenText })` → `canEditAll`, `canViewAll`, `resolveAccess`, `requireAccess` (404/403), `visibleFilter(ctx, keys,
   alias)`, `accessForMany`, `loadShares`, `replaceShares`. `events`/`galleries` (`readIf` = öffentlich) haben in `access.ts` nur noch Konfiguration; `files`

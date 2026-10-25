@@ -113,6 +113,8 @@ const submit = async (token: string, values: Record<string, unknown>, extra: obj
 beforeAll(async () => {
 	setMailTransportForTests({
 		sendMail: async (m) => {
+			// Benachrichtigungen (core.notifications, z. B. „Neue Anmeldung“) prüft notifications-modules.test.ts
+			if (m.headers?.['X-EP-Intern'] === 'notification') return;
 			if (failMail) throw new Error('SMTP down');
 			sent.push(m);
 		}

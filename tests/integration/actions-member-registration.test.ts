@@ -136,6 +136,8 @@ async function saveForm(over: Record<string, unknown> = {}) {
 beforeAll(async () => {
 	setMailTransportForTests({
 		sendMail: async (m) => {
+			// Benachrichtigungen (core.notifications, z. B. „Neue Anmeldung“) prüft notifications-modules.test.ts
+			if (m.headers?.['X-EP-Intern'] === 'notification') return;
 			sent.push(m);
 		}
 	});

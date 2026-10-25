@@ -97,4 +97,10 @@ export interface PrincipalProvider {
 		ctx: RequestContext,
 		query: { search?: string; ids?: string[]; limit?: number }
 	): Promise<PrincipalMemberRef[]>;
+	/**
+	 * Konten hinter Mitglieds- und Gruppen-Freigaben (für Benachrichtigungen), ohne Rechteprüfung:
+	 * mit den Mitgliedern verknüpfte Konten bzw. bei Gruppen die Konten ihrer (nicht ausgetretenen)
+	 * Mitglieder und Leitungen. Höchstens 50 Gruppen und 2000 Mitglieder.
+	 */
+	userIdsForPrincipals(input: { memberIds: string[]; groupIds: string[] }): Promise<string[]>;
 }

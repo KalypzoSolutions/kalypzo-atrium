@@ -247,10 +247,16 @@
   Worker, Icons aus dem Wappen), Push auf Android und iOS ≥ 16.4 (Home-Bildschirm); VAPID automatisch; Admin-Reiter Einstellungen → Benachrichtigungen.
   Umgestellt: `offices` (Amts-Hinweise inkl. Tageszusammenfassung), `messages` (Posteingang), `actions` (Kosten-Link), `members` (Konto verknüpft),
   `treasury` (zusätzlich Push an verknüpfte Konten). Offen: echte Geräte (Android/iPhone) nur nach Deploy mit HTTPS prüfbar; kein Offline-Modus.
+  **Weitere Benachrichtigungen (2026-10-25)**: Aktionen (neue Anmeldung, eigene Anmeldung als Push, geteilt, Abrechnung), Termine (neu/verschoben/abgesagt,
+  Standard aus), Galerie/Ordner geteilt, Upload über Link, Bestellung angelegt/ausgegeben/storniert, Blog (Mitschreiben, veröffentlicht/zurückgezogen).
+  Neu im SDK `principalUserIds`/`addedPrincipals`, Core `core.roles.userIds`.
 
 - **Kontaktformular → Posteingang (2026-10-25, `messages` v1.4.0)**: Website-Kontaktformulare (Start + `/kontakt`) legen Anfragen über den neuen,
   per API-Key-Scope `messages.website.contact` abgesicherten Endpunkt ins Stamm-Postfach (Benachrichtigung wie bei Mails); Spam-Schutz Proof-of-Work +
   Zeitfalle + Einmal-Aufgabe, dazu Honeypot/Rate-Limits; SMTP nur noch Rückfall. Details: `module-messages.md`, `website.md`.
+
+- **Probestunden-Formular (2026-10-25, `messages` v1.5.0)**: Website-Seite `/probestunde` (Kind, Alter, Kontakt, Telefon) → Posteingang der zum Alter
+  passenden bzw. gewählten Gruppe (Leitungen werden benachrichtigt), Rückfall Stamm-Postfach; Spam-Schutz wie beim Kontaktformular. Details: `module-messages.md`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Kontaktformular (2026-10-25): Anfragen in den Posteingang „Stamm“; Spam-Schutz Proof-of-Work + Zeitfalle/Token (keine Inhaltsbewertung, kein Captcha).
