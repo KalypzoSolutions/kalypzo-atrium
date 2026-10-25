@@ -215,6 +215,9 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
 - Push-Endpunkte nur von bekannten Push-Diensten (`isAllowedPushEndpoint`, SSRF). REST `/api/v1/notifications/*` nur per Session (`sessionOnly`).
 - PWA: `static/manifest.webmanifest`, Icons `static/icons/` (aus dem Wappen), `src/service-worker.ts` (Push anzeigen, nur App-Pfade öffnen, **kein**
   Offline-Cache), CSP `worker-src`/`manifest-src 'self'`, `app.html` mit Manifest/Apple-Tags. Client `$lib/sdk/client/push.ts`.
+  **Klick auf Push** (2026-10-25): SW wählt das aktive App-Fenster, fokussiert es und schickt `ep:navigate` → `sw-navigation.ts` (im Root-Layout)
+  öffnet die Seite per `goto` und bestätigt per Port; sonst `client.navigate`, sonst `openWindow`. Für Kaltstarts, die auf der Startseite landen (iOS),
+  merkt der SW das Ziel 60 s (Cache `ep-pending-navigation`), die App holt es beim Start per `ep:pending-navigation` ab. Manifest `launch_handler: navigate-existing`.
 - UI: Profil-Reiter „Benachrichtigungen“ (`profile/_components/NotificationsTab.svelte`: Gerät aktivieren, iOS-Hinweis, Geräteliste, Regler je Typ),
   Admin-Reiter `/admin/settings/notifications`, Baustein `ui/segmented-slider`.
 

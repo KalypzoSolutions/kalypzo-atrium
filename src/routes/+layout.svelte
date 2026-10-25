@@ -4,10 +4,15 @@
 	import { onMount } from 'svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
 	import { theme } from '$lib/theme.svelte';
+	import { initServiceWorkerNavigation } from '$lib/sdk/client/sw-navigation';
 
 	let { data, children } = $props();
 
-	onMount(() => theme.init());
+	onMount(() => {
+		theme.init();
+		// Klick auf eine Push-Benachrichtigung: Zielseite im offenen App-Fenster öffnen
+		return initServiceWorkerNavigation();
+	});
 
 	$effect(() => {
 		document.documentElement.style.setProperty('--accent-color', data.accentColor);
