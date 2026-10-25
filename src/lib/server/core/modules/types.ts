@@ -1,5 +1,16 @@
 import type { ModuleManifest, ModuleSettingDefinition, RequestContext } from '$lib/sdk/types';
 import type { ApiEndpoint } from '../api/types';
+import type { ModuleNotificationType, NotificationScopeEntry } from '$lib/sdk/types/notifications';
+
+/** Benachrichtigungstypen eines Moduls (siehe `core.notifications`) */
+export interface ModuleNotifications {
+	types: ModuleNotificationType[];
+	/**
+	 * Bereiche der `scoped`-Typen, die die Person im Profil einstellen kann (z. B. ihre Postfächer oder
+	 * Ämter). Läuft nur bei aktivem Modul, nie in einer offenen Transaktion; Fehler blenden die Einträge aus.
+	 */
+	forUser?: (ctx: RequestContext) => Promise<NotificationScopeEntry[]>;
+}
 
 export interface ModuleMigration {
 	name: string;
@@ -18,7 +29,11 @@ export interface ModuleJob {
 	/** `[a-z][a-z0-9-]*`; vollständiger Schlüssel ist `<modul>.<id>` */
 	id: string;
 	summary: string;
-	schedule: 'hourly' | 'daily';
+	/**
+	 * `hourly`, `daily` (Zeitfenster) oder `{ everyMinutes }` (1–60) für kurze Abstände, z. B. Postfach-Abruf.
+	 * Der Zeitgeber prüft jede Minute; Intervall-Jobs laufen frühestens nach Ablauf des Abstands erneut.
+	 */
+	schedule: 'hourly' | 'daily' | { everyMinutes: number };
 	run: (ctx: RequestContext) => Promise<string | void>;
 }
 
@@ -189,6 +204,14 @@ export interface ModuleDefinition {
 	backup?: ModuleBackupHooks;
 	/** Globale Suche (Befehlspalette): Datensätze des Moduls, die die Person sehen darf */
 	search?: ModuleSearchProvider;
+	/** Benachrichtigungstypen (Kanalwahl E-Mail/Push je Person, Versand über `core.notifications.send`) */
+	notifications?: ModuleNotifications;
+	/**
+	 * Zahl am Navigationseintrag des Moduls in der Seitenleiste (z. B. ungelesene Mails). Nur für Personen,
+	 * die den Eintrag sehen; 0 = kein Zähler. `path` wählt den Eintrag (Standard: erster ohne `admin`).
+	 * `count` muss schnell sein (Zeitbudget 1,5 s), Core-Dienste nie in einer offenen Modul-Transaktion.
+	 */
+	navBadge?: { path?: string; count: (ctx: RequestContext) => Promise<number> };
 	onEnable?: (ctx: RequestContext) => Promise<void>;
 	onDisable?: (ctx: RequestContext) => Promise<void>;
 }

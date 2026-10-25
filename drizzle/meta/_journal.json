@@ -71,6 +71,13 @@
       "when": 1792656000000,
       "tag": "0009_user_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792742400000,
+      "tag": "0010_notifications",
+      "breakpoints": true
     }
   ]
 }

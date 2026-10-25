@@ -171,7 +171,12 @@ beforeAll(async () => {
 	admin = await ctxOf(u!.id);
 	for (const m of ['members', 'actions', 'treasury']) await enableModule(admin, m);
 	admin = await ctxOf(u!.id);
-	setMailTransportForTests({ sendMail: async (m) => void mails.push(m as Mail) });
+	// Benachrichtigungen (core.notifications) prüft notifications-modules.test.ts
+	setMailTransportForTests({
+		sendMail: async (m) => {
+			if (m.headers?.['X-EP-Intern'] !== 'notification') mails.push(m as Mail);
+		}
+	});
 	setPdfRendererForTests(async () => new TextEncoder().encode('%PDF-fake'));
 	setTodayForTests('2026-06-01');
 

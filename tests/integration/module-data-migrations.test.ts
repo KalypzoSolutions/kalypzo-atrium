@@ -162,3 +162,33 @@ describe('galleries 0002_gallery_events', () => {
 		expect(count).toEqual({ n: 4 });
 	});
 });
+
+describe('actions 0022_principal_shares', () => {
+	it('übernimmt alte Benutzer-Freigaben als Typ user', async () => {
+		await migrateModuleTo('actions', '0021_camp_fees');
+		await moduleSql(
+			'actions',
+			sql`INSERT INTO actions (id, name, starts_on, owner_id)
+				VALUES ('a1', 'Alt', '2026-01-01', 'u-owner')`
+		);
+		await moduleSql(
+			'actions',
+			sql`INSERT INTO action_shares (action_id, user_id, level) VALUES ('a1', 'u-1', 'edit')`
+		);
+		expect(await migrateModuleRest('actions')).toContain('0022_principal_shares');
+		const rows = await moduleSql(
+			'actions',
+			sql`SELECT action_id, principal_type, principal_id, level FROM action_shares`
+		);
+		expect(rows).toEqual([
+			{ action_id: 'a1', principal_type: 'user', principal_id: 'u-1', level: 'edit' }
+		]);
+		await expect(
+			moduleSql(
+				'actions',
+				sql`INSERT INTO action_shares (action_id, principal_type, principal_id, level)
+					VALUES ('a1', 'kaputt', 'x', 'read')`
+			)
+		).rejects.toThrow();
+	});
+});

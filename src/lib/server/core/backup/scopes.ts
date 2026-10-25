@@ -3,7 +3,7 @@
  *
  * Core-Bereiche sind fest (`CORE_SCOPE_KEYS`); jedes registrierte Modul mit vorhandenem Schema
  * `mod_<id>` ist ein Bereich (alle Basistabellen + seine Zeilen in `public.file`).
- * Nie gesichert: `session`, `verification`, `permission`, `module_state`, `module_migration`, `drizzle.*`.
+ * Nie gesichert: `session`, `verification`, `push_subscription`, `notification_queue` (gerätegebunden/flüchtig), `permission`, `module_state`, `module_migration`, `drizzle.*`.
  */
 import { sql } from 'drizzle-orm';
 import { getDb, type DbOrTx } from '../database/client';
@@ -37,6 +37,7 @@ const CORE_SCOPES: Record<CoreScopeKey, CoreScopeDef> = {
 			{ table: 'user_role' },
 			{ table: 'user_role_grant' },
 			{ table: 'user_permission' },
+			{ table: 'notification_pref' },
 			{ table: 'file', where: `module_id = 'core'` }
 		]
 	},

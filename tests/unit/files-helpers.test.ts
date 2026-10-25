@@ -1,6 +1,13 @@
 /** UI-Hilfen des Moduls `files` (`pages/helpers.ts`). */
 import { describe, expect, it } from 'vitest';
-import { compareNodes, formatBytes, iconFor, previewKind } from '$lib/modules/files/pages/helpers';
+import {
+	breakableName,
+	compareNodes,
+	folderMeta,
+	formatBytes,
+	iconFor,
+	previewKind
+} from '$lib/modules/files/pages/helpers';
 
 describe('previewKind', () => {
 	it('Bilder, PDF, Text', () => {
@@ -128,5 +135,27 @@ describe('iconFor', () => {
 			iconFor('file', 'application/vnd.openxmlformats-officedocument.presentationml.template')
 		).toBe(pres);
 		expect(iconFor('file', 'application/vnd.oasis.opendocument.presentation-template')).toBe(pres);
+	});
+});
+
+describe('breakableName', () => {
+	it('trennt nach _ - . und vor Ziffern, Text bleibt vollständig', () => {
+		const parts = breakableName('Einladung_Stammesthing_EP_2026_v2.pdf');
+		expect(parts.join('')).toBe('Einladung_Stammesthing_EP_2026_v2.pdf');
+		expect(parts).toEqual(['Einladung_', 'Stammesthing_', 'EP_', '2026_', 'v', '2.', 'pdf']);
+		expect(breakableName('Protokoll 2025')).toEqual(['Protokoll 2025']);
+		expect(breakableName('a-b')).toEqual(['a-', 'b']);
+		expect(breakableName('')).toEqual([]);
+	});
+});
+
+describe('folderMeta', () => {
+	it('leer, Einzahl, Mehrzahl mit Größe', () => {
+		expect(folderMeta({ childCount: 0, folderBytes: 0 })).toBe('Leer');
+		expect(folderMeta({ childCount: 1, folderBytes: 0 })).toBe('1 Eintrag');
+		expect(folderMeta({ childCount: 12, folderBytes: 4.1 * 1024 * 1024 })).toBe(
+			'12 Einträge · 4,1 MB'
+		);
+		expect(folderMeta({ childCount: null, folderBytes: null })).toBe('Leer');
 	});
 });

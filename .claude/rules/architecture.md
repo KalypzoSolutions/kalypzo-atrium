@@ -23,7 +23,7 @@ API-Keys handeln als ihr Besitzer (`userId`), Rechte = Scopes ∩ Besitzerrechte
 → „Unbekannt“ – **keine** eigenen 30er-Schleifen um `directory`), `users.directory(ctx,{search,ids,limit,includeEmail?})` (aktive Benutzer: id/name/email/image, ab 2 Zeichen, max 30; **E-Mail nur** für System,
 `core.users.view`, das eigene Konto oder `includeEmail: true` nach eigener Prüfung eines Verwaltungsrechts – sonst `''`, Suche dann nur im Namen),
 `crypto.forModule(id)` (`encrypt/decrypt/isEncrypted`, AES-256-GCM), `permissions` (`require`, `has`, …),
-`modules` (`use`, `useOptional` für `optionalDependencies`), `settings`, `api`, `database.forModule(id).transaction`, `pdf`, `ai`, `storage`
+`modules` (`use`, `useOptional` für `optionalDependencies`), `settings` (Modul-Secrets mit `secretBoundTo` an Ziel-Schlüssel gebunden), `api`, `database.forModule(id).transaction`, `pdf`, `ai`, `storage`
 (`upload/download/remove/stat/list/signed*`; braucht `<modul>.storage.read|write|delete` – internes Recht für Modul-Endpunkte mit Objektprüfung;
 die generische REST-API `/api/v1/storage/*` verlangt `core.storage.manage`, 403 vor 503), `audit.logFromContext`.
 Seit 2026-10-20 (#23/#24): `storage.downloadStream` (Inhalt als `ReadableStream`, `file.size` = Länge – für Bild-/Datei-Auslieferung),
@@ -31,6 +31,9 @@ Seit 2026-10-20 (#23/#24): `storage.downloadStream` (Inhalt als `ReadableStream`
 `{ removed, missing, failed }`, Metadaten fehlgeschlagener Objekte bleiben). Storage-Konfiguration 10 s gecacht, `setSettings` mit `core.storage.*`
 invalidiert sofort (`invalidateStorageConfigCache`, `storage/config-cache.ts`). `getUserPermissions` nutzt den Modulstatus-Cache (3 s),
 `principalKeysFor` ist je Kontextobjekt + Modul memoisiert (WeakMap, 5 s). Bild-Endpunkte: `IMAGE_RATE_LIMIT` (1200/60 s) aus `$lib/sdk/server`.
+Seit 2026-10-22: `permissions.usersWith(key)` (aktive Konten mit wirksamem Recht, ohne Prüfung, für Benachrichtigungen), `mail.sendMessage`
+mit `messageId`/`inReplyTo`/`references` → `{ messageId }`, `mail.send({ autoSubmitted })` (`Auto-Submitted` + `X-EP-Intern`).
+Seit 2026-10-25: `notifications.send(ctx, moduleId, items)` (E-Mail/Web Push nach Wahl der Person, siehe „Benachrichtigungen und PWA“) und `notifications.migratePreferences`.
 `images.process(bytes, { variants })` (sharp, nur Core): Inhalt prüfen (JPEG/PNG/WebP/AVIF/GIF, ≤ 50 MP), nach EXIF drehen,
 **alle Metadaten inkl. GPS entfernen**, Varianten (WebP/JPEG/PNG) mit Maßen; Typen `ImageVariantSpec` & Co. über `$lib/sdk/server`.
 
@@ -156,12 +159,15 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   oder eigener Knoten; actions: `edit-all` oder eigene Aktion), Rate-Limit `PRINCIPAL_SEARCH_RATE_LIMIT` (60/60 s). Test `principals-privacy.test.ts`.
 - Core: `core.roles.directory(ctx, { search, ids, limit })` (id/name, nur Anmeldung nötig, Suche ab 2 Zeichen, max. 30) und
   `core.users.roleIds(userId)`. UI: `SharePanel`/`ShareMenu`/`ShareDialog` mit `type` und `everyoneLabel` (siehe `ui-design.md`).
+- **Benachrichtigungs-Empfänger** (2026-10-25): `principalUserIds(modul, principals, { permission, exclude?, everyone? })` (SDK) → aktive Konten mit Leserecht
+  (`user` direkt, `role` über `core.roles.userIds`, `member`/`group` über `PrincipalProvider.userIdsForPrincipals` = verknüpfte Konten der Mitglieder bzw.
+  Gruppenmitglieder und Leitungen, `everyone` nur mit `everyone: true`); `addedPrincipals(before, after)` für „neu geteilt“.
 - **Zugriffsbaustein** (#35, `$lib/sdk/server/share-access.ts`): `createShareAccess({ table, shareTable, fk, ownerColumn?, perms: { viewAll, editAll },
   readIf?: { column, equals }, notFoundText, forbiddenText })` → `canEditAll`, `canViewAll`, `resolveAccess`, `requireAccess` (404/403), `visibleFilter(ctx, keys,
   alias)`, `accessForMany`, `loadShares`, `replaceShares`. `events`/`galleries` (`readIf` = öffentlich) haben in `access.ts` nur noch Konfiguration; `files`
   (Ordnervererbung) nutzt die Bausteine `shareLevelOn`, `loadObjectShares`, `replaceObjectShares` mit `NODE_SHARES`. Neue Module (z. B. `actions`-Umstellung)
   bauen darauf auf. Test `tests/integration/share-access.test.ts` (Zugriffsmatrix mit Testtabelle).
-- Nutzer: `events` (siehe `module-events.md`), `galleries`, `files`. `actions` nutzt noch die Benutzer-Freigabe (`action_shares.user_id`) – Umstellung offen.
+- Nutzer: `events` (siehe `module-events.md`), `galleries`, `files`, `website`, `actions` (seit 2026-10-25, Migr. 0022) und `tasks` (Boards, zusätzlich Vererbung über die Aktion).
 
 ## Rollen aus Modulen (2026-10-19)
 - Core-Tabelle `user_role_grant(user_id, role_id, module_id)` (Migration `drizzle/0006_user_role_grant.sql`, FK auf `user`/`role` mit CASCADE): Rollen, die ein
@@ -202,6 +208,21 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
 - Header-Check: nur `/admin/settings/mail-preview` (E-Mail-Vorschau im iframe) bekommt `x-frame-options: SAMEORIGIN`, alles andere `DENY`.
 - Neue Verwaltungsseite = Route unter `admin/` **plus** Eintrag in `admin-registry.ts` (Tests: `tests/unit/admin-registry.test.ts`, `admin-redirects.test.ts`,
   E2E `tests/e2e/admin-nav.spec.ts`).
+
+## Benachrichtigungen und PWA (2026-10-25)
+- `core.notifications` (`core/notifications/`: `service.ts` Versand/Profil/Übernahme, `catalog.ts` Typen aus `ModuleDefinition.notifications`, `prefs.ts`,
+  `push.ts` VAPID/Geräte/`web-push`, `compose.ts` Texte, `endpoints.ts`); Typen/Konstanten `$lib/sdk/types/notifications.ts` (Client + Server).
+  Core-Migration **0010**: `notification_pref` (nur Abweichungen), `push_subscription`, `notification_queue`; Job `core.notifications-digest` (täglich).
+  Einstellungen `core.push.enabled|vapidPublicKey|vapidPrivateKey` (Schlüssel automatisch erzeugt, privat verschlüsselt). Backup: `notification_pref` in
+  `core:users`, Geräte/Warteschlange nie; Reset `users` räumt alle drei; Datenauskunft enthält Einstellungen, Geräte (nur Label/Datum), Warteschlange.
+- Push-Endpunkte nur von bekannten Push-Diensten (`isAllowedPushEndpoint`, SSRF). REST `/api/v1/notifications/*` nur per Session (`sessionOnly`).
+- PWA: `static/manifest.webmanifest`, Icons `static/icons/` (aus dem Wappen), `src/service-worker.ts` (Push anzeigen, nur App-Pfade öffnen, **kein**
+  Offline-Cache), CSP `worker-src`/`manifest-src 'self'`, `app.html` mit Manifest/Apple-Tags. Client `$lib/sdk/client/push.ts`.
+  **Klick auf Push** (2026-10-25): SW wählt das aktive App-Fenster, fokussiert es und schickt `ep:navigate` → `sw-navigation.ts` (im Root-Layout)
+  öffnet die Seite per `goto` und bestätigt per Port; sonst `client.navigate`, sonst `openWindow`. Für Kaltstarts, die auf der Startseite landen (iOS),
+  merkt der SW das Ziel 60 s (Cache `ep-pending-navigation`), die App holt es beim Start per `ep:pending-navigation` ab. Manifest `launch_handler: navigate-existing`.
+- UI: Profil-Reiter „Benachrichtigungen“ (`profile/_components/NotificationsTab.svelte`: Gerät aktivieren, iOS-Hinweis, Geräteliste, Regler je Typ),
+  Admin-Reiter `/admin/settings/notifications`, Baustein `ui/segmented-slider`.
 
 ## Datensicherung (2026-10-20)
 - Seite `/admin/backup` (Recht `core.system.backup`, Reiter Export | Import), Code in `src/lib/server/core/backup/`, Vertrag

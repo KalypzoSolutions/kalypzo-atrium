@@ -57,6 +57,12 @@ export interface ModuleSettingDefinition {
 	default?: unknown;
 	secret?: boolean;
 	/**
+	 * Nur bei `secret`: Schlüssel desselben Moduls (z. B. Host, Benutzer), an die das Secret gebunden ist.
+	 * Ändert sich einer davon, wird das Secret verworfen (wie `SECRET_BINDINGS` im Core), damit ein
+	 * gespeichertes Passwort nicht an einen fremden Server geht.
+	 */
+	secretBoundTo?: string[];
+	/**
 	 * Recht zum Schreiben dieser Einstellung (auch über `PUT /api/v1/settings`). Ohne Angabe:
 	 * `<modul>.settings.manage`, falls das Modul dieses Recht deklariert, sonst `core.settings.manage`.
 	 */
@@ -276,3 +282,4 @@ export interface AiGenerateResult {
 	usage: AiUsage;
 }
 export type * from './search';
+export type * from './notifications';

@@ -179,7 +179,8 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 | `EntityAvatar` | `$lib/components/layout` | Rundes Bild mit Farbrand, Fallback Initialen |
 | `FileField` | `$lib/components/layout` | Datei-Feld mit Typ-/Größenprüfung, vorhandener Datei und Entfernen |
 | `ContactListField` | `$lib/components/layout` | Dynamische Liste benannter Kontakte (Telefon, E-Mail); `readonly` + `emptyText` für Ansichten |
-| `RichTextEditor` | `$lib/components/ui/rich-text-editor` | Text-Editor (Tiptap): Fett/Kursiv/Unterstrichen/Durchgestrichen, Überschriften, Listen, Zitat, Link, Trennlinie, Rückgängig; `bind:value` = HTML (nur einfache Formatierung; der Server muss es mit `sanitize-html` bereinigen, Muster `messages/html.ts`) |
+| `RichTextEditor` | `$lib/components/ui/rich-text-editor` | Text-Editor (Tiptap): Fett/Kursiv/Unterstrichen/Durchgestrichen, Überschriften, Listen, Zitat, Link, Trennlinie, Rückgängig; `bind:value` = HTML (nur einfache Formatierung; der Server bereinigt mit `sanitizeRichText` aus `$lib/sdk/server`). Optional Bilder: `uploadImage(file) → { id, src, alt? }` + `imageSrc(id)` → `<img data-image-id>`, bereinigt mit `sanitizeRichText(html, { images })` (Muster `website`) |
+| `IconPicker`, `DynamicIcon` | `$lib/components/ui/icon-picker` | Icon-Auswahl aus **allen Lucide-Icons** (Suche englisch + deutsch, Vorschläge, Pfeiltasten; `bind:value` = Icon-Name) und Anzeige per Name (`name`, `class`, `fallback`); Daten lazy aus `$lib/sdk/icons` (`loadIconSet`, `searchIcons`, `iconLabel`), Server prüft mit `(await loadIconSet()).has(name)` |
 | `TagInput` | `$lib/components/ui/tag-input` | Freie Tags als Chips (`bind:value`, `suggestions` oder `loadSuggestions(q)`, `max`, `maxLength`); Logik in `tags.ts` (`addTag`, `normalizeTag`) |
 | `MonthCalendar` | `$lib/components/layout` | Monatsraster Mo–So mit mehrtägigen Balken, mobil Agenda; `items: CalendarItem[]`, `bind:month`, `onselect`, `onday` |
 | `ShareDialog` | `$lib/components/layout` | Freigabe an Benutzer oder – mit `type` – an Principals (Stamm, Gruppe, Rolle, Mitglied): suchen, Stufe wählen, ändern, entfernen (Persistenz über Callbacks); `everyoneLabel` für „alle“ |
@@ -232,9 +233,16 @@ await core.database.forModule('events').transaction(async (tx) =>
 - `members` in `optionalDependencies` aufnehmen; ohne aktives `members` entfallen Gruppen und Mitglieder.
 - UI: `SharePanel`/`ShareMenu`/`ShareDialog` mit `type` an Einträgen/Kandidaten. Vorlage: Modul `events`.
 
+### Zähler in der Seitenleiste (`navBadge`)
+
+`defineModule({ navBadge: { count: async (ctx) => n } })` zeigt eine runde Zahl am Navigationseintrag des Moduls (ab 10 „9+“, `CountBadge`).
+Der Core ruft `count` nur für aktive Module und sichtbare Einträge auf (Zeitbudget 1,5 s), beim Seitenaufbau und über `GET /api/v1/nav/badges`
+(Aktualisierung nach jeder Navigation, jede Minute und per `refreshNavBadges()` aus `$lib/sdk/client/nav-badges.svelte`). Beispiel: `messages`
+(ungelesene Mails).
+
 ### Hintergrundjobs und optionale Abhängigkeiten
 
-- Regelmäßige Aufgaben (Abgleich, Erinnerungs-Mails) als `jobs` im `defineModule` deklarieren (`schedule: 'hourly' | 'daily'`,
+- Regelmäßige Aufgaben (Abgleich, Erinnerungs-Mails) als `jobs` im `defineModule` deklarieren (`schedule: 'hourly' | 'daily' | { everyMinutes }`,
   Systemkontext, Rückgabe = kurze Statusmeldung). Details: `docs/core-services.md` → „Hintergrundjobs“. Beispiel: `treasury/module.ts`.
 - Rückkanäle zwischen Modulen ohne Zyklus: `manifest.optionalDependencies` + `core.modules.useOptional` (liefert `null`, wenn der
   Anbieter aus ist). Beispiel: `actions` → `treasury` (Ist-Beiträge in der Abrechnung).
@@ -278,6 +286,13 @@ export const onUserDeleted: ModuleDefinition['onUserDeleted'] = async (tx, { use
   (members: Konto → verknüpfte Mitglieder), `findSubjects` macht Personen ohne Konto auffindbar. Umgesetzt in allen acht Modulen
   (`members`, `actions`, `treasury`, `events`, `galleries`, `offices`, `orders`, `files`; Dateien `subject-export.ts` bzw. `actions/privacy.ts`).
   Details: `docs/security.md` → „Löschkonzept“.
+
+### Benachrichtigungen (`core.notifications`, E-Mail und Push)
+
+Benachrichtigungen an Benutzerkonten gehen **nicht** mehr direkt über `core.mail.send`, sondern über
+`core.notifications.send(ctx, MODULE_ID, items)` – die Person wählt im Profil je Typ Aus · E-Mail · Beides · Push. Typen deklariert
+`defineModule({ notifications: { types, forUser? } })`. Vertrag, Optionen (`mandatory`, `pushOnly`, `digest`, `scoped`) und Beispiele:
+`docs/core-services.md` → „core.notifications“. Mails an freie Adressen (Anmeldebestätigung, Kontaktadressen von Mitgliedern) bleiben `core.mail`.
 
 ### Ämter als Vorlage und Benachrichtigungen (Modul `offices`)
 
@@ -333,6 +348,11 @@ export default {
 filtert und sortiert mit `selectProfileSections` (`$lib/sdk/client/profile-sections`) und gibt `sections`
 (`{ key: '<moduleId>:<id>', moduleId, id, title, order, component }`) zurück. Die Komponente lädt ihre Daten selbst per
 `apiFetch`; Rechte werden serverseitig an den Endpoints durchgesetzt.
+
+**`userAdminSections`** (in `ui.ts`, gleiche Form, Props `{ userId, userName }`) erscheinen als eigener Abschnitt im Dialog
+„Benutzer bearbeiten“ unter `/admin/users` (nur aktive Module, nur mit `permission`). Sie laden **und speichern selbst**
+(eigener Knopf, unabhängig vom Formular des Dialogs). Auswahl: `selectUserAdminSections`, Laden in `admin/users/+page.ts`.
+Vorbild: `files` (Speicherkontingent, Recht `files.quota.manage`).
 
 ### Dashboard-Kacheln
 
@@ -411,6 +431,7 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 |---|---|---|
 | `publicRoutes` | Seiten ohne Login unter `/p/<id>/<pfad>`, nur mit öffentlichen Endpunkten (siehe oben). | `actions` (Anmeldung), `files` (Links) |
 | `profileSections` | Karten auf `/profile` (siehe oben). | `members`, `offices` |
+| `userAdminSections` | Abschnitte im Dialog „Benutzer bearbeiten“ (`/admin/users`, siehe oben). | `files` |
 | `dashboardWidgets` | Kacheln auf `/dashboard` (siehe oben). | `events`, `treasury` |
 
 ### Audit-Aktionsnamen

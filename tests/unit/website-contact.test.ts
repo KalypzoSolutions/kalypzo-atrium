@@ -8,7 +8,9 @@ import {
 	CONTACT_SUBJECT,
 	HONEYPOT_FIELD,
 	buildContactMessage,
-	parseContactForm
+	parseContactForm,
+	parseTrialForm,
+	trialAsContact
 } from '../../website/src/lib/server/contact';
 import { SmtpError, dotStuff, sendMail } from '../../website/src/lib/server/smtp';
 
@@ -231,5 +233,45 @@ describe('sendMail', () => {
 				'x'
 			)
 		).rejects.toBeInstanceOf(SmtpError);
+	});
+});
+
+describe('Probestunden-Formular', () => {
+	const ok = {
+		childName: ' Mia  Muster ',
+		childAge: '8',
+		name: 'Petra Muster',
+		email: 'petra@example.org',
+		phone: '0421 123456',
+		message: 'Hallo',
+		group: 'fuechse',
+		consent: 'on'
+	};
+	it('übernimmt gültige Eingaben, Gruppe nur wenn bekannt', () => {
+		const r = parseTrialForm(form(ok), ['fuechse']);
+		expect(r).toMatchObject({
+			ok: true,
+			spam: false,
+			value: { childName: 'Mia Muster', childAge: 8, groupSlug: 'fuechse' }
+		});
+		const unknown = parseTrialForm(form(ok), ['adler']);
+		expect(unknown.ok && unknown.value.groupSlug).toBe('');
+	});
+	it('meldet Pflichtfelder und ungültiges Alter', () => {
+		const r = parseTrialForm(form({ ...ok, childName: '', childAge: '2', phone: '', consent: '' }));
+		expect(r.ok).toBe(false);
+		if (!r.ok) {
+			expect(Object.keys(r.errors).sort()).toEqual(['childAge', 'childName', 'consent', 'phone']);
+		}
+		const text = parseTrialForm(form({ ...ok, childAge: 'acht' }));
+		expect(!text.ok && text.errors.childAge).toBeTruthy();
+	});
+	it('Honeypot wie Erfolg; SMTP-Rückfall enthält Kind und Alter', () => {
+		expect(parseTrialForm(form({ [HONEYPOT_FIELD]: 'x' }))).toMatchObject({ ok: true, spam: true });
+		const r = parseTrialForm(form(ok), ['fuechse']);
+		if (!r.ok) throw new Error('ungültig');
+		expect(trialAsContact(r.value, 'Meute Füchse').message).toContain(
+			'Kind: Mia Muster\nAlter: 8 Jahre\nGruppe: Meute Füchse'
+		);
 	});
 });

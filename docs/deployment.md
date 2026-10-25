@@ -369,7 +369,11 @@ fest im Code (`website/src/lib/faqs.ts`), die Download-Seite entfällt (`/downlo
 Browser; Galeriebilder liefert die Website über `/bilder/galerie/…` aus, die Terminvorschau der Gruppenseiten über `/api/termine`.
 
 1. **API-Key anlegen**: im Intern-Bereich unter **Administration → API-Keys** einen Key mit den Scopes
-   `events.website.read galleries.website.read members.website.read` erstellen (ein Benutzerkonto, das diese Rechte hat).
+   `events.website.read galleries.website.read members.website.read offices.website.read website.content.read messages.website.contact` erstellen (ein Benutzerkonto, das diese
+   Rechte hat; `offices.website.read` für die Seite „Unser Team“, `website.content.read` für Banner, FAQ und Blog – Modul `website` aktivieren;
+   `messages.website.contact` für das Kontaktformular – Anfragen landen im Posteingang „Stamm“ des Moduls `messages`, ohne Stamm-Adresse
+   (`core.organization.email`) in „Nicht zugeordnet“). Ein bestehender Key bekommt neue Scopes nicht nachträglich: neuen Key anlegen und
+   `WEBSITE_API_KEY` ersetzen.
    Die Module müssen aktiv sein, sonst liefert die API `404 module_disabled`.
 2. **Umgebungsvariablen** (Vorlage `website/.env.example`):
 
@@ -381,7 +385,7 @@ Browser; Galeriebilder liefert die Website über `/bilder/galerie/…` aus, die 
 
 3. **Starten**: Die Website ist als Dienst `website` in `docker-compose.yml` und `docker-compose.dokploy.yml` enthalten
    und startet mit dem Stack als **eigener Container** (Build aus `website/`, Port 3001, nur im internen Netz mit `app`
-   verbunden: `WEBSITE_API_URL=http://app:3000`). Variablen im Stack:
+   verbunden: `WEBSITE_API_URL=http://app:3000`, in Dokploy `http://ep-intern-<DEPLOY_ENV>-app:3000`, siehe unten). Variablen im Stack:
 
    | Variable | Bedeutung |
    |---|---|
@@ -391,6 +395,17 @@ Browser; Galeriebilder liefert die Website über `/bilder/galerie/…` aus, die 
 
    Erstinstallation: Stack starten → im Intern-Bereich Key anlegen → `WEBSITE_API_KEY` setzen → `docker compose up -d website`
    (Dokploy: Variable eintragen, neu deployen). Der Container läuft als Benutzer `node`, schreibgeschützt, Healthcheck auf `/`.
+
+   **Mehrere Stacks auf einem Dokploy-Server (Staging + Produktion)**: `app` und `website` hängen im gemeinsamen
+   `dokploy-network`, in dem auch die gleichnamigen Dienste des anderen Stacks stecken. Ein Name wie `app` löst dort reihum
+   auf **beide** Stacks auf – Folge waren sporadische 401 „API-Key wird nicht akzeptiert“ (Anfrage landete im anderen Stack
+   mit eigener Datenbank) und damit 503-Fehlerseiten. Deshalb setzt jeder Stack `DEPLOY_ENV` (`prod`, `staging`, Standard
+   `prod`); die Dienste sprechen sich über Aliase im stackeigenen Netz `internal` an: `ep-intern-<DEPLOY_ENV>-app`, `-db`,
+   `-storage`, `-website` (letzterer auch im `dokploy-network`). Prüfen im Website-Container: `getent hosts ep-intern-prod-app` liefert genau **eine** Adresse.
+   Bestehende Installationen: `DEPLOY_ENV` setzen und neu deployen genügt (Volumes und internes Netz behalten ihre Namen).
+   Der gespeicherte Speicher-Endpunkt `http://storage:9000` bleibt gültig – mehrdeutig sind nur Dienste im gemeinsamen Netz
+   (`app`, `website`), `db`/`storage` hängen nur im stackeigenen Netz. Ein Umstellen auf `ep-intern-<DEPLOY_ENV>-storage` ist
+   optional und verwirft den gespeicherten Secret-Key (Ziel-Bindung, neu eintragen).
 
    Einzeln ohne Compose:
 
@@ -417,6 +432,18 @@ npm ci
 npm run build && WEBSITE_API_KEY=epk_… WEBSITE_API_URL=http://127.0.0.1:3000 PORT=3001 node build
 ```
 
+## App auf dem Handy und Push-Benachrichtigungen
+
+- Die Oberfläche ist eine installierbare Web-App (Manifest `static/manifest.webmanifest`, Service Worker `src/service-worker.ts`).
+  **HTTPS ist Pflicht** (ohne sichere Verbindung gibt es weder Installation noch Push; `localhost` gilt als sicher).
+- Push braucht nichts zusätzlich: Die VAPID-Schlüssel erzeugt der Server beim ersten Bedarf selbst und speichert sie verschlüsselt in der
+  Datenbank (sie wandern mit der Datensicherung). Ausgehende HTTPS-Verbindungen zu den Push-Diensten (`fcm.googleapis.com`,
+  `*.push.apple.com`, `*.push.services.mozilla.com`, `*.notify.windows.com`) müssen erlaubt sein.
+- **Android**: Chrome/Edge/Firefox können Push auch ohne Installation; „Zum Startbildschirm hinzufügen“ öffnet die App ohne Browserleiste.
+- **iPhone/iPad** (ab iOS/iPadOS 16.4): Push nur, wenn die App über Safari → Teilen → „Zum Home-Bildschirm“ hinzugefügt und von dort geöffnet
+  wurde; danach im Profil unter „Benachrichtigungen“ aktivieren (Hinweis erscheint dort automatisch).
+- Abschalten: Einstellungen → Benachrichtigungen → „Push-Benachrichtigungen“ aus (alles geht dann per E-Mail).
+
 ## Nachrichten (E-Mail an Mitglieder und Gruppen) – Zustellbarkeit
 
 Das Modul `messages` sendet jede Mail einzeln über den SMTP-Server aus den Systemeinstellungen. Damit sie nicht im Spam landen:
@@ -427,3 +454,24 @@ Das Modul `messages` sendet jede Mail einzeln über den SMTP-Server aus den Syst
   Reverse-DNS (rDNS) der Server-IP. Neue Domains langsam „aufwärmen“ (zuerst kleine Gruppen).
 - **Inhalt**: Aussehen „Einfach“ verursacht den geringsten Spam-Wert; Betreff nicht in Großbuchstaben und ohne viele Ausrufezeichen; keine Link-Verkürzer.
 - Prüfen mit einer Testmail an einen Spam-Checker (z. B. mail-tester.com). Der Spam-Wert hängt am Mailserver und DNS, nicht nur an der Anwendung.
+
+### Posteingang (Antworten empfangen, Catch-all per IMAP)
+
+Damit Antworten auf persönliche, Amts-, Gruppen- und Stamm-Adressen ankommen, ruft das Modul ein **Catch-all-Postfach** per IMAP ab und
+ordnet jede Mail dem passenden Postfach zu (Oberfläche: Nachrichten → Posteingang).
+
+1. Beim Mailanbieter ein Postfach (z. B. `catchall@stamm.de`) anlegen und als **Catch-all** der Domain einrichten: Mails an alle Adressen
+   ohne eigenes Postfach landen dort. Adressen mit echtem Postfach bekommen ihre Mails weiterhin dort (nicht im Posteingang der App).
+2. Administration → Einstellungen → Module → Nachrichten: `Posteingang: …` – IMAP-Server, Port (993 = TLS), Benutzer, Passwort, Ordner
+   (`INBOX`) und Ablageordner (`Importiert`, wird angelegt). Danach „Catch-all-Postfach abrufen“ einschalten.
+3. Mit dem Recht `messages.inbox.manage` „Jetzt abrufen“ im Posteingang prüfen; Fehler stehen dort als Hinweis „Letzter Abruf fehlgeschlagen“.
+
+- Der Job `messages.inbox-poll` läuft **jede Minute**. Übernommene Mails werden auf dem Server in den Ablageordner verschoben (Sicherung);
+  die Aufbewahrung in der App steuert `messages.inbox.retentionDays` (Standard 365 Tage), nicht zugeordnete Mails und Papierkorb 30 Tage.
+- Zuordnung über `Delivered-To`/`X-Original-To` (auch Bcc) und An/Cc. Der Mailserver sollte einen dieser Kopfzeilen setzen (bei
+  Catch-all üblich). Spam-Bewertung kommt vom Mailserver (`X-Spam-Flag`), die Absenderprüfung aus `Authentication-Results`.
+- Mit eingeschaltetem Posteingang gehen Antworten immer an die **Absenderadresse** (nicht mehr an die Konto-Adresse).
+- Benachrichtigungen gehen an die Konto-Adresse; liegt diese selbst auf der Catch-all-Domain, wird die Benachrichtigung beim Abruf
+  übersprungen (Kopfzeile `X-EP-Intern`) – keine Schleife, die Person sieht die Mail im Posteingang.
+- Nur **eine** Instanz darf abrufen (Sperre je Prozess; mehrere Instanzen würden über die Job-Sperre trotzdem nur einmal je Minute laufen).
+- Demo: `docker compose -f docker-compose.demo.yml up -d` (GreenMail auf `127.0.0.1:1143`), dann `node scripts/seed-demo-inbox.mjs`.

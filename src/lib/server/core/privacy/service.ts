@@ -149,6 +149,32 @@ async function coreData(userId: string): Promise<Record<string, unknown> | null>
 		})
 		.from(schema.setting)
 		.where(eq(schema.setting.scopeId, userId));
+	const notificationPrefs = await db
+		.select({
+			type: schema.notificationPref.typeKey,
+			scope: schema.notificationPref.scope,
+			channel: schema.notificationPref.channel,
+			delivery: schema.notificationPref.delivery,
+			updatedAt: schema.notificationPref.updatedAt
+		})
+		.from(schema.notificationPref)
+		.where(eq(schema.notificationPref.userId, userId));
+	const pushDevices = await db
+		.select({
+			label: schema.pushSubscription.label,
+			createdAt: schema.pushSubscription.createdAt,
+			lastSuccessAt: schema.pushSubscription.lastSuccessAt
+		})
+		.from(schema.pushSubscription)
+		.where(eq(schema.pushSubscription.userId, userId));
+	const queuedNotifications = await db
+		.select({
+			type: schema.notificationQueue.typeKey,
+			title: schema.notificationQueue.title,
+			createdAt: schema.notificationQueue.createdAt
+		})
+		.from(schema.notificationQueue)
+		.where(eq(schema.notificationQueue.userId, userId));
 	const files = await db
 		.select({
 			moduleId: schema.file.moduleId,
@@ -192,7 +218,15 @@ async function coreData(userId: string): Promise<Record<string, unknown> | null>
 		})),
 		// Persönliche Einstellungen (Scope `user`); Secrets gibt es dort nicht
 		settings: settings.map((s) => ({ key: s.key, value: s.value, updatedAt: iso(s.updatedAt) })),
-		uploadedFiles: files.map((f) => ({ ...f, createdAt: iso(f.createdAt) }))
+		uploadedFiles: files.map((f) => ({ ...f, createdAt: iso(f.createdAt) })),
+		// Benachrichtigungen: nur Abweichungen vom Standard; Geräte ohne Endpoint/Schlüssel
+		notificationPreferences: notificationPrefs.map((p) => ({ ...p, updatedAt: iso(p.updatedAt) })),
+		pushDevices: pushDevices.map((d) => ({
+			label: d.label,
+			createdAt: iso(d.createdAt),
+			lastSuccessAt: iso(d.lastSuccessAt)
+		})),
+		queuedNotifications: queuedNotifications.map((q) => ({ ...q, createdAt: iso(q.createdAt) }))
 	};
 }
 

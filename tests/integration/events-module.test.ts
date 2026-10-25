@@ -54,6 +54,7 @@ describe('Modul events (Smoke)', () => {
 			sql`SELECT table_name FROM information_schema.tables WHERE table_schema = 'mod_events'`
 		)) as unknown as { rows: { table_name: string }[] };
 		expect(res.rows.map((r) => r.table_name).sort()).toEqual([
+			'calendar_feeds',
 			'event_exceptions',
 			'event_groups',
 			'event_shares',

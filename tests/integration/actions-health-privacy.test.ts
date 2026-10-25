@@ -84,8 +84,8 @@ const HEALTH_VALUES = ['Erdnüsse', 'Asthma-Spray', 'Insulin', 'Tetanus 2024', '
 
 async function share(userKey: string, level: 'read' | 'edit') {
 	await getDb().execute(
-		sql`INSERT INTO mod_actions.action_shares (action_id, user_id, level)
-			VALUES (${actionId}, ${userIds[userKey]!}, ${level})`
+		sql`INSERT INTO mod_actions.action_shares (action_id, principal_type, principal_id, level)
+			VALUES (${actionId}, 'user', ${userIds[userKey]!}, ${level})`
 	);
 }
 

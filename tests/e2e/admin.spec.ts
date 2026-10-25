@@ -54,6 +54,32 @@ test('Benutzerverwaltung: anlegen, deaktivieren', async ({ page }) => {
 	).toContainText('Deaktiviert');
 });
 
+test('Benutzer bearbeiten: Reiter Konto und Rechte, einmal speichern', async ({ page }) => {
+	await login(page);
+	await page.goto('/admin/users');
+	await page.getByRole('button', { name: 'Benutzer anlegen' }).click();
+	const create = page.getByRole('dialog');
+	await create.getByLabel('Name').fill(`Reiter ${run}`);
+	await create.getByLabel('E-Mail').fill(`reiter-${run}@example.test`);
+	await create.getByLabel('Passwort').fill('e2e-user-password-1');
+	await create.getByRole('button', { name: 'Anlegen' }).click();
+	const row = page.getByRole('row', { name: new RegExp(`reiter-${run}@example.test`) });
+	await expect(row).toBeVisible();
+
+	await row.getByRole('button', { name: 'Bearbeiten' }).click();
+	const dialog = page.getByRole('dialog');
+	await dialog.getByLabel('Name').fill(`Reiter neu ${run}`);
+	await expect(dialog.getByRole('tab', { name: /Konto/ })).toContainText('ungespeichert');
+	await dialog.getByRole('tab', { name: /Rollen & Rechte/ }).click();
+	await dialog.getByLabel('Berechtigungen durchsuchen').fill('core.users.view');
+	await dialog.getByRole('checkbox', { name: 'core.users.view', exact: true }).click();
+	await dialog.getByRole('button', { name: 'Speichern' }).click();
+	await expect(dialog).toBeHidden();
+	const updated = page.getByRole('row', { name: new RegExp(`reiter-${run}@example.test`) });
+	await expect(updated).toContainText(`Reiter neu ${run}`);
+	await expect(updated).toContainText('+1 Einzelrecht');
+});
+
 test('Rollenverwaltung: Rolle anlegen', async ({ page }) => {
 	await login(page);
 	await page.goto('/admin/roles');

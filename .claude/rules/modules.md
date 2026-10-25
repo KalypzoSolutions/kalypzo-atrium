@@ -117,8 +117,8 @@ return result;
 - Mehrfachwerte (Telefone/E-Mails): eigene Tabelle mit `position`; Listen komplett ersetzen statt diffen.
 
 ## Hintergrundjobs und optionale Abhängigkeiten
-- `defineModule({ jobs: [{ id, summary, schedule: 'hourly'|'daily', run(ctx) }] })`: Runner in `core/jobs` (Start in
-  `hooks.server.ts`, Tick 5 min, nicht bei `JOBS_DISABLED=1`), nur für aktive Module, Systemkontext, Sperre per atomarem
+- `defineModule({ jobs: [{ id, summary, schedule: 'hourly'|'daily'|{ everyMinutes: 1–60 }, run(ctx) }] })`: Runner in `core/jobs` (Start in
+  `hooks.server.ts`, Tick **1 min** (seit 2026-10-22), nicht bei `JOBS_DISABLED=1`), nur für aktive Module, Systemkontext, Sperre per atomarem
   Upsert auf `job_run` (keine offene Transaktion). Rückgabe = Statusmeldung. Admin: `GET /api/v1/jobs`,
   `POST /api/v1/jobs/<modul>.<job>/run` (`core.jobs.manage`). Tests: `runDueJobs`, `runJobNow`, `setJobClockForTests`.
   `daily` = einmal je Tag im Fenster `JOBS_DAILY_WINDOW` (Standard `6-20`, Europe/Berlin), nach Fehler neuer Versuch nach 15 min,
@@ -134,6 +134,13 @@ return result;
 - `core.ai.use` schickt den Prompt an einen externen Anbieter: keine Art.-9-Daten (Gesundheit), keine Kinder-/Kontaktdaten/IBAN, Namen durch
   Platzhalter ersetzen (Pseudonymisierung), Hinweis in der Oberfläche. Jeder neue externe Empfänger kommt in `docs/security.md` → „Externe Empfänger“.
 
+## Zähler in der Seitenleiste
+- `defineModule({ navBadge: { path?, count(ctx) } })` → runde Zahl am Navigationseintrag (z. B. ungelesene Mails, `messages`), ab 10 „9+“.
+  Core `core/navigation/badges.ts` `navBadgeCounts(ctx)`: nur aktive Module, nur wenn die Person den Eintrag sieht, Zeitbudget 1,5 s, Fehler
+  geloggt und übersprungen. Ausgabe im Root-Layout (`navBadges`) und `GET /api/v1/nav/badges` (nur Anmeldung, 120/min); Client-Store
+  `$lib/sdk/client/nav-badges.svelte` (`refreshNavBadges()` nach Aktionen, die den Zähler ändern; das `(internal)`-Layout aktualisiert nach jeder
+  Navigation und jede Minute). `count` schnell halten, Core-Dienste nicht in einer offenen Modul-Transaktion.
+
 ## Globale Suche
 - `defineModule({ search: { permission?, anyPermission?, run(ctx, query, limit) } })` (`ModuleSearchProvider`, Datei `search.ts`): Treffer
   `SearchHit { id, title, subtitle?, href, icon?, type }` für die Befehlspalette. `run` filtert **objektbezogen** wie die Listen-Endpunkte,
@@ -147,6 +154,8 @@ return result;
 - Persönliche Daten über eigene „meine“-Endpunkte (`/my/...`) mit eigenem Recht (`<id>.own.view`, `defaultRoleGrants` Mitglied); nie fremde Daten.
 
 ## Profil-Abschnitte und Standard-Rollenrechte
+- `ui.ts` `userAdminSections: [{ id, title, order?, permission?, component }]` → Abschnitt im Dialog „Benutzer bearbeiten“
+  (`/admin/users`, Props `{ userId, userName }`, lädt und speichert selbst; Auswahl `selectUserAdminSections`). Muster: `files/pages/UserQuotaSection.svelte`.
 - `ui.ts` `profileSections: [{ id, title, order?, permission?, component: () => import(…) }]` → Karte auf `/profile`
   (Komponente bekommt `{ userId }`, lädt Daten per `apiFetch`; Auswahl/Sortierung: `selectProfileSections` in
   `$lib/sdk/client/profile-sections`). Typ `ProfileSection` in `$lib/sdk/types/module-ui`.
@@ -156,13 +165,23 @@ return result;
   **einmalig** je (Modul, Rolle, Recht) vergeben (Marker `role_grant_applied`, Core-Migration 0004) – entzogene Rechte
   kommen nicht zurück. Rechte müssen im Manifest stehen.
 
+## Benachrichtigungen an Konten (`core.notifications`, 2026-10-25)
+- Mails an **Benutzerkonten** (Hinweise, Ereignisse) nie direkt per `core.mail.send`, sondern `core.notifications.send(ctx, MODULE_ID, [{ type, scope?,
+  userIds, title ≤ 150, body ≤ 4000, pushBody?, link?, group?, tag? }])` **nach** der Transaktion (wirft nie). Kanal (Aus · E-Mail · Beides · Push,
+  ggf. Sofort/Täglich) wählt jede Person im Profil-Reiter „Benachrichtigungen“; Push ohne Gerät → E-Mail.
+- Typen in `defineModule({ notifications: { types: [{ key, label, description?, defaultChannel?, mandatory?, digest?, pushOnly?, scoped?, permission?,
+  anyPermission? }], forUser? } })`; `scoped` = je Bereich (Postfach, Amt), Einträge über `forUser(ctx)`. Rechte in `permission` müssen im Manifest stehen.
+- Mails an freie Adressen (Anmeldebestätigung, Kontaktadressen der Mitglieder, Massenversand) bleiben `core.mail`; zusätzlicher Push an verknüpfte
+  Konten über einen `pushOnly`-Typ (Muster `treasury/push-notify.ts`). Alte eigene Einstellungen per `core.notifications.migratePreferences` übernehmen.
+- Keine eigenen Profilkarten für Benachrichtigungs-Einstellungen mehr. Details: `docs/core-services.md` → „core.notifications“.
+
 ## Ämter als Vorlage mitbringen (Modul `offices`, optional)
 - Manifest: `offices: [{ key, name, description?, notifications: [{ key, label, description? }] }]` (`ModuleOfficeTemplate`, Schlüssel
   `[a-z][a-z0-9-]*`) + `optionalDependencies: ['offices']`. `offices` legt das Amt **einmal** an (nur Vorlage, Marker); danach ist es ein normales,
   löschbares Amt – gelöscht wird es **nicht** neu angelegt.
 - Auslösen **nach** der Transaktion: `(await core.modules.useOptional<OfficesService>('offices', MODULE_ID))?.notify(ctx, [{ module, office, event,
   subject, text, link? }])` (Typen aus `$lib/modules/offices/contract`, `import type`). Ereignisse eines Vorgangs in **einem** Aufruf (eine Mail je
-  Person), keine IBAN o. Ä. im Text, Aufruf in `try/catch`. Modus (Sofort/Täglich/Aus) wählen die Inhaber*innen im Profil. Muster:
+  Person), keine IBAN o. Ä. im Text, Aufruf in `try/catch`. Kanal (Aus · E-Mail · Beides · Push, Sofort/Täglich) wählen die Inhaber*innen im Profil-Reiter „Benachrichtigungen“ (Versand über `core.notifications`). Muster:
   `treasury/office-notify.ts`; Details `module-offices.md`.
 
 ## Migrationen

@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-21)
+# Projektstand (zuletzt aktualisiert: 2026-10-25)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -210,7 +210,77 @@
   Administration › Module (`admin: true`); `settingsPage: true` markiert echte Einstellungsseiten (Kasse) für Einstellungen → Module. „Administration“
   ist nach jedem Laden zu (Gruppenknopf hervorgehoben, wenn die aktive Seite darin liegt). Rechte filtern wie bisher.
 
+- **Posteingang in `messages` (2026-10-22, v1.1.0, Migr. 0003)**: Catch-all-Postfach per IMAP (Job jede Minute), Zuordnung zu persönlichen/Amts-/Gruppen-/
+  Stamm-Postfächern (Sichtbarkeit wie Absenderrechte), „Nicht zugeordnet“ für die Verwaltung, Antworten/Weiterleiten mit Verlauf (In-Reply-To),
+  Benachrichtigungen „Neue Nachricht“ und „… hat geantwortet“ je Person im Profil abschaltbar. Core: Intervall-Jobs, Message-ID/In-Reply-To beim Versand,
+  `core.permissions.usersWith`, `secretBoundTo`. Details: `module-messages.md` → „Posteingang“.
+
+- **Ordner im Posteingang (2026-10-23, `messages` v1.2.0, Migr. 0004)**: Ordner mit Unterordnern (≤ 3 Ebenen) je Postfach, in gemeinsamen
+  Postfächern für alle mit Zugriff gemeinsam; Drag & Drop (Mails und Ordner), Rechtsklick-Menüs, Sammelaktionen, Rückgängig. Details:
+  `module-messages.md` → „Ordner im Posteingang“.
+
+- **Dateien: Ordner-Aussehen und Kontingent je Person (2026-10-23, `files` v1.2.0, Migr. 0004)**: Ordner mit Icon (alle Lucide-Icons über die neue
+  Core-Icon-Bibliothek `IconPicker`/`DynamicIcon`, `$lib/sdk/icons`) und Farbe (Vorschläge + `ColorPicker`), für alle mit Zugriff gleich; Rasteransicht mit
+  gleich hohen Karten und Umbrüchen an `_ - .` (auch öffentliche Link-Seite); Kontingent je Person im Dialog „Benutzer bearbeiten“ (neuer Core-Mechanismus
+  `userAdminSections`, Recht `files.quota.manage`). Details: `module-files.md`.
+
+- **Lagerbeiträge in Aktionen (2026-10-24, `actions` v1.4.0, Migr. 0021)**: Kategorien „Lagerbeitrag Gau / Landesmark / Bund“ in Kalkulation (Gruppe
+  „Lagerbeiträge“, Standard pro Person) und Abrechnung (Ausgaben, Soll/Ist, eigener PDF-Abschnitt, offene Stamm-Ausgabe → Auszahlung in der Kasse).
+
+- **Spam-Schutz im Posteingang (2026-10-24, `messages` v1.3.0, Migr. 0005)**: eigene Bewertung beim Abruf (Punkte + Gründe: gefälschte Absender,
+  gefährliche Anhänge, irreführende Links, Massenversand …), bekannte Absender nie Spam (außer Absenderprüfung schlägt fehl), „Spam“/„Kein Spam“ mit
+  gemeinsamer Sperr-/Vertrauensliste, Verwaltung „Spam-Schutz“, Links in Spam unklickbar, Spam nach 30 Tagen gelöscht. Details: `module-messages.md`.
+
+- **Kalender-Abo (iCal) im internen Bereich (2026-10-24, `events` v1.3.0, Migr. 0004)**: mehrere Abos je Person mit geheimem Link (Hash + verschlüsselt,
+  erneuerbar), Filter nach Gruppen/Tags, Termine (Serien je Vorkommen, Absagen/Änderungen) und Aktionen (sichtbare + eigene Anmeldungen), Profilkarte und
+  Dialog auf der Terminseite, Webcal/Google-Links. Details: `module-events.md` → „Kalender-Abo“.
+
+- **Modul `website` + Design-Feinschliff der Stammeswebsite (2026-10-25, v1.0.0)**: Banner (Leiste auf allen Seiten oder Kasten Startseite, Zeitfenster,
+  schließbar), häufige Fragen (Rich-Text, Startseite/alle) und Blog (Bilder im Text, Titelbild, Themen, Entwurf/geplant/veröffentlicht, Mitschreiben per
+  Freigabe, Vorname der Autor*in, Verknüpfung Gruppen/Termin/Galerie) im Intern-Bereich; Website mit `/blog`, `/blog/<slug>`, `/blog/rss.xml`, `/faq`,
+  Banner-Leiste, statischer Ferienhinweis entfällt. Core: `sanitizeRichText`/`slugify` im SDK, Bilder im `RichTextEditor`, `GalleryRefsService`.
+  Website-Feinschliff: Typo-Skala (`text-display|section|sub|lede|small`), `site-container`, Fokus/Skip-Link/Reduced-Motion, Altseiten auf Tokens.
+  Details: `module-website.md`, `website.md`.
+
+- **Benachrichtigungen im Core + Web Push / PWA (2026-10-25, Core-Migr. 0010)**: zentraler Dienst `core.notifications` für alle Module; je Person und
+  Benachrichtigung Regler Aus · E-Mail · Beides · Push (+ Sofort/Täglich) im Profil-Reiter „Benachrichtigungen“; App installierbar (Manifest, Service
+  Worker, Icons aus dem Wappen), Push auf Android und iOS ≥ 16.4 (Home-Bildschirm); VAPID automatisch; Admin-Reiter Einstellungen → Benachrichtigungen.
+  Umgestellt: `offices` (Amts-Hinweise inkl. Tageszusammenfassung), `messages` (Posteingang), `actions` (Kosten-Link), `members` (Konto verknüpft),
+  `treasury` (zusätzlich Push an verknüpfte Konten). Offen: echte Geräte (Android/iPhone) nur nach Deploy mit HTTPS prüfbar; kein Offline-Modus.
+  **Weitere Benachrichtigungen (2026-10-25)**: Aktionen (neue Anmeldung, eigene Anmeldung als Push, geteilt, Abrechnung), Termine (neu/verschoben/abgesagt,
+  Standard aus), Galerie/Ordner geteilt, Upload über Link, Bestellung angelegt/ausgegeben/storniert, Blog (Mitschreiben, veröffentlicht/zurückgezogen).
+  Neu im SDK `principalUserIds`/`addedPrincipals`, Core `core.roles.userIds`.
+
+- **Kontaktformular → Posteingang (2026-10-25, `messages` v1.4.0)**: Website-Kontaktformulare (Start + `/kontakt`) legen Anfragen über den neuen,
+  per API-Key-Scope `messages.website.contact` abgesicherten Endpunkt ins Stamm-Postfach (Benachrichtigung wie bei Mails); Spam-Schutz Proof-of-Work +
+  Zeitfalle + Einmal-Aufgabe, dazu Honeypot/Rate-Limits; SMTP nur noch Rückfall. Details: `module-messages.md`, `website.md`.
+
+- **Probestunden-Formular (2026-10-25, `messages` v1.5.0)**: Website-Seite `/probestunde` (Kind, Alter, Kontakt, Telefon) → Posteingang der zum Alter
+  passenden bzw. gewählten Gruppe (Leitungen werden benachrichtigt), Rückfall Stamm-Postfach; Spam-Schutz wie beim Kontaktformular. Details: `module-messages.md`.
+
+- **Aktionen an Gruppen freigeben + Modul `tasks` (2026-10-25)**: `actions` v1.5.0 (Migr. 0022) teilt an Principals (Stamm, Gruppe, Rolle,
+  Mitglied, Benutzer*in) wie Termine/Galerien; neuer Dienst `accessibleActions`. Neues Modul **Aufgaben** (Kanban): Boards mit freien Spalten,
+  Aufgaben mit mehreren Zuständigen, Fälligkeit, Priorität und Unteraufgaben (Checkliste), Freigaben, Board je Aktion (Zugriff vererbt),
+  „Meine Aufgaben“ im Dashboard, Erinnerung an fällige Aufgaben. Details: `module-tasks.md`, `module-actions.md`.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Aufgaben (2026-10-25): eigenes Modul + optional je Aktion ein Board; Spalten frei je Board (eine Erledigt-Spalte); Unteraufgaben als Checkliste;
+  Aktionen-Freigabe wie bei Terminen (alle Principal-Typen).
+- Kontaktformular (2026-10-25): Anfragen in den Posteingang „Stamm“; Spam-Schutz Proof-of-Work + Zeitfalle/Token (keine Inhaltsbewertung, kein Captcha).
+- Stammeswebsite (2026-10-25, später am Tag): Redesign nach dem Konzept-Artifact „Stammeswebsite – Redesign-Konzept“ umgesetzt (Wolke/Tinte,
+  Pillen, Bebas Neue für große Titel, Fotos als Kampagnen-Kacheln); ersetzt „Design nur Feinschliff“. Details: `website.md`.
+- Benachrichtigungen (2026-10-25): Regler Aus · E-Mail · Beides · Push je Benachrichtigung („Aus“ nur bei abschaltbaren); alle an Konten gerichteten
+  Benachrichtigungen laufen über den Core; Kassen-Mails an Kontaktadressen bleiben E-Mail, Push zusätzlich an verknüpfte Konten; VAPID automatisch.
+- Website-Modul (2026-10-25): Banner je Eintrag als Leiste oder Startseiten-Kasten; Blog „ausführlich“ (Themen, RSS, Mitschreiben); getrennte Rechte
+  (Inhalte / schreiben / veröffentlichen); Design nur Feinschliff, Konzept bleibt.
+- Kalender-Abo (2026-10-24): Termine **und** Aktionen; mehrere Abos je Person mit Filter.
+- Spam-Schutz (2026-10-24): eindeutiger Spam in den Spam-Ordner (nie verwerfen); eine Sperr-/Vertrauensliste für alle Postfächer; jede*r mit
+  Zugriff darf „Spam“/„Kein Spam“ klicken und damit die Liste ändern.
+- Dateien (2026-10-23): Ordner-Icon und -Farbe gelten für alle mit Zugriff; Kontingent je Person wird im Benutzer-Dialog gesetzt (Standard 1 GB);
+  Icon-Bibliothek mit möglichst vielen Icons (alle Lucide-Icons).
+- Posteingang-Ordner (2026-10-23): Ordner je Postfach; alle mit Zugriff auf ein gemeinsames Postfach sehen und bearbeiten dieselben Ordner.
+- Posteingang (2026-10-22): IMAP-Abruf eines Catch-all-Postfachs (kein Webhook); Sichtbarkeit wie Absenderrechte; Unzuordenbares in einen Sammelordner
+  für die Verwaltung; nach dem Import auf dem Mailserver in den Ablageordner verschieben (nicht löschen).
 - Gruppenleitung (2026-10-21): Rechte **automatisch** über die Leitung einer Gruppe; Leitungen dürfen Dokumente verwalten und PDF-Listen erzeugen,
   **Gesundheitsfelder sehen/bearbeiten**, aber **keine Gruppenzuordnung** ändern und keine Mitglieder anlegen/löschen.
 - Programm: Pro-Kopf-Preis wird **aufgerundet** auf volle Euro. Puffer in **Prozent**. Team zahlt einen **Prozentsatz**,
@@ -241,8 +311,7 @@
    nur per **Brieflink** verknüpfen (`/p/members/verknuepfen/<token>`; eine Seite `/claim` gibt es nicht). Die **Anmeldebestätigung** (`registration`) geht an
    die Formular-Adresse und lässt sich nicht je Mitglied abschalten. Zeitstempel am Benutzer und ein laufender E-Mail-Wechsel (`pendingEmail`) sind in der UI
    nicht ermittelbar. **Prettier-Warnungen** in der Windows-Arbeitskopie sind CRLF-Zeilenenden, kein Formatfehler.
-7. **Aktionen auf Principal-Freigabe umstellen** (nach Abschluss der parallelen `actions`-Arbeiten): `action_shares(user_id)` → Muster
-   `<obj>_shares(principal_type, principal_id)` mit `principalKeysFor`/`principalMatchSql`, `ShareMenu` mit `type`. Termine: Seite (Liste/Monat) fertigstellen.
+7. ~~Aktionen auf Principal-Freigabe umstellen~~ (erledigt 2026-10-25, Migr. 0022).
 3. Aufräumen: Git-Initial-Commit, Schema-/Doku-Aktualisierung, ggf. `docs/` um das Modul `actions` ergänzen.
 
 ## Bekannte Eigenheiten

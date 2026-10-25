@@ -11,6 +11,8 @@ import { adoptDefaultRole } from '../permissions/default-roles';
 import { createRole, deleteRole, listRoles, updateRole } from '../permissions/roles';
 import { listPermissions } from '../permissions/service';
 import { getPublicSettings, MAX_SETTINGS_PER_WRITE, setSettings } from '../settings/service';
+import { navBadgeCounts } from '../navigation/badges';
+import { notificationEndpoints } from '../notifications/endpoints';
 import { healthCheck } from './health';
 import { buildOpenApiDocument } from './openapi';
 import { defineEndpoint, registerCoreEndpoints } from './registry';
@@ -59,6 +61,16 @@ export function registerCoreApi(): void {
 				userId: ctx.userId,
 				permissions: [...ctx.permissions].sort()
 			})
+		}),
+		defineEndpoint({
+			method: 'GET',
+			path: '/nav/badges',
+			summary: 'Zähler der Seitenleiste (z. B. ungelesene Mails) je Navigationspfad',
+			tags: ['System'],
+			permission: null,
+			authenticated: true,
+			rateLimit: { limit: 120, windowSec: 60 },
+			handler: ({ ctx }) => navBadgeCounts(ctx)
 		}),
 
 		// Benutzer
@@ -476,6 +488,7 @@ export function registerCoreApi(): void {
 			permission: 'core.audit.view',
 			query: paging.extend({ action: z.string().max(100).optional() }),
 			handler: ({ query }) => listAudit(query)
-		})
+		}),
+		...notificationEndpoints()
 	]);
 }

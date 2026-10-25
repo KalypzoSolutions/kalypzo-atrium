@@ -340,7 +340,7 @@ describe('GET /website/offices', () => {
 		expect(a.holders).toEqual([
 			{
 				id: hannaId,
-				name: 'Hanna Holder',
+				firstName: 'Hanna',
 				bio: 'Kassenwartin aus Leidenschaft',
 				since: '2024-09-01',
 				avatarPath: null
@@ -358,12 +358,14 @@ describe('GET /website/offices', () => {
 		expect(r.raw).not.toContain('roleIds');
 		expect(r.raw).not.toContain(ingoId);
 		expect(r.raw).not.toContain('Ingo');
+		// Nachnamen verlassen den Server nicht (nur Vornamen)
+		expect(r.raw).not.toContain('Holder');
 		for (const o of r.data) {
 			expect(Object.keys(o).sort()).toEqual(
 				['description', 'emails', 'holders', 'id', 'name', 'position'].sort()
 			);
 			for (const h of o.holders) {
-				expect(Object.keys(h).sort()).toEqual(['avatarPath', 'bio', 'id', 'name', 'since']);
+				expect(Object.keys(h).sort()).toEqual(['avatarPath', 'bio', 'firstName', 'id', 'since']);
 			}
 		}
 	});

@@ -381,3 +381,63 @@ export const aiUsage = pgTable(
 	},
 	(t) => [index('ai_usage_module_created_idx').on(t.moduleId, t.createdAt)]
 );
+
+// ---------------------------------------------------------------------------
+// Benachrichtigungen (core.notifications, Migration 0010)
+// ---------------------------------------------------------------------------
+
+/** Kanalwahl je Person und Benachrichtigungstyp – nur Abweichungen vom Standard des Typs */
+export const notificationPref = pgTable(
+	'notification_pref',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		typeKey: text('type_key').notNull(),
+		scope: text('scope').notNull().default(''),
+		channel: text('channel').notNull(),
+		delivery: text('delivery').notNull().default('immediate'),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [primaryKey({ name: 'notification_pref_pk', columns: [t.userId, t.typeKey, t.scope] })]
+);
+
+/** Web-Push-Abos (ein Eintrag je Gerät/Browser) */
+export const pushSubscription = pgTable(
+	'push_subscription',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		endpoint: text('endpoint').notNull().unique('push_subscription_endpoint_unique'),
+		p256dh: text('p256dh').notNull(),
+		auth: text('auth').notNull(),
+		label: text('label').notNull().default(''),
+		createdAt: createdAt(),
+		lastSuccessAt: timestamp('last_success_at', { withTimezone: true }),
+		failures: integer('failures').notNull().default(0)
+	},
+	(t) => [index('push_subscription_user_idx').on(t.userId)]
+);
+
+/** Warteschlange für die Tageszusammenfassung (Job `core.notifications-digest`) */
+export const notificationQueue = pgTable(
+	'notification_queue',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		typeKey: text('type_key').notNull(),
+		scope: text('scope').notNull().default(''),
+		channel: text('channel').notNull(),
+		title: text('title').notNull(),
+		body: text('body').notNull().default(''),
+		link: text('link'),
+		groupLabel: text('group_label'),
+		attempts: integer('attempts').notNull().default(0),
+		createdAt: createdAt()
+	},
+	(t) => [index('notification_queue_user_idx').on(t.userId, t.createdAt)]
+);

@@ -191,9 +191,10 @@ Beispiel: `actions` liest über `TreasuryService` die tatsächlich eingegangenen
 
 ## Hintergrundjobs (`ModuleDefinition.jobs`, `core/jobs`)
 
-`defineModule({ …, jobs: [{ id: 'reminders', summary: '…', schedule: 'hourly' | 'daily', run: async (ctx) => 'Statusmeldung' }] })`.
-Der Runner startet nach der Initialisierung in `hooks.server.ts` (nicht beim Build, nicht mit `JOBS_DISABLED=1`), prüft alle 5 Minuten
-und führt fällige Jobs **aktiver** Module mit Systemkontext aus (`hourly` ≥ 55 min seit dem letzten Start; `daily` einmal je Kalendertag
+`defineModule({ …, jobs: [{ id: 'reminders', summary: '…', schedule: 'hourly' | 'daily' | { everyMinutes: 1–60 }, run: async (ctx) => 'Statusmeldung' }] })`.
+Der Runner startet nach der Initialisierung in `hooks.server.ts` (nicht beim Build, nicht mit `JOBS_DISABLED=1`), prüft **jede Minute**
+und führt fällige Jobs **aktiver** Module mit Systemkontext aus (`{ everyMinutes: n }` frühestens n Minuten nach dem letzten Start, z. B.
+Postfach-Abruf in `messages`; `hourly` ≥ 55 min seit dem letzten Start; `daily` einmal je Kalendertag
 im Zeitfenster `JOBS_DAILY_WINDOW`, Standard `6-20` = 06:00 bis vor 20:00 Uhr Europe/Berlin). Nach einem **Fehlschlag** folgt ein neuer
 Versuch schon nach 15 min (`RETRY_MS`, bei `daily` nur im Fenster). Die Sperre ist ein atomares Upsert auf `job_run` – mehrere Instanzen
 laufen nicht doppelt, und es bleibt keine Transaktion offen (PGlite). Laufende Jobs schreiben jede Minute einen **Heartbeat** (während
@@ -234,6 +235,64 @@ Kopf mit Lilie, Vereinsname und Wappen, Inhalt, Signatur, Fußzeile mit Vereinsn
   `SMTP_TIMEOUTS`: Verbindung 10 s, Begrüßung 10 s, Funkstille 20 s, je Mail höchstens 25 s (danach `503 unavailable`, Pool wird verworfen).
   TLS-Regeln aus `smtpTransportOptions` (#15) bleiben. Keine Outbox: Aufrufer zählen Fehler bzw. wiederholen selbst (z. B. Jahresbeitrag `resend`).
   Tests: `setMailTransportForTests`, `setSmtpTimeoutsForTests`, `tests/integration/mail-transport.test.ts`.
+
+## core.notifications (E-Mail und Web Push)
+
+Benachrichtigungen an **Benutzerkonten** (nicht an freie Adressen). Jede Person wählt im Profil (Reiter **Benachrichtigungen**,
+`/profile?tab=notifications`) je Benachrichtigung einen Kanal: **Aus · E-Mail · Beides · Push**; bei Typen mit `digest` zusätzlich
+**Sofort / Täglich**. Code in `src/lib/server/core/notifications/`, gemeinsame Typen in `$lib/sdk/types/notifications.ts`.
+
+**Typen deklarieren** (`ModuleDefinition.notifications`, geprüft beim Registrieren):
+
+```ts
+notifications: {
+  types: [
+    { key: 'expense-submitted', label: 'Neue Auslagen', anyPermission: ['actions.action.create'] },  // Standard E-Mail
+    { key: 'account-linked', label: '…', mandatory: true },            // Aus nicht wählbar
+    { key: 'invoice', label: '…', pushOnly: true, defaultChannel: 'off' }, // Mail verschickt das Modul selbst
+    { key: 'inbox-new', label: '…', scoped: true, digest: true }          // je Bereich, „Täglich“ wählbar
+  ],
+  forUser: async (ctx) => [{ key: 'inbox-new', scope: 'personal:…', label: 'Neue Nachricht', group: 'Mein Postfach' }]
+}
+```
+
+- Schlüssel `[a-z][a-z0-9-]*`, im Core `<modul>.<key>`. `defaultChannel` (Standard `email`) muss erlaubt sein (`allowedChannels`).
+- Sichtbarkeit im Profil: ohne `scoped` nach `permission`/`anyPermission`; `scoped`-Typen nur über `forUser` (z. B. eigene Postfächer, eigene Ämter).
+
+**Senden** – immer **nach** der Modul-Transaktion, wirft nie:
+
+```ts
+const r = await core.notifications.send(ctx, MODULE_ID, [
+  { type: 'expense-submitted', userIds: [ownerId], title: 'Neue Auslagen für …', body: 'Klartext …',
+    pushBody: 'kurz für den Sperrbildschirm', link: '/modules/actions/…', group: 'Überschrift in Sammelmails' }
+]); // → { email, push, queued, skipped }
+```
+
+- Unbekannte/deaktivierte Konten, ungültige Einträge (unbekannter Typ, fremder Link, `scoped` ohne `scope`) werden übersprungen und geloggt.
+- Alle Einträge eines Aufrufs werden je Person zu **einer** Mail gebündelt („N neue Benachrichtigungen“, Überschriften aus `group`);
+  Push bis 3 einzeln, darüber eine Sammelnachricht. `tag` (optional) ersetzt gleichartige Pushs auf dem Gerät.
+- **Rückfall**: Push gewählt, aber Push systemweit aus, kein Gerät registriert oder Zustellung gescheitert → E-Mail (außer `pushOnly`).
+- `delivery = daily` → Tabelle `notification_queue`, Core-Job `core.notifications-digest` (täglich) schickt je Person eine Zusammenfassung;
+  14 Tage / 5 Fehlversuche wie zuvor bei den Ämtern.
+- Mails gehen mit `Auto-Submitted`/`X-EP-Intern` (Schleifenschutz im Posteingang) und Hinweis auf die Profil-Einstellung.
+- Alte Modul-Einstellungen übernehmen: `core.notifications.migratePreferences(MODULE_ID, rows)` (idempotent, vorhandene Wahl bleibt).
+
+**Empfänger aus Freigaben**: `principalUserIds(MODULE_ID, principals, { permission, exclude: [ctx.userId], everyone? })` (`$lib/sdk/server`)
+liefert die Konten hinter Freigaben (Person, Rolle, Gruppe, Mitglied; „ganzer Stamm“ nur mit `everyone: true`), gefiltert auf aktive Konten mit dem
+Leserecht des Moduls; `addedPrincipals(before, after)` ermittelt neu hinzugekommene Freigaben. Dafür neu: `core.roles.userIds(roleIds)` und
+`PrincipalProvider.userIdsForPrincipals` (`members`).
+
+**Web Push**: `web-push` (fest gepinnt) mit **VAPID-Schlüsseln**, die beim ersten Bedarf automatisch erzeugt und in den Einstellungen gespeichert
+werden (`core.push.vapidPublicKey`, `core.push.vapidPrivateKey` verschlüsselt). Schalter `core.push.enabled` und „Schlüssel neu erzeugen“ unter
+**Einstellungen → Benachrichtigungen** (`/admin/settings/notifications`; neue Schlüssel entfernen alle Geräte). Geräte in `push_subscription`
+(≤ 10 je Person, Upsert über den Endpoint); 404/410 entfernt ein Gerät sofort, andere Fehler nach 5 Versuchen. Endpunkte nur von bekannten
+Push-Diensten (`isAllowedPushEndpoint`, SSRF-Schutz). Client: `$lib/sdk/client/push.ts` (`pushSupport`, `enablePush`, `disablePush`), Service Worker
+`src/service-worker.ts` (zeigt Push, öffnet nur App-Pfade, kein Offline-Cache), Manifest `static/manifest.webmanifest`, Icons `static/icons/`.
+
+REST (nur Session, nicht per API-Key): `GET/PUT /api/v1/notifications/preferences`, `GET /notifications/push/key`,
+`GET/POST /notifications/push/subscriptions`, `POST /notifications/push/subscriptions/remove`, `DELETE /notifications/push/subscriptions/:id`,
+`POST /notifications/push/test`. Audit `core.notifications.preference-changed|device-added|device-removed|vapid-rotated` (ohne Endpoints/Schlüssel).
+Tests: `tests/integration/core-notifications.test.ts`, `tests/unit/notifications-compose.test.ts`, Push-Ersatz `setPushTransportForTests`.
 
 ## Konten per Code anlegen (`core.users.registerWithRole`)
 

@@ -29,6 +29,30 @@ export interface ProfileSection {
 	component: () => Promise<{ default: Component<ProfileSectionProps> }>;
 }
 
+/** Props der Komponente eines Abschnitts im Dialog „Benutzer bearbeiten“ (`/admin/users`) */
+export interface UserAdminSectionProps {
+	/** ID des bearbeiteten Kontos */
+	userId: string;
+	/** Name des bearbeiteten Kontos (für Texte) */
+	userName: string;
+}
+
+/**
+ * Abschnitt, den ein Modul im Dialog „Benutzer bearbeiten“ der Verwaltung beisteuert (nur aktive Module, nur mit
+ * Recht `permission`). Die Komponente lädt und speichert selbst per `apiFetch` (eigener Knopf, unabhängig vom
+ * Formular des Dialogs); die Durchsetzung der Rechte bleibt serverseitig.
+ */
+export interface UserAdminSection {
+	/** `[a-z][a-z0-9-]*`, eindeutig im Modul (global: `<moduleId>:<id>`) */
+	id: string;
+	title: string;
+	/** Sortierung aufsteigend (Standard 100) */
+	order?: number;
+	/** Nur sichtbar mit diesem Recht */
+	permission?: string;
+	component: () => Promise<{ default: Component<UserAdminSectionProps> }>;
+}
+
 /**
  * Vertrag für `src/lib/modules/<id>/ui.ts`: Zuordnung Unterpfad -> Seitenkomponente.
  *
@@ -51,6 +75,8 @@ export interface ModuleUi {
 	>;
 	/** Abschnitte auf der Profilseite (`/profile`) */
 	profileSections?: ProfileSection[];
+	/** Abschnitte im Dialog „Benutzer bearbeiten“ der Verwaltung (`/admin/users`) */
+	userAdminSections?: UserAdminSection[];
 	/** Kacheln auf dem Dashboard (`/dashboard`) */
 	dashboardWidgets?: DashboardWidget[];
 }
