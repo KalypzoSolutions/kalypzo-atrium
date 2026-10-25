@@ -8,29 +8,39 @@ paths: ["website/**", "scripts/seed-demo-website.mjs", "src/lib/modules/*/websit
 `https://github.com/CrayonGamerHD-Philipp/edelweisspiraten-website` (Ordner `web/`, Stand `ba0b441`), bei der **nur das Backend
 getauscht** ist: statt PocketBase holt sie Termine und Galerien **serverseitig** aus den Website-Endpunkten des Intern-Bereichs.
 (Die zwischenzeitlich neu gebaute Website mit Figuren/Motiven wurde verworfen; sie steht noch in der Git-Historie.)
-**Überarbeitung 2026-10-24 (Nutzerauftrag):** schlichtes Design nach dem Konzept-Artifact „Stammeswebsite – Grafisches Konzept“
-(weißer Grund, Indigo-Schriftzug, Hero mit Wappen bleibt; eine Textspalte, Gliederung über Überschriften/Linien statt Karten, Gruppenfarbe
-nur für Namen, keine Schatten/Verläufe/Emojis/Überzeilen – „soll nicht nach KI aussehen“) plus **Dunkelmodus**. Texte bleiben.
+**Redesign 2026-10-25 (Nutzerauftrag, Konzept-Artifact „Stammeswebsite – Redesign-Konzept“ inkl. Unterseiten):** löst das Design vom 24.10.
+(Indigo, Linien, eine Textspalte) ab. Inhalte, Daten und Routen bleiben.
 
 ## Gestaltung und Dunkelmodus
-- **Feinschliff 2026-10-25** (Skills design-taste-frontend, Web Interface Guidelines, Referenz `notion` aus awesome-design-md nur für Maße):
-  Typo-Skala als Tailwind-Theme in `app.css` – `text-display` (Seiten-h1, fluid 32–48 px, eng gesetzt), `text-section` (h2), `text-sub` (h3),
-  `text-lede` (Einleitungssatz unter dem h1), `text-small` (Nebeninfos 14 px; **nichts unter 13 px**), Fließtext `text-base` (16 px, Zeilenhöhe 1.6);
-  Fließtext-Farbe `text-body` fast volle Tinte (≥ 7:1), `.group-name` stärker abgedunkelt (≥ 4,5:1). Rahmen `site-container` (64rem, Ränder 16/24 px)
-  für Navigation, Banner, Inhalt und Fuß; Abschnittsabstand `section-gap`; Formularfelder `.field`; globaler `:focus-visible`-Rahmen, Skip-Link
-  „Zum Inhalt springen“ (`#inhalt`), `prefers-reduced-motion`, `theme-color` hell/dunkel, `text-wrap: balance` für Überschriften. Navigation: aktiver
-  Punkt unterstrichen (Brand-Farbe) statt fett. Bewusst **nicht** übernommen (Konzept des Nutzers): Linien als Gliederung bleiben, keine Pflicht-Fotos/
-  Videos, keine Bewegungs-Ebene.
-- Farben als Tailwind-Theme in `src/app.css`: `text-ink|body|muted`, `bg-page|surface|subtle|notice`, `border-line|line-strong|notice-line`,
-  `text-brand`, `text-link` (+ Klasse `.text-link` für unterstrichene Links), Gruppenname `.group-name` mit `style="--g: <farbe>"`
-  (hell abgedunkelt, dunkel aufgehellt). Neue Bausteine nur mit diesen Namen.
-- Dunkelmodus = `html.dark`: Cookie `theme` (`light|dark`, 1 Jahr, nur bei ausdrücklicher Wahl über `ThemeToggle.svelte` in der Navigation)
-  → `hooks.server.ts` setzt die Klasse (`%ep.theme%` in `app.html`); ohne Cookie setzt ein Inline-Skript mit `%sveltekit.nonce%` `dark` nach
-  `prefers-color-scheme` vor dem ersten Zeichnen. Datenschutz nennt Cookie und `localStorage` (Abschnitt Cookies, Stand 24.10.2026).
-- Die Altseiten (Termine, Galerie, CPD, Kontakt, Datenschutz …) sind seit 2026-10-25 auf die Tokens umgestellt. Die umgedrehte Grauskala in `html.dark`
-  plus Einzelregeln (`.bg-white`, `text-blue-*` …) bleibt als Rückfall für übersehene Klassen. Folge: `bg-white` wird im Dunkeln dunkel – für echtes Weiß `bg-[#fff]`.
-- Bausteine: `EventList.svelte` (Datum links, Titel/Uhrzeit/Ort rechts; `null` = Ladefehler-Hinweis), `EmailButtons` (ohne Farb-Prop),
-  `Map` (Prop `height`). Instagram-Kasten entfällt (Link in der Fußzeile), `AppointmentPreview` und `/api/termine` entfernt.
+- **Stil**: weißer Grund, „Wolke“ `#f5f5f5` (`bg-subtle`, Hover `bg-subtle-2`) für Flächen/Karten/Felder, Tinte `#111` (`text-ink`, Hauptknopf, Fuß).
+  Farbe kommt nur aus Fotos, Wappen und kleinen Gruppen-Punkten (`.dot` mit `--g`). Knöpfe immer als Pille, Bilder/Flächen eckig, **keine Schatten,
+  keine Rahmen**. Breite `site-container` = 90rem mit Rand `clamp(16px, 3.3vw, 48px)`, Abschnittsabstand `section-gap`, Raster meist 12 Spalten,
+  Umbruch auf eine Spalte bei `max-width: 50rem`.
+- **Schrift** selbst gehostet (`@fontsource/bebas-neue` 5.3.0, `@fontsource-variable/inter` 5.3.0, Import in `app.css`) – keine Anfrage an Google
+  (Datenschutz). Bebas Neue (`.display`) nur für große Bildüberschriften/Seitentitel, sonst Inter 15–32 px (`.h-xl` Abschnitt, `.cap` Nebeninfo).
+- **Bausteine in `app.css`** (global): `.pill` (+ `soft|canvas|white|glass|dim|sm`), `.round`, `.ulink`/`.text-link`, `.ic` (Symbolkreis), `.rowhead`,
+  `.crumbs`, `.phead` (Titel links, Einleitung rechts), `.tag`, `.chips`/`.chip` (`aria-pressed`/`aria-current` = aktiv, `.chips.scroll` mobil
+  waagerecht scrollbar), `.seg` (Umschalter), `.facts`/`.fact`, `.tlist`/`.tl`/`.dbox` (Terminzeile mit Datumsblock), `.tile`, `.grid3|grid4`,
+  `.empty`, `.abox`, `.field`/`.label`/`.field-error`, `.camp` (Foto mit Schrift), `.mapbox`, `.richtext`, `.legal-doc`/`.legal-title`.
+  Symbole: `Icon.svelte` (Lucide-Pfade als feste Zeichenketten, Klasse `i`, viele Namen). `Chip.svelte`/`StammHeader.svelte` entfernt.
+- **Layout**: Hinweisleiste (`SiteBanner`, Wolke bzw. Tinte bei „wichtig“), Navigation (Wappen + Name | Gruppen▾, Termine, Galerie, Blog, Über uns▾
+  (Team, CPD, FAQ, Kontakt) | Dunkel-Umschalter, Kontakt, „Probestunde“; mobil Menü-Fläche), Fuß mit „Komm zur Probestunde“, Kacheln
+  (Marke/Social, Gruppen mit Zeit, Stamm-Links, Anfahrt) und Rechtliches.
+- **Startseite**: Hero mit `pfadfinder.avif` (Kornfeld), `home`-Banner als Kästen, Kurzinfo + Eckdaten (Alter, Tage aus den Gruppen, Ort, 47 €),
+  Gruppen-Leiste (Pfeile ab 4 Gruppen), zweite Foto-Kachel „Fahrten und Lager“ mit dem Titelbild (`web`) der neuesten Galerie (ohne Galerie entfällt sie),
+  Nächste Termine, „Zuletzt unterwegs“ (Galerien + Beiträge gemischt), Über uns, FAQ (`featured`), Kontaktformular → Action von `/kontakt`.
+- Unterseiten: Seitenkopf `.phead` mit Brotkrümeln; Gruppe (Bild, Eckdaten, Text, Termine, Bilder der Gruppe, Kontakt + Karte, weitere Gruppen – Loader
+  liefert jetzt `events` **und** `galleries`; vorher fehlten die Termine auf der Gruppenseite), Termine (Suche, Chips, Kalender/Kacheln/Liste, Seitenspalte
+  „Regelmäßige Termine“; Kalenderbalken nur mit Titel), Termin (Infokasten, Bilder, weitere Termine – Loader `more`), Galerie (Aufmacher + Raster),
+  Album (Spalten, Lightbox, weitere Alben – Loader `more`), Blog (Aufmacher auf Seite 1 + Raster), Beitrag (Seitenspalte „Dazu passend“), Team, FAQ
+  (Suche ab 5 Fragen, „Auf einen Blick“), Kontakt (Formular, Ansprechpartner*innen, Karte), CPD (Aufbau Bund → Gruppen, Epochen-Akkordeon),
+  Impressum/Datenschutz (Texte unverändert), Fehlerseite.
+- Gruppenzeit jetzt „16:30–18:00 Uhr“ (`toGroup`); Startzeit über `time.split(/[–\s]/)[0]`.
+- Dunkelmodus = `html.dark` (Tokens in `app.css` umgeschaltet: Grund `#0e0e0f`, Wolke `#1b1b1d`, Tinte `#f3f3f3`). Cookie `theme` (`light|dark`, 1 Jahr,
+  nur bei ausdrücklicher Wahl über `ThemeToggle.svelte`) → `hooks.server.ts` setzt die Klasse (`%ep.theme%`); ohne Cookie Inline-Skript nach
+  `prefers-color-scheme`. Umgedrehte Grauskala bleibt als Rückfall für übersehene `gray`-Klassen.
+- Bausteine: `EventList.svelte` (`.tl`-Zeilen; `null` = Ladefehler-Hinweis), `EmailButtons` (Prop `onCloud`), `Map` (Prop `height` in px, Zwei-Klick),
+  `FaqList` (Prop `openFirst`), `MonthCalendar` (Wolke-Zellen, Agenda unter 40rem).
 
 ## Grundregeln
 - Eigenes Projekt (`package.json` „web“, SvelteKit 2 / Svelte 5 im **Legacy-Modus** mit `export let`, Tailwind 4, `adapter-node`, Port 3001,

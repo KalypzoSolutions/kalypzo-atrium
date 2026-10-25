@@ -249,6 +249,8 @@
   `treasury` (zusätzlich Push an verknüpfte Konten). Offen: echte Geräte (Android/iPhone) nur nach Deploy mit HTTPS prüfbar; kein Offline-Modus.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Stammeswebsite (2026-10-25, später am Tag): Redesign nach dem Konzept-Artifact „Stammeswebsite – Redesign-Konzept“ umgesetzt (Wolke/Tinte,
+  Pillen, Bebas Neue für große Titel, Fotos als Kampagnen-Kacheln); ersetzt „Design nur Feinschliff“. Details: `website.md`.
 - Benachrichtigungen (2026-10-25): Regler Aus · E-Mail · Beides · Push je Benachrichtigung („Aus“ nur bei abschaltbaren); alle an Konten gerichteten
   Benachrichtigungen laufen über den Core; Kassen-Mails an Kontaktadressen bleiben E-Mail, Push zusätzlich an verknüpfte Konten; VAPID automatisch.
 - Website-Modul (2026-10-25): Banner je Eintrag als Leiste oder Startseiten-Kasten; Blog „ausführlich“ (Themen, RSS, Mitschreiben); getrennte Rechte
