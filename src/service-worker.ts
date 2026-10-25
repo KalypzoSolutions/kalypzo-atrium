@@ -76,6 +76,14 @@ async function rememberPending(url: string): Promise<void> {
 	}
 }
 
+async function clearPending(): Promise<void> {
+	try {
+		await (await caches.open(PENDING_CACHE)).delete(PENDING_KEY);
+	} catch {
+		// nichts zu tun
+	}
+}
+
 async function takePending(): Promise<string | null> {
 	try {
 		const cache = await caches.open(PENDING_CACHE);
@@ -127,20 +135,22 @@ sw.addEventListener('notificationclick', (event) => {
 	const target = safeUrl((event.notification.data as { url?: string } | null)?.url);
 	event.waitUntil(
 		(async () => {
+			// Ziel immer zuerst merken: iOS hält eine Hintergrund-App angehalten, Nachrichten kommen dann erst
+			// nach dem Aufwachen (oder gar nicht) an – die App holt das Ziel beim Sichtbarwerden selbst ab.
+			await rememberPending(target);
 			const windows = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true });
 			const client = pickClient(windows);
 			if (client) {
 				// Fokus zuerst: nur innerhalb des Klick-Ereignisses erlaubt
 				const focused = await client.focus().catch(() => client);
-				if (await askClientToNavigate(focused, target)) return;
+				if (await askClientToNavigate(focused, target)) return void (await clearPending());
 				try {
-					if (await focused.navigate(target)) return;
+					if (await focused.navigate(target)) return void (await clearPending());
 				} catch {
 					// nicht kontrolliertes Fenster oder `navigate` nicht unterstützt → neues Fenster
 				}
 			}
-			await rememberPending(target);
-			await sw.clients.openWindow(target);
+			await sw.clients.openWindow(target).catch(() => null);
 		})()
 	);
 });
