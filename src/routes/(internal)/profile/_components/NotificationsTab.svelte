@@ -28,6 +28,8 @@
 		pushSupport,
 		type PushSupport
 	} from '$lib/sdk/client/push';
+	import { serviceWorkerVersion } from '$lib/sdk/client/sw-navigation';
+	import { version as appVersion } from '$app/environment';
 	import {
 		NOTIFICATION_CHANNELS,
 		NOTIFICATION_CHANNEL_LABELS,
@@ -45,6 +47,8 @@
 	let thisEndpoint = $state<string | null>(null);
 	let busy = $state(false);
 	let android = $state(false);
+	/** Version des Service Workers auf diesem Gerät (`null` = keiner aktiv) */
+	let swVersion = $state<string | null>(null);
 
 	async function load() {
 		loadError = false;
@@ -65,6 +69,9 @@
 		android = /Android/.test(navigator.userAgent) && !isStandalone();
 		void refreshDevice();
 		void load();
+		void serviceWorkerVersion()
+			.then((v) => (swVersion = v))
+			.catch(() => undefined);
 	});
 
 	const thisActive = $derived(thisEndpoint !== null && (data?.devices.length ?? 0) > 0);
@@ -303,6 +310,13 @@
 						{/each}
 					</ul>
 				</div>
+			{/if}
+			{#if swVersion}
+				<p class="text-muted-foreground text-xs">
+					App-Version auf diesem Gerät: {swVersion}{swVersion !== appVersion
+						? ' (veraltet – App einmal schließen und neu öffnen)'
+						: ''}
+				</p>
 			{/if}
 		</CardContent>
 	</Card>

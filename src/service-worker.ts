@@ -9,6 +9,8 @@
  * Bewusst **kein** Offline-Cache: Seiten und Daten kommen immer frisch vom Server, damit nach einem Update
  * keine veralteten Stände angezeigt werden.
  */
+import { version } from '$service-worker';
+
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
 interface PushData {
@@ -151,12 +153,52 @@ sw.addEventListener('notificationclick', (event) => {
 				}
 			}
 			await sw.clients.openWindow(target).catch(() => null);
+			// iOS: `matchAll` findet die laufende App oft nicht, und `openWindow` holt sie nur nach vorne, ohne zu
+			// navigieren. Darum das Ziel zusätzlich an alle App-Fenster senden – mehrfach, weil die App erst nach
+			// dem Aufwachen zuhört. Doppeltes Öffnen verhindert die App selbst.
+			await broadcastNavigate(target);
 		})()
 	);
 });
 
+const NAV_CHANNEL = 'ep-navigation';
+const BROADCAST_DELAYS_MS = [0, 500, 1500, 3000];
+
+async function broadcastNavigate(url: string): Promise<void> {
+	let channel: BroadcastChannel;
+	try {
+		channel = new BroadcastChannel(NAV_CHANNEL);
+	} catch {
+		return;
+	}
+	let waited = 0;
+	for (const delay of BROADCAST_DELAYS_MS) {
+		await new Promise((r) => setTimeout(r, delay - waited));
+		waited = delay;
+		if (!(await hasPending())) break; // App hat das Ziel schon geöffnet
+		channel.postMessage({ type: 'ep:navigate', url });
+	}
+	channel.close();
+}
+
+async function hasPending(): Promise<boolean> {
+	try {
+		return Boolean(await (await caches.open(PENDING_CACHE)).match(PENDING_KEY));
+	} catch {
+		return true;
+	}
+}
+
 sw.addEventListener('message', (event) => {
 	const data = event.data as { type?: string } | null;
+	if (data?.type === 'ep:sw-version') {
+		event.ports[0]?.postMessage({ version });
+		return;
+	}
+	if (data?.type === 'ep:pending-clear') {
+		event.waitUntil(clearPending());
+		return;
+	}
 	if (data?.type !== 'ep:pending-navigation') return;
 	const port = event.ports[0];
 	if (!port) return;
