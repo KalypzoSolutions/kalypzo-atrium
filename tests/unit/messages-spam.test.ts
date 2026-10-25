@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+	FORM_POINTS_MAX,
 	SPAM_THRESHOLD,
 	baseDomain,
 	extractLinks,
@@ -121,6 +122,7 @@ describe('scoreSpam', () => {
 		expect(codes(v)).toEqual(
 			expect.arrayContaining(['subject-pattern', 'subject-caps', 'subject-marks'])
 		);
+		// Muster 2 + Form (Großbuchstaben 1 + Satzzeichen 1, gedeckelt auf 2)
 		expect(v.score).toBe(4);
 		expect(v.spam).toBe(false);
 		// „Gewinn“ mit Umlaut-Faltung, Konto gesperrt
@@ -171,6 +173,68 @@ describe('scoreSpam', () => {
 		expect(scoreSpam(forged, ctx({ rule: { kind: 'allow', matchType: 'address' } })).spam).toBe(
 			true
 		);
+	});
+});
+
+describe('scoreSpam – keine Fehlalarme', () => {
+	it('eigene Mail (Message-ID aus unserem Versand): nie Spam, auch bei fehlgeschlagener Prüfung', () => {
+		const own = mail({
+			from: { address: 'anna.mueller@pfadfinder.test', name: 'Anna' },
+			replyTo: 'anna@gmail.example',
+			authResult: 'fail'
+		});
+		expect(scoreSpam(own, ctx()).spam).toBe(true);
+		expect(scoreSpam(own, ctx({ ownSent: true }))).toMatchObject({ spam: false, source: null });
+	});
+
+	it('Formmerkmale zusammen höchstens FORM_POINTS_MAX – nie allein Spam', () => {
+		const links = Array.from({ length: 25 }, (_, i) => `<a href="https://x.example/${i}">L</a>`);
+		const v = scoreSpam(
+			mail({
+				subject: 'WICHTIGE INFO ZUM SOMMERLAGER???',
+				messageId: null,
+				date: new Date('2026-06-05T00:00:00Z'),
+				html: links.join(' '),
+				text: 'kurz'
+			}),
+			ctx()
+		);
+		expect(codes(v)).toEqual(
+			expect.arrayContaining(['subject-caps', 'subject-marks', 'no-message-id', 'many-links'])
+		);
+		expect(v.score).toBe(FORM_POINTS_MAX);
+		expect(v.spam).toBe(false);
+	});
+
+	it('Reply-To auf eine bekannte/eigene Adresse zählt nicht', () => {
+		const m = mail({ replyTo: 'eltern@gmail.example' });
+		expect(codes(scoreSpam(m, ctx()))).toContain('reply-to');
+		expect(codes(scoreSpam(m, ctx({ knownReplyTo: true })))).not.toContain('reply-to');
+	});
+
+	it('bestätigter Newsletter mit Klickzähler: kein Link-Fehlalarm, Prüfung zieht Punkte ab', () => {
+		const news = mail({
+			from: { address: 'news@verband.example', name: 'Verband' },
+			authResult: 'pass',
+			subject: 'Newsletter Juni',
+			html: '<a href="https://click.mailer.example/abc">www.verband.example</a> <a href="https://bit.ly/x">Fotos</a>'
+		});
+		const v = scoreSpam(news, ctx());
+		expect(codes(v)).not.toContain('link-mismatch');
+		expect(codes(v)).toContain('auth-pass');
+		expect(v.score).toBe(0);
+		// Gleiche Mail ohne Bestätigung, angezeigte fremde Bank-Domain → weiterhin auffällig
+		const phish = mail({
+			html: '<a href="https://click.mailer.example/abc">www.sparkasse.de</a>',
+			authResult: 'pass'
+		});
+		expect(codes(scoreSpam(phish, ctx()))).toContain('link-mismatch');
+	});
+
+	it('Bestätigung hebt die Server-Markierung nicht auf', () => {
+		const v = scoreSpam(mail({ spam: true, authResult: 'pass' }), ctx());
+		expect(v.spam).toBe(true);
+		expect(codes(v)).not.toContain('auth-pass');
 	});
 });
 

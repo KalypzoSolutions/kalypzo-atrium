@@ -61,6 +61,7 @@ interface EmlInput {
 	text?: string;
 	html?: string;
 	headers?: Record<string, string>;
+	messageId?: string;
 	attachment?: { name: string; type: string; content: Buffer };
 }
 let emlCounter = 0;
@@ -70,7 +71,7 @@ function eml(o: EmlInput): string {
 		`To: ${o.to ?? 'anna.mueller@pfadfinder.test'}`,
 		`Subject: ${o.subject ?? 'Frage zur Fahrt'}`,
 		`Date: ${new Date(Date.now() - 60_000).toUTCString()}`,
-		`Message-ID: <s${++emlCounter}.${Date.now()}@extern.example>`,
+		`Message-ID: ${o.messageId ?? `<s${++emlCounter}.${Date.now()}@extern.example>`}`,
 		...Object.entries(o.headers ?? {}).map(([k, v]) => `${k}: ${v}`),
 		'MIME-Version: 1.0'
 	];
@@ -288,6 +289,45 @@ describe('Bewertung beim Abruf', () => {
 		const forged = await find('Gefälscht', 'spam');
 		expect(forged).toBeDefined();
 		expect((await detail(forged!.id)).spamReasons[0]?.code).toBe('auth-fail');
+	});
+
+	it('eigene Mail und Antworten auf eigene Mails: kein Spam, auch wenn die Prüfung fehlschlägt bzw. der Server markiert', async () => {
+		// Eine aus der App versendete Nachricht (Message-ID je Empfänger wie beim Versand)
+		const msgId = crypto.randomUUID();
+		await moduleDb('messages').transaction(async (tx) => {
+			await tx.execute(
+				sql`INSERT INTO messages (id, subject, body_html, body_text, sender_address, status)
+					VALUES (${msgId}, 'Elternbrief', '<p>x</p>', 'x', 'anna.mueller@pfadfinder.test', 'done')`
+			);
+			await tx.execute(
+				sql`INSERT INTO message_recipients (id, message_id, address, status, message_id_header)
+					VALUES (${crypto.randomUUID()}, ${msgId}, 'stamm@pfadfinder.test', 'sent', '<own.1@pfadfinder.test>')`
+			);
+		});
+		// Kopie kommt über das Catch-all zurück, die Absenderprüfung schlägt fehl (z. B. fehlendes SPF)
+		deliver(
+			eml({
+				from: 'Anna Müller <anna.mueller@pfadfinder.test>',
+				to: 'stamm@pfadfinder.test',
+				subject: 'Eigene Kopie',
+				messageId: '<own.1@pfadfinder.test>',
+				headers: {
+					'Reply-To': 'anna@gmail.example',
+					'Authentication-Results': 'mx.pfadfinder.test; dmarc=fail header.from=pfadfinder.test'
+				}
+			})
+		);
+		// Unbekannte Person antwortet auf unsere Mail; der Mailserver hält sie für Spam
+		deliver(
+			eml({
+				from: 'Opa Muster <opa@unbekannt.example>',
+				subject: 'Re: Elternbrief',
+				headers: { 'In-Reply-To': '<own.1@pfadfinder.test>', 'X-Spam-Flag': 'YES' }
+			})
+		);
+		await poll();
+		expect((await find('Eigene Kopie', 'all', 'mia', 'stamm'))?.spam).toBe(false);
+		expect((await find('Re: Elternbrief'))?.spam).toBe(false);
 	});
 
 	it('Massenversand: ab der 11. Mail einer Stunde zusammen mit weiterem Signal Spam', async () => {

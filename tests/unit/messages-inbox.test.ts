@@ -157,10 +157,25 @@ describe('Parser', () => {
 		expect(cleanAddress('kein@')).toBeNull();
 		expect(messageIds('<a@b> <a@b> x@y')).toEqual(['<a@b>']);
 		expect(messageIds('ohne-klammern@host')).toEqual(['<ohne-klammern@host>']);
-		expect(authResultOf(['spf=softfail'])).toBe('fail');
 		expect(authResultOf(['dkim=pass; spf=fail'])).toBe('pass');
 		expect(authResultOf(['dmarc=pass'])).toBe('pass');
 		expect(authResultOf([])).toBe('none');
+	});
+
+	it('authResultOf: nur eindeutige Fehler, nur der oberste Server', () => {
+		// Weiche bzw. unklare Ergebnisse und DKIM-Fehler allein sind keine Fälschung
+		expect(authResultOf(['mx.a; spf=softfail'])).toBe('none');
+		expect(authResultOf(['mx.a; dkim=fail; spf=neutral'])).toBe('none');
+		expect(authResultOf(['mx.a; dmarc=temperror'])).toBe('none');
+		expect(authResultOf(['mx.a; spf=fail smtp.mailfrom=x.example'])).toBe('fail');
+		expect(authResultOf(['mx.a; dmarc=fail header.from=x.example'])).toBe('fail');
+		// Sauber weitergeleitet (ARC bestätigt)
+		expect(authResultOf(['mx.a; arc=pass; dmarc=fail header.from=x.example'])).toBe('none');
+		// Fehler einer Zwischenstation (weiter unten) zählt nicht
+		expect(authResultOf(['mx.a; dkim=pass', 'relay.b; dmarc=fail'])).toBe('pass');
+		expect(authResultOf(['mx.a; spf=none', 'relay.b; spf=fail'])).toBe('none');
+		// Mehrere Zeilen desselben Servers werden zusammen gelesen
+		expect(authResultOf(['mx.a; spf=fail', 'mx.a; dkim=pass'])).toBe('pass');
 	});
 });
 
