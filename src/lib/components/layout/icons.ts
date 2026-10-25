@@ -14,6 +14,7 @@ import HardDrive from '@lucide/svelte/icons/hard-drive';
 import House from '@lucide/svelte/icons/house';
 import Images from '@lucide/svelte/icons/images';
 import KeyRound from '@lucide/svelte/icons/key-round';
+import SquareKanban from '@lucide/svelte/icons/square-kanban';
 import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 import LayoutGrid from '@lucide/svelte/icons/layout-grid';
 import Mail from '@lucide/svelte/icons/mail';
@@ -51,6 +52,7 @@ const ICONS: Record<string, Icon> = {
 	home: House,
 	house: House,
 	images: Images,
+	kanban: SquareKanban,
 	'key-round': KeyRound,
 	'layout-dashboard': LayoutDashboard,
 	'layout-grid': LayoutGrid,

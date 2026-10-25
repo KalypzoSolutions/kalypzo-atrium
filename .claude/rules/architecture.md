@@ -167,7 +167,7 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   alias)`, `accessForMany`, `loadShares`, `replaceShares`. `events`/`galleries` (`readIf` = öffentlich) haben in `access.ts` nur noch Konfiguration; `files`
   (Ordnervererbung) nutzt die Bausteine `shareLevelOn`, `loadObjectShares`, `replaceObjectShares` mit `NODE_SHARES`. Neue Module (z. B. `actions`-Umstellung)
   bauen darauf auf. Test `tests/integration/share-access.test.ts` (Zugriffsmatrix mit Testtabelle).
-- Nutzer: `events` (siehe `module-events.md`), `galleries`, `files`. `actions` nutzt noch die Benutzer-Freigabe (`action_shares.user_id`) – Umstellung offen.
+- Nutzer: `events` (siehe `module-events.md`), `galleries`, `files`, `website`, `actions` (seit 2026-10-25, Migr. 0022) und `tasks` (Boards, zusätzlich Vererbung über die Aktion).
 
 ## Rollen aus Modulen (2026-10-19)
 - Core-Tabelle `user_role_grant(user_id, role_id, module_id)` (Migration `drizzle/0006_user_role_grant.sql`, FK auf `user`/`role` mit CASCADE): Rollen, die ein

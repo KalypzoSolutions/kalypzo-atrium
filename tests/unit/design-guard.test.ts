@@ -34,6 +34,7 @@ const MIGRATED_MODULES = [
 	'members',
 	'orders',
 	'offices',
+	'tasks',
 	'treasury',
 	'website'
 ];

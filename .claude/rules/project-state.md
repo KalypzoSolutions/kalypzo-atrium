@@ -258,7 +258,14 @@
 - **Probestunden-Formular (2026-10-25, `messages` v1.5.0)**: Website-Seite `/probestunde` (Kind, Alter, Kontakt, Telefon) → Posteingang der zum Alter
   passenden bzw. gewählten Gruppe (Leitungen werden benachrichtigt), Rückfall Stamm-Postfach; Spam-Schutz wie beim Kontaktformular. Details: `module-messages.md`.
 
+- **Aktionen an Gruppen freigeben + Modul `tasks` (2026-10-25)**: `actions` v1.5.0 (Migr. 0022) teilt an Principals (Stamm, Gruppe, Rolle,
+  Mitglied, Benutzer*in) wie Termine/Galerien; neuer Dienst `accessibleActions`. Neues Modul **Aufgaben** (Kanban): Boards mit freien Spalten,
+  Aufgaben mit mehreren Zuständigen, Fälligkeit, Priorität und Unteraufgaben (Checkliste), Freigaben, Board je Aktion (Zugriff vererbt),
+  „Meine Aufgaben“ im Dashboard, Erinnerung an fällige Aufgaben. Details: `module-tasks.md`, `module-actions.md`.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Aufgaben (2026-10-25): eigenes Modul + optional je Aktion ein Board; Spalten frei je Board (eine Erledigt-Spalte); Unteraufgaben als Checkliste;
+  Aktionen-Freigabe wie bei Terminen (alle Principal-Typen).
 - Kontaktformular (2026-10-25): Anfragen in den Posteingang „Stamm“; Spam-Schutz Proof-of-Work + Zeitfalle/Token (keine Inhaltsbewertung, kein Captcha).
 - Stammeswebsite (2026-10-25, später am Tag): Redesign nach dem Konzept-Artifact „Stammeswebsite – Redesign-Konzept“ umgesetzt (Wolke/Tinte,
   Pillen, Bebas Neue für große Titel, Fotos als Kampagnen-Kacheln); ersetzt „Design nur Feinschliff“. Details: `website.md`.
@@ -304,8 +311,7 @@
    nur per **Brieflink** verknüpfen (`/p/members/verknuepfen/<token>`; eine Seite `/claim` gibt es nicht). Die **Anmeldebestätigung** (`registration`) geht an
    die Formular-Adresse und lässt sich nicht je Mitglied abschalten. Zeitstempel am Benutzer und ein laufender E-Mail-Wechsel (`pendingEmail`) sind in der UI
    nicht ermittelbar. **Prettier-Warnungen** in der Windows-Arbeitskopie sind CRLF-Zeilenenden, kein Formatfehler.
-7. **Aktionen auf Principal-Freigabe umstellen** (nach Abschluss der parallelen `actions`-Arbeiten): `action_shares(user_id)` → Muster
-   `<obj>_shares(principal_type, principal_id)` mit `principalKeysFor`/`principalMatchSql`, `ShareMenu` mit `type`. Termine: Seite (Liste/Monat) fertigstellen.
+7. ~~Aktionen auf Principal-Freigabe umstellen~~ (erledigt 2026-10-25, Migr. 0022).
 3. Aufräumen: Git-Initial-Commit, Schema-/Doku-Aktualisierung, ggf. `docs/` um das Modul `actions` ergänzen.
 
 ## Bekannte Eigenheiten

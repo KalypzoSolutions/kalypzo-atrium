@@ -29,6 +29,7 @@ bei Widerspruch gewinnt der Code, danach `docs/`.
 | `rules/module-offices.md` | Modul Ämter: Reihenfolge, E-Mails, Inhaber*innen, Rollen aus Ämtern (`user_role_grant`), Bio, Website-API |
 | `rules/module-orders.md` | Modul Bestellungen: Artikel/Größen/Bilder, Bestellen mit Rechnung über die Kasse, Ausgabe, Lager, Einkauf mit Teillieferung |
 | `rules/module-files.md` | Modul Dateien: eine Ansicht (eigene + Freigegebenes), Upload/Drag & Drop, Rechtsklick, Vorschau, Freigabe an Principals/Stamm, öffentliche Ansicht-/Upload-Links, Papierkorb, Kontingent, Sicherheitsregeln |
+| `rules/module-tasks.md` | Modul Aufgaben: Kanban-Boards, Spalten, Aufgaben mit Zuständigen/Fälligkeit/Priorität, Unteraufgaben, Freigaben, Board je Aktion |
 | `rules/module-website.md` | Modul Website: Banner/Hinweise, FAQ, Blog (Bilder im Text, Mitschreiben, geplantes Veröffentlichen), Website-API `website.content.read` |
 | `rules/website.md` | Stammeswebsite `website/` = alte Website mit neuem Backend (`WEBSITE_API_KEY`): Anbindung, Routen, Demo |
 | `rules/project-state.md` | Stand, getroffene Entscheidungen, offene Punkte |

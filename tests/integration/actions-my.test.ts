@@ -236,9 +236,9 @@ beforeAll(async () => {
 	});
 	await mkAction({ key: 'heute', name: 'Endet heute', owner: 'leiter', startsOn: '2026-06-01' });
 	await exec(
-		sql`INSERT INTO action_shares (action_id, user_id, level) VALUES
-			(${actionIds.geteiltEdit!}, ${userIds.leiter!}, 'edit'),
-			(${actionIds.geteiltRead!}, ${userIds.leiter!}, 'read')`
+		sql`INSERT INTO action_shares (action_id, principal_type, principal_id, level) VALUES
+			(${actionIds.geteiltEdit!}, 'user', ${userIds.leiter!}, 'edit'),
+			(${actionIds.geteiltRead!}, 'user', ${userIds.leiter!}, 'read')`
 	);
 	await exec(
 		sql`INSERT INTO action_accounting (action_id, closed_at, closed_by) VALUES (${actionIds.abgeschlossen!}, now(), ${userIds.leiter!})`
