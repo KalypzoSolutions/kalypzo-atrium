@@ -242,7 +242,15 @@
   Website-Feinschliff: Typo-Skala (`text-display|section|sub|lede|small`), `site-container`, Fokus/Skip-Link/Reduced-Motion, Altseiten auf Tokens.
   Details: `module-website.md`, `website.md`.
 
+- **Benachrichtigungen im Core + Web Push / PWA (2026-10-25, Core-Migr. 0010)**: zentraler Dienst `core.notifications` für alle Module; je Person und
+  Benachrichtigung Regler Aus · E-Mail · Beides · Push (+ Sofort/Täglich) im Profil-Reiter „Benachrichtigungen“; App installierbar (Manifest, Service
+  Worker, Icons aus dem Wappen), Push auf Android und iOS ≥ 16.4 (Home-Bildschirm); VAPID automatisch; Admin-Reiter Einstellungen → Benachrichtigungen.
+  Umgestellt: `offices` (Amts-Hinweise inkl. Tageszusammenfassung), `messages` (Posteingang), `actions` (Kosten-Link), `members` (Konto verknüpft),
+  `treasury` (zusätzlich Push an verknüpfte Konten). Offen: echte Geräte (Android/iPhone) nur nach Deploy mit HTTPS prüfbar; kein Offline-Modus.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Benachrichtigungen (2026-10-25): Regler Aus · E-Mail · Beides · Push je Benachrichtigung („Aus“ nur bei abschaltbaren); alle an Konten gerichteten
+  Benachrichtigungen laufen über den Core; Kassen-Mails an Kontaktadressen bleiben E-Mail, Push zusätzlich an verknüpfte Konten; VAPID automatisch.
 - Website-Modul (2026-10-25): Banner je Eintrag als Leiste oder Startseiten-Kasten; Blog „ausführlich“ (Themen, RSS, Mitschreiben); getrennte Rechte
   (Inhalte / schreiben / veröffentlichen); Design nur Feinschliff, Konzept bleibt.
 - Kalender-Abo (2026-10-24): Termine **und** Aktionen; mehrere Abos je Person mit Filter.

@@ -168,6 +168,9 @@ const CORE_AREAS: CoreAreaDef[] = [
 			{ table: 'user_role', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
 			{ table: 'user_role_grant', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
 			{ table: 'user_permission', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
+			{ table: 'notification_pref', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
+			{ table: 'push_subscription', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
+			{ table: 'notification_queue', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
 			{ table: 'user', where: (keep) => sql`id <> ${keep}`, columns: USER_COLUMNS }
 		]
 	},

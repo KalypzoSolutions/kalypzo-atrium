@@ -853,6 +853,7 @@ const OWN_COLUMN: Record<string, string> = {
 	'public.user_role': 'user_id',
 	'public.user_role_grant': 'user_id',
 	'public.user_permission': 'user_id',
+	'public.notification_pref': 'user_id',
 	'public.setting': 'scope_id',
 	'public.api_key': 'owner_id'
 };

@@ -181,6 +181,17 @@ export const ADMIN_ENTRIES: readonly AdminEntry[] = [
 		parent: 'settings'
 	},
 	{
+		id: 'settings.notifications',
+		section: 'settings',
+		label: 'Benachrichtigungen',
+		description: 'Push-Benachrichtigungen (Web Push) ein- und ausschalten, Schlüssel.',
+		href: '/admin/settings/notifications',
+		icon: 'bell',
+		permission: 'core.settings.view',
+		keywords: ['Push', 'Web Push', 'VAPID', 'Handy', 'App', 'Benachrichtigung', 'Mitteilung'],
+		parent: 'settings'
+	},
+	{
 		id: 'settings.ai',
 		section: 'settings',
 		label: 'KI',

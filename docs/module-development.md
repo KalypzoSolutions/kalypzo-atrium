@@ -287,6 +287,13 @@ export const onUserDeleted: ModuleDefinition['onUserDeleted'] = async (tx, { use
   (`members`, `actions`, `treasury`, `events`, `galleries`, `offices`, `orders`, `files`; Dateien `subject-export.ts` bzw. `actions/privacy.ts`).
   Details: `docs/security.md` → „Löschkonzept“.
 
+### Benachrichtigungen (`core.notifications`, E-Mail und Push)
+
+Benachrichtigungen an Benutzerkonten gehen **nicht** mehr direkt über `core.mail.send`, sondern über
+`core.notifications.send(ctx, MODULE_ID, items)` – die Person wählt im Profil je Typ Aus · E-Mail · Beides · Push. Typen deklariert
+`defineModule({ notifications: { types, forUser? } })`. Vertrag, Optionen (`mandatory`, `pushOnly`, `digest`, `scoped`) und Beispiele:
+`docs/core-services.md` → „core.notifications“. Mails an freie Adressen (Anmeldebestätigung, Kontaktadressen von Mitgliedern) bleiben `core.mail`.
+
 ### Ämter als Vorlage und Benachrichtigungen (Modul `offices`)
 
 Ein Modul kann Ämter mitbringen, deren Inhaber*innen bei Ereignissen eine Mail an ihre Konto-Adresse bekommen

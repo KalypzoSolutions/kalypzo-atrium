@@ -6,6 +6,7 @@
 	import * as Tabs from '$lib/components/ui/tabs';
 	import AccountTab from './_components/AccountTab.svelte';
 	import AppearanceTab from './_components/AppearanceTab.svelte';
+	import NotificationsTab from './_components/NotificationsTab.svelte';
 	import SecurityTab from './_components/SecurityTab.svelte';
 	import type { ProfileData } from './_components/types';
 
@@ -18,6 +19,7 @@
 		{ value: 'account', label: 'Konto' },
 		{ value: 'security', label: 'Sicherheit' },
 		{ value: 'appearance', label: 'Darstellung' },
+		{ value: 'notifications', label: 'Benachrichtigungen' },
 		...sections.map((s) => ({ value: s.key, label: s.title }))
 	]);
 
@@ -67,6 +69,7 @@
 	<Tabs.Content value="account"><AccountTab data={d} /></Tabs.Content>
 	<Tabs.Content value="security"><SecurityTab data={d} /></Tabs.Content>
 	<Tabs.Content value="appearance"><AppearanceTab data={d} /></Tabs.Content>
+	<Tabs.Content value="notifications"><NotificationsTab /></Tabs.Content>
 
 	{#each sections as s (s.key)}
 		<Tabs.Content value={s.key}>

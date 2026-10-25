@@ -33,6 +33,7 @@ invalidiert sofort (`invalidateStorageConfigCache`, `storage/config-cache.ts`). 
 `principalKeysFor` ist je Kontextobjekt + Modul memoisiert (WeakMap, 5 s). Bild-Endpunkte: `IMAGE_RATE_LIMIT` (1200/60 s) aus `$lib/sdk/server`.
 Seit 2026-10-22: `permissions.usersWith(key)` (aktive Konten mit wirksamem Recht, ohne Prüfung, für Benachrichtigungen), `mail.sendMessage`
 mit `messageId`/`inReplyTo`/`references` → `{ messageId }`, `mail.send({ autoSubmitted })` (`Auto-Submitted` + `X-EP-Intern`).
+Seit 2026-10-25: `notifications.send(ctx, moduleId, items)` (E-Mail/Web Push nach Wahl der Person, siehe „Benachrichtigungen und PWA“) und `notifications.migratePreferences`.
 `images.process(bytes, { variants })` (sharp, nur Core): Inhalt prüfen (JPEG/PNG/WebP/AVIF/GIF, ≤ 50 MP), nach EXIF drehen,
 **alle Metadaten inkl. GPS entfernen**, Varianten (WebP/JPEG/PNG) mit Maßen; Typen `ImageVariantSpec` & Co. über `$lib/sdk/server`.
 
@@ -204,6 +205,18 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
 - Header-Check: nur `/admin/settings/mail-preview` (E-Mail-Vorschau im iframe) bekommt `x-frame-options: SAMEORIGIN`, alles andere `DENY`.
 - Neue Verwaltungsseite = Route unter `admin/` **plus** Eintrag in `admin-registry.ts` (Tests: `tests/unit/admin-registry.test.ts`, `admin-redirects.test.ts`,
   E2E `tests/e2e/admin-nav.spec.ts`).
+
+## Benachrichtigungen und PWA (2026-10-25)
+- `core.notifications` (`core/notifications/`: `service.ts` Versand/Profil/Übernahme, `catalog.ts` Typen aus `ModuleDefinition.notifications`, `prefs.ts`,
+  `push.ts` VAPID/Geräte/`web-push`, `compose.ts` Texte, `endpoints.ts`); Typen/Konstanten `$lib/sdk/types/notifications.ts` (Client + Server).
+  Core-Migration **0010**: `notification_pref` (nur Abweichungen), `push_subscription`, `notification_queue`; Job `core.notifications-digest` (täglich).
+  Einstellungen `core.push.enabled|vapidPublicKey|vapidPrivateKey` (Schlüssel automatisch erzeugt, privat verschlüsselt). Backup: `notification_pref` in
+  `core:users`, Geräte/Warteschlange nie; Reset `users` räumt alle drei; Datenauskunft enthält Einstellungen, Geräte (nur Label/Datum), Warteschlange.
+- Push-Endpunkte nur von bekannten Push-Diensten (`isAllowedPushEndpoint`, SSRF). REST `/api/v1/notifications/*` nur per Session (`sessionOnly`).
+- PWA: `static/manifest.webmanifest`, Icons `static/icons/` (aus dem Wappen), `src/service-worker.ts` (Push anzeigen, nur App-Pfade öffnen, **kein**
+  Offline-Cache), CSP `worker-src`/`manifest-src 'self'`, `app.html` mit Manifest/Apple-Tags. Client `$lib/sdk/client/push.ts`.
+- UI: Profil-Reiter „Benachrichtigungen“ (`profile/_components/NotificationsTab.svelte`: Gerät aktivieren, iOS-Hinweis, Geräteliste, Regler je Typ),
+  Admin-Reiter `/admin/settings/notifications`, Baustein `ui/segmented-slider`.
 
 ## Datensicherung (2026-10-20)
 - Seite `/admin/backup` (Recht `core.system.backup`, Reiter Export | Import), Code in `src/lib/server/core/backup/`, Vertrag

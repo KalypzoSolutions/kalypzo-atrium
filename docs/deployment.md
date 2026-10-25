@@ -429,6 +429,18 @@ npm ci
 npm run build && WEBSITE_API_KEY=epk_… WEBSITE_API_URL=http://127.0.0.1:3000 PORT=3001 node build
 ```
 
+## App auf dem Handy und Push-Benachrichtigungen
+
+- Die Oberfläche ist eine installierbare Web-App (Manifest `static/manifest.webmanifest`, Service Worker `src/service-worker.ts`).
+  **HTTPS ist Pflicht** (ohne sichere Verbindung gibt es weder Installation noch Push; `localhost` gilt als sicher).
+- Push braucht nichts zusätzlich: Die VAPID-Schlüssel erzeugt der Server beim ersten Bedarf selbst und speichert sie verschlüsselt in der
+  Datenbank (sie wandern mit der Datensicherung). Ausgehende HTTPS-Verbindungen zu den Push-Diensten (`fcm.googleapis.com`,
+  `*.push.apple.com`, `*.push.services.mozilla.com`, `*.notify.windows.com`) müssen erlaubt sein.
+- **Android**: Chrome/Edge/Firefox können Push auch ohne Installation; „Zum Startbildschirm hinzufügen“ öffnet die App ohne Browserleiste.
+- **iPhone/iPad** (ab iOS/iPadOS 16.4): Push nur, wenn die App über Safari → Teilen → „Zum Home-Bildschirm“ hinzugefügt und von dort geöffnet
+  wurde; danach im Profil unter „Benachrichtigungen“ aktivieren (Hinweis erscheint dort automatisch).
+- Abschalten: Einstellungen → Benachrichtigungen → „Push-Benachrichtigungen“ aus (alles geht dann per E-Mail).
+
 ## Nachrichten (E-Mail an Mitglieder und Gruppen) – Zustellbarkeit
 
 Das Modul `messages` sendet jede Mail einzeln über den SMTP-Server aus den Systemeinstellungen. Damit sie nicht im Spam landen:

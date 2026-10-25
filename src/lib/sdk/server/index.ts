@@ -21,10 +21,16 @@ export type {
 	ModuleDefinition,
 	ModuleJob,
 	ModuleMigration,
+	ModuleNotifications,
 	ModuleSearchProvider,
 	ResetArea
 } from '$lib/server/core/modules/types';
 export type { Db, Tx } from '$lib/server/core/database/client';
+export type {
+	LegacyPreference,
+	NotificationItem,
+	NotificationSendResult
+} from '$lib/server/core/notifications/service';
 export type { AnyApiEndpoint, ApiEndpoint, ApiHandlerArgs } from '$lib/server/core/api/types';
 export type * from '$lib/sdk/types';
 export * from './sharing';

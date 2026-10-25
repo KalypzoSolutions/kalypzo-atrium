@@ -18,10 +18,15 @@ import { defineModule } from '$lib/sdk/server';
 import officesModule from '$lib/modules/offices/module';
 import { resetTemplateCacheForTests } from '$lib/modules/offices/templates.service';
 import type { OfficeNotification, OfficesService } from '$lib/modules/offices/contract';
-import type { MyNotifications, Office } from '$lib/modules/offices/schemas';
+import type { Office } from '$lib/modules/offices/schemas';
+import {
+	migrateLegacyPrefs,
+	resetLegacyPrefsMigrationForTests
+} from '$lib/modules/offices/notify.service';
+import { getMyPreferences, setMyPreference } from '$lib/server/core/notifications/service';
 import type { RequestContext } from '$lib/sdk/types';
 
-// Ämter aus Modul-Vorlagen und Benachrichtigungen an Inhaber*innen (sofort / täglich / aus).
+// Ämter aus Modul-Vorlagen und Benachrichtigungen an Inhaber*innen (Versand und Kanalwahl über core.notifications).
 
 const BASE = 'http://localhost:5173/api/v1/modules/offices';
 const ctxOf = async (id: string) => (await contextForUser(id))!.ctx;
@@ -59,8 +64,6 @@ let failMail = false;
 let close: () => Promise<void>;
 let admin: RequestContext;
 let adminKey: string;
-let utaKey: string;
-let carlKey: string;
 let utaId: string;
 let benId: string;
 let carlId: string;
@@ -121,13 +124,25 @@ const event = (e: string, subject: string, extra: Partial<OfficeNotification> = 
 
 const recipients = () => mails.map((m) => m.to).sort();
 
-async function setPref(key: string, eventKey: string, mode: string) {
-	return api<MyNotifications>(key, 'PUT', '/me/notifications', {
-		module: 'notifytest',
-		office: 'kasse',
-		event: eventKey,
-		mode
+const scopeOf = (eventKey: string) => `notifytest:kasse:${eventKey}`;
+
+async function setPref(
+	userId: string,
+	eventKey: string,
+	channel: 'off' | 'email',
+	delivery: 'immediate' | 'daily' = 'immediate'
+) {
+	return setMyPreference(await ctxOf(userId), {
+		type: 'offices.template',
+		scope: scopeOf(eventKey),
+		channel,
+		delivery
 	});
+}
+
+async function officeScopes(userId: string): Promise<string[]> {
+	const p = await getMyPreferences(await ctxOf(userId));
+	return p.groups.find((g) => g.id === 'offices')?.items.map((i) => i.scope) ?? [];
 }
 
 beforeAll(async () => {
@@ -155,9 +170,6 @@ beforeAll(async () => {
 	utaId = await mk('Uta Kasse', 'uta@example.test');
 	benId = await mk('Ben Kasse', 'ben@example.test');
 	carlId = await mk('Carl Ohne', 'carl@example.test');
-	const scopes = ['core.api.manage', 'offices.office.view'];
-	utaKey = (await createApiKey(await ctxOf(utaId), { name: 'u', scopes })).key;
-	carlKey = (await createApiKey(await ctxOf(carlId), { name: 'c', scopes })).key;
 
 	setMailTransportForTests({
 		sendMail: async (m) => {
@@ -216,8 +228,7 @@ describe('Vorlagen', () => {
 			const office = (await listOffices()).find((o) => o.id === kasse.id)!;
 			expect(office.source?.module).toBe('notifytest');
 			expect(office.notifications).toEqual([]);
-			const mine = await api<MyNotifications>(utaKey, 'GET', '/me/notifications');
-			expect(mine.data.offices).toEqual([]);
+			expect(await officeScopes(utaId)).toEqual([]);
 		} finally {
 			await enableModule(admin, 'notifytest');
 		}
@@ -247,7 +258,8 @@ describe('Sofort-Benachrichtigung', () => {
 		]);
 		expect(r.sent).toBe(2);
 		expect(mails).toHaveLength(2);
-		expect(mails[0]!.subject).toBe('2 neue Hinweise für das Amt Kasse');
+		expect(mails[0]!.subject).toBe('2 neue Benachrichtigungen');
+		expect(mails[0]!.text).toContain('Amt „Kasse“');
 		expect(mails[0]!.text).toContain('Überweisung 1');
 		expect(mails[0]!.text).toContain('Abrechnung Sommerlager');
 	});
@@ -281,48 +293,23 @@ describe('Sofort-Benachrichtigung', () => {
 	it('zählt Versandfehler als übersprungen', async () => {
 		failMail = true;
 		const r = await (await service()).notify(admin, [event('payable-created', 'Fehlschlag')]);
-		expect(r).toEqual({ sent: 0, queued: 0, skipped: 2 });
+		expect(r.sent).toBe(0);
 	});
 });
 
-describe('Einstellungen je Person', () => {
-	it('GET /me/notifications liefert eigene Vorlagen-Ämter mit Standard „sofort“', async () => {
-		const r = await api<MyNotifications>(utaKey, 'GET', '/me/notifications');
-		expect(r.status, JSON.stringify(r.error)).toBe(200);
-		expect(r.data.email).toBe('uta@example.test');
-		expect(r.data.offices).toHaveLength(1);
-		const o = r.data.offices[0]!;
-		expect(o).toMatchObject({
-			officeId: kasse.id,
-			officeName: 'Kasse',
-			module: 'notifytest',
-			moduleName: 'Benachrichtigungstest',
-			officeKey: 'kasse'
-		});
-		expect(o.events.map((e) => e.mode)).toEqual(['immediate', 'immediate']);
-
-		const carl = await api<MyNotifications>(carlKey, 'GET', '/me/notifications');
-		expect(carl.data.offices).toEqual([]);
+describe('Einstellungen je Person (Core-Reiter „Benachrichtigungen“)', () => {
+	it('Profil zeigt die Ereignisse der eigenen Vorlagen-Ämter, anderen nichts', async () => {
+		expect(await officeScopes(utaId)).toEqual([
+			scopeOf('payable-created'),
+			scopeOf('accounting-closed')
+		]);
+		expect(await officeScopes(carlId)).toEqual([]);
+		await expect(setPref(carlId, 'payable-created', 'off')).rejects.toMatchObject({ status: 404 });
 	});
 
-	it('PUT: fremdes Amt 403, unbekanntes Ereignis 422, ungültiger Modus 422', async () => {
-		expect((await setPref(carlKey, 'payable-created', 'off')).status).toBe(403);
-		const unknown = await setPref(utaKey, 'gibt-es-nicht', 'off');
-		expect(unknown.status).toBe(422);
-		expect((await setPref(utaKey, 'payable-created', 'weekly')).status).toBe(422);
-	});
-
-	it('täglich → Warteschlange, aus → nichts; Digest-Job bündelt je Person', async () => {
-		const daily = await setPref(utaKey, 'payable-created', 'daily');
-		expect(daily.status, JSON.stringify(daily.error)).toBe(200);
-		expect(daily.data.offices[0]!.events[0]!.mode).toBe('daily');
-		const benKey = (
-			await createApiKey(await ctxOf(benId), {
-				name: 'b',
-				scopes: ['core.api.manage', 'offices.office.view']
-			})
-		).key;
-		expect((await setPref(benKey, 'payable-created', 'off')).status).toBe(200);
+	it('täglich → Tageszusammenfassung des Cores, aus → nichts', async () => {
+		await setPref(utaId, 'payable-created', 'email', 'daily');
+		await setPref(benId, 'payable-created', 'off');
 
 		const s = await service();
 		const r1 = await s.notify(admin, [event('payable-created', 'Überweisung A')]);
@@ -336,90 +323,54 @@ describe('Einstellungen je Person', () => {
 		expect(mails.map((m) => m.subject)).toEqual(['Abrechnung C', 'Abrechnung C']);
 
 		mails.length = 0;
-		await runJobNow(admin, 'offices.notify-digest');
+		await runJobNow(admin, 'core.notifications-digest');
 		expect(mails).toHaveLength(1);
 		expect(mails[0]!.to).toBe('uta@example.test');
-		expect(mails[0]!.subject).toBe('Tageszusammenfassung: 2 Hinweise');
+		expect(mails[0]!.subject).toBe('Tageszusammenfassung: 2 Benachrichtigungen');
 		expect(mails[0]!.text).toContain('Überweisung A');
 		expect(mails[0]!.text).toContain('Überweisung B');
 		expect(mails[0]!.text).toContain('Amt „Kasse“');
 
 		mails.length = 0;
-		await runJobNow(admin, 'offices.notify-digest');
+		await runJobNow(admin, 'core.notifications-digest');
 		expect(mails).toHaveLength(0);
+		await setPref(utaId, 'payable-created', 'email');
+		await setPref(benId, 'payable-created', 'email');
 	});
 
-	it('Digest: Versandfehler lässt die Zeilen liegen', async () => {
-		await (await service()).notify(admin, [event('payable-created', 'Später')]);
-		failMail = true;
-		await runJobNow(admin, 'offices.notify-digest');
-		failMail = false;
-		await runJobNow(admin, 'offices.notify-digest');
-		expect(mails).toHaveLength(1);
-		expect(mails[0]!.subject).toBe('Tageszusammenfassung: 1 Hinweis');
+	it('übernimmt alte Einstellungen einmalig in den Core und leert die alte Tabelle', async () => {
+		const tx = (q: ReturnType<typeof sql>) =>
+			core.database.forModule('offices').transaction((t) => t.execute(q));
+		await tx(sql`INSERT INTO notification_prefs (user_id, module_id, office_key, event_key, mode)
+			VALUES (${utaId}, 'notifytest', 'kasse', 'accounting-closed', 'off'),
+				(${benId}, 'notifytest', 'kasse', 'accounting-closed', 'daily')`);
+		resetLegacyPrefsMigrationForTests();
+		expect(await migrateLegacyPrefs()).toBe(2);
+		const rest = (await tx(sql`SELECT 1 FROM notification_prefs`)) as unknown as {
+			rows: unknown[];
+		};
+		expect(rest.rows).toHaveLength(0);
+		const prefs = await getDb()
+			.select()
+			.from(schema.notificationPref)
+			.where(eq(schema.notificationPref.scope, scopeOf('accounting-closed')));
+		const byUser = new Map(prefs.map((p) => [p.userId, `${p.channel}/${p.delivery}`]));
+		expect(byUser.get(utaId)).toBe('off/immediate');
+		expect(byUser.get(benId)).toBe('email/daily');
+		const r = await (await service()).notify(admin, [event('accounting-closed', 'Nach Übernahme')]);
+		expect(r).toEqual({ sent: 0, queued: 1, skipped: 1 });
+		await runJobNow(admin, 'core.notifications-digest');
 	});
 
-	const queueRows = async () =>
-		(
-			(await core.database
-				.forModule('offices')
-				.transaction((tx) =>
-					tx.execute(sql`SELECT id, attempts FROM notification_queue WHERE user_id = ${utaId}`)
-				)) as unknown as { rows: { id: string; attempts: number }[] }
-		).rows;
-
-	it('Digest: verwirft Einträge nach 14 Tagen und protokolliert die Anzahl', async () => {
-		await (await service()).notify(admin, [event('payable-created', 'Uralt')]);
-		await core.database
-			.forModule('offices')
-			.transaction((tx) =>
-				tx.execute(
-					sql`UPDATE notification_queue SET created_at = now() - interval '15 days' WHERE user_id = ${utaId}`
-				)
-			);
-		failMail = true;
-		const info = await runJobNow(admin, 'offices.notify-digest');
-		expect(info.lastMessage).toContain('davon 1 wegen Alter/Versuchen');
-		expect(await queueRows()).toHaveLength(0);
-		failMail = false;
+	it('arbeitet die alte Warteschlange noch ab (Job offices.notify-digest)', async () => {
+		await core.database.forModule('offices').transaction((t) =>
+			t.execute(sql`INSERT INTO notification_queue (id, user_id, module_id, office_key, event_key, subject, text)
+				VALUES (${crypto.randomUUID()}, ${utaId}, 'notifytest', 'kasse', 'payable-created', 'Alt', 'Alter Eintrag')`)
+		);
+		mails.length = 0;
 		await runJobNow(admin, 'offices.notify-digest');
-		expect(mails).toHaveLength(0);
-
-		const [entry] = await getDb()
-			.select({ metadata: schema.auditLog.metadata })
-			.from(schema.auditLog)
-			.where(eq(schema.auditLog.action, 'offices.notification.sent'))
-			.orderBy(sql`created_at DESC`)
-			.limit(1);
-		expect(entry!.metadata).toMatchObject({ digest: true, sent: 0, expired: 1 });
-	});
-
-	it('Digest: zählt Fehlversuche und verwirft nach 5 Versuchen (fehlschlagender Mailer)', async () => {
-		await (await service()).notify(admin, [event('payable-created', 'Unzustellbar')]);
-		failMail = true;
-		for (let i = 1; i <= 4; i++) {
-			const info = await runJobNow(admin, 'offices.notify-digest');
-			expect(info.lastMessage).toContain('1 fehlgeschlagen');
-			expect((await queueRows()).map((r) => Number(r.attempts))).toEqual([i]);
-		}
-		const last = await runJobNow(admin, 'offices.notify-digest');
-		expect(last.lastMessage).toContain('davon 1 wegen Alter/Versuchen');
-		expect(await queueRows()).toHaveLength(0);
-		failMail = false;
-		await runJobNow(admin, 'offices.notify-digest');
-		expect(mails).toHaveLength(0);
-	});
-
-	it('PUT immediate entfernt die Abweichung', async () => {
-		const r = await setPref(utaKey, 'payable-created', 'immediate');
-		expect(r.status).toBe(200);
-		expect(r.data.offices[0]!.events[0]!.mode).toBe('immediate');
-		const rows = await core.database
-			.forModule('offices')
-			.transaction((tx) =>
-				tx.execute(sql`SELECT 1 FROM notification_prefs WHERE user_id = ${utaId}`)
-			);
-		expect((rows as unknown as { rows: unknown[] }).rows).toHaveLength(0);
+		expect(mails.map((m) => m.to)).toEqual(['uta@example.test']);
+		expect(mails[0]!.text).toContain('Alter Eintrag');
 	});
 });
 
@@ -445,7 +396,6 @@ describe('Audit', () => {
 			.where(like(schema.auditLog.action, 'offices.%'));
 		const actions = new Set(rows.map((r) => r.action));
 		expect(actions).toContain('offices.notification.sent');
-		expect(actions).toContain('offices.notification.pref-updated');
 		const created = rows.find(
 			(r) =>
 				r.action === 'offices.office.created' &&

@@ -30,6 +30,7 @@ import messagesModule from '$lib/modules/messages/module';
 import { deliveriesIdleForTests } from '$lib/modules/messages/delivery.service';
 import { setImapConnectorForTests } from '$lib/modules/messages/imap.client';
 import { navBadgeCounts } from '$lib/server/core/navigation/badges';
+import { getMyPreferences, setMyPreference } from '$lib/server/core/notifications/service';
 import type {
 	ComposePrefill,
 	InboxDetail,
@@ -37,7 +38,6 @@ import type {
 	MailboxesResponse,
 	MailboxSentResponse,
 	MessageDetail,
-	MyInboxNotifications,
 	PollResult
 } from '$lib/modules/messages/schemas';
 import type { RequestContext } from '$lib/sdk/types';
@@ -680,32 +680,19 @@ describe('Benachrichtigungen', () => {
 		await poll();
 		const note = mails.find((m) => m.to === 'anna@example.test')!;
 		expect(note.subject).toBe('Neue Nachricht von Petra Extern: Hallo Anna');
-		expect(note.text).toContain(
-			'Sie haben eine neue Nachricht von Petra Extern <petra@extern.example>'
-		);
+		expect(note.text).toContain('Neue Nachricht von Petra Extern <petra@extern.example>');
 		expect(note.text).toContain('Treffen am Samstag?');
 		expect(note.headers?.['X-EP-Intern']).toBe('notification');
 		expect(note.headers?.['Auto-Submitted']).toBe('auto-generated');
 
-		const prefs = await data<MyInboxNotifications>(
-			await M('anna', '/me/notifications', {
-				method: 'PUT',
-				json: { mailbox: 'personal:' + userIds.anna, event: 'new', enabled: false }
-			})
-		);
-		expect(prefs.mailboxes[0]!.events).toEqual([
-			{ event: 'new', label: 'Neue Nachricht', enabled: false }
-		]);
+		const annaCtx = (await contextForUser(userIds.anna!))!.ctx;
+		const pref = { type: 'messages.inbox-new', scope: 'personal:' + userIds.anna };
+		await setMyPreference(annaCtx, { ...pref, channel: 'off' });
 		mails = [];
 		deliver(eml({ to: 'anna.mueller@pfadfinder.test', subject: 'Leise' }));
 		await poll();
 		expect(mails.some((m) => m.to === 'anna@example.test')).toBe(false);
-		await data(
-			await M('anna', '/me/notifications', {
-				method: 'PUT',
-				json: { mailbox: 'personal:' + userIds.anna, event: 'new', enabled: true }
-			})
-		);
+		await setMyPreference(annaCtx, { ...pref, channel: 'email' });
 
 		mails = [];
 		// Unbekannter Absender: bekannte (schon angeschriebene) Absender stuft der Spam-Schutz nie als Spam ein
@@ -722,30 +709,24 @@ describe('Benachrichtigungen', () => {
 		expect((await list('anna', 'personal:' + userIds.anna, 'spam')).items[0]?.subject).toBe('Spam');
 	});
 
-	it('„replied“ nur bei gemeinsamen Postfächern; fremdes Postfach → 404', async () => {
-		expect(
-			await errCode(
-				await M('anna', '/me/notifications', {
-					method: 'PUT',
-					json: { mailbox: 'personal:' + userIds.anna, event: 'replied', enabled: false }
-				}),
-				422
-			)
-		).toBe('validation_failed');
-		expect(
-			await errCode(
-				await M('anna', '/me/notifications', {
-					method: 'PUT',
-					json: { mailbox: officeKey, event: 'new', enabled: false }
-				}),
-				404
-			)
-		).toBe('not_found');
-		const otto = await data<MyInboxNotifications>(await M('otto', '/me/notifications'));
-		expect(otto.mailboxes.find((m) => m.key === officeKey)?.events.map((e) => e.event)).toEqual([
-			'new',
-			'replied'
-		]);
+	it('Profil: „Antwort“ nur bei gemeinsamen Postfächern; fremdes Postfach → 404', async () => {
+		const scopes = async (who: string) =>
+			(await getMyPreferences((await contextForUser(userIds[who]!))!.ctx)).groups
+				.find((g) => g.id === 'messages')!
+				.items.map((i) => `${i.type}|${i.scope}`);
+		const anna = await scopes('anna');
+		expect(anna).toContain(`messages.inbox-new|personal:${userIds.anna}`);
+		expect(anna).not.toContain(`messages.inbox-replied|personal:${userIds.anna}`);
+		const otto = await scopes('otto');
+		expect(otto).toContain(`messages.inbox-new|${officeKey}`);
+		expect(otto).toContain(`messages.inbox-replied|${officeKey}`);
+		await expect(
+			setMyPreference((await contextForUser(userIds.anna!))!.ctx, {
+				type: 'messages.inbox-new',
+				scope: officeKey,
+				channel: 'off'
+			})
+		).rejects.toMatchObject({ status: 404 });
 	});
 });
 

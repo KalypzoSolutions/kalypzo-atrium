@@ -29,6 +29,7 @@ import { requirePermission } from '../permissions/service';
 import type { ModuleJob } from '../modules/types';
 import { runHousekeeping } from './housekeeping';
 import { reprocessLegacyAvatars } from '../auth/profile';
+import { runNotificationDigest } from '../notifications/service';
 
 type Row = Record<string, unknown>;
 
@@ -88,6 +89,15 @@ const CORE_JOBS: ModuleJob[] = [
 		run: async (ctx) => {
 			const r = await reprocessLegacyAvatars(ctx);
 			return `Profilbilder: ${r.processed} bereinigt, ${r.removed} entfernt, ${r.skipped} übersprungen`;
+		}
+	},
+	{
+		id: 'notifications-digest',
+		summary: 'Tageszusammenfassung der Benachrichtigungen (E-Mail/Push) verschicken',
+		schedule: 'daily',
+		run: async () => {
+			const r = await runNotificationDigest(clock());
+			return `Tageszusammenfassung: ${r.users} Personen, ${r.email} Mails, ${r.push} Push, ${r.expired} verworfen`;
 		}
 	}
 ];

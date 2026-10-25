@@ -52,6 +52,7 @@ import { MESSAGE_ID_RE, previewMailHtml, sendMail } from './mail';
 import { errors } from './errors';
 import { env } from './env';
 import { qrDataUrl } from './qr';
+import { migratePreferences, sendNotifications } from './notifications/service';
 import {
 	listPublicSettingsFor,
 	getSetting,
@@ -407,6 +408,16 @@ export const core = {
 		sendMessage: sendModuleMessage,
 		/** HTML-Dokument, wie `sendMessage` es senden würde (Layout, Bilder als `data:`) – nur für Vorschauen */
 		preview: previewMailHtml
+	},
+	notifications: {
+		/**
+		 * Benachrichtigung an Benutzerkonten per E-Mail und/oder Push – Kanal nach Wahl der Person (Profil),
+		 * sonst Standard des Typs (`ModuleDefinition.notifications`). Alle Einträge eines Aufrufs werden je
+		 * Person zu einer Mail gebündelt. Wirft nie; nie in einer offenen Modul-Transaktion aufrufen.
+		 */
+		send: sendNotifications,
+		/** Alte Einstellungen eines Moduls übernehmen (idempotent, vorhandene Wahl bleibt) */
+		migratePreferences
 	},
 	qr: {
 		/** QR-Code als PNG-`data:`-URL (z. B. für den PDF-Bildblock) */

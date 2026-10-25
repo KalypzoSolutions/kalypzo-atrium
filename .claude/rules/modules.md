@@ -165,13 +165,23 @@ return result;
   **einmalig** je (Modul, Rolle, Recht) vergeben (Marker `role_grant_applied`, Core-Migration 0004) – entzogene Rechte
   kommen nicht zurück. Rechte müssen im Manifest stehen.
 
+## Benachrichtigungen an Konten (`core.notifications`, 2026-10-25)
+- Mails an **Benutzerkonten** (Hinweise, Ereignisse) nie direkt per `core.mail.send`, sondern `core.notifications.send(ctx, MODULE_ID, [{ type, scope?,
+  userIds, title ≤ 150, body ≤ 4000, pushBody?, link?, group?, tag? }])` **nach** der Transaktion (wirft nie). Kanal (Aus · E-Mail · Beides · Push,
+  ggf. Sofort/Täglich) wählt jede Person im Profil-Reiter „Benachrichtigungen“; Push ohne Gerät → E-Mail.
+- Typen in `defineModule({ notifications: { types: [{ key, label, description?, defaultChannel?, mandatory?, digest?, pushOnly?, scoped?, permission?,
+  anyPermission? }], forUser? } })`; `scoped` = je Bereich (Postfach, Amt), Einträge über `forUser(ctx)`. Rechte in `permission` müssen im Manifest stehen.
+- Mails an freie Adressen (Anmeldebestätigung, Kontaktadressen der Mitglieder, Massenversand) bleiben `core.mail`; zusätzlicher Push an verknüpfte
+  Konten über einen `pushOnly`-Typ (Muster `treasury/push-notify.ts`). Alte eigene Einstellungen per `core.notifications.migratePreferences` übernehmen.
+- Keine eigenen Profilkarten für Benachrichtigungs-Einstellungen mehr. Details: `docs/core-services.md` → „core.notifications“.
+
 ## Ämter als Vorlage mitbringen (Modul `offices`, optional)
 - Manifest: `offices: [{ key, name, description?, notifications: [{ key, label, description? }] }]` (`ModuleOfficeTemplate`, Schlüssel
   `[a-z][a-z0-9-]*`) + `optionalDependencies: ['offices']`. `offices` legt das Amt **einmal** an (nur Vorlage, Marker); danach ist es ein normales,
   löschbares Amt – gelöscht wird es **nicht** neu angelegt.
 - Auslösen **nach** der Transaktion: `(await core.modules.useOptional<OfficesService>('offices', MODULE_ID))?.notify(ctx, [{ module, office, event,
   subject, text, link? }])` (Typen aus `$lib/modules/offices/contract`, `import type`). Ereignisse eines Vorgangs in **einem** Aufruf (eine Mail je
-  Person), keine IBAN o. Ä. im Text, Aufruf in `try/catch`. Modus (Sofort/Täglich/Aus) wählen die Inhaber*innen im Profil. Muster:
+  Person), keine IBAN o. Ä. im Text, Aufruf in `try/catch`. Kanal (Aus · E-Mail · Beides · Push, Sofort/Täglich) wählen die Inhaber*innen im Profil-Reiter „Benachrichtigungen“ (Versand über `core.notifications`). Muster:
   `treasury/office-notify.ts`; Details `module-offices.md`.
 
 ## Migrationen

@@ -421,6 +421,34 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		group: 'pdf'
 	}),
 
+	// Benachrichtigungen / Web Push (core.notifications)
+	g({
+		key: 'core.push.enabled',
+		label: 'Push-Benachrichtigungen',
+		description:
+			'Erlaubt Benachrichtigungen direkt aufs Gerät (Web Push, auch als App auf dem Home-Bildschirm). Aus: alles geht per E-Mail.',
+		schema: z.boolean(),
+		default: true,
+		group: 'push'
+	}),
+	g({
+		key: 'core.push.vapidPublicKey',
+		label: 'Öffentlicher Push-Schlüssel (VAPID)',
+		description: 'Wird automatisch erzeugt.',
+		schema: z.union([z.literal(''), z.string().regex(/^[A-Za-z0-9_-]{80,100}$/)]),
+		default: '',
+		group: 'push'
+	}),
+	g({
+		key: 'core.push.vapidPrivateKey',
+		label: 'Privater Push-Schlüssel (VAPID)',
+		description: 'Wird automatisch erzeugt und verschlüsselt gespeichert.',
+		schema: z.union([z.literal(''), z.string().regex(/^[A-Za-z0-9_-]{40,50}$/)]),
+		default: '',
+		secret: true,
+		group: 'push'
+	}),
+
 	// Benutzer
 	g({
 		key: 'core.user.theme',

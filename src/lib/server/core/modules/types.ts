@@ -1,5 +1,16 @@
 import type { ModuleManifest, ModuleSettingDefinition, RequestContext } from '$lib/sdk/types';
 import type { ApiEndpoint } from '../api/types';
+import type { ModuleNotificationType, NotificationScopeEntry } from '$lib/sdk/types/notifications';
+
+/** Benachrichtigungstypen eines Moduls (siehe `core.notifications`) */
+export interface ModuleNotifications {
+	types: ModuleNotificationType[];
+	/**
+	 * Bereiche der `scoped`-Typen, die die Person im Profil einstellen kann (z. B. ihre Postfächer oder
+	 * Ämter). Läuft nur bei aktivem Modul, nie in einer offenen Transaktion; Fehler blenden die Einträge aus.
+	 */
+	forUser?: (ctx: RequestContext) => Promise<NotificationScopeEntry[]>;
+}
 
 export interface ModuleMigration {
 	name: string;
@@ -193,6 +204,8 @@ export interface ModuleDefinition {
 	backup?: ModuleBackupHooks;
 	/** Globale Suche (Befehlspalette): Datensätze des Moduls, die die Person sehen darf */
 	search?: ModuleSearchProvider;
+	/** Benachrichtigungstypen (Kanalwahl E-Mail/Push je Person, Versand über `core.notifications.send`) */
+	notifications?: ModuleNotifications;
 	/**
 	 * Zahl am Navigationseintrag des Moduls in der Seitenleiste (z. B. ungelesene Mails). Nur für Personen,
 	 * die den Eintrag sehen; 0 = kein Zähler. `path` wählt den Eintrag (Standard: erster ohne `admin`).

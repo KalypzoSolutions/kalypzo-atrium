@@ -160,6 +160,7 @@ describe('adminTabs', () => {
 			'settings.mail',
 			'settings.mail-layout',
 			'settings.storage',
+			'settings.notifications',
 			'settings.ai',
 			'settings.pdf',
 			'settings.modules'
@@ -172,6 +173,7 @@ describe('adminTabs', () => {
 			'settings.design',
 			'settings.mail',
 			'settings.mail-layout',
+			'settings.notifications',
 			'settings.modules'
 		]);
 		expect(settingsTabs(['core.ai.view'])).toEqual(['settings.ai']);
