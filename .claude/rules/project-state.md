@@ -248,7 +248,12 @@
   Umgestellt: `offices` (Amts-Hinweise inkl. Tageszusammenfassung), `messages` (Posteingang), `actions` (Kosten-Link), `members` (Konto verknüpft),
   `treasury` (zusätzlich Push an verknüpfte Konten). Offen: echte Geräte (Android/iPhone) nur nach Deploy mit HTTPS prüfbar; kein Offline-Modus.
 
+- **Kontaktformular → Posteingang (2026-10-25, `messages` v1.4.0)**: Website-Kontaktformulare (Start + `/kontakt`) legen Anfragen über den neuen,
+  per API-Key-Scope `messages.website.contact` abgesicherten Endpunkt ins Stamm-Postfach (Benachrichtigung wie bei Mails); Spam-Schutz Proof-of-Work +
+  Zeitfalle + Einmal-Aufgabe, dazu Honeypot/Rate-Limits; SMTP nur noch Rückfall. Details: `module-messages.md`, `website.md`.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Kontaktformular (2026-10-25): Anfragen in den Posteingang „Stamm“; Spam-Schutz Proof-of-Work + Zeitfalle/Token (keine Inhaltsbewertung, kein Captcha).
 - Stammeswebsite (2026-10-25, später am Tag): Redesign nach dem Konzept-Artifact „Stammeswebsite – Redesign-Konzept“ umgesetzt (Wolke/Tinte,
   Pillen, Bebas Neue für große Titel, Fotos als Kampagnen-Kacheln); ersetzt „Design nur Feinschliff“. Details: `website.md`.
 - Benachrichtigungen (2026-10-25): Regler Aus · E-Mail · Beides · Push je Benachrichtigung („Aus“ nur bei abschaltbaren); alle an Konten gerichteten

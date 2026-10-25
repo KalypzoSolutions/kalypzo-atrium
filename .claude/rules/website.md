@@ -57,11 +57,11 @@ getauscht** ist: statt PocketBase holt sie Termine und Galerien **serverseitig**
 | Variable | Bedeutung |
 |---|---|
 | `WEBSITE_API_URL` | Basis-URL des Intern-Bereichs, serverseitig (Standard `http://app:3000`, Demo `http://127.0.0.1:4300`) |
-| `WEBSITE_API_KEY` | Key mit `events.website.read galleries.website.read members.website.read offices.website.read website.content.read` |
+| `WEBSITE_API_KEY` | Key mit `events.website.read galleries.website.read members.website.read offices.website.read website.content.read messages.website.contact` |
 | `ORIGIN` | öffentliche Adresse (adapter-node, CSRF) |
 | `ADDRESS_HEADER`, `XFF_DEPTH` | hinter nginx `X-Forwarded-For` / `1` – sonst zählt das IP-Rate-Limit alle Besucher*innen als eine IP (Proxy) |
 | `IMAGE_CACHE_MB`, `IMAGE_CACHE_TTL_SEC` | Bild-Cache im Arbeitsspeicher (Standard 48 MB, 3600 s; 0 = aus) |
-| `CONTACT_TO`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Kontaktformular (#31): Versand per SMTP an **eine feste** Adresse; ohne `SMTP_HOST`/`SMTP_FROM`/`CONTACT_TO` → Hinweis auf stafues@ (503) |
+| `CONTACT_TO`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Kontaktformular: **nur Rückfall** bei Ausfall des Backends (#31, SMTP an **eine feste** Adresse); ohne → Hinweis auf stafues@ (503) |
 
 Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` mit `WEBSITE_API_KEY: ${WEBSITE_API_KEY}`,
 `ORIGIN: ${WEBSITE_ORIGIN}`; `WEBSITE_API_URL` = `http://app:3000` (docker-compose.yml) bzw. `http://ep-intern-${DEPLOY_ENV:-prod}-app:3000`
@@ -112,7 +112,7 @@ Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` m
 | `/bilder/team/[userId]` | Bild-Proxy für Profilbilder (`teamImage`, Cache je Person + `?v=` aus `avatarPath`); nur Personen, die mit Bild in der Ämterliste stehen, sonst 404 ohne Backend-Abruf |
 | `/bilder/galerie/[id]/[imageId]/[variant]` | Bild-Proxy (`thumb`/`web`) mit Cache, `public, max-age=86400`, ETag |
 | `/download[/…]` | **entfernt** (Nutzerentscheidung) → 308 auf `/` (`src/hooks.server.ts`), Menüpunkt gelöscht |
-| `/kontakt` | Formular-Action `+page.server.ts` (#31, statt formsubmit.co): `parseContactForm`/`buildContactMessage` (`lib/server/contact.ts`), Versand mit eigenem SMTP-Client (`lib/server/smtp.ts`, nur `node:net`/`node:tls`, STARTTLS/465, AUTH nur mit TLS). Mail-Relay-Schutz: Empfänger/Absender/Betreff nur aus der Konfiguration, Eingaben nur im Base64-Text + `Reply-To` (geprüft), keine Auto-Antwort, Honeypot `website`, 5 / 10 min je IP + 30 / h gesamt, CSRF über `ORIGIN`. Erfolg → 303 `?success=1` |
+| `/kontakt` | **Seit 2026-10-25 in den Posteingang des Intern-Bereichs** (Stamm-Postfach, `submitContact` in `backend.ts` → `messages` `POST /website/contact`, Scope `messages.website.contact`, Wiederholung bei Aussetzern unbedenklich, 409 = schon angekommen). Spam-Schutz zusätzlich: `ContactGuard.svelte` (in beiden Formularen, Start und `/kontakt`) holt per `GET /kontakt/challenge` (Server-Route, `no-store`, 30/10 min je IP) eine Proof-of-Work-Aufgabe, löst sie mit `lib/pow.ts` (WebCrypto, braucht HTTPS/localhost) und legt die Lösung in das Feld `pow` (`parsePow`); wer vorher absendet, wartet, das Formular geht danach selbst ab; ohne JavaScript Hinweis + Adresse. 422 vom Backend (zu schnell < 3 s, abgelaufen > 2 h, ungültig) → Text im Formular. Backend weg/falsch eingerichtet → **Rückfall SMTP** (falls konfiguriert): `parseContactForm`/`buildContactMessage` (`lib/server/contact.ts`), Versand mit eigenem SMTP-Client (`lib/server/smtp.ts`, nur `node:net`/`node:tls`, STARTTLS/465, AUTH nur mit TLS). Mail-Relay-Schutz: Empfänger/Absender/Betreff nur aus der Konfiguration, Eingaben nur im Base64-Text + `Reply-To` (geprüft), keine Auto-Antwort, Honeypot `website`, 5 / 10 min je IP + 30 / h gesamt, CSRF über `ORIGIN`. Erfolg → 303 `?success=1` |
 | Karte (`Map.svelte`, Start + Kontakt) | **Zwei-Klick**: OSM-Kacheln erst nach „Karte laden“; vorher keine Anfrage an Dritte, Wahl nicht gespeichert |
 | `/cpd`, `/impressum`, `/datenschutz` | statisch; Datenschutz (Stand 21.10.2026) nennt nur noch genutzte Dienste: eigener Server, Kontaktformular per SMTP, OSM nach Klick, Social-Media-Präsenzen (keine Google Fonts, kein Consent-Tool, keine YouTube-/Instagram-Einbettung) |
 | alle dynamischen Anfragen | `hooks.server.ts`: Rate-Limit je IP (`/bilder/…` 600/min, sonst 240/min, 429 + `Retry-After`); statische Dateien zählen nicht |
@@ -136,7 +136,8 @@ cd website && npm run build && PORT=3001 node --env-file=.env build
 ```
 
 ## Offen
-- Kontaktformular: echter SMTP-Versand ungetestet (nur Test-Server); Compose-Dateien reichen `SMTP_*`/`CONTACT_TO`/`ADDRESS_HEADER` noch nicht an den Dienst `website` durch;
+- Kontaktformular: Anfragen per Posteingang nur mit Demo/Integrationstest geprüft; bestehender Produktiv-Key braucht den neuen Scope (neuen Key anlegen);
+  SMTP-Rückfall: echter Versand ungetestet (nur Test-Server); Compose-Dateien reichen `SMTP_*`/`CONTACT_TO`/`ADDRESS_HEADER` noch nicht an den Dienst `website` durch;
   Empfängeradresse `kontakt@` (alt: Tippfehler „kotakt@“) vom Nutzer bestätigen lassen. Datenschutztext rechtlich nicht geprüft.
 - Caches und Rate-Limits nur im Arbeitsspeicher je Prozess (Neustart leert sie).
 - Datenschutztext pflegt sich nur im Code (Ferienhinweis und FAQ seit 2026-10-25 über das Modul `website`).

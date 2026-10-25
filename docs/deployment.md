@@ -369,8 +369,11 @@ fest im Code (`website/src/lib/faqs.ts`), die Download-Seite entfällt (`/downlo
 Browser; Galeriebilder liefert die Website über `/bilder/galerie/…` aus, die Terminvorschau der Gruppenseiten über `/api/termine`.
 
 1. **API-Key anlegen**: im Intern-Bereich unter **Administration → API-Keys** einen Key mit den Scopes
-   `events.website.read galleries.website.read members.website.read offices.website.read website.content.read` erstellen (ein Benutzerkonto, das diese
-   Rechte hat; `offices.website.read` für die Seite „Unser Team“, `website.content.read` für Banner, FAQ und Blog – Modul `website` aktivieren).
+   `events.website.read galleries.website.read members.website.read offices.website.read website.content.read messages.website.contact` erstellen (ein Benutzerkonto, das diese
+   Rechte hat; `offices.website.read` für die Seite „Unser Team“, `website.content.read` für Banner, FAQ und Blog – Modul `website` aktivieren;
+   `messages.website.contact` für das Kontaktformular – Anfragen landen im Posteingang „Stamm“ des Moduls `messages`, ohne Stamm-Adresse
+   (`core.organization.email`) in „Nicht zugeordnet“). Ein bestehender Key bekommt neue Scopes nicht nachträglich: neuen Key anlegen und
+   `WEBSITE_API_KEY` ersetzen.
    Die Module müssen aktiv sein, sonst liefert die API `404 module_disabled`.
 2. **Umgebungsvariablen** (Vorlage `website/.env.example`):
 
