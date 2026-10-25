@@ -10,7 +10,14 @@ import type {
 	BackendGallery,
 	BackendGalleryDetail,
 	BackendGroup,
-	BackendOffice
+	BackendOffice,
+	BackendBanner,
+	BackendFaq,
+	BackendPost,
+	BackendPostImage,
+	BackendPostPage,
+	BackendPostSummary,
+	BackendTagCount
 } from '../../website/src/lib/server/backend-types';
 import type { WebsiteEvent } from '$lib/modules/events/schemas';
 import type { WebsiteGallery, WebsiteGalleryDetail } from '$lib/modules/galleries/schemas';
@@ -24,6 +31,21 @@ import {
 } from '$lib/modules/events/website.schemas';
 import { websiteGalleryDetailSchema } from '$lib/modules/galleries/website.schemas';
 import { websiteGroupSchema } from '$lib/modules/members/website.schemas';
+import type {
+	WebsiteBanner,
+	WebsiteFaq,
+	WebsitePost,
+	WebsitePostImage,
+	WebsitePostPage,
+	WebsitePostSummary,
+	WebsiteTagCount
+} from '$lib/modules/website/schemas';
+import {
+	websiteBannerSchema,
+	websiteFaqSchema,
+	websitePostPageSchema,
+	websitePostSchema
+} from '$lib/modules/website/website.schemas';
 
 const event: BackendEvent = {
 	id: 'e1',
@@ -50,6 +72,13 @@ describe('Website-Typen = Modul-DTOs', () => {
 		expectTypeOf<BackendGalleryDetail>().toEqualTypeOf<WebsiteGalleryDetail>();
 		expectTypeOf<BackendGroup>().toEqualTypeOf<WebsiteGroup>();
 		expectTypeOf<BackendOffice>().toEqualTypeOf<WebsiteOffice>();
+		expectTypeOf<BackendBanner>().toEqualTypeOf<WebsiteBanner>();
+		expectTypeOf<BackendFaq>().toEqualTypeOf<WebsiteFaq>();
+		expectTypeOf<BackendPostImage>().toEqualTypeOf<WebsitePostImage>();
+		expectTypeOf<BackendPostSummary>().toEqualTypeOf<WebsitePostSummary>();
+		expectTypeOf<BackendTagCount>().toEqualTypeOf<WebsiteTagCount>();
+		expectTypeOf<BackendPostPage>().toEqualTypeOf<WebsitePostPage>();
+		expectTypeOf<BackendPost>().toEqualTypeOf<WebsitePost>();
 	});
 
 	it('Beispielobjekte der Website parsen gegen die Modul-Schemas', () => {
@@ -103,6 +132,59 @@ describe('Website-Typen = Modul-DTOs', () => {
 			]
 		};
 		expect(websiteOfficeSchema.parse(office)).toEqual(office);
+	});
+
+	it('Inhalte (Banner, FAQ, Blog) parsen gegen die Modul-Schemas', () => {
+		const banner: BackendBanner = {
+			id: 'b1',
+			title: 'Ferien',
+			text: 'In den Ferien finden keine Gruppenstunden statt.',
+			level: 'info',
+			placement: 'home',
+			linkUrl: '/termine',
+			linkLabel: 'Zu den Terminen',
+			dismissible: true,
+			updatedAt: '2026-10-25T10:00:00.000Z'
+		};
+		expect(websiteBannerSchema.parse(banner)).toEqual(banner);
+		const faq: BackendFaq = {
+			id: 'f1',
+			question: 'Was kostet das?',
+			answerHtml: '<p>Schnuppern ist kostenlos.</p>',
+			featured: true
+		};
+		expect(websiteFaqSchema.parse(faq)).toEqual(faq);
+		const cover: BackendPostImage = { id: 'i1', width: 1600, height: 900, alt: null };
+		const summary: BackendPostSummary = {
+			slug: 'herbstlager-2026',
+			title: 'Herbstlager 2026',
+			teaser: 'Ein Wochenende am Zeltplatz.',
+			publishedAt: '2026-10-20T08:00:00.000Z',
+			cover,
+			tags: ['Lager'],
+			authorName: 'Larissa'
+		};
+		const page: BackendPostPage = {
+			items: [summary],
+			total: 1,
+			tags: [{ tag: 'Lager', count: 1 }]
+		};
+		expect(websitePostPageSchema.parse(page)).toEqual(page);
+		const post: BackendPost = {
+			...summary,
+			bodyHtml: '<p>Text</p><img data-image-id="i1" alt="">',
+			images: [cover],
+			groupIds: ['gr1'],
+			eventId: null,
+			galleryId: null,
+			updatedAt: '2026-10-21T08:00:00.000Z'
+		};
+		expect(websitePostSchema.parse(post)).toEqual(post);
+		const { publishedAt, ...rest } = summary;
+		expect(
+			websitePostPageSchema.safeParse({ ...page, items: [{ ...rest, published: publishedAt }] })
+				.success
+		).toBe(false);
 	});
 
 	it('umbenanntes Feld fällt beim Parsen auf (strikte Schemas)', () => {

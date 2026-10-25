@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
+	import Image from '@tiptap/extension-image';
+	import ImageIcon from '@lucide/svelte/icons/image';
 	import BoldIcon from '@lucide/svelte/icons/bold';
 	import ItalicIcon from '@lucide/svelte/icons/italic';
 	import UnderlineIcon from '@lucide/svelte/icons/underline';
@@ -30,6 +32,8 @@
 		describedby,
 		minHeight = '14rem',
 		onchange,
+		uploadImage,
+		imageSrc,
 		class: className
 	}: {
 		/** HTML des Textes (nur einfache Formatierung; der Server bereinigt es erneut) */
@@ -43,6 +47,13 @@
 		describedby?: string;
 		minHeight?: string;
 		onchange?: (html: string) => void;
+		/**
+		 * Bilder erlauben: lädt eine Datei hoch und liefert ID + Anzeige-Adresse. Bilder stehen im HTML als
+		 * `<img data-image-id="…" alt="…">`; ohne Prop gibt es keine Bilder (Werkzeug, Einfügen, Ziehen).
+		 */
+		uploadImage?: (file: File) => Promise<{ id: string; src: string; alt?: string }>;
+		/** Anzeige-Adresse zu einer gespeicherten Bild-ID (für vorhandenen Inhalt ohne `src`) */
+		imageSrc?: (id: string) => string;
 		class?: string;
 	} = $props();
 
@@ -52,6 +63,62 @@
 	let tick = $state(0);
 	let linkOpen = $state(false);
 	let linkUrl = $state('');
+	let fileInput = $state<HTMLInputElement | null>(null);
+	let uploading = $state(0);
+	let uploadError = $state('');
+	let altText = $state('');
+
+	/** Bild mit `data-image-id`; `src` nur für die Anzeige im Editor (der Server verwirft es) */
+	const EditorImage = Image.extend({
+		addAttributes() {
+			return {
+				...this.parent?.(),
+				src: {
+					default: null,
+					parseHTML: (el: HTMLElement) => {
+						const id = el.getAttribute('data-image-id');
+						return el.getAttribute('src') || (id && imageSrc ? imageSrc(id) : null);
+					}
+				},
+				imageId: {
+					default: null,
+					parseHTML: (el: HTMLElement) => el.getAttribute('data-image-id'),
+					renderHTML: (attrs: Record<string, unknown>) =>
+						attrs.imageId ? { 'data-image-id': attrs.imageId } : {}
+				}
+			};
+		}
+	}).configure({ inline: false, allowBase64: false });
+
+	const imageFiles = (list: FileList | null | undefined) =>
+		[...(list ?? [])].filter((f) => f.type.startsWith('image/'));
+
+	async function insertImages(files: File[], at?: number) {
+		if (!editor || !uploadImage || files.length === 0) return;
+		uploadError = '';
+		for (const file of files) {
+			uploading++;
+			try {
+				const img = await uploadImage(file);
+				const chain = editor.chain().focus();
+				if (at !== undefined) chain.setTextSelection(at);
+				chain
+					.insertContent({
+						type: 'image',
+						attrs: { src: img.src, alt: img.alt ?? '', imageId: img.id }
+					})
+					.run();
+			} catch (err) {
+				uploadError = err instanceof Error ? err.message : 'Bild konnte nicht hochgeladen werden.';
+			} finally {
+				uploading--;
+			}
+		}
+	}
+
+	function applyAlt() {
+		editor?.chain().focus().updateAttributes('image', { alt: altText.trim() }).run();
+	}
 
 	const active = (name: string, attrs?: Record<string, unknown>) => {
 		void tick;
@@ -69,6 +136,7 @@
 			content: value,
 			editable: !disabled,
 			extensions: [
+				...(uploadImage ? [EditorImage] : []),
 				StarterKit.configure({
 					heading: { levels: [2, 3] },
 					code: false,
@@ -91,6 +159,19 @@
 					...(describedby ? { 'aria-describedby': describedby } : {}),
 					...(invalid ? { 'aria-invalid': 'true' } : {}),
 					class: 'rte-content'
+				},
+				handlePaste: (_view, event) => {
+					const files = imageFiles(event.clipboardData?.files);
+					if (!uploadImage || files.length === 0) return false;
+					void insertImages(files);
+					return true;
+				},
+				handleDrop: (view, event) => {
+					const files = imageFiles(event.dataTransfer?.files);
+					if (!uploadImage || files.length === 0) return false;
+					const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+					void insertImages(files, pos);
+					return true;
 				}
 			},
 			onUpdate: ({ editor: e }) => {
@@ -101,7 +182,10 @@
 				onchange?.(html);
 				tick++;
 			},
-			onSelectionUpdate: () => tick++,
+			onSelectionUpdate: ({ editor: e }) => {
+				if (e.isActive('image')) altText = (e.getAttributes('image').alt as string) ?? '';
+				tick++;
+			},
 			onTransaction: () => tick++
 		});
 		editor = instance;
@@ -121,7 +205,8 @@
 	});
 
 	$effect(() => {
-		editor?.setEditable(!disabled);
+		// ohne `update`-Ereignis: sonst schreibt schon das Laden normalisiertes HTML zurück („ungespeichert“)
+		if (editor && editor.isEditable === disabled) editor.setEditable(!disabled, false);
 	});
 
 	function openLink() {
@@ -229,6 +314,18 @@
 				enabled: () => active('link')
 			}
 		],
+		...(uploadImage
+			? [
+					[
+						{
+							label: 'Bild einfügen',
+							icon: ImageIcon,
+							run: () => fileInput?.click(),
+							enabled: () => uploading === 0
+						}
+					]
+				]
+			: []),
 		[
 			{
 				label: 'Rückgängig',
@@ -300,6 +397,51 @@
 			</Button>
 		</form>
 	{/if}
+	{#if uploadImage && active('image')}
+		<form
+			class="flex flex-wrap items-center gap-2 border-b bg-muted/40 p-2"
+			onsubmit={(e) => {
+				e.preventDefault();
+				applyAlt();
+			}}
+		>
+			<label class="text-sm" for="{id ?? 'rte'}-alt">Bildbeschreibung</label>
+			<Input
+				id="{id ?? 'rte'}-alt"
+				class="h-8 min-w-48 flex-1"
+				placeholder="Was ist zu sehen? (für Screenreader)"
+				maxlength={300}
+				bind:value={altText}
+				autocomplete="off"
+			/>
+			<Button type="submit" size="sm">Übernehmen</Button>
+		</form>
+	{/if}
+	{#if uploading > 0 || uploadError}
+		<p
+			class={cn(
+				'border-b px-3 py-1.5 text-sm',
+				uploadError ? 'text-destructive' : 'text-muted-foreground'
+			)}
+			role="status"
+		>
+			{uploadError || 'Bild wird hochgeladen …'}
+		</p>
+	{/if}
+	{#if uploadImage}
+		<input
+			bind:this={fileInput}
+			type="file"
+			accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+			multiple
+			class="hidden"
+			onchange={(e) => {
+				const input = e.currentTarget;
+				void insertImages(imageFiles(input.files));
+				input.value = '';
+			}}
+		/>
+	{/if}
 	<div class="relative">
 		{#if placeholder && !value}
 			<p class="pointer-events-none absolute top-2 left-3 text-sm text-muted-foreground">
@@ -346,6 +488,16 @@
 	.rte :global(.rte-content hr) {
 		border: 0;
 		border-top: 1px solid var(--border);
+	}
+	.rte :global(.rte-content img) {
+		display: block;
+		max-width: 100%;
+		height: auto;
+		border-radius: 0.375rem;
+	}
+	.rte :global(.rte-content img.ProseMirror-selectednode) {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
 	}
 	.rte :global(.rte-content a) {
 		color: var(--link);

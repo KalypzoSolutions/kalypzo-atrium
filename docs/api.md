@@ -118,12 +118,13 @@ passenden Scope und liefern nur öffentliche Felder. Ein Key **nur** mit diesen 
 |---|---|---|
 | `events` | `events.website.read` | Termine mit „Auf der Stammeswebsite anzeigen“ |
 | `galleries` | `galleries.website.read` | Galerien mit Sichtbarkeit „öffentlich“ und deren Bilder (`thumb`/`web`) |
+| `website` | `website.content.read` | Laufende Banner/Hinweise, aktive häufige Fragen (bereinigtes HTML), veröffentlichte Blog-Beiträge mit Themen, Titelbild und Bildern (`thumb`/`web`), Autor*in nur Vorname – Banner-Leiste, `/faq`, `/blog`, RSS |
 | `offices` | `offices.website.read` | Ämter mit Beschreibung, Amts-E-Mails, Inhaber*innen mit Zustimmung im Profil (**nur Vorname** `firstName`, Bio, „seit“, Profilbild) – Seite „Unser Team“ |
 | `members` | `members.website.read` | Gruppen mit „Auf der Website zeigen“ (Steckbrief, Bild) |
 
 **Einrichtung:** Ein*e Benutzer*in, die diese Rechte hat (z. B. Administrator), legt unter Administration → API-Keys
 (`POST /api/v1/api-keys`, nur Session) **einen** Key mit genau den benötigten Scopes an:
-`events.website.read galleries.website.read members.website.read offices.website.read` (Least Privilege). Rechte des Keys = Scopes ∩ Rechte der
+`events.website.read galleries.website.read members.website.read offices.website.read website.content.read` (Least Privilege). Rechte des Keys = Scopes ∩ Rechte der
 Besitzer*in – verliert die Besitzer*in ein Recht, antwortet der Endpunkt mit `403`. Der Key steht nur einmal in der Antwort und
 gehört in die Umgebung der Website (`WEBSITE_API_KEY`), **nie** in den Browser. Es gibt **kein CORS**; die Website ruft alles
 serverseitig ab und liefert Bilder über eigene Proxy-Routen aus. Deaktiviertes Modul → `404 module_disabled`.

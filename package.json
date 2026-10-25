@@ -65,6 +65,7 @@
 		"@aws-sdk/s3-request-presigner": "^3.1149.0",
 		"@lucide/svelte": "^1.55.0",
 		"@tiptap/core": "^3.32.0",
+		"@tiptap/extension-image": "3.32.0",
 		"@tiptap/pm": "^3.32.0",
 		"@tiptap/starter-kit": "^3.32.0",
 		"better-auth": "^1.7.7",

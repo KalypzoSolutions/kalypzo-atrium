@@ -13,14 +13,22 @@ getauscht** ist: statt PocketBase holt sie Termine und Galerien **serverseitig**
 nur für Namen, keine Schatten/Verläufe/Emojis/Überzeilen – „soll nicht nach KI aussehen“) plus **Dunkelmodus**. Texte bleiben.
 
 ## Gestaltung und Dunkelmodus
+- **Feinschliff 2026-10-25** (Skills design-taste-frontend, Web Interface Guidelines, Referenz `notion` aus awesome-design-md nur für Maße):
+  Typo-Skala als Tailwind-Theme in `app.css` – `text-display` (Seiten-h1, fluid 32–48 px, eng gesetzt), `text-section` (h2), `text-sub` (h3),
+  `text-lede` (Einleitungssatz unter dem h1), `text-small` (Nebeninfos 14 px; **nichts unter 13 px**), Fließtext `text-base` (16 px, Zeilenhöhe 1.6);
+  Fließtext-Farbe `text-body` fast volle Tinte (≥ 7:1), `.group-name` stärker abgedunkelt (≥ 4,5:1). Rahmen `site-container` (64rem, Ränder 16/24 px)
+  für Navigation, Banner, Inhalt und Fuß; Abschnittsabstand `section-gap`; Formularfelder `.field`; globaler `:focus-visible`-Rahmen, Skip-Link
+  „Zum Inhalt springen“ (`#inhalt`), `prefers-reduced-motion`, `theme-color` hell/dunkel, `text-wrap: balance` für Überschriften. Navigation: aktiver
+  Punkt unterstrichen (Brand-Farbe) statt fett. Bewusst **nicht** übernommen (Konzept des Nutzers): Linien als Gliederung bleiben, keine Pflicht-Fotos/
+  Videos, keine Bewegungs-Ebene.
 - Farben als Tailwind-Theme in `src/app.css`: `text-ink|body|muted`, `bg-page|surface|subtle|notice`, `border-line|line-strong|notice-line`,
   `text-brand`, `text-link` (+ Klasse `.text-link` für unterstrichene Links), Gruppenname `.group-name` mit `style="--g: <farbe>"`
   (hell abgedunkelt, dunkel aufgehellt). Neue Bausteine nur mit diesen Namen.
 - Dunkelmodus = `html.dark`: Cookie `theme` (`light|dark`, 1 Jahr, nur bei ausdrücklicher Wahl über `ThemeToggle.svelte` in der Navigation)
   → `hooks.server.ts` setzt die Klasse (`%ep.theme%` in `app.html`); ohne Cookie setzt ein Inline-Skript mit `%sveltekit.nonce%` `dark` nach
   `prefers-color-scheme` vor dem ersten Zeichnen. Datenschutz nennt Cookie und `localStorage` (Abschnitt Cookies, Stand 24.10.2026).
-- Ältere Seiten (Termine, Galerie, CPD, Datenschutz …) mit `gray-*`-Klassen laufen über **umgedrehte Grauskala** in `html.dark` plus
-  Einzelregeln (`.bg-white`, `text-blue-*`, rot/grün-Hinweise). Folge: `bg-white` wird im Dunkeln dunkel – für echtes Weiß `bg-[#fff]`.
+- Die Altseiten (Termine, Galerie, CPD, Kontakt, Datenschutz …) sind seit 2026-10-25 auf die Tokens umgestellt. Die umgedrehte Grauskala in `html.dark`
+  plus Einzelregeln (`.bg-white`, `text-blue-*` …) bleibt als Rückfall für übersehene Klassen. Folge: `bg-white` wird im Dunkeln dunkel – für echtes Weiß `bg-[#fff]`.
 - Bausteine: `EventList.svelte` (Datum links, Titel/Uhrzeit/Ort rechts; `null` = Ladefehler-Hinweis), `EmailButtons` (ohne Farb-Prop),
   `Map` (Prop `height`). Instagram-Kasten entfällt (Link in der Fußzeile), `AppointmentPreview` und `/api/termine` entfernt.
 
@@ -39,7 +47,7 @@ nur für Namen, keine Schatten/Verläufe/Emojis/Überzeilen – „soll nicht na
 | Variable | Bedeutung |
 |---|---|
 | `WEBSITE_API_URL` | Basis-URL des Intern-Bereichs, serverseitig (Standard `http://app:3000`, Demo `http://127.0.0.1:4300`) |
-| `WEBSITE_API_KEY` | Key mit `events.website.read galleries.website.read members.website.read offices.website.read` |
+| `WEBSITE_API_KEY` | Key mit `events.website.read galleries.website.read members.website.read offices.website.read website.content.read` |
 | `ORIGIN` | öffentliche Adresse (adapter-node, CSRF) |
 | `ADDRESS_HEADER`, `XFF_DEPTH` | hinter nginx `X-Forwarded-For` / `1` – sonst zählt das IP-Rate-Limit alle Besucher*innen als eine IP (Proxy) |
 | `IMAGE_CACHE_MB`, `IMAGE_CACHE_TTL_SEC` | Bild-Cache im Arbeitsspeicher (Standard 48 MB, 3600 s; 0 = aus) |
@@ -79,7 +87,11 @@ Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` m
 ## Seiten und Routen
 | Route | Quelle |
 |---|---|
-| `/` | Hero, Ferienhinweis (statisch, Objekt `ferien` oben in `+page.svelte`, `show: false` blendet aus), Gruppen als Liste (Bild, Alter, Zeit, Teaser), Nächste Termine (`fetchUpcomingEvents`), Über uns, FAQ (`src/lib/faqs.ts`) + Karte |
+| `/` | Hero, Hinweiskästen (`home`-Banner aus dem Modul `website`), Gruppen als Liste (Bild, Alter, Zeit, Teaser), Nächste Termine (`fetchUpcomingEvents`), Aktuelles (3 neueste Beiträge), Über uns, FAQ (`featured` aus dem Backend, Rückfall `src/lib/faqs.ts`) + Karte |
+| alle Seiten | Banner-Leiste (`bar`) über der Navigation (`SiteBanner.svelte`, schließbar → `localStorage` `ep:hinweise-geschlossen`), RSS-`<link rel="alternate">` |
+| `/blog`, `/blog/[slug]`, `/blog/rss.xml` | Modul `website`: Liste (Themen-Chips `?thema=`, Seiten `?seite=`, 12 je Seite), Beitrag (Titelbild, Text über `lib/server/rich-text.ts` `renderRichText` – zweite Bereinigung + Bilder auf den Proxy, Themen, Verknüpfungen nur wenn öffentlich gelistet, Teilen, OG), RSS 2.0 (20 neueste, 10 min Cache) |
+| `/faq` | alle aktiven Fragen (`FaqList.svelte`, Akkordeon mit IDs), Rückfall `lib/faqs.ts` bei Ausfall |
+| `/bilder/blog/[slug]/[imageId]/[variant]` | Bild-Proxy (`blogImage`, nur Bilder veröffentlichter Beiträge) |
 | `/termine` | `fetchEvents`; Ansichten **Kalender** (Standard, `MonthCalendar.svelte`, mobil Agenda) / **Kacheln** / **Liste** (nach Monaten), Wahl in `?ansicht=` + `localStorage`; Filter-Chips Gruppen/Themen + Suche (`?gruppe=&thema=&q=&monat=`, alte `?tags=` der Gruppenseite gelten weiter); Serien in Kacheln/Liste einmal als „Regelmäßige Termine“, Vergangene aufklappbar |
 | `/termine/[id]` | `fetchEvent` (404 unbekannt, 503 Backend weg): Datum/Uhrzeit, Ort mit Link „In Karte öffnen“ (OSM-Suche, nur Link), Gruppen → Gruppenseite, verknüpfte Galerien, Teilen, OG-Tags |
 | `/galerie`, `/galerie/[id]` | `fetchGalleries` / `fetchGallery`: Karten mit Titelbild (Maße, lazy), Bildanzahl, Gruppen; Filter Jahr/Gruppe/Suche (`?jahr=&gruppe=&q=`); Detail mit Bildern in Spalten (`thumb`, echte Seitenverhältnisse, Alt-Text = Bildbeschreibung), Lightbox (`web`, Unterschrift, Zähler, Tastatur/Wischen), Links zu den Terminen |
@@ -117,7 +129,7 @@ cd website && npm run build && PORT=3001 node --env-file=.env build
 - Kontaktformular: echter SMTP-Versand ungetestet (nur Test-Server); Compose-Dateien reichen `SMTP_*`/`CONTACT_TO`/`ADDRESS_HEADER` noch nicht an den Dienst `website` durch;
   Empfängeradresse `kontakt@` (alt: Tippfehler „kotakt@“) vom Nutzer bestätigen lassen. Datenschutztext rechtlich nicht geprüft.
 - Caches und Rate-Limits nur im Arbeitsspeicher je Prozess (Neustart leert sie).
-- Datenschutztext, Ferienhinweis (statisch, Termine darin veraltet) und FAQ-Texte pflegen sich nur im Code.
+- Datenschutztext pflegt sich nur im Code (Ferienhinweis und FAQ seit 2026-10-25 über das Modul `website`).
 - Serien-Rhythmus wird aus den Abständen der Vorkommen geraten (das Backend liefert die Regel nicht); ungewöhnliche Rhythmen → „regelmäßig“.
 - `/termine` lädt alle Vorkommen 2023 bis Ende nächsten Jahres auf einmal (bei vielen Serien wächst die Seite).
 - Altes `ecosystem.config.cjs` (PM2) unverändert übernommen, ungeprüft.

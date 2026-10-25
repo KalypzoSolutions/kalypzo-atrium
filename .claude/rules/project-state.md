@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-23)
+# Projektstand (zuletzt aktualisiert: 2026-10-25)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -235,7 +235,16 @@
   erneuerbar), Filter nach Gruppen/Tags, Termine (Serien je Vorkommen, Absagen/Änderungen) und Aktionen (sichtbare + eigene Anmeldungen), Profilkarte und
   Dialog auf der Terminseite, Webcal/Google-Links. Details: `module-events.md` → „Kalender-Abo“.
 
+- **Modul `website` + Design-Feinschliff der Stammeswebsite (2026-10-25, v1.0.0)**: Banner (Leiste auf allen Seiten oder Kasten Startseite, Zeitfenster,
+  schließbar), häufige Fragen (Rich-Text, Startseite/alle) und Blog (Bilder im Text, Titelbild, Themen, Entwurf/geplant/veröffentlicht, Mitschreiben per
+  Freigabe, Vorname der Autor*in, Verknüpfung Gruppen/Termin/Galerie) im Intern-Bereich; Website mit `/blog`, `/blog/<slug>`, `/blog/rss.xml`, `/faq`,
+  Banner-Leiste, statischer Ferienhinweis entfällt. Core: `sanitizeRichText`/`slugify` im SDK, Bilder im `RichTextEditor`, `GalleryRefsService`.
+  Website-Feinschliff: Typo-Skala (`text-display|section|sub|lede|small`), `site-container`, Fokus/Skip-Link/Reduced-Motion, Altseiten auf Tokens.
+  Details: `module-website.md`, `website.md`.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Website-Modul (2026-10-25): Banner je Eintrag als Leiste oder Startseiten-Kasten; Blog „ausführlich“ (Themen, RSS, Mitschreiben); getrennte Rechte
+  (Inhalte / schreiben / veröffentlichen); Design nur Feinschliff, Konzept bleibt.
 - Kalender-Abo (2026-10-24): Termine **und** Aktionen; mehrere Abos je Person mit Filter.
 - Spam-Schutz (2026-10-24): eindeutiger Spam in den Spam-Ordner (nie verwerfen); eine Sperr-/Vertrauensliste für alle Postfächer; jede*r mit
   Zugriff darf „Spam“/„Kein Spam“ klicken und damit die Liste ändern.

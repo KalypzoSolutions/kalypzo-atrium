@@ -34,6 +34,7 @@ export * from './rate-limits';
 export * from './best-effort';
 export * from './file-response';
 export * from './upload';
+export * from './html';
 export * from '$lib/sdk/dates';
 export * from '$lib/sdk/csv';
 export type {

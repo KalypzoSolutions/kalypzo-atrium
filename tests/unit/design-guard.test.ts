@@ -34,7 +34,8 @@ const MIGRATED_MODULES = [
 	'members',
 	'orders',
 	'offices',
-	'treasury'
+	'treasury',
+	'website'
 ];
 const SCOPE = [
 	...files(join(ROOT, 'src/lib/components')),
