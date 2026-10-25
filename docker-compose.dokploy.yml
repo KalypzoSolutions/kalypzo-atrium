@@ -13,7 +13,7 @@
 # Umgebung: DEPLOY_ENV (z. B. prod, staging; Standard prod) – je Stack verschieden setzen. `app` und `website` hängen
 # zusätzlich im gemeinsamen `dokploy-network`, in dem gleichnamige Dienste ANDERER Stacks (z. B. `app` von Staging) stecken;
 # dort würde ein Name wie `app` oder `db` reihum auf beide Stacks auflösen (sporadische 401 „API-Key wird nicht akzeptiert“).
-# Deshalb sprechen sich die Dienste über eindeutige Aliase im stackeigenen Netz `internal` an: ep-intern-<DEPLOY_ENV>-app|db|storage.
+# Deshalb sprechen sich die Dienste über eindeutige Aliase im stackeigenen Netz `internal` an: ep-intern-<DEPLOY_ENV>-app|db|storage|website.
 #
 # Ressourcen und Log-Rotation (Issue #39): Standardwerte für einen kleinen Server (ab 1 vCPU, 4 GB RAM), per
 # *_MEM_LIMIT/*_CPUS überschreibbar. Images mit fester Version + Digest (Issue #74).
@@ -236,8 +236,10 @@ services:
       - /tmp:size=64m,mode=1777
     cap_drop: [ALL]
     networks:
-      - internal
-      - dokploy-network
+      internal:
+        aliases: ['ep-intern-${DEPLOY_ENV:-prod}-website']
+      dokploy-network:
+        aliases: ['ep-intern-${DEPLOY_ENV:-prod}-website']
     mem_limit: ${WEBSITE_MEM_LIMIT:-256m}
     cpus: ${WEBSITE_CPUS:-0.5}
     cpu_shares: 256

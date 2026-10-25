@@ -398,7 +398,7 @@ Browser; Galeriebilder liefert die Website über `/bilder/galerie/…` aus, die 
    auf **beide** Stacks auf – Folge waren sporadische 401 „API-Key wird nicht akzeptiert“ (Anfrage landete im anderen Stack
    mit eigener Datenbank) und damit 503-Fehlerseiten. Deshalb setzt jeder Stack `DEPLOY_ENV` (`prod`, `staging`, Standard
    `prod`); die Dienste sprechen sich über Aliase im stackeigenen Netz `internal` an: `ep-intern-<DEPLOY_ENV>-app`, `-db`,
-   `-storage`. Prüfen im Website-Container: `getent hosts ep-intern-prod-app` liefert genau **eine** Adresse.
+   `-storage`, `-website` (letzterer auch im `dokploy-network`). Prüfen im Website-Container: `getent hosts ep-intern-prod-app` liefert genau **eine** Adresse.
    Bestehende Installationen: `DEPLOY_ENV` setzen und neu deployen genügt (Volumes und internes Netz behalten ihre Namen).
    Der gespeicherte Speicher-Endpunkt `http://storage:9000` bleibt gültig – mehrdeutig sind nur Dienste im gemeinsamen Netz
    (`app`, `website`), `db`/`storage` hängen nur im stackeigenen Netz. Ein Umstellen auf `ep-intern-<DEPLOY_ENV>-storage` ist
