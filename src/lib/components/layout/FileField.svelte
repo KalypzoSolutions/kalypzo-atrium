@@ -3,11 +3,15 @@
 	import X from '@lucide/svelte/icons/x';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import ImageCropDialog from './ImageCropDialog.svelte';
+	import { CROP_SOURCE_MAX_BYTES, type ImageCropOptions } from './image-crop';
 	import { openProtectedFile } from './open-file';
 
 	/**
 	 * Einheitliches Datei-Feld: zeigt eine vorhandene Datei (Link + Entfernen), erlaubt Auswahl
 	 * einer neuen Datei mit Typ- und Größenprüfung und meldet Fehler konsistent.
+	 * Mit `crop` öffnet die Auswahl eines Bildes zuerst den Zuschnitt; `file` ist dann das zugeschnittene Bild
+	 * (auch im nativen Formular-Submit), `maxBytes` gilt für das Ergebnis, das Original darf bis 25 MB groß sein.
 	 */
 	let {
 		id,
@@ -22,7 +26,8 @@
 		canRemove = false,
 		onremove,
 		disabled = false,
-		error = null
+		error = null,
+		crop
 	}: {
 		id: string;
 		/** Feldname für native Formular-Submits (SvelteKit-Actions) */
@@ -39,6 +44,7 @@
 		onremove?: () => void;
 		disabled?: boolean;
 		error?: string | null;
+		crop?: ImageCropOptions;
 	} = $props();
 
 	let localError = $state('');
@@ -72,6 +78,16 @@
 		if (!accepted(f)) {
 			localError = 'Dateityp nicht erlaubt';
 			file = null;
+		} else if (crop) {
+			if (f.size > CROP_SOURCE_MAX_BYTES) {
+				localError = `Datei ist zu groß (maximal ${fmtSize(CROP_SOURCE_MAX_BYTES)})`;
+				file = null;
+			} else {
+				file = null;
+				cropSource = f;
+				cropOpen = true;
+				return;
+			}
 		} else if (maxBytes && f.size > maxBytes) {
 			localError = `Datei ist zu groß (maximal ${fmtSize(maxBytes)})`;
 			file = null;
@@ -79,6 +95,33 @@
 			file = f;
 		}
 		if (!file && input) input.value = '';
+	}
+
+	// --- Zuschnitt
+	let cropSource = $state<File | null>(null);
+	let cropOpen = $state(false);
+
+	function onCropped(out: File) {
+		if (maxBytes && out.size > maxBytes) {
+			localError = `Zugeschnittenes Bild ist zu groß (maximal ${fmtSize(maxBytes)})`;
+			clear();
+			return;
+		}
+		localError = '';
+		file = out;
+		// Native Formular-Submits sollen das zugeschnittene Bild senden, nicht das Original
+		try {
+			const dt = new DataTransfer();
+			dt.items.add(out);
+			if (input) input.files = dt.files;
+		} catch {
+			// Sehr alte Browser: dann geht nur der gebundene Wert (`file`) weiter
+		}
+	}
+
+	function onCropCancel() {
+		// Erneutes Zuschneiden abgebrochen → bisheriger Ausschnitt bleibt
+		if (!file) clear();
 	}
 
 	/** Vorhandene Datei per fetch öffnen, damit Fehler (503 ohne S3, 404) als Toast erscheinen. */
@@ -96,6 +139,7 @@
 
 	function clear() {
 		file = null;
+		cropSource = null;
 		localError = '';
 		if (input) input.value = '';
 	}
@@ -153,6 +197,16 @@
 				>
 					<X class="size-3.5" />
 				</button>
+				{#if crop && cropSource}
+					<button
+						type="button"
+						class="text-link underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+						{disabled}
+						onclick={() => (cropOpen = true)}
+					>
+						Ausschnitt ändern
+					</button>
+				{/if}
 			</p>
 		{/if}
 	{/if}
@@ -161,3 +215,16 @@
 		<p id="{id}-error" role="alert" class="text-xs text-destructive">{shownError}</p>
 	{/if}
 </div>
+
+{#if crop}
+	<ImageCropDialog
+		bind:open={cropOpen}
+		file={cropSource}
+		aspect={crop.aspect}
+		shape={crop.shape}
+		maxEdge={crop.maxEdge}
+		title={crop.title}
+		onconfirm={onCropped}
+		oncancel={onCropCancel}
+	/>
+{/if}

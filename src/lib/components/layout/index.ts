@@ -16,6 +16,8 @@ export { default as PdfExportDialog } from './PdfExportDialog.svelte';
 export { default as ColorBadge } from './ColorBadge.svelte';
 export { default as EntityAvatar } from './EntityAvatar.svelte';
 export { default as FileField } from './FileField.svelte';
+export { default as ImageCropDialog } from './ImageCropDialog.svelte';
+export { CROP_SOURCE_MAX_BYTES, type ImageCropOptions } from './image-crop';
 export { default as ContactListField, type ContactRow } from './ContactListField.svelte';
 export { default as ShareDialog } from './ShareDialog.svelte';
 export { default as ShareMenu } from './ShareMenu.svelte';
