@@ -34,7 +34,14 @@ import {
 	toWorld,
 	zoomAt
 } from '$lib/modules/whiteboard/pages/editor/viewport';
-import { textOn, fileKind, hostOf } from '$lib/modules/whiteboard/pages/editor/render';
+import {
+	fileKind,
+	fixedPalette,
+	hostOf,
+	ink,
+	LIGHT,
+	textOn
+} from '$lib/modules/whiteboard/pages/editor/render';
 import {
 	connectorData,
 	isAllowedLink,
@@ -348,6 +355,21 @@ describe('Schemas und Darstellung', () => {
 		expect(
 			parseElementData('ref', { x: 0, y: 0, w: 10, h: 10, refType: 'unbekannt', refId: '1' })
 		).toBeNull();
+	});
+
+	it('feste Fläche: helle Farbe = helle Palette, dunkle Farbe = helle Tinte', () => {
+		expect(fixedPalette('#ffffff')).toEqual(LIGHT);
+		expect(fixedPalette('#fef3c7')).toMatchObject({
+			dark: false,
+			paper: '#fef3c7',
+			ink: LIGHT.ink
+		});
+		const black = fixedPalette('#111827');
+		expect(black.dark).toBe(true);
+		expect(black.paper).toBe('#111827');
+		expect(ink('#1f2937', black)).toBe(black.ink);
+		expect(ink('#dc2626', black)).toBe('#dc2626');
+		expect(ink('#1f2937', LIGHT)).toBe('#1f2937');
 	});
 
 	it('Kontrastfarbe, Dateiart, Host', () => {

@@ -283,6 +283,8 @@
   Details: `module-whiteboard.md`. Offen: nur **eine** App-Instanz (Hub im Prozess), echte Tablets/Stifte und SSE hinter Traefik nach Deploy ungeprüft.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Whiteboard-Fläche (2026-10-26): **standardmäßig feste Farbe (Weiß)** unabhängig von Hell/Dunkel und Theme; je Person im Whiteboard umschaltbar
+  (Weiß, Schwarz, eigene Farbe oder „wie Modus/Theme“).
 - Whiteboards (2026-10-26): eigenes Modul; Dateien direkt hochladen **und** aus „Dateien“ verknüpfen; **mehrere** Boards je Aktion; erste Version
   mit Freihand, Live-Cursor/Anwesenheit, Rahmen, Versionsverlauf und Karten für Aufgaben, Termine, Galerien, Dateien und Aktionen.
 - Themes (2026-10-26): **nur persönlich** (keine Stammes-Themes); Hintergrund wirkt auf **Seite + Seitenleiste**, Karten bleiben einfarbig;

@@ -39,7 +39,8 @@ import type {
 	LiveEvent,
 	OpsResult,
 	RefCard,
-	Snapshot
+	Snapshot,
+	UserPrefs
 } from '$lib/modules/whiteboard/schemas';
 import type { RequestContext } from '$lib/sdk/types';
 
@@ -891,6 +892,33 @@ describe('Karten aus anderen Modulen', () => {
 			[false, 'Whiteboard nicht verfügbar']
 		]);
 		expect(JSON.stringify(theirs)).not.toContain('Zelte');
+	});
+});
+
+describe('Persönliche Ansicht (Fläche)', () => {
+	it('Standard feste weiße Fläche; je Konto speicherbar und getrennt', async () => {
+		expect(ok<UserPrefs>(await call('parent', 'GET', '/me/prefs'))).toEqual({
+			surface: { mode: 'fixed', color: '#ffffff' }
+		});
+		const saved = ok<UserPrefs>(
+			await call('parent', 'PUT', '/me/prefs', { surface: { mode: 'fixed', color: '#112233' } })
+		);
+		expect(saved.surface).toEqual({ mode: 'fixed', color: '#112233' });
+		ok(await call('parent', 'PUT', '/me/prefs', { surface: { mode: 'theme', color: '#112233' } }));
+		expect(ok<UserPrefs>(await call('parent', 'GET', '/me/prefs')).surface.mode).toBe('theme');
+		// andere Person unberührt
+		expect(ok<UserPrefs>(await call('helper', 'GET', '/me/prefs')).surface.mode).toBe('fixed');
+		fail(
+			await call('parent', 'PUT', '/me/prefs', { surface: { mode: 'fixed', color: 'weiß' } }),
+			422,
+			'validation_failed'
+		);
+		fail(
+			await call('parent', 'PUT', '/me/prefs', { surface: { mode: 'bunt' } }),
+			422,
+			'validation_failed'
+		);
+		expect((await call('outsider', 'GET', '/me/prefs')).status).toBe(403);
 	});
 });
 
