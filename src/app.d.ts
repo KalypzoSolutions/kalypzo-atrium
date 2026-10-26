@@ -18,6 +18,10 @@ declare global {
 			sessionId: string | null;
 			requestId: string;
 		}
+		interface PageState {
+			/** Ebene offener Blätter (`BottomSheet`, Zurück-Geste schließt das oberste) */
+			sheet?: number;
+		}
 	}
 }
 

@@ -196,6 +196,15 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 | `FormField`, `PageHeader`, `ConfirmDialog`, `EmptyState` | `$lib/components/layout` | Formular- und Seitenbausteine (`FormField` verknüpft Hinweis/Fehler selbst per `aria-describedby`/`aria-invalid`, `required` → `*`) |
 | `LoadingState`, `ErrorState` | `$lib/components/layout` | Einheitlicher Lade-/Fehlerzustand (`role="status"` + „Lädt …“; Fehler mit „Erneut versuchen“ über `onretry`) |
 | `SearchInput`, `Pagination` | `$lib/components/layout` | URL-basierte Suche und Seitenwechsel; `param`/`resetParams` bzw. `pageParam` (Seitenzahl statt `offset`) passen sie an die Server-Logik an |
+| `deviceLayout()` | `$lib/components/layout` | Geräteklasse `phone` (< 640 px) · `tablet` (640–1366 px mit Touch) · `desktop` (reaktiv, SSR = `desktop`) – für Seiten mit eigener Handy-/Tablet-Bedienung |
+| `BottomSheet` | `$lib/components/layout` | Blatt von unten (Handy): Griff/Kopf ziehen, Hintergrund oder ✕ schließt, **Zurück-Geste schließt nur das Blatt** (Verlaufseintrag per Shallow Routing, `page.state.sheet`); `size="tall"`, `onback` (Assistent), `headerActions`, `footer`. Vor `goto`/`replaceState` nach dem Schließen `await sheetsSettled()` |
+| `SheetAction` | `$lib/components/layout` | Eintrag im Aktionsblatt (Symbol, Titel, Unterzeile, ≥ 60 px), `variant` `primary` (Hauptaktion oben) / `danger` (unten) |
+| `MobileTabBar` | `$lib/components/layout` | Bereichsleiste unten (3–5 Einträge, `action: true` = hervorgehobener „Neu“-Knopf); Inhalt braucht `pb-24` |
+| `ScrollPills` | `$lib/components/layout` | Unteransichten als seitlich scrollende Pillen (statt Umbruch), optional Zähler |
+| `ChoiceChips` | `$lib/components/layout` | Einfachauswahl als große Chips mit Überschrift (Filterblatt/-Popover) |
+| `TouchList`, `ListRow` | `$lib/components/layout` | Touch-Liste statt Tabelle: Titel, Unterzeile, Betrag, Status; Antippen → Aktionsblatt/Details, **lange drücken** → Auswahlmodus (`selecting`, `selected`), `active` (Tablet-Details), `wrap`, `below` |
+| `SelectionBar` | `$lib/components/layout` | Auswahlmodus: oben „N ausgewählt · Summe · Alle“, Sammelaktionen unten fixiert (Handy, verdeckt die Bereichsleiste) bzw. im Kopf (`fixed={false}`, Tablet) |
+| `longpress` | `$lib/components/layout` | Svelte-Action „lange drücken“ (500 ms, Abbruch bei Bewegung, verschluckt den folgenden Klick, kein Browser-Kontextmenü) |
 
 ### Routen mit Parametern
 

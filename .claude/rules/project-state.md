@@ -287,7 +287,17 @@
   weibliche und eine männliche Leitung. Details: `module-actions.md` → „Zuschussantrag“. Offen: mit dem Landesjugendpfarramt klären, ob die
   Aufteilung (Team in der Jugendliste des eigenen Antrags) so akzeptiert wird; Vorlage ändert sich ggf. jährlich (Koordinaten neu ausmessen).
 
+- **Kasse mobil – Handy und Tablet (2026-10-26)**: Umsetzung des Konzept-Artifacts „Kasse mobil – Bedienkonzept“. Handy: Bereichsleiste unten,
+  Pillen, Blätter von unten (Ziehen/Zurück schließt nur das Blatt), Listen statt Tabellen mit Aktionsblatt und Auswahl per langem Drücken, Zahlung erfassen
+  in 3 Schritten, Rechnung mit fester Aktionsleiste. Tablet: Liste | Details, Menüs als Popover, Zahlung erfassen als zweispaltiger Dialog. Desktop
+  unverändert. Neue Core-Bausteine `BottomSheet`, `SheetAction`, `MobileTabBar`, `ScrollPills`, `ChoiceChips`, `TouchList`/`ListRow`, `SelectionBar`,
+  `longpress`, `deviceLayout`, `sheetsSettled` (`App.PageState.sheet`). Details: `module-treasury.md` → „Handy und Tablet“. Offen: echte Geräte
+  (iPhone/Android/iPad, Safari-Zurück-Wischgeste, Safe-Area) nur emuliert geprüft; Familienkonto bleibt Seitenblatt; Jahresbeitrag/Familien/Abrechnungen
+  nutzen weiter die Karten-Tabellen.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Kasse mobil (2026-10-26): Konzept-Empfehlungen übernommen – Bereichsleiste unten, keine Wischgesten, Zahlung erfassen in 3 Schritten, ＋ als Blatt
+  mit 5 Wegen, Kontostand dauerhaft im Kopf; Desktop bleibt unverändert.
 - Zuschussantrag (2026-10-26): Geschlecht der Leitungen **nur im Antrag** (kein Feld an Teilnehmenden/Mitgliedern); **Original-PDF befüllen**;
   fehlen Leitungspaare → **so viele Anträge wie möglich**, Rest als „nicht berücksichtigt“; Gemeinde als Einstellung, Art/Thema/Inklusion je Aktion.
 - Whiteboard-Fläche (2026-10-26): **standardmäßig feste Farbe (Weiß)** unabhängig von Hell/Dunkel und Theme; je Person im Whiteboard umschaltbar
