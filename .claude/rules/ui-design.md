@@ -36,7 +36,8 @@ paths:
   **Dateityp-Farben** (2026-10-26): `--file-pdf|word|sheet|slides|image|archive|media|code` → `text-file-<art>`, getönt `bg-file-<art>-muted`
   (nur für Dateisymbole, Zuordnung in `files/pages/file-types.ts`; Kontrast im selben Test).
   Akzentfarbige Symbole/Links = `text-link` (auch `text-link/80`), nie `text-primary`.
-  **Whiteboard-Fläche** (2026-10-26) ist „Papier“: immer hell, Nutzerfarben als Inline-Style/SVG-Attribute (`whiteboard/pages/editor/render.ts`), Leisten folgen dem Theme.
+  **Whiteboard-Fläche** (2026-10-26) folgt Dunkelmodus und Theme über eine aus den Tokens gelesene Palette (`whiteboard/pages/editor/render.ts`
+  `readPalette`, Tinte → hell im Dunkelmodus); Nutzerfarben als SVG-Attribute; Export immer hell.
 - **Persönliche Themes** (2026-10-26): Hintergrund als feste Ebene `body::before` hinter der Seite (`[data-app-theme='on']`,
   Variablen `--app-bg-*`/`--app-veil-*`/`--app-sidebar-*` am `<html>`), Seitenleiste `bg-sidebar-surface`, Kopfzeile `bg-topbar-surface` + `app-glass`
   (Weichzeichner nur mit Theme), mobiles Sheet `app-backdrop`. **`--background` bleibt immer einfarbig** (Fläche für Knöpfe, Tabs, Leisten) –

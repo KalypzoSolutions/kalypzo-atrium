@@ -21,6 +21,8 @@ import {
 } from '$lib/modules/whiteboard/pages/editor/connectors';
 import {
 	approxMeasure,
+	fitFontSize,
+	textHeight,
 	layoutText,
 	wrapText
 } from '$lib/modules/whiteboard/pages/editor/text-layout';
@@ -217,6 +219,46 @@ describe('Text', () => {
 		expect(lay.lines[1]!.text.endsWith('…')).toBe(true);
 		expect(lay.anchor).toBe('middle');
 		expect(lay.lines[0]!.x).toBe(20);
+	});
+});
+
+describe('Textfelder', () => {
+	const style = { fontSize: 40, align: 'center' as const, valign: 'middle' as const };
+
+	it('verkleinert die Schrift, bis alles passt (nie unter 8 px)', () => {
+		const area = { w: 180, h: 160 };
+		const text = 'Geländespiel mit Schatzsuche und Kartenkunde am Nachmittag';
+		const size = fitFontSize(text, area, style);
+		expect(size).toBeLessThan(40);
+		expect(size).toBeGreaterThanOrEqual(8);
+		const lay = layoutText(text, { x: 0, y: 0, ...area }, { ...style, autoFit: true });
+		expect(lay.overflow).toBe(false);
+		expect(lay.fontSize).toBe(size);
+		// passt schon → unverändert
+		expect(fitFontSize('Hi', area, style)).toBe(40);
+		expect(fitFontSize('x'.repeat(5000), { w: 50, h: 20 }, style)).toBe(8);
+	});
+
+	it('Höhe wächst mit den Zeilen; Monoschrift misst breiter', () => {
+		const s = { fontSize: 20, align: 'left' as const, valign: 'top' as const };
+		expect(textHeight('', 200, s)).toBe(25);
+		expect(textHeight('a\nb\nc', 200, s)).toBe(75);
+		const sans = approxMeasure('abc', 20, false, false, 'sans');
+		expect(approxMeasure('abc', 20, false, false, 'mono')).toBeGreaterThan(sans);
+	});
+
+	it('neue Felder haben Standardwerte (ältere Elemente bleiben gültig)', () => {
+		const old = parseElementData('shape', { kind: 'note', x: 0, y: 0, w: 10, h: 10, text: 'alt' });
+		expect(old).toMatchObject({
+			fontFamily: 'sans',
+			underline: false,
+			strike: false,
+			autoFit: false,
+			autoHeight: false
+		});
+		expect(
+			parseElementData('shape', { kind: 'note', x: 0, y: 0, w: 10, h: 10, fontFamily: 'comic' })
+		).toBeNull();
 	});
 });
 

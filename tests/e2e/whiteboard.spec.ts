@@ -118,6 +118,61 @@ test('Whiteboard anlegen, Notizen live, verbinden, neu laden', async ({ page, br
 	await other.context().close();
 });
 
+test('Notizen schnell: Farbe vorab, Tab, „+“, Antippen, Text-Menü, wachsendes Textfeld', async ({
+	page
+}) => {
+	await login(page);
+	await page.goto(boardUrl);
+	await expect(canvas(page).locator('g[data-el]').first()).toBeVisible();
+	const box = (await canvas(page).boundingBox())!;
+	const before = await canvas(page).locator('g[data-el]').count();
+
+	await page.getByRole('button', { name: 'Notizzettel (N)' }).click();
+	await page.getByRole('button', { name: 'Notizfarbe #bbdefb' }).click();
+	await page.mouse.click(box.x + 250, box.y + box.height - 220);
+	await page.keyboard.type('Wanderung');
+	// Tab: nächste Notiz rechts daneben, gleich weiterschreiben
+	await page.keyboard.press('Tab');
+	await page.keyboard.type('Picknick');
+	await page.keyboard.press('Escape');
+	await expect(elementWith(page, 'Picknick').locator('path').nth(1)).toHaveAttribute(
+		'fill',
+		'#bbdefb'
+	);
+
+	// „+“ unten: neue Notiz mit Pfeil
+	await canvas(page).locator('[data-handle="link-bottom"]').click();
+	await page.keyboard.type('Baden');
+	await page.keyboard.press('Escape');
+	await expect(canvas(page).locator('g[data-el]')).toHaveCount(before + 4);
+
+	// Antippen der ausgewählten Notiz öffnet die Eingabe
+	const baden = (await elementWith(page, 'Baden').boundingBox())!;
+	await page.mouse.click(baden.x + 15, baden.y + 15);
+	await expect(page.getByLabel('Text bearbeiten')).toBeFocused();
+	await page.keyboard.press('Escape');
+
+	// Text-Menü: Handschrift
+	await page.getByRole('button', { name: 'Text einstellen' }).click();
+	await page.getByRole('button', { name: 'Handschrift' }).click();
+	await page.keyboard.press('Escape');
+	await expect(elementWith(page, 'Baden').locator('text')).toHaveAttribute(
+		'font-family',
+		/cursive/
+	);
+
+	// Textfeld wächst beim Tippen
+	await page.keyboard.press('Escape');
+	await canvas(page).focus();
+	await page.keyboard.press('t');
+	await page.mouse.click(box.x + 650, box.y + box.height - 120);
+	const field = page.getByLabel('Text bearbeiten');
+	const h1 = (await field.boundingBox())!.height;
+	await page.keyboard.type('eins\nzwei\ndrei');
+	await expect.poll(async () => (await field.boundingBox())!.height).toBeGreaterThan(h1 * 2);
+	await page.keyboard.press('Escape');
+});
+
 test('Zwei-Finger-Zoom auf dem Touchscreen', async ({ browser }) => {
 	const touch = await secondPage(browser, boardUrl, {
 		hasTouch: true,
