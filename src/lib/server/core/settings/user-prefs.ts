@@ -1,4 +1,12 @@
 import { and, eq, inArray } from 'drizzle-orm';
+import {
+	activeThemeSchema,
+	parseFavorites,
+	parseUserThemes,
+	type UserTheme
+} from '$lib/appearance/schema';
+import { styleString, themeCssVars } from '$lib/appearance/css';
+import { resolveTheme } from '$lib/appearance/presets';
 import { getDb, schema } from '../database/client';
 
 export type Density = 'comfortable' | 'compact';
@@ -14,6 +22,14 @@ export interface UserPrefs {
 	density: Density;
 	startPage: string;
 	pageSize: number;
+	/** Eigene Themes (ungültige Einträge verworfen) */
+	themes: UserTheme[];
+	/** Gewählte Theme-ID (`''` = kein Theme) */
+	activeThemeId: string;
+	/** Aufgelöstes aktives Theme (Vorschlag oder eigenes), sonst `null` */
+	activeTheme: UserTheme | null;
+	/** Mit Stern markierte Themes (nur noch existierende, in Markier-Reihenfolge) */
+	favorites: UserTheme[];
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -35,7 +51,10 @@ export async function loadUserPrefs(userId: string): Promise<UserPrefs> {
 		'core.user.accentColor',
 		'core.user.density',
 		'core.user.startPage',
-		'core.user.pageSize'
+		'core.user.pageSize',
+		'core.user.themes',
+		'core.user.activeTheme',
+		'core.user.themeFavorites'
 	];
 	const rows = await getDb()
 		.select({ key: schema.setting.key, value: schema.setting.value })
@@ -46,13 +65,23 @@ export async function loadUserPrefs(userId: string): Promise<UserPrefs> {
 	const themeExplicit = theme === 'light' || theme === 'dark' || theme === 'system';
 	const start = m.get('core.user.startPage');
 	const size = Number(m.get('core.user.pageSize'));
+	const themes = parseUserThemes(m.get('core.user.themes'));
+	const active = activeThemeSchema.safeParse(m.get('core.user.activeTheme'));
+	const activeTheme = active.success ? resolveTheme(active.data, themes) : null;
+	const favorites = parseFavorites(m.get('core.user.themeFavorites'))
+		.map((id) => resolveTheme(id, themes))
+		.filter((t): t is UserTheme => t !== null);
 	return {
 		theme: themeExplicit ? (theme as ThemeChoice) : 'system',
 		themeExplicit,
 		accentColor: safeHexColor(m.get('core.user.accentColor')) ?? '',
 		density: safeDensity(m.get('core.user.density')),
 		startPage: typeof start === 'string' && START.test(start) ? start : '/dashboard',
-		pageSize: Number.isFinite(size) && size >= 10 && size <= 200 ? Math.floor(size) : 25
+		pageSize: Number.isFinite(size) && size >= 10 && size <= 200 ? Math.floor(size) : 25,
+		themes,
+		activeThemeId: activeTheme?.id ?? '',
+		activeTheme,
+		favorites
 	};
 }
 
@@ -100,13 +129,38 @@ export interface Appearance {
 	density: unknown;
 	/** Akzentfarbe des Benutzers oder des Systems */
 	accent: unknown;
+	/** Aktives Theme (Hintergrund); wird erneut validiert */
+	appTheme?: UserTheme | null;
 }
 
-/** Ersetzt `%app.theme%`, `%app.density%` und `%app.style%` in `app.html` (Werte werden validiert). */
+/** Wirksame Akzentfarbe: Theme → eigene → System → Standard */
+export function effectiveAccent(prefs: UserPrefs | null, systemAccent: unknown): string {
+	return (
+		safeHexColor(prefs?.activeTheme?.accent) ||
+		prefs?.accentColor ||
+		safeHexColor(systemAccent) ||
+		'#2563eb'
+	);
+}
+
+/** CSS-Variablen des aktiven Themes (oder `null`, wenn keines aktiv bzw. ungültig ist) */
+export function themeVarsFor(theme: UserTheme | null | undefined): Record<string, string> | null {
+	if (!theme) return null;
+	const [valid] = parseUserThemes([{ ...theme, id: crypto.randomUUID() }]);
+	return valid ? themeCssVars(valid) : null;
+}
+
+/**
+ * Ersetzt `%app.theme%`, `%app.density%`, `%app.apptheme%` und `%app.style%` in `app.html`
+ * (Werte werden validiert).
+ */
 export function applyAppearance(html: string, a: Appearance): string {
 	const accent = safeHexColor(a.accent);
+	const vars = themeVarsFor(a.appTheme);
+	const style = { ...(accent ? { '--accent-color': accent } : {}), ...(vars ?? {}) };
 	return html
 		.replace('%app.theme%', a.theme === 'dark' ? 'dark' : '')
 		.replace('%app.density%', safeDensity(a.density))
-		.replace('%app.style%', accent ? `--accent-color:${accent}` : '');
+		.replace('%app.apptheme%', vars ? 'on' : '')
+		.replace('%app.style%', styleString(style));
 }

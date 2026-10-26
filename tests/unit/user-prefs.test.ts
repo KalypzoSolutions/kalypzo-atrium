@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { maskEmail } from '$lib/server/core/auth/mask-email';
+import { THEME_PRESETS } from '$lib/appearance/presets';
+import type { UserTheme } from '$lib/appearance/schema';
 import { CORE_SETTINGS } from '$lib/server/core/settings/catalog';
 import {
 	applyAppearance,
@@ -20,6 +22,29 @@ describe('Darstellung (app.html-Platzhalter)', () => {
 		expect(applyAppearance(html, { theme: 'system', density: undefined, accent: null })).toBe(
 			'<html class="" data-density="comfortable" style="">'
 		);
+	});
+
+	it('setzt Theme-Variablen nur aus gültigen Themes', () => {
+		const t = THEME_PRESETS[1]!;
+		const out = applyAppearance('%app.apptheme%|%app.style%', {
+			theme: '',
+			density: '',
+			accent: '#16a34a',
+			appTheme: t
+		});
+		expect(out.startsWith('on|--accent-color:#16a34a;--app-bg-light:linear-gradient(')).toBe(true);
+		const bad = {
+			...t,
+			light: { ...t.light, background: { kind: 'solid', color: 'red;}body{display:none' } }
+		} as unknown as UserTheme;
+		expect(
+			applyAppearance('%app.apptheme%|%app.style%', {
+				theme: '',
+				density: '',
+				accent: null,
+				appTheme: bad
+			})
+		).toBe('|');
 	});
 
 	it('verwirft nicht-hexadezimale Akzentfarben (keine CSS-/HTML-Injektion)', () => {

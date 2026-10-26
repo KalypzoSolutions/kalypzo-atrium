@@ -181,3 +181,37 @@ test('Posteingang: Ordner anlegen, per Rechtsklick umbenennen und löschen', asy
 	await expect(tree.getByRole('button', { name: /Sommerlager 2026/ })).toHaveCount(0);
 	await expect(page).not.toHaveURL(/folder=/);
 });
+
+test('Verwaltung „Postfächer“: Zusatzpostfach und Weiterleitung anlegen', async ({ page }) => {
+	await login(page);
+	await ensureModules(page, ['members', 'messages']);
+	await page.goto('/modules/messages/admin');
+	await expect(page.getByRole('heading', { name: 'Postfächer', exact: true })).toBeVisible();
+	await expect(page.getByText(/Catch-all-Postfach/)).toBeVisible();
+
+	await page.getByRole('button', { name: 'Postfach anlegen' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Postfach anlegen' });
+	await dialog.getByLabel(/^Name/).fill('Herbstlager');
+	await dialog.getByLabel(/^E-Mail-Adresse/).fill('herbstlager@example.test');
+	await dialog.getByRole('button', { name: 'Anlegen' }).click();
+	await expect(dialog).toHaveCount(0);
+	await expect(page.getByRole('cell', { name: 'herbstlager@example.test' })).toBeVisible();
+
+	await page.getByRole('tab', { name: 'Weiterleitungen' }).click();
+	await page.getByRole('button', { name: 'Weiterleitung anlegen' }).click();
+	const alias = page.getByRole('dialog', { name: 'Weiterleitung anlegen' });
+	await alias.getByLabel(/^E-Mail-Adresse/).fill('lager@example.test');
+	await alias.getByRole('combobox', { name: 'Ziel-Postfach' }).click();
+	await page.getByRole('option', { name: /Zusätzlich: Herbstlager/ }).click();
+	await alias.getByRole('button', { name: 'Anlegen' }).click();
+	await expect(alias).toHaveCount(0);
+	await expect(page.getByRole('cell', { name: 'lager@example.test', exact: true })).toBeVisible();
+
+	// Doppelte Adresse → Hinweis am Feld
+	await page.getByRole('button', { name: 'Weiterleitung anlegen' }).click();
+	await alias.getByLabel(/^E-Mail-Adresse/).fill('herbstlager@example.test');
+	await alias.getByRole('combobox', { name: 'Ziel-Postfach' }).click();
+	await page.getByRole('option', { name: /Zusätzlich: Herbstlager/ }).click();
+	await alias.getByRole('button', { name: 'Anlegen' }).click();
+	await expect(alias.getByText(/gehört schon zu einem Postfach/)).toBeVisible();
+});

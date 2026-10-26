@@ -33,7 +33,15 @@ paths:
   native Checkbox/Textarea in `/admin`). Ausnahmen: Datenvisualisierung (`CostBar`), PDF-/Mail-Vorschau und QR-Code (`bg-white`).
   Migriert und vom Guard erfasst: `actions`, `events`, `files`, `galleries`, `members`, `orders`, `offices`, `treasury`
   (`MIGRATED_MODULES`, alle Fachmodule). Ausnahme `text-white`: Bildbetrachter mit immer dunkler Bühne (`files/FilePreview`, `galleries/ImageViewer`).
+  **Dateityp-Farben** (2026-10-26): `--file-pdf|word|sheet|slides|image|archive|media|code` → `text-file-<art>`, getönt `bg-file-<art>-muted`
+  (nur für Dateisymbole, Zuordnung in `files/pages/file-types.ts`; Kontrast im selben Test).
   Akzentfarbige Symbole/Links = `text-link` (auch `text-link/80`), nie `text-primary`.
+  **Whiteboard-Fläche** (2026-10-26) folgt Dunkelmodus und Theme über eine aus den Tokens gelesene Palette (`whiteboard/pages/editor/render.ts`
+  `readPalette`, Tinte → hell im Dunkelmodus); Nutzerfarben als SVG-Attribute; Export immer hell.
+- **Persönliche Themes** (2026-10-26): Hintergrund als feste Ebene `body::before` hinter der Seite (`[data-app-theme='on']`,
+  Variablen `--app-bg-*`/`--app-veil-*`/`--app-sidebar-*` am `<html>`), Seitenleiste `bg-sidebar-surface`, Kopfzeile `bg-topbar-surface` + `app-glass`
+  (Weichzeichner nur mit Theme), mobiles Sheet `app-backdrop`. **`--background` bleibt immer einfarbig** (Fläche für Knöpfe, Tabs, Leisten) –
+  nie einen Verlauf hineinlegen; Karten/Dialoge bleiben `--card`/`--popover`. Logik `$lib/appearance` (siehe `architecture.md`).
 - Typografie (#71, `@utility` in `app.css`, in `cn()` als Schriftgröße registriert): Seitentitel `text-title` (= 2xl semibold tight,
   `PageHeader`), Abschnittsüberschrift `text-section` (lg semibold), Kleinschrift `text-caption`/`text-xs` – **nie** `text-[10px]/[11px]`.
   `Card.Title` rendert eine Überschrift (`level`, Standard `h2`; Karten unter Abschnitt/in Dialogen `level={3}`; Login/Passwort `level={1}`),
@@ -45,6 +53,8 @@ paths:
   Elemente ohne eigenen Stil, Utility `focus-ring` für native Elemente; Core-Bausteine `focus-visible:ring-ring` (nie `/50`). Skip-Link
   „Zum Inhalt springen“ (`.skip-link`) als erstes Element im `(internal)`-Layout. `prefers-reduced-motion` global in `app.css`
   (Ladekreisel drehen langsam weiter). Ladetexte als Konstanten `BUSY_SAVE` („Speichert …“) & Co. (`layout/busy.ts`).
+- **Vollflächige Modulseiten** (Editoren): `ui.ts` `fullBleedRoutes: ['<routen-schlüssel>']` → kein Rand/`max-w`, Höhe `100dvh` − Kopfzeile; die Seite
+  bringt eigenen Kopf mit Rücklink mit (Muster `whiteboard/pages/editor/Editor.svelte`).
 - Layout: Sidebar links (`w-56`, Einträge `py-1.5`, flache Liste nach `order`, „Administration“ aufklappbar und nach dem Laden zu), Kopfzeile `h-14`, Inhalt in `max-w`-freier
   Spalte mit `p-4…8`. Abstände `space-y-4` (innerhalb) / `space-y-6` (Abschnitte). Raster: `grid gap-4 sm:grid-cols-2 lg:grid-cols-3`.
 - Texte deutsch, du-Ansprache, kurze Sätze. Gendern mit `*` (Teilnehmende*r, Besitzer*in). UI mit echten Umlauten.
@@ -69,10 +79,12 @@ wenn es nur ein Formular ist. Listen: Suche + Filter in der Toolbar der `DataTab
 | Einfachauswahl / Mehrfachauswahl mit Suche | `SelectField` (`ui/select-field`, `emptyLabel`, `name`) / `MultiSelect` (`ui/multi-select`) |
 | Freie Tags/Schlagwörter (Chips, Vorschläge, „„x“ anlegen“) | `TagInput` (`ui/tag-input`; `bind:value: string[]`, `suggestions` oder `loadSuggestions(q)` (200 ms Debounce), `max` 20, `maxLength` 40, `label`, `invalid`, `describedby`, `onchange`; Enter/Komma legt an, Blur übernimmt, Backspace entfernt letzten; Logik `addTag()` in `tags.ts`) |
 | Farbe | `ColorPicker` (`ui/color-picker`), `ColorBadge`, `EntityAvatar` |
+| Verlauf / Hintergrund (einfarbig, linear, radial, Farbflecken) | `GradientEditor` (`ui/gradient-editor`; `bind:value: ThemeBackground` aus `$lib/appearance`, `label`, `presets?`; Farbpunkte ziehen/Pfeiltasten/Entf, Klick auf die Leiste fügt hinzu, 2–6 Punkte, Mesh 1–5 Flecken auf der Vorschau ziehbar; reine Hilfen `gradient.ts`, Test `appearance.test.ts`) |
 | Icon wählen / per Name anzeigen (alle ~1.900 Lucide-Icons) | `IconPicker` (`ui/icon-picker`; `bind:value` = Name, Suche englisch + deutsch, Vorschläge nach Themen, „Alle Icons“ in 240er-Schritten, Pfeiltasten mit einem Tab-Stopp), `DynamicIcon` (`name`, `class`, `strokeWidth`, `fallback`); Daten lazy aus `$lib/sdk/icons` (eigener Chunk, `iconStore.ensure()`), deutsche Begriffe/Vorschläge in `sdk/icons/keywords-de.ts`. Nach Lucide-Update `node scripts/generate-icon-data.mjs` (Test `icon-data.test.ts` meldet es) |
 | Regler mit festen Stufen (z. B. Aus · E-Mail · Beides · Push) | `SegmentedSlider` (`ui/segmented-slider`; `value`, `options: { value, label, disabled?, hint? }[]`, `label` (aria), `onchange`, `disabled`; bits-ui `RadioGroup`, gleitender Knopf, Pfeiltasten, gesperrte Stufen sichtbar) |
 | Zahl mit −/+ , Regler, Geld | `NumberStepper`, `Slider` (`ui/slider`), `MoneyInput` (`money.ts`: `formatEuro`, `parseEuroToCents`) |
 | Datei-Upload, Kontaktliste (stapelt unter 640 px) | `FileField`, `ContactListField` |
+| Bild zuschneiden (Ausschnitt verschieben/zoomen) | `FileField crop={{ aspect?, shape?: 'rect'\|'circle', maxEdge?, title? }}` öffnet nach der Auswahl `ImageCropDialog`; `file` und `input.files` (native Formulare) enthalten danach den Ausschnitt (WebP, Safari JPEG), `maxBytes` gilt fürs Ergebnis, Original bis `CROP_SOURCE_MAX_BYTES` (25 MB), Link „Ausschnitt ändern“. Herauszoomen über das Bild hinaus bis `minZoom` (ganzes Bild halb so groß wie „passt hinein“), Ränder/Transparenz in der Hintergrundfarbe (`crop.background` = Startwert, im Dialog per `ColorPicker` änderbar, Standard Weiß; Checkbox „Transparent“ bzw. `background: 'transparent'` → keine Füllung, Schachbrett-Vorschau, WebP/PNG mit Alpha, `cropFill`). Rechnen in `layout/image-crop.ts` (`placement`, `outputFor`) (Rahmeneinheiten, Test `image-crop.test.ts`, E2E `image-crop.spec.ts`). Genutzt: Gruppenbild (rund, 1200 px, Hintergrund = Gruppenfarbe), Profilbild Profil + `/admin/users` (rund, 512 px) |
 | Zusammenfassung, Kostenbalken | `SummaryList`, `CostBar` |
 | Freigabe | `ShareMenu` (Popover im Seitenkopf), `ShareDialog`, `SharePanel`; Einträge/Kandidaten optional mit `type` (`everyone`/`group`/`role`/`user`/`member` → Icon + Badge), `detail` (Unterzeile statt E-Mail), `color` (Gruppenpunkt); Schlüssel `shareKey` (ohne `type` = Benutzer-ID, sonst `typ:id`, auch für `onchange`/`onremove`). Props `everyoneLabel` (Schnellknopf „… (alle)“ → `onadd({ id: '*', type: 'everyone' })`), `placeholder`, `searchLabel`, `emptyResultText` |
 | Erfolgs-Toast mit „Rückgängig“ (Rückweg = vorhandener API-Aufruf) | `toastWithUndo({ message, undo, undone?, onundone? })` aus `$lib/components/layout` (früher `treasury/pages/undo.ts`) |

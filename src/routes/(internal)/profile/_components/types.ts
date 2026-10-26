@@ -1,3 +1,5 @@
+import type { UserTheme } from '$lib/appearance/schema';
+
 /** Form der Seitendaten (Vertrag mit `profile/+page.server.ts`, bewusst locker typisiert). */
 export interface ProfileData {
 	profile: {
@@ -22,6 +24,13 @@ export interface ProfileData {
 		density?: string;
 		startPage?: string;
 		pageSize: number;
+	};
+	themes: {
+		own: UserTheme[];
+		presets: readonly UserTheme[];
+		activeId: string;
+		/** Mit Stern markierte Theme-IDs (Schnellwahl in der Kopfzeile) */
+		favorites: string[];
 	};
 	permissions: string[];
 	startPageOptions: { value: string; label: string }[];

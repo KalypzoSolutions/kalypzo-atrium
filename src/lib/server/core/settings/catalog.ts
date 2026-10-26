@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { SettingScope } from '$lib/sdk/types';
+import { activeThemeSchema, themeFavoritesSchema, userThemesSchema } from '$lib/appearance/schema';
 import { DASHBOARD_KEY_PATTERN, DASHBOARD_LAYOUT_MAX } from '$lib/sdk/client/dashboard-widgets';
 
 export interface SettingDefinition {
@@ -464,6 +465,33 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		description: 'Leer = Akzentfarbe des Systems.',
 		schema: z.union([z.literal(''), hexColor]),
 		default: '',
+		scope: 'user',
+		group: 'user'
+	}),
+	g({
+		key: 'core.user.themes',
+		label: 'Eigene Themes',
+		description: 'Persönliche Themes (Akzentfarbe und Hintergrund je Modus).',
+		schema: userThemesSchema,
+		default: [],
+		scope: 'user',
+		group: 'user'
+	}),
+	g({
+		key: 'core.user.activeTheme',
+		label: 'Aktives Theme',
+		description: 'Leer = kein Theme, `preset:<name>` = Vorschlag, sonst ID eines eigenen Themes.',
+		schema: activeThemeSchema,
+		default: '',
+		scope: 'user',
+		group: 'user'
+	}),
+	g({
+		key: 'core.user.themeFavorites',
+		label: 'Favorisierte Themes',
+		description: 'Mit Stern markierte Themes; nur sie erscheinen in der Kopfzeile.',
+		schema: themeFavoritesSchema,
+		default: [],
 		scope: 'user',
 		group: 'user'
 	}),

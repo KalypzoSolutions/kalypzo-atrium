@@ -3,13 +3,14 @@
  * Theme-/Akzent-Ersetzung in `app.html`. Getestet wird der exportierte `handle` (Sequenz
  * headers → init → Better Auth → guard) mit gestubbtem `RequestEvent`; Core-Dienste sind gemockt.
  */
+import { THEME_PRESETS } from '$lib/appearance/presets';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RequestEvent } from '@sveltejs/kit';
 
 const state = vi.hoisted(() => ({
 	session: null as null | { user: { id: string }; ctx: unknown; sessionId: string },
 	enabled: new Set<string>(['members', 'actions']),
-	prefs: null as null | { accentColor: string; density: string },
+	prefs: null as null | { accentColor: string; density: string; activeTheme?: unknown },
 	prefsError: false,
 	systemAccent: null as string | null,
 	resolveSession: 0
@@ -63,7 +64,7 @@ const { with_request_store } = (await import(/* @vite-ignore */ KIT_INTERNAL)) a
 };
 
 const TEMPLATE =
-	'<html lang="de" class="%app.theme%" data-density="%app.density%" style="%app.style%"><body></body></html>';
+	'<html lang="de" class="%app.theme%" data-density="%app.density%" data-app-theme="%app.apptheme%" style="%app.style%"><body></body></html>';
 
 interface Opts {
 	https?: boolean;
@@ -331,6 +332,25 @@ describe('headers: Theme, Dichte und Akzentfarbe in app.html', () => {
 		expect((await run('/login')).html).toContain('style="--accent-color:#123abc"');
 		state.systemAccent = 'red;background:url(x)';
 		expect((await run('/login')).html).toContain('style=""');
+	});
+
+	it('aktives Theme: Hintergrund-Variablen, data-app-theme und Theme-Akzent', async () => {
+		login();
+		state.systemAccent = '#000000';
+		state.prefs = {
+			accentColor: '#aa00ff',
+			density: 'comfortable',
+			activeTheme: THEME_PRESETS[0]
+		};
+		const { html } = await run('/dashboard');
+		expect(html).toContain('data-app-theme="on"');
+		expect(html).toContain(`--accent-color:${THEME_PRESETS[0]!.accent}`);
+		expect(html).toContain('--app-bg-light:linear-gradient(');
+		expect(html).toContain('--app-sidebar-dark:');
+	});
+
+	it('ohne Theme bleibt data-app-theme leer', async () => {
+		expect((await run('/login')).html).toContain('data-app-theme=""');
 	});
 
 	it('Fehler beim Laden der Einstellungen → Standardwerte statt 500', async () => {

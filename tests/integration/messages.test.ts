@@ -745,7 +745,8 @@ describe('Seitenleiste', () => {
 		]);
 		expect(nav.filter((n) => n.admin).map((n) => n.path)).toEqual([
 			'/modules/members/fields',
-			'/modules/members/retention'
+			'/modules/members/retention',
+			'/modules/messages/admin'
 		]);
 		expect(nav.some((n) => n.group)).toBe(false);
 	});

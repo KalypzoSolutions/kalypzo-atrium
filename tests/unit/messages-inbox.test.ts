@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	baseSubject,
 	buildAddressIndex,
+	extraKey,
 	isSharedMailbox,
 	kindOf,
 	mailboxKeyForSender,
@@ -52,6 +53,32 @@ describe('Postfach-Schlüssel', () => {
 		expect(mailboxKeyForSender('personal', 'u1')).toBe('personal:u1');
 		expect(mailboxKeyForSender('personal', null)).toBeNull();
 		expect(mailboxKeyForSender('group:g1', 'u1')).toBe('group:g1');
+	});
+
+	it('zusätzliche Postfächer (`extra:<id>`) sind gemeinsam und ihr eigener Absender', () => {
+		const key = extraKey('3f2b8c1e-0000-4000-8000-000000000001');
+		expect(key).toBe('extra:3f2b8c1e-0000-4000-8000-000000000001');
+		expect(kindOf(key)).toBe('extra');
+		expect(isSharedMailbox(key)).toBe(true);
+		expect(senderKeyFor(key)).toBe(key);
+		expect(mailboxKeyForSender(key, 'u1')).toBe(key);
+		expect(MAILBOX_KEY_PATTERN.test(key)).toBe(true);
+		for (const bad of ['extra:', 'extra:a b', "extra:x' OR 1=1", 'extra:a:b']) {
+			expect(MAILBOX_KEY_PATTERN.test(bad), bad).toBe(false);
+		}
+	});
+
+	it('Weiterleitung = weitere Adresse desselben Postfachs, ein Eintrag je Postfach', () => {
+		const idx = buildAddressIndex([
+			{ key: 'extra:e1', address: 'herbstlager@stamm.de', name: 'Herbstlager' },
+			{ key: 'extra:e1', address: 'lager@stamm.de', name: 'Herbstlager' },
+			{ key: 'stamm', address: 'info@stamm.de', name: 'Stamm' }
+		]);
+		const r = routeAddresses(['lager@stamm.de', 'herbstlager@stamm.de'], idx, own);
+		expect(r.targets.map((t) => [t.mailbox.key, t.address])).toEqual([
+			['extra:e1', 'lager@stamm.de']
+		]);
+		expect(r.unassigned).toBeNull();
 	});
 
 	it('Muster lässt nur gültige Schlüssel zu', () => {

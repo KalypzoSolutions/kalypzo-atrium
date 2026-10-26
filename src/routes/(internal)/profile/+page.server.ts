@@ -23,6 +23,8 @@ import { enabledModuleIds } from '$lib/server/core/modules/state';
 import { roleIdsForUser } from '$lib/server/core/permissions/roles';
 import { setSetting } from '$lib/server/core/settings/service';
 import { loadUserPrefs, resolveStartPage } from '$lib/server/core/settings/user-prefs';
+import { resolveTheme, THEME_PRESETS } from '$lib/appearance/presets';
+import { FAVORITES_MAX, THEMES_MAX, userThemeSchema } from '$lib/appearance/schema';
 import { authErrorMessage } from '../../login/auth-error';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -92,6 +94,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 		density: prefs.density,
 		startPage
 	};
+	const themes = {
+		own: prefs.themes,
+		presets: THEME_PRESETS,
+		activeId: prefs.activeThemeId,
+		favorites: prefs.favorites.map((t) => t.id)
+	};
 	return {
 		profile: locals.user!,
 		createdAt: dbUser?.createdAt ?? null,
@@ -111,6 +119,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		/** Einstellungen (Alias `settings` für ältere Aufrufer) */
 		userPrefs,
 		settings: userPrefs,
+		/** Persönliche Themes, Vorschläge und aktive Auswahl */
+		themes,
 		/** Auswahl für die Startseite: Dashboard, Profil und Modul-Navigation (nach Rechten) */
 		startPageOptions: [
 			{ value: '/dashboard', label: 'Dashboard' },
@@ -298,6 +308,117 @@ export const actions: Actions = {
 			});
 		}
 		return { section: 'settings', success: 'Einstellungen gespeichert.' };
+	},
+
+	saveTheme: async ({ request, locals }) => {
+		const f = await request.formData();
+		let raw: unknown = null;
+		try {
+			raw = JSON.parse(String(f.get('theme') ?? ''));
+		} catch {
+			// unten als ungültig gemeldet
+		}
+		const parsed = userThemeSchema.safeParse(raw);
+		if (!parsed.success) {
+			return fail(400, {
+				section: 'themes',
+				error: parsed.error.issues[0]?.message ?? 'Ungültiges Theme.'
+			});
+		}
+		const theme = parsed.data;
+		const prefs = await loadUserPrefs(locals.user!.id);
+		const exists = prefs.themes.some((t) => t.id === theme.id);
+		if (!exists && prefs.themes.length >= THEMES_MAX) {
+			return fail(400, { section: 'themes', error: `Höchstens ${THEMES_MAX} eigene Themes.` });
+		}
+		const list = exists
+			? prefs.themes.map((t) => (t.id === theme.id ? theme : t))
+			: [...prefs.themes, theme];
+		try {
+			await setSetting(locals.ctx, 'core.user.themes', list);
+			// Neue Themes landen direkt in der Schnellwahl der Kopfzeile (solange Platz ist)
+			const favs = prefs.favorites.map((t) => t.id);
+			if (!exists && favs.length < FAVORITES_MAX) {
+				await setSetting(locals.ctx, 'core.user.themeFavorites', [...favs, theme.id]);
+			}
+			if (f.get('activate') === '1') {
+				await setSetting(locals.ctx, 'core.user.activeTheme', theme.id);
+			}
+		} catch (e) {
+			return fail(400, {
+				section: 'themes',
+				error: isCoreError(e) ? e.message : 'Theme konnte nicht gespeichert werden.'
+			});
+		}
+		return { section: 'themes', success: `Theme „${theme.name}“ gespeichert.`, id: theme.id };
+	},
+
+	deleteTheme: async ({ request, locals }) => {
+		const id = String((await request.formData()).get('id') ?? '');
+		const prefs = await loadUserPrefs(locals.user!.id);
+		const theme = prefs.themes.find((t) => t.id === id);
+		if (!theme) return fail(404, { section: 'themes', error: 'Theme nicht gefunden.' });
+		try {
+			await setSetting(
+				locals.ctx,
+				'core.user.themes',
+				prefs.themes.filter((t) => t.id !== id)
+			);
+			if (prefs.activeThemeId === id) await setSetting(locals.ctx, 'core.user.activeTheme', '');
+			if (prefs.favorites.some((t) => t.id === id)) {
+				await setSetting(
+					locals.ctx,
+					'core.user.themeFavorites',
+					prefs.favorites.filter((t) => t.id !== id).map((t) => t.id)
+				);
+			}
+		} catch (e) {
+			return fail(400, {
+				section: 'themes',
+				error: isCoreError(e) ? e.message : 'Theme konnte nicht gelöscht werden.'
+			});
+		}
+		return { section: 'themes', success: `Theme „${theme.name}“ gelöscht.` };
+	},
+
+	toggleFavorite: async ({ request, locals }) => {
+		const f = await request.formData();
+		const id = String(f.get('id') ?? '');
+		const on = f.get('on') === '1';
+		const prefs = await loadUserPrefs(locals.user!.id);
+		if (!id || !resolveTheme(id, prefs.themes)) {
+			return fail(400, { section: 'themes', error: 'Unbekanntes Theme.' });
+		}
+		const current = prefs.favorites.map((t) => t.id).filter((x) => x !== id);
+		if (on && current.length >= FAVORITES_MAX) {
+			return fail(400, { section: 'themes', error: `Höchstens ${FAVORITES_MAX} Favoriten.` });
+		}
+		try {
+			await setSetting(locals.ctx, 'core.user.themeFavorites', on ? [...current, id] : current);
+		} catch (e) {
+			return fail(400, {
+				section: 'themes',
+				error: isCoreError(e) ? e.message : 'Favorit konnte nicht gespeichert werden.'
+			});
+		}
+		return { section: 'themes' };
+	},
+
+	activateTheme: async ({ request, locals }) => {
+		const id = String((await request.formData()).get('id') ?? '');
+		const prefs = await loadUserPrefs(locals.user!.id);
+		if (id && !resolveTheme(id, prefs.themes)) {
+			return fail(400, { section: 'themes', error: 'Unbekanntes Theme.' });
+		}
+		try {
+			await setSetting(locals.ctx, 'core.user.activeTheme', id);
+		} catch (e) {
+			return fail(400, {
+				section: 'themes',
+				error: isCoreError(e) ? e.message : 'Theme konnte nicht gewählt werden.'
+			});
+		}
+		return { section: 'themes' };
 	},
 
 	updateName: async ({ request, locals }) => {

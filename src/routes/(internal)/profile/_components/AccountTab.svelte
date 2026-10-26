@@ -159,7 +159,9 @@
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
 			<Dialog.Title>Profilbild ändern</Dialog.Title>
-			<Dialog.Description>PNG, JPEG oder WebP, höchstens 2 MB.</Dialog.Description>
+			<Dialog.Description
+				>PNG, JPEG oder WebP. Nach der Auswahl wählst du den Ausschnitt.</Dialog.Description
+			>
 		</Dialog.Header>
 		<form
 			method="POST"
@@ -192,6 +194,7 @@
 						bind:file={avatarFile}
 						accept="image/png,image/jpeg,image/webp"
 						maxBytes={2 * 1024 * 1024}
+						crop={{ shape: 'circle', maxEdge: 512, title: 'Profilbild zuschneiden' }}
 						disabled={avatarBusy}
 					/>
 				</div>

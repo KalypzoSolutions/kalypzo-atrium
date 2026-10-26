@@ -79,7 +79,7 @@ export default defineModule({
 
 Die Seitenleiste ist eine **flache, fest sortierte Liste** (Nutzerentscheidung 2026-10-21): `order` legt die Position über alle Module fest
 (kleiner = weiter oben, ohne Angabe 1000, gleicher Wert → Registrierungsreihenfolge; `navigationFor` sortiert). Vergeben: Termine 10, Galerien 20,
-Dateien 30, Bestellungen 40, Mitglieder 50, Gruppen 60, Nachrichten 70, Aktionen 80, Ämter 90, Kasse 100 – Seiten für alle zuerst, Leitung/Verwaltung
+Dateien 30, Bestellungen 40, Mitglieder 50, Gruppen 60, Nachrichten 70, Aufgaben 75, Whiteboards 76, Aktionen 80, Ämter 90, Kasse 100 – Seiten für alle zuerst, Leitung/Verwaltung
 danach. Konfigurationsseiten gehören nicht ins Hauptmenü, sondern per `admin: true` in die Administration (z. B. Zusatzfelder, Löschfristen).
 `group`/`groupIcon` (aufklappbare Gruppe, modulübergreifend zusammengefasst) gibt es weiterhin, Fachmodule nutzen es aber nicht. Die Gruppe
 „Administration“ ist nach jedem Laden zugeklappt; enthält sie die aktive Seite, ist der Gruppenknopf hervorgehoben.
@@ -175,9 +175,11 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 | `SelectField` | `$lib/components/ui/select-field` | Einfachauswahl mit optionalem „Alle“-Eintrag (`emptyLabel`) |
 | `MultiSelect` | `$lib/components/ui/multi-select` | Mehrfachauswahl mit Suche, Checkboxen und Chips |
 | `ColorPicker` | `$lib/components/ui/color-picker` | Eigener Farbwähler (Fläche, Farbton, Hex, Presets); Helfer in `color.ts` |
+| `GradientEditor` | `$lib/components/ui/gradient-editor` | Hintergrund bearbeiten: einfarbig, linearer/radialer Verlauf (2–6 Farbpunkte, ziehbar), Farbflecken; Wert `ThemeBackground` aus `$lib/appearance` |
 | `ColorBadge` | `$lib/components/layout` | Badge in frei wählbarer Farbe mit lesbarer Textfarbe |
 | `EntityAvatar` | `$lib/components/layout` | Rundes Bild mit Farbrand, Fallback Initialen |
-| `FileField` | `$lib/components/layout` | Datei-Feld mit Typ-/Größenprüfung, vorhandener Datei und Entfernen |
+| `FileField` | `$lib/components/layout` | Datei-Feld mit Typ-/Größenprüfung, vorhandener Datei und Entfernen; mit `crop` Bild-Zuschnitt nach der Auswahl |
+| `ImageCropDialog` | `$lib/components/layout` | Bild zuschneiden (Ziehen, Zoom per Regler/Mausrad/zwei Finger/Tastatur, auch herausgezoomt mit Hintergrundfarbe, runde Maske), Ergebnis als WebP/JPEG-`File`; Logik `image-crop.ts` |
 | `ContactListField` | `$lib/components/layout` | Dynamische Liste benannter Kontakte (Telefon, E-Mail); `readonly` + `emptyText` für Ansichten |
 | `RichTextEditor` | `$lib/components/ui/rich-text-editor` | Text-Editor (Tiptap): Fett/Kursiv/Unterstrichen/Durchgestrichen, Überschriften, Listen, Zitat, Link, Trennlinie, Rückgängig; `bind:value` = HTML (nur einfache Formatierung; der Server bereinigt mit `sanitizeRichText` aus `$lib/sdk/server`). Optional Bilder: `uploadImage(file) → { id, src, alt? }` + `imageSrc(id)` → `<img data-image-id>`, bereinigt mit `sanitizeRichText(html, { images })` (Muster `website`) |
 | `IconPicker`, `DynamicIcon` | `$lib/components/ui/icon-picker` | Icon-Auswahl aus **allen Lucide-Icons** (Suche englisch + deutsch, Vorschläge, Pfeiltasten; `bind:value` = Icon-Name) und Anzeige per Name (`name`, `class`, `fallback`); Daten lazy aus `$lib/sdk/icons` (`loadIconSet`, `searchIcons`, `iconLabel`), Server prüft mit `(await loadIconSet()).has(name)` |
@@ -403,7 +405,7 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 | `settings` | Typisierte Einstellungen (`ModuleSettingDefinition`: Zod-Schema, `default`, `secret`, `writePermission`), Schlüssel mit Präfix `<id>.`; ohne eigene Seite erscheinen sie unter Einstellungen → Module. | `treasury`, `files` |
 | `endpoints` | REST-Endpunkte unter `/api/v1/modules/<id>/…` (`defineEndpoint`); feste Pfade vor `:id`-Mustern deklarieren. | alle |
 | `migrations` | `{ name, sql }[]` im Schema `mod_<id>`, additiv und unveränderlich (Prüfsumme). | alle |
-| `provides` | Dienste für andere Module (Laufzeit über `core.modules.use`/`useOptional`). **Regel:** Objekt mit `satisfies <Vertrag>` angeben (`provides: officesService satisfies OfficesService`), nie `as unknown as` – sonst fallen Abweichungen zwischen Vertrag (`contract.ts`) und Umsetzung nicht auf. | `offices`, `events`, `treasury` |
+| `provides` | Dienste für andere Module (Laufzeit über `core.modules.use`/`useOptional`). **Regel:** Objekt mit `satisfies <Vertrag>` angeben (`provides: officesService satisfies OfficesService`), nie `as unknown as` – sonst fallen Abweichungen zwischen Vertrag (`contract.ts`) und Umsetzung nicht auf. Verweis-Dienste für Karten in anderen Modulen (prüfen die Rechte von `ctx` selbst): `TaskRefsService` (`tasks`), `FileRefsService` (`files`), `GalleryRefsService.searchGalleryCards/describeGalleryCards` (`galleries`), `EventRefsService` (`events`), `ActionsService.accessibleActions` (`actions`). | `offices`, `events`, `treasury`, `tasks`, `files` |
 | `jobs` | Hintergrundjobs `{ id, summary, schedule: 'hourly' \| 'daily', run(ctx) }`, nur bei aktivem Modul, Systemkontext (siehe [Core-Services](core-services.md#hintergrundjobs-moduledefinitionjobs-corejobs)). | `treasury`, `offices` |
 | `defaultRoleGrants` | Rollenname → Rechte, einmalig je (Modul, Rolle, Recht); gleichwertig zu `manifest.defaultRoleGrants` (siehe oben). | `members`, `orders` |
 | `resetAreas` | Bereiche für `/admin/reset` (`ResetArea`: `id`, `label`, `description`, `tables` in Löschreihenfolge, `storagePrefixes`, `implies` = zwingend mitgelöschte Bereiche auch fremder Module, `rebuild` = Schema neu aufbauen inkl. Startdaten). In der `description` nennen, welche Verweise anderer Module verwaisen. | `offices/reset.ts`, `actions/reset.ts` |
@@ -433,6 +435,7 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 | `profileSections` | Karten auf `/profile` (siehe oben). | `members`, `offices` |
 | `userAdminSections` | Abschnitte im Dialog „Benutzer bearbeiten“ (`/admin/users`, siehe oben). | `files` |
 | `dashboardWidgets` | Kacheln auf `/dashboard` (siehe oben). | `events`, `treasury` |
+| `fullBleedRoutes` | Schlüssel aus `routes`, die die ganze Fläche neben Seitenleiste und Kopfzeile nutzen (ohne Rand/`max-w`, Höhe `100dvh` − Kopfzeile) – für Editoren. Die Seite bringt ihren eigenen Kopf mit. | `whiteboard` (`:id`) |
 
 ### Audit-Aktionsnamen
 

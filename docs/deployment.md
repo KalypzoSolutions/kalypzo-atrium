@@ -48,7 +48,10 @@ docker compose --profile proxy up -d
 ersetzt. Enthalten: Default-Server, der unbekannte Hosts abweist (`444` bzw. `ssl_reject_handshake`), TLS nach Mozilla
 „intermediate“ mit Session-Cache und ohne Session-Tickets, `limit_req` für Anmeldung/Passwort-Reset (30/min je IP, Burst 30),
 Größengrenzen je Pfad (siehe „Upload-Grenzen“), ungepuffertes Durchreichen für Sicherungs-Upload und -Download
-(`proxy_request_buffering off`, `proxy_buffering off`, `proxy_max_temp_file_size 0`, Timeouts bis 30 min). HSTS und weitere
+(`proxy_request_buffering off`, `proxy_buffering off`, `proxy_max_temp_file_size 0`, Timeouts bis 30 min) sowie für den Live-Stream der
+Whiteboards (`/api/v1/modules/whiteboard/boards/<id>/live`, Server-Sent Events: `proxy_buffering off`, Timeout 1 h; die App sendet alle 20 s einen
+Heartbeat und `X-Accel-Buffering: no`). **Live-Bearbeitung setzt genau eine App-Instanz voraus** (Verteilung im Prozess). Eigener Proxy/Traefik:
+SSE nicht puffern, Lese-Timeout > 20 s. HSTS und weitere
 Sicherheits-Header setzt die App selbst; der auskommentierte Website-Block ergänzt sie für die Stammeswebsite.
 
 `ORIGIN` muss exakt der öffentliche URL entsprechen (`https://…`); davon hängen Cookie-Flags (`Secure`), CSRF und Better-Auth-Redirects ab.

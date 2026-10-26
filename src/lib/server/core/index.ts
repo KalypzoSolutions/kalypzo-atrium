@@ -48,6 +48,7 @@ import {
 } from './permissions/grants';
 import { readAvatar } from './auth/profile';
 import * as pdf from './pdf';
+import { renderPdfPage } from './pdf/raster';
 import { MESSAGE_ID_RE, previewMailHtml, sendMail } from './mail';
 import { errors } from './errors';
 import { env } from './env';
@@ -374,7 +375,9 @@ export const core = {
 		generateMany: pdf.generateMany,
 		merge: pdf.mergePdfs,
 		registerTemplate: pdf.registerTemplate,
-		listTemplates: pdf.listTemplates
+		listTemplates: pdf.listTemplates,
+		/** Eine PDF-Seite als PNG rendern (Vorschaubilder; danach durch `images.process` schicken) */
+		renderPage: renderPdfPage
 	},
 	ai: {
 		generate: ai.generate,

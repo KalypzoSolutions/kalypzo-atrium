@@ -496,7 +496,8 @@
 							<div>
 								<h3 id="e-avatar-title" class="text-sm font-medium">Profilbild</h3>
 								<p class="text-xs text-muted-foreground">
-									PNG, JPEG oder WebP, höchstens 2 MB. Wird sofort gespeichert.
+									PNG, JPEG oder WebP. Nach der Auswahl wählst du den Ausschnitt; wird sofort
+									gespeichert.
 								</p>
 							</div>
 							<form
@@ -514,6 +515,7 @@
 										bind:file={avatarFile}
 										accept="image/png,image/jpeg,image/webp"
 										maxBytes={2 * 1024 * 1024}
+										crop={{ shape: 'circle', maxEdge: 512, title: 'Profilbild zuschneiden' }}
 										disabled={busy}
 									/>
 								</div>

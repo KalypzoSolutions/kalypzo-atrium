@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
 	import { AppSidebar, Topbar } from '$lib/components/layout';
 	import { refreshNavBadges, seedNavBadges } from '$lib/sdk/client/nav-badges.svelte';
 
 	let { data, children } = $props();
+	const fullBleed = $derived((page.data as { fullBleed?: boolean }).fullBleed === true);
 
 	// Zähler der Seitenleiste: Startwert aus dem Layout, danach nach jeder Navigation und jede Minute
 	// (nur im sichtbaren Tab) aktualisieren
@@ -45,10 +47,21 @@
 				navigation={data.navigation}
 			/>
 		{/if}
-		<main id="main" tabindex="-1" class="flex-1 p-4 outline-none sm:p-6 lg:p-8">
-			<div class="mx-auto max-w-6xl">
+		{#if fullBleed}
+			<!-- Vollflächige Modulseiten (`ModuleUi.fullBleedRoutes`): Höhe = Fenster minus Kopfzeile -->
+			<main
+				id="main"
+				tabindex="-1"
+				class="flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col outline-none"
+			>
 				{@render children()}
-			</div>
-		</main>
+			</main>
+		{:else}
+			<main id="main" tabindex="-1" class="flex-1 p-4 outline-none sm:p-6 lg:p-8">
+				<div class="mx-auto max-w-6xl">
+					{@render children()}
+				</div>
+			</main>
+		{/if}
 	</div>
 </div>

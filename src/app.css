@@ -31,12 +31,24 @@
 	--info-foreground: oklch(0.985 0 0);
 	--status-muted: 10%;
 	--status-border: 40%;
+	/* Dateitypen (Modul Dateien): Symbol + Kürzel in der Typfarbe, getönte Fläche `bg-file-<art>-muted` */
+	--file-pdf: oklch(0.5 0.14 27);
+	--file-word: oklch(0.5 0.14 255);
+	--file-sheet: oklch(0.5 0.14 150);
+	--file-slides: oklch(0.5 0.14 45);
+	--file-image: oklch(0.5 0.14 300);
+	--file-archive: oklch(0.5 0.14 70);
+	--file-media: oklch(0.5 0.14 350);
+	--file-code: oklch(0.5 0.14 200);
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: var(--accent-color, #2563eb);
 	/* Fokusring (#71): volle Akzentfarbe, 2 px + 2 px Abstand – nie halbtransparent */
 	--focus-ring: var(--ring);
 	--sidebar: oklch(0.985 0 0);
+	/* Flächen von Seitenleiste und Kopfzeile (persönliches Theme macht sie durchscheinend, siehe unten) */
+	--sidebar-surface: var(--sidebar);
+	--topbar-surface: var(--background);
 	/* Native Bedienelemente (Datumsfelder, Scrollleisten, Autofill) im passenden Farbschema */
 	color-scheme: light;
 }
@@ -67,6 +79,14 @@
 	--info-foreground: oklch(0.145 0 0);
 	--status-muted: 15%;
 	--status-border: 45%;
+	--file-pdf: oklch(0.8 0.12 27);
+	--file-word: oklch(0.8 0.12 255);
+	--file-sheet: oklch(0.8 0.12 150);
+	--file-slides: oklch(0.8 0.12 45);
+	--file-image: oklch(0.8 0.12 300);
+	--file-archive: oklch(0.8 0.12 70);
+	--file-media: oklch(0.8 0.12 350);
+	--file-code: oklch(0.8 0.12 200);
 	--border: oklch(1 0 0 / 12%);
 	--input: oklch(1 0 0 / 15%);
 	--sidebar: oklch(0.185 0 0);
@@ -160,10 +180,36 @@
 		var(--destructive) var(--status-border),
 		transparent
 	);
+	--color-file-pdf: var(--file-pdf);
+	--color-file-pdf-muted: color-mix(in oklab, var(--file-pdf) var(--status-muted), transparent);
+	--color-file-word: var(--file-word);
+	--color-file-word-muted: color-mix(in oklab, var(--file-word) var(--status-muted), transparent);
+	--color-file-sheet: var(--file-sheet);
+	--color-file-sheet-muted: color-mix(in oklab, var(--file-sheet) var(--status-muted), transparent);
+	--color-file-slides: var(--file-slides);
+	--color-file-slides-muted: color-mix(
+		in oklab,
+		var(--file-slides) var(--status-muted),
+		transparent
+	);
+	--color-file-image: var(--file-image);
+	--color-file-image-muted: color-mix(in oklab, var(--file-image) var(--status-muted), transparent);
+	--color-file-archive: var(--file-archive);
+	--color-file-archive-muted: color-mix(
+		in oklab,
+		var(--file-archive) var(--status-muted),
+		transparent
+	);
+	--color-file-media: var(--file-media);
+	--color-file-media-muted: color-mix(in oklab, var(--file-media) var(--status-muted), transparent);
+	--color-file-code: var(--file-code);
+	--color-file-code-muted: color-mix(in oklab, var(--file-code) var(--status-muted), transparent);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
 	--color-sidebar: var(--sidebar);
+	--color-sidebar-surface: var(--sidebar-surface);
+	--color-topbar-surface: var(--topbar-surface);
 }
 
 @layer base {
@@ -178,6 +224,48 @@
 		outline: 2px solid var(--focus-ring);
 		outline-offset: 2px;
 	}
+}
+
+/*
+ * Persönliches Theme (Profil → Darstellung): `data-app-theme="on"` und die Variablen `--app-bg-*`,
+ * `--app-veil-*`, `--app-sidebar-*` setzt der Server am <html> (`$lib/appearance/css.ts`). Der Verlauf liegt
+ * als feste Ebene hinter der Seite – `--background` bleibt einfarbig (Fläche für Knöpfe, Tabs, Leisten),
+ * Karten, Dialoge und Tabellen bleiben unverändert.
+ */
+[data-app-theme='on'] {
+	--app-bg: var(--app-bg-light);
+	--app-veil: var(--app-veil-light, 0%);
+	--app-veil-color: color-mix(in oklab, var(--background) var(--app-veil), transparent);
+	--sidebar-surface: var(--app-sidebar-light, var(--sidebar));
+	--topbar-surface: color-mix(in oklab, var(--background) 72%, transparent);
+	background-color: var(--background);
+}
+.dark[data-app-theme='on'] {
+	--app-bg: var(--app-bg-dark);
+	--app-veil: var(--app-veil-dark, 0%);
+	--sidebar-surface: var(--app-sidebar-dark, var(--sidebar));
+}
+[data-app-theme='on'] body {
+	background: transparent;
+}
+[data-app-theme='on'] body::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	background-image: linear-gradient(var(--app-veil-color), var(--app-veil-color)), var(--app-bg);
+}
+/* Durchscheinende Flächen (Seitenleiste, Kopfzeile) nur mit Theme weichzeichnen */
+[data-app-theme='on'] .app-glass {
+	backdrop-filter: blur(16px) saturate(1.15);
+}
+/* Eigene Kopie des Hintergrunds für Flächen über einem Overlay (mobile Seitenleiste) */
+[data-app-theme='on'] .app-backdrop {
+	background-color: var(--background);
+	background-image:
+		linear-gradient(var(--sidebar-surface), var(--sidebar-surface)),
+		linear-gradient(var(--app-veil-color), var(--app-veil-color)), var(--app-bg);
 }
 
 /* Fokusring für native Elemente (gleich wie der Standard oben, auch gegen `outline-none`) */

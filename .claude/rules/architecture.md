@@ -34,6 +34,8 @@ invalidiert sofort (`invalidateStorageConfigCache`, `storage/config-cache.ts`). 
 Seit 2026-10-22: `permissions.usersWith(key)` (aktive Konten mit wirksamem Recht, ohne Prüfung, für Benachrichtigungen), `mail.sendMessage`
 mit `messageId`/`inReplyTo`/`references` → `{ messageId }`, `mail.send({ autoSubmitted })` (`Auto-Submitted` + `X-EP-Intern`).
 Seit 2026-10-25: `notifications.send(ctx, moduleId, items)` (E-Mail/Web Push nach Wahl der Person, siehe „Benachrichtigungen und PWA“) und `notifications.migratePreferences`.
+`pdf.renderPage(bytes, { page?, maxEdge?, timeoutMs? })` (seit 2026-10-26, `core/pdf/raster.ts`): eine PDF-Seite als PNG (pdf.js + `@napi-rs/canvas`,
+kein Chromium; ≤ 50 MB, ≤ 4 MP, 10 s, ein Lauf je Prozess, Nicht-PDF 422) – für Vorschaubilder, danach durch `images.process` (sharp bleibt für PDF gesperrt).
 `images.process(bytes, { variants })` (sharp, nur Core): Inhalt prüfen (JPEG/PNG/WebP/AVIF/GIF, ≤ 50 MP), nach EXIF drehen,
 **alle Metadaten inkl. GPS entfernen**, Varianten (WebP/JPEG/PNG) mit Maßen; Typen `ImageVariantSpec` & Co. über `$lib/sdk/server`.
 
@@ -89,6 +91,16 @@ Seit 2026-10-25: `notifications.send(ctx, moduleId, items)` (E-Mail/Web Push nac
 - Theme: Cookie `theme` ist SSR-Quelle, `core.user.theme` (nur bei ausdrücklicher Wahl) gewinnt beim `(internal)`-Load;
   `theme.set()` schreibt zusätzlich per `POST /profile/theme`. `hooks.server.ts` ersetzt `%app.theme%`, `%app.density%`,
   `%app.style%` (`--accent-color`, nur validiertes `#rrggbb`) in `app.html`; Inline-Skript setzt `dark` bei „system“ (CSP-Nonce).
+- **Persönliche Themes** (2026-10-26): `$lib/appearance/` (Client + Server): `schema.ts` (Zod `userThemeSchema`: Name, `accent` `''|#rrggbb`,
+  `light`/`dark` = `{ background: solid|linear|radial|mesh, veil 0–90 %, sidebar glass|tinted|solid }`, ≤ 20 je Person), `presets.ts` (10 Vorschläge
+  `preset:<slug>`, `resolveTheme`), `css.ts` (`cssBackground`, `themeCssVars`, `previewBackground`, `textContrast`/`isReadable`, `deriveDark`), `apply.ts`
+  (Browser). Einstellungen `core.user.themes` (JSON) + `core.user.activeTheme` (Scope `user`). `loadUserPrefs` liefert `themes`/`activeTheme` (tolerant
+  validiert); `applyAppearance` setzt `%app.apptheme%` (`data-app-theme="on"`) und die Variablen in `%app.style%` – SSR ohne Aufblitzen.
+  Wirksame Akzentfarbe `effectiveAccent`: Theme → eigene → System. Profil-Actions `saveTheme`/`deleteTheme`/`activateTheme`/`toggleFavorite`.
+  **Favoriten** (Stern, `core.user.themeFavorites`, ≤ 30, eigene + Vorschläge; `loadUserPrefs` → `favorites`, verwaiste IDs fallen weg): nur sie stehen
+  in der Schnellwahl der Kopfzeile (`themeChoices`, Wechsel über `POST /profile/theme { activeTheme }`); neue eigene Themes werden automatisch Favorit,
+  Löschen entfernt den Favoriten. UI: Profil → Darstellung, Karte „Theme“ (`ThemesCard`, `ThemeEditorDialog` mit Live-Vorschau).
+  Tests `appearance.test.ts`, `user-prefs`, `hooks-server`, Integration `profile-extra`, E2E `appearance-themes.spec.ts`.
 - Dashboard (2026-10-20): `dashboard/+page.ts` sammelt `dashboardWidgets` aktiver Module + `CORE_DASHBOARD_WIDGETS` (Pseudo-Modul `core`),
   `selectDashboardWidgets`/`applyDashboardLayout` (`$lib/sdk/client/dashboard-widgets`); Core-Daten `GET /dashboard/core` (je Recht), Anordnung
   `PUT /dashboard/layout` (`core.user.dashboard`, Origin-Check, `null` = Standard). Tests `dashboard-widgets`, `dashboard-layout`, E2E `dashboard.spec.ts`.
@@ -102,6 +114,12 @@ Seit 2026-10-25: `notifications.send(ctx, moduleId, items)` (E-Mail/Web Push nac
   `auditDays` (730, 0 = nie) löschen – nur mit `SET LOCAL app.audit_retention = 'on'` (Migration 0007; UPDATE nur `ip → NULL`). Audit
   `core.system.housekeeping` nur mit Zählern. Einstellungen: Verwaltung → Einstellungen → Allgemein. Indizes `audit_log_target_idx`,
   `audit_log_action_pattern_idx` (0007). Tests `core-housekeeping`, `core-health`, `api-log-path`.
+
+## Live-Updates (2026-10-26)
+- Muster für Echtzeit (erste Nutzerin: `whiteboard`): **Server-Sent Events** über einen normalen Modul-Endpunkt (Handler gibt eine `Response` mit
+  `ReadableStream` zurück, `text/event-stream`, `x-accel-buffering: no`, Heartbeat), Änderungen per POST. Verteilung im Prozess → **eine Instanz**.
+  Kein WebSocket (adapter-node ohne Upgrade-Hook). Im Stream keine offene Modul-Transaktion halten; Zugriff regelmäßig neu prüfen.
+- Vollflächige Modulseiten: `ModuleUi.fullBleedRoutes` → Catch-all `+page.ts` setzt `fullBleed`, `(internal)/+layout.svelte` lässt Rand/`max-w` weg.
 
 ## Sicherheit
 Security-Header und CSP aus `hooks.server.ts`/`svelte.config.js`; CSRF über SvelteKit-Origin-Check.

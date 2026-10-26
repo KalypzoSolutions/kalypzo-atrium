@@ -3,6 +3,7 @@
 	import '$lib/zod-locale';
 	import { onMount } from 'svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
+	import { applyThemeVars } from '$lib/appearance/apply';
 	import { theme } from '$lib/theme.svelte';
 	import { initServiceWorkerNavigation } from '$lib/sdk/client/sw-navigation';
 
@@ -15,7 +16,7 @@
 	});
 
 	$effect(() => {
-		document.documentElement.style.setProperty('--accent-color', data.accentColor);
+		applyThemeVars(data.themeVars, data.accentColor);
 		document.documentElement.dataset.density = data.density;
 	});
 </script>
