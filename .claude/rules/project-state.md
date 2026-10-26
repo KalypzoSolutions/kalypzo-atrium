@@ -282,7 +282,14 @@
   Modulseiten), Verträge `TaskRefsService`, `FileRefsService`, `GalleryRefsService.*Cards`; nginx-Location für SSE. Neue Abhängigkeit `perfect-freehand`.
   Details: `module-whiteboard.md`. Offen: nur **eine** App-Instanz (Hub im Prozess), echte Tablets/Stifte und SSE hinter Traefik nach Deploy ungeprüft.
 
+- **Zuschussantrag in Aktionen (2026-10-26, `actions` v1.6.0, Migr. 0023)**: Abrechnung → „Zuschussantrag“ erzeugt das Original-Formular des
+  Landesjugendpfarramts (BEK) fertig ausgefüllt als PDF; bei mehr als 20 Kindern bzw. 20 Jugendlichen (inkl. Team) mehrere Anträge, je Antrag eine
+  weibliche und eine männliche Leitung. Details: `module-actions.md` → „Zuschussantrag“. Offen: mit dem Landesjugendpfarramt klären, ob die
+  Aufteilung (Team in der Jugendliste des eigenen Antrags) so akzeptiert wird; Vorlage ändert sich ggf. jährlich (Koordinaten neu ausmessen).
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Zuschussantrag (2026-10-26): Geschlecht der Leitungen **nur im Antrag** (kein Feld an Teilnehmenden/Mitgliedern); **Original-PDF befüllen**;
+  fehlen Leitungspaare → **so viele Anträge wie möglich**, Rest als „nicht berücksichtigt“; Gemeinde als Einstellung, Art/Thema/Inklusion je Aktion.
 - Whiteboard-Fläche (2026-10-26): **standardmäßig feste Farbe (Weiß)** unabhängig von Hell/Dunkel und Theme; je Person im Whiteboard umschaltbar
   (Weiß, Schwarz, eigene Farbe oder „wie Modus/Theme“).
 - Whiteboards (2026-10-26): eigenes Modul; Dateien direkt hochladen **und** aus „Dateien“ verknüpfen; **mehrere** Boards je Aktion; erste Version
