@@ -49,6 +49,7 @@ export type {
 	ProcessedVariant,
 	ProcessImageOptions
 } from '$lib/server/core/images';
+export type { RenderPdfPageOptions, RenderedPdfPage } from '$lib/server/core/pdf/raster';
 
 /** Typisierter Helfer für `src/lib/modules/<id>/module.ts` (Default-Export). */
 export function defineModule(def: ModuleDefinition): ModuleDefinition {

@@ -33,6 +33,8 @@ paths:
   native Checkbox/Textarea in `/admin`). Ausnahmen: Datenvisualisierung (`CostBar`), PDF-/Mail-Vorschau und QR-Code (`bg-white`).
   Migriert und vom Guard erfasst: `actions`, `events`, `files`, `galleries`, `members`, `orders`, `offices`, `treasury`
   (`MIGRATED_MODULES`, alle Fachmodule). Ausnahme `text-white`: Bildbetrachter mit immer dunkler Bühne (`files/FilePreview`, `galleries/ImageViewer`).
+  **Dateityp-Farben** (2026-10-26): `--file-pdf|word|sheet|slides|image|archive|media|code` → `text-file-<art>`, getönt `bg-file-<art>-muted`
+  (nur für Dateisymbole, Zuordnung in `files/pages/file-types.ts`; Kontrast im selben Test).
   Akzentfarbige Symbole/Links = `text-link` (auch `text-link/80`), nie `text-primary`.
 - Typografie (#71, `@utility` in `app.css`, in `cn()` als Schriftgröße registriert): Seitentitel `text-title` (= 2xl semibold tight,
   `PageHeader`), Abschnittsüberschrift `text-section` (lg semibold), Kleinschrift `text-caption`/`text-xs` – **nie** `text-[10px]/[11px]`.

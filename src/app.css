@@ -31,6 +31,15 @@
 	--info-foreground: oklch(0.985 0 0);
 	--status-muted: 10%;
 	--status-border: 40%;
+	/* Dateitypen (Modul Dateien): Symbol + Kürzel in der Typfarbe, getönte Fläche `bg-file-<art>-muted` */
+	--file-pdf: oklch(0.5 0.14 27);
+	--file-word: oklch(0.5 0.14 255);
+	--file-sheet: oklch(0.5 0.14 150);
+	--file-slides: oklch(0.5 0.14 45);
+	--file-image: oklch(0.5 0.14 300);
+	--file-archive: oklch(0.5 0.14 70);
+	--file-media: oklch(0.5 0.14 350);
+	--file-code: oklch(0.5 0.14 200);
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: var(--accent-color, #2563eb);
@@ -67,6 +76,14 @@
 	--info-foreground: oklch(0.145 0 0);
 	--status-muted: 15%;
 	--status-border: 45%;
+	--file-pdf: oklch(0.8 0.12 27);
+	--file-word: oklch(0.8 0.12 255);
+	--file-sheet: oklch(0.8 0.12 150);
+	--file-slides: oklch(0.8 0.12 45);
+	--file-image: oklch(0.8 0.12 300);
+	--file-archive: oklch(0.8 0.12 70);
+	--file-media: oklch(0.8 0.12 350);
+	--file-code: oklch(0.8 0.12 200);
 	--border: oklch(1 0 0 / 12%);
 	--input: oklch(1 0 0 / 15%);
 	--sidebar: oklch(0.185 0 0);
@@ -160,6 +177,30 @@
 		var(--destructive) var(--status-border),
 		transparent
 	);
+	--color-file-pdf: var(--file-pdf);
+	--color-file-pdf-muted: color-mix(in oklab, var(--file-pdf) var(--status-muted), transparent);
+	--color-file-word: var(--file-word);
+	--color-file-word-muted: color-mix(in oklab, var(--file-word) var(--status-muted), transparent);
+	--color-file-sheet: var(--file-sheet);
+	--color-file-sheet-muted: color-mix(in oklab, var(--file-sheet) var(--status-muted), transparent);
+	--color-file-slides: var(--file-slides);
+	--color-file-slides-muted: color-mix(
+		in oklab,
+		var(--file-slides) var(--status-muted),
+		transparent
+	);
+	--color-file-image: var(--file-image);
+	--color-file-image-muted: color-mix(in oklab, var(--file-image) var(--status-muted), transparent);
+	--color-file-archive: var(--file-archive);
+	--color-file-archive-muted: color-mix(
+		in oklab,
+		var(--file-archive) var(--status-muted),
+		transparent
+	);
+	--color-file-media: var(--file-media);
+	--color-file-media-muted: color-mix(in oklab, var(--file-media) var(--status-muted), transparent);
+	--color-file-code: var(--file-code);
+	--color-file-code-muted: color-mix(in oklab, var(--file-code) var(--status-muted), transparent);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);

@@ -263,6 +263,10 @@
   Aufgaben mit mehreren Zuständigen, Fälligkeit, Priorität und Unteraufgaben (Checkliste), Freigaben, Board je Aktion (Zugriff vererbt),
   „Meine Aufgaben“ im Dashboard, Erinnerung an fällige Aufgaben. Details: `module-tasks.md`, `module-actions.md`.
 
+- **Dateien: Typ-Symbole und echte Vorschau (2026-10-26, `files` v1.3.0, Migr. 0005)**: Dateien zeigen Symbol + Farbe + Endungs-Kürzel je Typ
+  (PDF, Word, Tabelle, Präsentation, Bild, Archiv, Audio/Video, Code; Tokens `--file-*`); PDFs bekommen ein Vorschaubild der ersten Seite (neuer
+  Core-Baustein `core.pdf.renderPage`, pdf.js + `@napi-rs/canvas`), Bestand per Job `files.thumbs-backfill`. Details: `module-files.md`.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Aufgaben (2026-10-25): eigenes Modul + optional je Aktion ein Board; Spalten frei je Board (eine Erledigt-Spalte); Unteraufgaben als Checkliste;
   Aktionen-Freigabe wie bei Terminen (alle Principal-Typen).

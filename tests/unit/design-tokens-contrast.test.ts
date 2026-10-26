@@ -148,6 +148,20 @@ describe('Design-Tokens: Kontrast (WCAG AA)', () => {
 				);
 			}
 
+			// Dateitypen (Modul Dateien): Kürzel als Text auf Karte/Fläche und auf der getönten Typfläche
+			for (const kind of ['pdf', 'word', 'sheet', 'slides', 'image', 'archive', 'media', 'code']) {
+				it.each(SURFACES)(`--file-${kind} als Text auf %s`, (surface) => {
+					const fg = token(`--file-${kind}`, theme);
+					expect(contrastRatio(fg, token(surface, theme))).toBeGreaterThanOrEqual(AA);
+				});
+				it(`--file-${kind} auf getönter Fläche über --card`, () => {
+					const fg = token(`--file-${kind}`, theme);
+					expect(
+						contrastRatio(fg, tint(`file-${kind}`, theme, token('--card', theme)))
+					).toBeGreaterThanOrEqual(AA);
+				});
+			}
+
 			it('Standard-Akzent: berechneter Vordergrund auf --primary ≥ 4,5 : 1', () => {
 				const primary = token('--primary', theme);
 				const fg = parseColor(primaryForeground('#2563eb'))!;
