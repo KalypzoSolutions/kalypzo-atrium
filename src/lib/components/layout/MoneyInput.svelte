@@ -34,21 +34,25 @@
 	const isInvalid = $derived(invalid || !!fieldOwn?.invalid);
 
 	let focused = $state(false);
+	/** seit dem Fokussieren selbst getippt (dann gewinnt die Eingabe bis zum Verlassen) */
+	let typing = $state(false);
 	let text = $state('');
 
-	// Externe Änderungen übernehmen, solange nicht getippt wird
+	// Externe Änderungen übernehmen, solange nicht getippt wird (auch bei Fokus, z. B. Autofokus im Dialog)
 	$effect(() => {
 		const c = cents;
-		if (!focused) text = formatCents(c);
+		if (!focused || !typing) text = formatCents(c);
 	});
 
 	function oninput(e: Event & { currentTarget: HTMLInputElement }) {
 		const cleaned = e.currentTarget.value.replace(/[^0-9.,]/g, '');
+		typing = true;
 		text = cleaned;
 		e.currentTarget.value = cleaned;
 	}
 
 	function commit() {
+		typing = false;
 		const parsed = parseEuroToCents(text);
 		const next = Math.min(Math.max(parsed ?? 0, 0), max);
 		text = formatCents(next);
