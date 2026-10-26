@@ -34,6 +34,7 @@ import { resetAllForTests, reset } from '$lib/server/core/rate-limit';
 import { setSetting } from '$lib/server/core/settings/service';
 import { loadUserPrefs, resolveStartPage } from '$lib/server/core/settings/user-prefs';
 import { core } from '$lib/sdk/server';
+import { blankTheme } from '$lib/appearance';
 import membersModule from '$lib/modules/members/module';
 import { actions as profileActions } from '../../src/routes/(internal)/profile/+page.server';
 import type { RequestContext } from '$lib/sdk/types';
@@ -787,5 +788,84 @@ describe('defaultRoleGrants (Randfälle)', () => {
 		expect(
 			await getDb().select().from(schema.role).where(eq(schema.role.name, 'Geister-Rolle'))
 		).toHaveLength(0);
+	});
+});
+
+describe('Persönliche Themes (Profil-Actions)', () => {
+	let uid: string;
+	let other: string;
+	beforeAll(async () => {
+		uid = await createUser(admin, { name: 'Thea', email: 'thea@example.test', password: PW });
+		other = await createUser(admin, { name: 'Otto', email: 'otto@example.test', password: PW });
+	});
+
+	async function act(name: string, fields: Record<string, string>, user = uid) {
+		const f = new FormData();
+		for (const [k, v] of Object.entries(fields)) f.set(k, v);
+		const ctx = await ctxOf(user);
+		const fn = profileActions[name as keyof typeof profileActions] as (e: unknown) => unknown;
+		const res = (await fn({
+			request: new Request(`${ORIGIN}/profile?/${name}`, { method: 'POST', body: f }),
+			locals: { ctx, user: { id: user } },
+			url: new URL(`${ORIGIN}/profile`)
+		})) as { status?: number; data?: { error?: string }; success?: string };
+		return { status: res.status ?? 200, error: res.data?.error, ok: res.status === undefined };
+	}
+
+	it('anlegen, ändern, aktivieren und löschen', async () => {
+		const t = blankTheme(crypto.randomUUID(), 'Mein Wald');
+		expect((await act('saveTheme', { theme: JSON.stringify(t), activate: '1' })).ok).toBe(true);
+		let p = await loadUserPrefs(uid);
+		expect(p.themes.map((x) => x.name)).toEqual(['Mein Wald']);
+		expect(p.activeThemeId).toBe(t.id);
+		expect(p.activeTheme?.name).toBe('Mein Wald');
+
+		await act('saveTheme', { theme: JSON.stringify({ ...t, name: 'Umbenannt' }) });
+		p = await loadUserPrefs(uid);
+		expect(p.themes).toHaveLength(1);
+		expect(p.themes[0]!.name).toBe('Umbenannt');
+
+		expect((await act('activateTheme', { id: 'preset:ozean' })).ok).toBe(true);
+		expect((await loadUserPrefs(uid)).activeTheme?.name).toBe('Ozean');
+		expect((await act('activateTheme', { id: t.id })).ok).toBe(true);
+
+		// Löschen des aktiven Themes setzt die Auswahl zurück
+		expect((await act('deleteTheme', { id: t.id })).ok).toBe(true);
+		p = await loadUserPrefs(uid);
+		expect(p.themes).toEqual([]);
+		expect(p.activeThemeId).toBe('');
+		expect(p.activeTheme).toBeNull();
+	});
+
+	it('ungültige Daten, unbekannte und fremde Themes werden abgewiesen', async () => {
+		expect((await act('saveTheme', { theme: '{kaputt' })).status).toBe(400);
+		const bad = { ...blankTheme(crypto.randomUUID()), accent: 'red;}' };
+		expect((await act('saveTheme', { theme: JSON.stringify(bad) })).status).toBe(400);
+
+		const foreign = blankTheme(crypto.randomUUID(), 'Fremd');
+		await act('saveTheme', { theme: JSON.stringify(foreign) }, other);
+		expect((await act('activateTheme', { id: foreign.id })).status).toBe(400);
+		expect((await act('activateTheme', { id: 'preset:gibtsnicht' })).status).toBe(400);
+		expect((await act('deleteTheme', { id: foreign.id })).status).toBe(404);
+		expect((await loadUserPrefs(other)).themes.map((x) => x.name)).toEqual(['Fremd']);
+	});
+
+	it('höchstens 20 eigene Themes', async () => {
+		for (let i = 0; i < 20; i++) {
+			const r = await act('saveTheme', {
+				theme: JSON.stringify(blankTheme(crypto.randomUUID(), `T${i}`))
+			});
+			expect(r.ok).toBe(true);
+		}
+		const r = await act('saveTheme', { theme: JSON.stringify(blankTheme(crypto.randomUUID())) });
+		expect(r.status).toBe(400);
+		expect(r.error).toContain('20');
+	});
+
+	it('kaputte gespeicherte Daten führen zu keinem Theme statt zu Fehlern', async () => {
+		await setSetting(await ctxOf(other), 'core.user.activeTheme', crypto.randomUUID());
+		const p = await loadUserPrefs(other);
+		expect(p.activeTheme).toBeNull();
+		expect(p.activeThemeId).toBe('');
 	});
 });

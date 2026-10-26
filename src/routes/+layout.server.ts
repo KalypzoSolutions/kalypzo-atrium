@@ -1,7 +1,8 @@
 import { navigationFor } from '$lib/server/core/modules/service';
 import { navBadgeCounts } from '$lib/server/core/navigation/badges';
 import { getSetting } from '$lib/server/core/settings/service';
-import { loadUserPrefs, safeHexColor } from '$lib/server/core/settings/user-prefs';
+import { choiceItem, THEME_PRESETS } from '$lib/appearance';
+import { effectiveAccent, loadUserPrefs, themeVarsFor } from '$lib/server/core/settings/user-prefs';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
@@ -19,8 +20,18 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		/** Zähler der Seitenleiste (Pfad → Zahl), Aktualisierung über `GET /api/v1/nav/badges` */
 		navBadges,
 		systemName,
-		/** Wirksame Akzentfarbe: eigene (falls gesetzt), sonst die des Systems */
-		accentColor: prefs?.accentColor || safeHexColor(systemAccent) || '#2563eb',
-		density: prefs?.density ?? 'comfortable'
+		/** Wirksame Akzentfarbe: aus dem Theme, sonst eigene (falls gesetzt), sonst die des Systems */
+		accentColor: effectiveAccent(prefs, systemAccent),
+		density: prefs?.density ?? 'comfortable',
+		/** CSS-Variablen des aktiven Themes (`null` = kein Theme) */
+		themeVars: themeVarsFor(prefs?.activeTheme),
+		activeThemeId: prefs?.activeThemeId ?? '',
+		/** Auswahl für die Kopfzeile: eigene Themes, dann Vorschläge */
+		themeChoices: prefs
+			? [
+					...prefs.themes.map((t) => choiceItem(t, false)),
+					...THEME_PRESETS.map((t) => choiceItem(t, true))
+				]
+			: []
 	};
 };

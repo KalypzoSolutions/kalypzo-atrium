@@ -46,6 +46,9 @@
 	/* Fokusring (#71): volle Akzentfarbe, 2 px + 2 px Abstand – nie halbtransparent */
 	--focus-ring: var(--ring);
 	--sidebar: oklch(0.985 0 0);
+	/* Flächen von Seitenleiste und Kopfzeile (persönliches Theme macht sie durchscheinend, siehe unten) */
+	--sidebar-surface: var(--sidebar);
+	--topbar-surface: var(--background);
 	/* Native Bedienelemente (Datumsfelder, Scrollleisten, Autofill) im passenden Farbschema */
 	color-scheme: light;
 }
@@ -205,6 +208,8 @@
 	--color-input: var(--input);
 	--color-ring: var(--ring);
 	--color-sidebar: var(--sidebar);
+	--color-sidebar-surface: var(--sidebar-surface);
+	--color-topbar-surface: var(--topbar-surface);
 }
 
 @layer base {
@@ -219,6 +224,48 @@
 		outline: 2px solid var(--focus-ring);
 		outline-offset: 2px;
 	}
+}
+
+/*
+ * Persönliches Theme (Profil → Darstellung): `data-app-theme="on"` und die Variablen `--app-bg-*`,
+ * `--app-veil-*`, `--app-sidebar-*` setzt der Server am <html> (`$lib/appearance/css.ts`). Der Verlauf liegt
+ * als feste Ebene hinter der Seite – `--background` bleibt einfarbig (Fläche für Knöpfe, Tabs, Leisten),
+ * Karten, Dialoge und Tabellen bleiben unverändert.
+ */
+[data-app-theme='on'] {
+	--app-bg: var(--app-bg-light);
+	--app-veil: var(--app-veil-light, 0%);
+	--app-veil-color: color-mix(in oklab, var(--background) var(--app-veil), transparent);
+	--sidebar-surface: var(--app-sidebar-light, var(--sidebar));
+	--topbar-surface: color-mix(in oklab, var(--background) 72%, transparent);
+	background-color: var(--background);
+}
+.dark[data-app-theme='on'] {
+	--app-bg: var(--app-bg-dark);
+	--app-veil: var(--app-veil-dark, 0%);
+	--sidebar-surface: var(--app-sidebar-dark, var(--sidebar));
+}
+[data-app-theme='on'] body {
+	background: transparent;
+}
+[data-app-theme='on'] body::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	background-image: linear-gradient(var(--app-veil-color), var(--app-veil-color)), var(--app-bg);
+}
+/* Durchscheinende Flächen (Seitenleiste, Kopfzeile) nur mit Theme weichzeichnen */
+[data-app-theme='on'] .app-glass {
+	backdrop-filter: blur(16px) saturate(1.15);
+}
+/* Eigene Kopie des Hintergrunds für Flächen über einem Overlay (mobile Seitenleiste) */
+[data-app-theme='on'] .app-backdrop {
+	background-color: var(--background);
+	background-image:
+		linear-gradient(var(--sidebar-surface), var(--sidebar-surface)),
+		linear-gradient(var(--app-veil-color), var(--app-veil-color)), var(--app-bg);
 }
 
 /* Fokusring für native Elemente (gleich wie der Standard oben, auch gegen `outline-none`) */

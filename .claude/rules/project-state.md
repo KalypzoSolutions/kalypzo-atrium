@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-25)
+# Projektstand (zuletzt aktualisiert: 2026-10-26)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -267,7 +267,15 @@
   (PDF, Word, Tabelle, Präsentation, Bild, Archiv, Audio/Video, Code; Tokens `--file-*`); PDFs bekommen ein Vorschaubild der ersten Seite (neuer
   Core-Baustein `core.pdf.renderPage`, pdf.js + `@napi-rs/canvas`), Bestand per Job `files.thumbs-backfill`. Details: `module-files.md`.
 
+- **Persönliche Design-Themes (2026-10-26)**: Profil → Darstellung → „Theme“: 10 Vorschläge, eigene Themes (≤ 20) mit Akzentfarbe und Hintergrund je
+  Modus (einfarbig, linearer/radialer Verlauf mit 2–6 Farben, Farbflecken), Abdeckung, Seitenleiste durchscheinend/getönt/einfarbig, Live-Vorschau,
+  Kontrastwarnung, „Dunkel aus Hell ableiten“; Schnellwahl im Darstellungs-Menü der Kopfzeile. Hell/Dunkel/System und Akzentfarbe bleiben wie bisher.
+  Core-Baustein `GradientEditor`. Details: `architecture.md` → „Konto, Darstellung“, `ui-design.md`. Offen: `theme-color`-Meta folgt dem Theme nicht;
+  Safari/iOS (feste Ebene, Weichzeichner) ungeprüft.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Themes (2026-10-26): **nur persönlich** (keine Stammes-Themes); Hintergrund wirkt auf **Seite + Seitenleiste**, Karten bleiben einfarbig;
+  **je Modus eigener Hintergrund**, der Modus (Hell/Dunkel/System) bleibt getrennt wählbar.
 - Aufgaben (2026-10-25): eigenes Modul + optional je Aktion ein Board; Spalten frei je Board (eine Erledigt-Spalte); Unteraufgaben als Checkliste;
   Aktionen-Freigabe wie bei Terminen (alle Principal-Typen).
 - Kontaktformular (2026-10-25): Anfragen in den Posteingang „Stamm“; Spam-Schutz Proof-of-Work + Zeitfalle/Token (keine Inhaltsbewertung, kein Captcha).

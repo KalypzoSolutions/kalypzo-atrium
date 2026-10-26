@@ -175,6 +175,7 @@ Damit Core und Module einheitlich aussehen, gibt es fertige Bausteine; neue Seit
 | `SelectField` | `$lib/components/ui/select-field` | Einfachauswahl mit optionalem „Alle“-Eintrag (`emptyLabel`) |
 | `MultiSelect` | `$lib/components/ui/multi-select` | Mehrfachauswahl mit Suche, Checkboxen und Chips |
 | `ColorPicker` | `$lib/components/ui/color-picker` | Eigener Farbwähler (Fläche, Farbton, Hex, Presets); Helfer in `color.ts` |
+| `GradientEditor` | `$lib/components/ui/gradient-editor` | Hintergrund bearbeiten: einfarbig, linearer/radialer Verlauf (2–6 Farbpunkte, ziehbar), Farbflecken; Wert `ThemeBackground` aus `$lib/appearance` |
 | `ColorBadge` | `$lib/components/layout` | Badge in frei wählbarer Farbe mit lesbarer Textfarbe |
 | `EntityAvatar` | `$lib/components/layout` | Rundes Bild mit Farbrand, Fallback Initialen |
 | `FileField` | `$lib/components/layout` | Datei-Feld mit Typ-/Größenprüfung, vorhandener Datei und Entfernen; mit `crop` Bild-Zuschnitt nach der Auswahl |

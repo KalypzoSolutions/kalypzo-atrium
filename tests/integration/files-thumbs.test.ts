@@ -43,7 +43,7 @@ async function send(method: string, path: string, init: RequestInit = {}) {
 
 async function upload(name: string, bytes: Uint8Array, type: string): Promise<FileNode> {
 	const form = new FormData();
-	form.set('file', new File([bytes], name, { type }));
+	form.set('file', new File([new Uint8Array(bytes)], name, { type }));
 	const r = new Response(form);
 	const buf = new Uint8Array(await r.arrayBuffer());
 	const res = await send('POST', '/nodes/root/upload', {

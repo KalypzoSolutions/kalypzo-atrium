@@ -51,6 +51,21 @@ export function oklchToRgb(l: number, c: number, h: number): RgbTuple {
 	return [r, g, bl].map((v) => Math.round(clamp01(fromLinear(v)) * 255)) as RgbTuple;
 }
 
+/** sRGB (0–255) → OKLCH `[L 0–1, C, H in Grad]`. */
+export function rgbToOklch([r, g, b]: RgbTuple): [number, number, number] {
+	const R = toLinear(r / 255);
+	const G = toLinear(g / 255);
+	const B = toLinear(b / 255);
+	const l_ = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B);
+	const m_ = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B);
+	const s_ = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B);
+	const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_;
+	const a = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_;
+	const bb = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_;
+	const h = (Math.atan2(bb, a) * 180) / Math.PI;
+	return [L, Math.sqrt(a * a + bb * bb), h < 0 ? h + 360 : h];
+}
+
 /** `#…` oder `oklch(…)` → sRGB; Alpha wird ignoriert. Unbekanntes Format → `null`. */
 export function parseColor(value: string | null | undefined): RgbTuple | null {
 	if (typeof value !== 'string') return null;

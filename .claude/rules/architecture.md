@@ -91,6 +91,14 @@ kein Chromium; ≤ 50 MB, ≤ 4 MP, 10 s, ein Lauf je Prozess, Nicht-PDF 422) �
 - Theme: Cookie `theme` ist SSR-Quelle, `core.user.theme` (nur bei ausdrücklicher Wahl) gewinnt beim `(internal)`-Load;
   `theme.set()` schreibt zusätzlich per `POST /profile/theme`. `hooks.server.ts` ersetzt `%app.theme%`, `%app.density%`,
   `%app.style%` (`--accent-color`, nur validiertes `#rrggbb`) in `app.html`; Inline-Skript setzt `dark` bei „system“ (CSP-Nonce).
+- **Persönliche Themes** (2026-10-26): `$lib/appearance/` (Client + Server): `schema.ts` (Zod `userThemeSchema`: Name, `accent` `''|#rrggbb`,
+  `light`/`dark` = `{ background: solid|linear|radial|mesh, veil 0–90 %, sidebar glass|tinted|solid }`, ≤ 20 je Person), `presets.ts` (10 Vorschläge
+  `preset:<slug>`, `resolveTheme`), `css.ts` (`cssBackground`, `themeCssVars`, `previewBackground`, `textContrast`/`isReadable`, `deriveDark`), `apply.ts`
+  (Browser). Einstellungen `core.user.themes` (JSON) + `core.user.activeTheme` (Scope `user`). `loadUserPrefs` liefert `themes`/`activeTheme` (tolerant
+  validiert); `applyAppearance` setzt `%app.apptheme%` (`data-app-theme="on"`) und die Variablen in `%app.style%` – SSR ohne Aufblitzen.
+  Wirksame Akzentfarbe `effectiveAccent`: Theme → eigene → System. Profil-Actions `saveTheme`/`deleteTheme`/`activateTheme`, Schnellwahl in der
+  Kopfzeile über `POST /profile/theme { activeTheme }`. UI: Profil → Darstellung, Karte „Theme“ (`ThemesCard`, `ThemeEditorDialog` mit Live-Vorschau).
+  Tests `appearance.test.ts`, `user-prefs`, `hooks-server`, Integration `profile-extra`, E2E `appearance-themes.spec.ts`.
 - Dashboard (2026-10-20): `dashboard/+page.ts` sammelt `dashboardWidgets` aktiver Module + `CORE_DASHBOARD_WIDGETS` (Pseudo-Modul `core`),
   `selectDashboardWidgets`/`applyDashboardLayout` (`$lib/sdk/client/dashboard-widgets`); Core-Daten `GET /dashboard/core` (je Recht), Anordnung
   `PUT /dashboard/layout` (`core.user.dashboard`, Origin-Check, `null` = Standard). Tests `dashboard-widgets`, `dashboard-layout`, E2E `dashboard.spec.ts`.

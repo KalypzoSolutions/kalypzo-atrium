@@ -87,14 +87,21 @@ const guard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-/** Akzentfarbe (Benutzer oder System) und Dichte für die Platzhalter in `app.html`; Fehler = Standard. */
+/** Akzentfarbe (Theme, Benutzer oder System), Dichte und Theme für die Platzhalter in `app.html`; Fehler = Standard. */
 async function appearanceFor(event: Parameters<Handle>[0]['event']) {
 	try {
 		const prefs = event.locals.user ? await loadUserPrefs(event.locals.user.id) : null;
-		const accent = prefs?.accentColor || (await getSetting<string>('core.design.accentColor'));
-		return { accent, density: prefs?.density ?? 'comfortable' };
+		const accent =
+			prefs?.activeTheme?.accent ||
+			prefs?.accentColor ||
+			(await getSetting<string>('core.design.accentColor'));
+		return {
+			accent,
+			density: prefs?.density ?? 'comfortable',
+			appTheme: prefs?.activeTheme ?? null
+		};
 	} catch {
-		return { accent: null, density: 'comfortable' };
+		return { accent: null, density: 'comfortable', appTheme: null };
 	}
 }
 
@@ -109,7 +116,8 @@ const headers: Handle = async ({ event, resolve }) => {
 			return applyAppearance(html, {
 				theme: event.cookies.get('theme'),
 				density: a.density,
-				accent: a.accent
+				accent: a.accent,
+				appTheme: a.appTheme
 			});
 		}
 	});

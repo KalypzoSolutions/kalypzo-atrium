@@ -36,6 +36,10 @@ paths:
   **Dateityp-Farben** (2026-10-26): `--file-pdf|word|sheet|slides|image|archive|media|code` → `text-file-<art>`, getönt `bg-file-<art>-muted`
   (nur für Dateisymbole, Zuordnung in `files/pages/file-types.ts`; Kontrast im selben Test).
   Akzentfarbige Symbole/Links = `text-link` (auch `text-link/80`), nie `text-primary`.
+- **Persönliche Themes** (2026-10-26): Hintergrund als feste Ebene `body::before` hinter der Seite (`[data-app-theme='on']`,
+  Variablen `--app-bg-*`/`--app-veil-*`/`--app-sidebar-*` am `<html>`), Seitenleiste `bg-sidebar-surface`, Kopfzeile `bg-topbar-surface` + `app-glass`
+  (Weichzeichner nur mit Theme), mobiles Sheet `app-backdrop`. **`--background` bleibt immer einfarbig** (Fläche für Knöpfe, Tabs, Leisten) –
+  nie einen Verlauf hineinlegen; Karten/Dialoge bleiben `--card`/`--popover`. Logik `$lib/appearance` (siehe `architecture.md`).
 - Typografie (#71, `@utility` in `app.css`, in `cn()` als Schriftgröße registriert): Seitentitel `text-title` (= 2xl semibold tight,
   `PageHeader`), Abschnittsüberschrift `text-section` (lg semibold), Kleinschrift `text-caption`/`text-xs` – **nie** `text-[10px]/[11px]`.
   `Card.Title` rendert eine Überschrift (`level`, Standard `h2`; Karten unter Abschnitt/in Dialogen `level={3}`; Login/Passwort `level={1}`),
@@ -71,6 +75,7 @@ wenn es nur ein Formular ist. Listen: Suche + Filter in der Toolbar der `DataTab
 | Einfachauswahl / Mehrfachauswahl mit Suche | `SelectField` (`ui/select-field`, `emptyLabel`, `name`) / `MultiSelect` (`ui/multi-select`) |
 | Freie Tags/Schlagwörter (Chips, Vorschläge, „„x“ anlegen“) | `TagInput` (`ui/tag-input`; `bind:value: string[]`, `suggestions` oder `loadSuggestions(q)` (200 ms Debounce), `max` 20, `maxLength` 40, `label`, `invalid`, `describedby`, `onchange`; Enter/Komma legt an, Blur übernimmt, Backspace entfernt letzten; Logik `addTag()` in `tags.ts`) |
 | Farbe | `ColorPicker` (`ui/color-picker`), `ColorBadge`, `EntityAvatar` |
+| Verlauf / Hintergrund (einfarbig, linear, radial, Farbflecken) | `GradientEditor` (`ui/gradient-editor`; `bind:value: ThemeBackground` aus `$lib/appearance`, `label`, `presets?`; Farbpunkte ziehen/Pfeiltasten/Entf, Klick auf die Leiste fügt hinzu, 2–6 Punkte, Mesh 1–5 Flecken auf der Vorschau ziehbar; reine Hilfen `gradient.ts`, Test `appearance.test.ts`) |
 | Icon wählen / per Name anzeigen (alle ~1.900 Lucide-Icons) | `IconPicker` (`ui/icon-picker`; `bind:value` = Name, Suche englisch + deutsch, Vorschläge nach Themen, „Alle Icons“ in 240er-Schritten, Pfeiltasten mit einem Tab-Stopp), `DynamicIcon` (`name`, `class`, `strokeWidth`, `fallback`); Daten lazy aus `$lib/sdk/icons` (eigener Chunk, `iconStore.ensure()`), deutsche Begriffe/Vorschläge in `sdk/icons/keywords-de.ts`. Nach Lucide-Update `node scripts/generate-icon-data.mjs` (Test `icon-data.test.ts` meldet es) |
 | Regler mit festen Stufen (z. B. Aus · E-Mail · Beides · Push) | `SegmentedSlider` (`ui/segmented-slider`; `value`, `options: { value, label, disabled?, hint? }[]`, `label` (aria), `onchange`, `disabled`; bits-ui `RadioGroup`, gleitender Knopf, Pfeiltasten, gesperrte Stufen sichtbar) |
 | Zahl mit −/+ , Regler, Geld | `NumberStepper`, `Slider` (`ui/slider`), `MoneyInput` (`money.ts`: `formatEuro`, `parseEuroToCents`) |

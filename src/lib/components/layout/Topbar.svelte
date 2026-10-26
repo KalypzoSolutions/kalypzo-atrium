@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
+	import { toast } from 'svelte-sonner';
+	import type { ThemeChoiceItem } from '$lib/appearance/schema';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Menu from '@lucide/svelte/icons/menu';
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
+	import Palette from '@lucide/svelte/icons/palette';
 	import Sun from '@lucide/svelte/icons/sun';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import { Avatar, AvatarFallback, AvatarImage } from '$lib/components/ui/avatar';
@@ -44,6 +48,28 @@
 		system: 'System'
 	};
 	let paletteOpen = $state(false);
+
+	// Persönliche Themes (Profil → Darstellung): eigene zuerst, dann höchstens einige Vorschläge
+	const themeChoices = $derived((page.data.themeChoices ?? []) as ThemeChoiceItem[]);
+	const activeThemeId = $derived((page.data.activeThemeId ?? '') as string);
+	const quickThemes = $derived([
+		...themeChoices.filter((t) => !t.preset),
+		...themeChoices.filter((t) => t.preset).slice(0, 5)
+	]);
+
+	async function pickTheme(id: string) {
+		const res = await fetch('/profile/theme', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ activeTheme: id }),
+			credentials: 'same-origin'
+		}).catch(() => null);
+		if (!res?.ok) {
+			toast.error('Theme konnte nicht gewechselt werden.');
+			return;
+		}
+		await invalidateAll();
+	}
 	/** Nur eigene Profilbilder (`/avatar/…`) anzeigen, keine fremden Adressen aus alten Daten */
 	const avatarSrc = $derived(user.image?.startsWith('/avatar/') ? user.image : null);
 	const initials = $derived(
@@ -66,7 +92,7 @@
 	}
 </script>
 
-<header class="flex h-14 items-center gap-2 border-b bg-background px-4">
+<header class="app-glass flex h-14 items-center gap-2 border-b bg-topbar-surface px-4">
 	<Button
 		variant="ghost"
 		size="icon"
@@ -78,7 +104,7 @@
 	</Button>
 	<Sheet bind:open={menuOpen}>
 		<!-- Volle Höhe, Kopf fest, Navigation scrollt (kleine Geräte, Querformat) -->
-		<SheetContent side="left" class="flex h-dvh w-72 max-w-[85vw] flex-col gap-0 p-0">
+		<SheetContent side="left" class="app-backdrop flex h-dvh w-72 max-w-[85vw] flex-col gap-0 p-0">
 			<SheetHeader class="shrink-0 border-b p-4">
 				<SheetTitle>{systemName}</SheetTitle>
 			</SheetHeader>
@@ -121,7 +147,7 @@
 				</Button>
 			{/snippet}
 		</DropdownMenuTrigger>
-		<DropdownMenuContent align="end" class="w-40">
+		<DropdownMenuContent align="end" class="w-52">
 			<DropdownMenuLabel>Darstellung</DropdownMenuLabel>
 			<DropdownMenuRadioGroup
 				value={theme.choice}
@@ -133,6 +159,26 @@
 					><Monitor /> System</DropdownMenuRadioItem
 				>
 			</DropdownMenuRadioGroup>
+			{#if themeChoices.length}
+				<DropdownMenuSeparator />
+				<DropdownMenuLabel>Theme</DropdownMenuLabel>
+				<DropdownMenuRadioGroup value={activeThemeId} onValueChange={(v) => void pickTheme(v)}>
+					<DropdownMenuRadioItem value="" closeOnSelect>Standard</DropdownMenuRadioItem>
+					{#each quickThemes as t (t.id)}
+						<DropdownMenuRadioItem value={t.id} closeOnSelect>
+							<span
+								class="size-4 shrink-0 rounded-full border"
+								style:background-image={theme.dark ? t.swatchDark : t.swatchLight}
+								aria-hidden="true"
+							></span>
+							<span class="truncate">{t.name}</span>
+						</DropdownMenuRadioItem>
+					{/each}
+				</DropdownMenuRadioGroup>
+				<DropdownMenuItem onSelect={() => goto('/profile?tab=appearance')}>
+					<Palette /> Themes verwalten …
+				</DropdownMenuItem>
+			{/if}
 		</DropdownMenuContent>
 	</DropdownMenu>
 
