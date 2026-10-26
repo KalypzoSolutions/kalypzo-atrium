@@ -269,7 +269,7 @@
 
 - **Persönliche Design-Themes (2026-10-26)**: Profil → Darstellung → „Theme“: 10 Vorschläge, eigene Themes (≤ 20) mit Akzentfarbe und Hintergrund je
   Modus (einfarbig, linearer/radialer Verlauf mit 2–6 Farben, Farbflecken), Abdeckung, Seitenleiste durchscheinend/getönt/einfarbig, Live-Vorschau,
-  Kontrastwarnung, „Dunkel aus Hell ableiten“; Schnellwahl im Darstellungs-Menü der Kopfzeile. Hell/Dunkel/System und Akzentfarbe bleiben wie bisher.
+  Kontrastwarnung, „Dunkel aus Hell ableiten“; Schnellwahl im Darstellungs-Menü der Kopfzeile **nur für mit Stern markierte Themes** (Favoriten). Hell/Dunkel/System und Akzentfarbe bleiben wie bisher.
   Core-Baustein `GradientEditor`. Details: `architecture.md` → „Konto, Darstellung“, `ui-design.md`. Offen: `theme-color`-Meta folgt dem Theme nicht;
   Safari/iOS (feste Ebene, Weichzeichner) ungeprüft.
 

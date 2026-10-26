@@ -862,6 +862,41 @@ describe('Persönliche Themes (Profil-Actions)', () => {
 		expect(r.error).toContain('20');
 	});
 
+	it('Favoriten: markieren, entfernen, Prüfungen und Aufräumen', async () => {
+		const fav = await createUser(admin, { name: 'Fee', email: 'fee@example.test', password: PW });
+		const ids = async () => (await loadUserPrefs(fav)).favorites.map((t) => t.id);
+		expect((await act('toggleFavorite', { id: 'preset:ozean', on: '1' }, fav)).ok).toBe(true);
+		expect((await act('toggleFavorite', { id: 'preset:wald', on: '1' }, fav)).ok).toBe(true);
+		expect((await act('toggleFavorite', { id: 'preset:ozean', on: '1' }, fav)).ok).toBe(true);
+		expect(await ids()).toEqual(['preset:wald', 'preset:ozean']);
+		expect((await act('toggleFavorite', { id: 'preset:wald', on: '' }, fav)).ok).toBe(true);
+		expect(await ids()).toEqual(['preset:ozean']);
+
+		// Neues eigenes Theme wird automatisch Favorit; Löschen räumt den Favoriten mit weg
+		const t = blankTheme(crypto.randomUUID(), 'Stern');
+		await act('saveTheme', { theme: JSON.stringify(t) }, fav);
+		expect(await ids()).toEqual(['preset:ozean', t.id]);
+		await act('saveTheme', { theme: JSON.stringify({ ...t, name: 'Stern 2' }) }, fav);
+		expect(await ids()).toEqual(['preset:ozean', t.id]);
+		await act('deleteTheme', { id: t.id }, fav);
+		expect(await ids()).toEqual(['preset:ozean']);
+
+		// Unbekannte und fremde IDs
+		expect((await act('toggleFavorite', { id: 'preset:gibtsnicht', on: '1' }, fav)).status).toBe(
+			400
+		);
+		const foreign = blankTheme(crypto.randomUUID(), 'Fremd2');
+		await act('saveTheme', { theme: JSON.stringify(foreign) }, other);
+		expect((await act('toggleFavorite', { id: foreign.id, on: '1' }, fav)).status).toBe(400);
+
+		// Verwaiste IDs (z. B. gelöschtes Theme) fallen beim Lesen still weg
+		await setSetting(await ctxOf(fav), 'core.user.themeFavorites', [
+			crypto.randomUUID(),
+			'preset:ozean'
+		]);
+		expect(await ids()).toEqual(['preset:ozean']);
+	});
+
 	it('kaputte gespeicherte Daten führen zu keinem Theme statt zu Fehlern', async () => {
 		await setSetting(await ctxOf(other), 'core.user.activeTheme', crypto.randomUUID());
 		const p = await loadUserPrefs(other);

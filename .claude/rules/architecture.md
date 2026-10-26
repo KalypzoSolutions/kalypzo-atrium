@@ -96,8 +96,10 @@ kein Chromium; ≤ 50 MB, ≤ 4 MP, 10 s, ein Lauf je Prozess, Nicht-PDF 422) �
   `preset:<slug>`, `resolveTheme`), `css.ts` (`cssBackground`, `themeCssVars`, `previewBackground`, `textContrast`/`isReadable`, `deriveDark`), `apply.ts`
   (Browser). Einstellungen `core.user.themes` (JSON) + `core.user.activeTheme` (Scope `user`). `loadUserPrefs` liefert `themes`/`activeTheme` (tolerant
   validiert); `applyAppearance` setzt `%app.apptheme%` (`data-app-theme="on"`) und die Variablen in `%app.style%` – SSR ohne Aufblitzen.
-  Wirksame Akzentfarbe `effectiveAccent`: Theme → eigene → System. Profil-Actions `saveTheme`/`deleteTheme`/`activateTheme`, Schnellwahl in der
-  Kopfzeile über `POST /profile/theme { activeTheme }`. UI: Profil → Darstellung, Karte „Theme“ (`ThemesCard`, `ThemeEditorDialog` mit Live-Vorschau).
+  Wirksame Akzentfarbe `effectiveAccent`: Theme → eigene → System. Profil-Actions `saveTheme`/`deleteTheme`/`activateTheme`/`toggleFavorite`.
+  **Favoriten** (Stern, `core.user.themeFavorites`, ≤ 30, eigene + Vorschläge; `loadUserPrefs` → `favorites`, verwaiste IDs fallen weg): nur sie stehen
+  in der Schnellwahl der Kopfzeile (`themeChoices`, Wechsel über `POST /profile/theme { activeTheme }`); neue eigene Themes werden automatisch Favorit,
+  Löschen entfernt den Favoriten. UI: Profil → Darstellung, Karte „Theme“ (`ThemesCard`, `ThemeEditorDialog` mit Live-Vorschau).
   Tests `appearance.test.ts`, `user-prefs`, `hooks-server`, Integration `profile-extra`, E2E `appearance-themes.spec.ts`.
 - Dashboard (2026-10-20): `dashboard/+page.ts` sammelt `dashboardWidgets` aktiver Module + `CORE_DASHBOARD_WIDGETS` (Pseudo-Modul `core`),
   `selectDashboardWidgets`/`applyDashboardLayout` (`$lib/sdk/client/dashboard-widgets`); Core-Daten `GET /dashboard/core` (je Recht), Anordnung

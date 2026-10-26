@@ -33,6 +33,24 @@ test('Themes: Vorschlag, eigenes Theme, Schnellwahl und Standard', async ({ page
 	await expect(page.locator('html')).toHaveAttribute('data-app-theme', 'on');
 	expect(await backdrop(page)).toContain('linear-gradient');
 
+	// Stern: nur markierte Themes erscheinen in der Kopfzeile
+	const menu = page.getByRole('button', { name: /Darstellung wählen/ });
+	const ozeanStar = page.getByRole('button', {
+		name: /^Ozean(: Favorit entfernen| als Favorit markieren)$/
+	});
+	if ((await ozeanStar.getAttribute('aria-pressed')) === 'true') await ozeanStar.click();
+	await expect(ozeanStar).toHaveAttribute('aria-pressed', 'false');
+	await menu.click();
+	await expect(page.getByRole('menuitemradio', { name: 'Ozean' })).toHaveCount(0);
+	await page.keyboard.press('Escape');
+	await ozeanStar.click();
+	await expect(ozeanStar).toHaveAttribute('aria-pressed', 'true');
+	await menu.click();
+	await expect(page.getByRole('menuitemradio', { name: 'Ozean' })).toBeVisible();
+	await expect(page.getByRole('menuitemradio', { name: 'Wald' })).toHaveCount(0);
+	if (SHOTS) await page.screenshot({ path: `${SHOTS}/theme-menu.png` });
+	await page.keyboard.press('Escape');
+
 	// Neues eigenes Theme mit drittem Farbpunkt
 	await page.getByRole('button', { name: 'Neues Theme' }).click();
 	const dialog = page.getByRole('dialog');

@@ -25,7 +25,13 @@ export interface ProfileData {
 		startPage?: string;
 		pageSize: number;
 	};
-	themes: { own: UserTheme[]; presets: readonly UserTheme[]; activeId: string };
+	themes: {
+		own: UserTheme[];
+		presets: readonly UserTheme[];
+		activeId: string;
+		/** Mit Stern markierte Theme-IDs (Schnellwahl in der Kopfzeile) */
+		favorites: string[];
+	};
 	permissions: string[];
 	startPageOptions: { value: string; label: string }[];
 }

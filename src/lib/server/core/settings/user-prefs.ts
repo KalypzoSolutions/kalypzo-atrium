@@ -1,5 +1,10 @@
 import { and, eq, inArray } from 'drizzle-orm';
-import { activeThemeSchema, parseUserThemes, type UserTheme } from '$lib/appearance/schema';
+import {
+	activeThemeSchema,
+	parseFavorites,
+	parseUserThemes,
+	type UserTheme
+} from '$lib/appearance/schema';
 import { styleString, themeCssVars } from '$lib/appearance/css';
 import { resolveTheme } from '$lib/appearance/presets';
 import { getDb, schema } from '../database/client';
@@ -23,6 +28,8 @@ export interface UserPrefs {
 	activeThemeId: string;
 	/** Aufgelöstes aktives Theme (Vorschlag oder eigenes), sonst `null` */
 	activeTheme: UserTheme | null;
+	/** Mit Stern markierte Themes (nur noch existierende, in Markier-Reihenfolge) */
+	favorites: UserTheme[];
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -46,7 +53,8 @@ export async function loadUserPrefs(userId: string): Promise<UserPrefs> {
 		'core.user.startPage',
 		'core.user.pageSize',
 		'core.user.themes',
-		'core.user.activeTheme'
+		'core.user.activeTheme',
+		'core.user.themeFavorites'
 	];
 	const rows = await getDb()
 		.select({ key: schema.setting.key, value: schema.setting.value })
@@ -60,6 +68,9 @@ export async function loadUserPrefs(userId: string): Promise<UserPrefs> {
 	const themes = parseUserThemes(m.get('core.user.themes'));
 	const active = activeThemeSchema.safeParse(m.get('core.user.activeTheme'));
 	const activeTheme = active.success ? resolveTheme(active.data, themes) : null;
+	const favorites = parseFavorites(m.get('core.user.themeFavorites'))
+		.map((id) => resolveTheme(id, themes))
+		.filter((t): t is UserTheme => t !== null);
 	return {
 		theme: themeExplicit ? (theme as ThemeChoice) : 'system',
 		themeExplicit,
@@ -69,7 +80,8 @@ export async function loadUserPrefs(userId: string): Promise<UserPrefs> {
 		pageSize: Number.isFinite(size) && size >= 10 && size <= 200 ? Math.floor(size) : 25,
 		themes,
 		activeThemeId: activeTheme?.id ?? '',
-		activeTheme
+		activeTheme,
+		favorites
 	};
 }
 

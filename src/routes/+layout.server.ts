@@ -1,7 +1,7 @@
 import { navigationFor } from '$lib/server/core/modules/service';
 import { navBadgeCounts } from '$lib/server/core/navigation/badges';
 import { getSetting } from '$lib/server/core/settings/service';
-import { choiceItem, THEME_PRESETS } from '$lib/appearance';
+import { choiceItem, PRESET_PREFIX } from '$lib/appearance';
 import { effectiveAccent, loadUserPrefs, themeVarsFor } from '$lib/server/core/settings/user-prefs';
 import type { LayoutServerLoad } from './$types';
 
@@ -26,12 +26,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		/** CSS-Variablen des aktiven Themes (`null` = kein Theme) */
 		themeVars: themeVarsFor(prefs?.activeTheme),
 		activeThemeId: prefs?.activeThemeId ?? '',
-		/** Auswahl für die Kopfzeile: eigene Themes, dann Vorschläge */
-		themeChoices: prefs
-			? [
-					...prefs.themes.map((t) => choiceItem(t, false)),
-					...THEME_PRESETS.map((t) => choiceItem(t, true))
-				]
-			: []
+		/** Schnellwahl in der Kopfzeile: nur mit Stern markierte Themes */
+		themeChoices: (prefs?.favorites ?? []).map((t) => choiceItem(t, t.id.startsWith(PRESET_PREFIX)))
 	};
 };

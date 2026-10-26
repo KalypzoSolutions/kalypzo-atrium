@@ -49,13 +49,9 @@
 	};
 	let paletteOpen = $state(false);
 
-	// Persönliche Themes (Profil → Darstellung): eigene zuerst, dann höchstens einige Vorschläge
-	const themeChoices = $derived((page.data.themeChoices ?? []) as ThemeChoiceItem[]);
+	// Persönliche Themes (Profil → Darstellung): nur die mit Stern markierten
+	const quickThemes = $derived((page.data.themeChoices ?? []) as ThemeChoiceItem[]);
 	const activeThemeId = $derived((page.data.activeThemeId ?? '') as string);
-	const quickThemes = $derived([
-		...themeChoices.filter((t) => !t.preset),
-		...themeChoices.filter((t) => t.preset).slice(0, 5)
-	]);
 
 	async function pickTheme(id: string) {
 		const res = await fetch('/profile/theme', {
@@ -159,26 +155,29 @@
 					><Monitor /> System</DropdownMenuRadioItem
 				>
 			</DropdownMenuRadioGroup>
-			{#if themeChoices.length}
-				<DropdownMenuSeparator />
-				<DropdownMenuLabel>Theme</DropdownMenuLabel>
-				<DropdownMenuRadioGroup value={activeThemeId} onValueChange={(v) => void pickTheme(v)}>
-					<DropdownMenuRadioItem value="" closeOnSelect>Standard</DropdownMenuRadioItem>
-					{#each quickThemes as t (t.id)}
-						<DropdownMenuRadioItem value={t.id} closeOnSelect>
-							<span
-								class="size-4 shrink-0 rounded-full border"
-								style:background-image={theme.dark ? t.swatchDark : t.swatchLight}
-								aria-hidden="true"
-							></span>
-							<span class="truncate">{t.name}</span>
-						</DropdownMenuRadioItem>
-					{/each}
-				</DropdownMenuRadioGroup>
-				<DropdownMenuItem onSelect={() => goto('/profile?tab=appearance')}>
-					<Palette /> Themes verwalten …
-				</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuLabel>Theme</DropdownMenuLabel>
+			<DropdownMenuRadioGroup value={activeThemeId} onValueChange={(v) => void pickTheme(v)}>
+				<DropdownMenuRadioItem value="" closeOnSelect>Standard</DropdownMenuRadioItem>
+				{#each quickThemes as t (t.id)}
+					<DropdownMenuRadioItem value={t.id} closeOnSelect>
+						<span
+							class="size-4 shrink-0 rounded-full border"
+							style:background-image={theme.dark ? t.swatchDark : t.swatchLight}
+							aria-hidden="true"
+						></span>
+						<span class="truncate">{t.name}</span>
+					</DropdownMenuRadioItem>
+				{/each}
+			</DropdownMenuRadioGroup>
+			{#if !quickThemes.length}
+				<p class="px-2 py-1.5 text-xs text-muted-foreground">
+					Markiere Themes im Profil mit dem Stern, damit sie hier erscheinen.
+				</p>
 			{/if}
+			<DropdownMenuItem onSelect={() => goto('/profile?tab=appearance')}>
+				<Palette /> Themes verwalten …
+			</DropdownMenuItem>
 		</DropdownMenuContent>
 	</DropdownMenu>
 

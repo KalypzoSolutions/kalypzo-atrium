@@ -4,9 +4,11 @@
 	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Plus from '@lucide/svelte/icons/plus';
+	import Star from '@lucide/svelte/icons/star';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import {
 		blankTheme,
+		FAVORITES_MAX,
 		previewBackground,
 		THEMES_MAX,
 		type ThemeMode,
@@ -29,6 +31,7 @@
 	} from '$lib/components/ui/dropdown-menu';
 	import { ConfirmDialog } from '$lib/components/layout';
 	import { cn } from '$lib/utils';
+	import { toast } from 'svelte-sonner';
 	import { callAction } from './actions';
 	import ThemeEditorDialog from './ThemeEditorDialog.svelte';
 	import type { ProfileData } from './types';
@@ -64,6 +67,24 @@
 
 	function copyOf(t: UserTheme, name: string): UserTheme {
 		return { ...structuredClone($state.snapshot(t) as UserTheme), id: crypto.randomUUID(), name };
+	}
+
+	// Stern: sofort umschalten, bei Fehler zurück (der Toast/Fehler kommt aus `callAction`)
+	let favOverride = $state<Record<string, boolean>>({});
+	const isFavorite = (id: string) => favOverride[id] ?? themes.favorites.includes(id);
+	const favCount = $derived(
+		themes.favorites.length +
+			Object.entries(favOverride).filter(([id, on]) => on && !themes.favorites.includes(id)).length
+	);
+
+	async function toggleFavorite(t: UserTheme) {
+		const on = !isFavorite(t.id);
+		favOverride = { ...favOverride, [t.id]: on };
+		const o = await callAction('toggleFavorite', { id: t.id, on: on ? '1' : '' });
+		const rest = { ...favOverride };
+		delete rest[t.id];
+		favOverride = rest;
+		if (!o.ok) toast.error(o.error ?? 'Favorit konnte nicht gespeichert werden.');
 	}
 
 	async function remove() {
@@ -109,6 +130,22 @@
 			</span>
 		</button>
 		{#if t}
+			{@const fav = isFavorite(t.id)}
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				class={cn(
+					'absolute top-3 right-3 bg-card/85 shadow-sm backdrop-blur-sm hover:bg-card',
+					fav && 'text-warning hover:text-warning'
+				)}
+				aria-pressed={fav}
+				aria-label={fav ? `${t.name}: Favorit entfernen` : `${t.name} als Favorit markieren`}
+				title={fav ? 'In der Kopfzeile – Stern entfernen' : 'In der Kopfzeile zeigen'}
+				disabled={!fav && favCount >= FAVORITES_MAX}
+				onclick={() => toggleFavorite(t)}
+			>
+				<Star class={cn(fav && 'fill-current')} />
+			</Button>
 			<DropdownMenu>
 				<DropdownMenuTrigger>
 					{#snippet child({ props })}
@@ -159,8 +196,9 @@
 	<CardHeader>
 		<CardTitle class="font-semibold">Theme</CardTitle>
 		<CardDescription>
-			Hintergrund und Akzentfarbe für hell und dunkel. Hell, Dunkel oder System wählst du weiter
-			unten.
+			Hintergrund und Akzentfarbe für hell und dunkel. Mit dem Stern markierte Themes erscheinen zum
+			schnellen Wechseln im Darstellungs-Menü der Kopfzeile. Hell, Dunkel oder System wählst du
+			weiter unten.
 		</CardDescription>
 	</CardHeader>
 	<CardContent class="space-y-6">

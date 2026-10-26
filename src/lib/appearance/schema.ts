@@ -5,6 +5,7 @@
 import { z } from 'zod';
 
 export const THEMES_MAX = 20;
+export const FAVORITES_MAX = 30;
 export const STOPS_MIN = 2;
 export const STOPS_MAX = 6;
 export const SPOTS_MAX = 5;
@@ -79,12 +80,30 @@ export const userThemesSchema = z
 	.max(THEMES_MAX, `Höchstens ${THEMES_MAX} eigene Themes.`)
 	.refine((list) => new Set(list.map((t) => t.id)).size === list.length, 'Doppelte Theme-ID.');
 
-/** `''` = kein Theme, `preset:<slug>` oder ID eines eigenen Themes */
-export const activeThemeSchema = z.union([
-	z.literal(''),
-	z.uuid(),
-	z.string().regex(/^preset:[a-z0-9-]{1,40}$/)
-]);
+/** ID eines eigenen Themes (UUID) oder eines Vorschlags (`preset:<slug>`) */
+export const themeIdSchema = z.union([z.uuid(), z.string().regex(/^preset:[a-z0-9-]{1,40}$/)]);
+
+/** `''` = kein Theme, sonst eine Theme-ID */
+export const activeThemeSchema = z.union([z.literal(''), themeIdSchema]);
+
+/** Mit Stern markierte Themes (eigene oder Vorschläge) – nur sie stehen in der Kopfzeile */
+export const themeFavoritesSchema = z
+	.array(themeIdSchema)
+	.max(FAVORITES_MAX, `Höchstens ${FAVORITES_MAX} Favoriten.`)
+	.refine((list) => new Set(list).size === list.length, 'Doppelter Favorit.');
+
+/** Liest gespeicherte Favoriten tolerant (ungültige/doppelte IDs fallen weg). */
+export function parseFavorites(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	const out: string[] = [];
+	for (const v of value) {
+		if (out.length >= FAVORITES_MAX) break;
+		if (themeIdSchema.safeParse(v).success && !out.includes(v as string)) {
+			out.push(v as string);
+		}
+	}
+	return out;
+}
 
 export type GradientStop = z.infer<typeof stopSchema>;
 export type MeshSpot = z.infer<typeof spotSchema>;

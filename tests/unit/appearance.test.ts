@@ -6,10 +6,12 @@ import {
 	darkenColor,
 	deriveDark,
 	isReadable,
+	parseFavorites,
 	parseUserThemes,
 	resolveTheme,
 	styleString,
 	textContrast,
+	themeFavoritesSchema,
 	themeCssVars,
 	THEME_PRESETS,
 	THEMES_MAX,
@@ -91,6 +93,19 @@ describe('Theme-Schema', () => {
 		expect(activeThemeSchema.safeParse('preset:wald').success).toBe(true);
 		expect(activeThemeSchema.safeParse('preset:../x').success).toBe(false);
 		expect(activeThemeSchema.safeParse('abc').success).toBe(false);
+	});
+
+	it('Favoriten: nur Theme-IDs, eindeutig, höchstens 30', () => {
+		const a = id();
+		expect(themeFavoritesSchema.safeParse([a, 'preset:wald']).success).toBe(true);
+		expect(themeFavoritesSchema.safeParse(['']).success).toBe(false);
+		expect(themeFavoritesSchema.safeParse([a, a]).success).toBe(false);
+		expect(themeFavoritesSchema.safeParse(['x']).success).toBe(false);
+		expect(themeFavoritesSchema.safeParse(Array.from({ length: 31 }, () => id())).success).toBe(
+			false
+		);
+		expect(parseFavorites([a, a, '', 'kaputt', 'preset:ozean', 3])).toEqual([a, 'preset:ozean']);
+		expect(parseFavorites(null)).toEqual([]);
 	});
 
 	it('parseUserThemes verwirft kaputte Einträge statt alles', () => {

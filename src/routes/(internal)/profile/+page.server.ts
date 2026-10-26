@@ -24,7 +24,7 @@ import { roleIdsForUser } from '$lib/server/core/permissions/roles';
 import { setSetting } from '$lib/server/core/settings/service';
 import { loadUserPrefs, resolveStartPage } from '$lib/server/core/settings/user-prefs';
 import { resolveTheme, THEME_PRESETS } from '$lib/appearance/presets';
-import { THEMES_MAX, userThemeSchema } from '$lib/appearance/schema';
+import { FAVORITES_MAX, THEMES_MAX, userThemeSchema } from '$lib/appearance/schema';
 import { authErrorMessage } from '../../login/auth-error';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -97,7 +97,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const themes = {
 		own: prefs.themes,
 		presets: THEME_PRESETS,
-		activeId: prefs.activeThemeId
+		activeId: prefs.activeThemeId,
+		favorites: prefs.favorites.map((t) => t.id)
 	};
 	return {
 		profile: locals.user!,
@@ -335,6 +336,11 @@ export const actions: Actions = {
 			: [...prefs.themes, theme];
 		try {
 			await setSetting(locals.ctx, 'core.user.themes', list);
+			// Neue Themes landen direkt in der Schnellwahl der Kopfzeile (solange Platz ist)
+			const favs = prefs.favorites.map((t) => t.id);
+			if (!exists && favs.length < FAVORITES_MAX) {
+				await setSetting(locals.ctx, 'core.user.themeFavorites', [...favs, theme.id]);
+			}
 			if (f.get('activate') === '1') {
 				await setSetting(locals.ctx, 'core.user.activeTheme', theme.id);
 			}
@@ -359,6 +365,13 @@ export const actions: Actions = {
 				prefs.themes.filter((t) => t.id !== id)
 			);
 			if (prefs.activeThemeId === id) await setSetting(locals.ctx, 'core.user.activeTheme', '');
+			if (prefs.favorites.some((t) => t.id === id)) {
+				await setSetting(
+					locals.ctx,
+					'core.user.themeFavorites',
+					prefs.favorites.filter((t) => t.id !== id).map((t) => t.id)
+				);
+			}
 		} catch (e) {
 			return fail(400, {
 				section: 'themes',
@@ -366,6 +379,29 @@ export const actions: Actions = {
 			});
 		}
 		return { section: 'themes', success: `Theme „${theme.name}“ gelöscht.` };
+	},
+
+	toggleFavorite: async ({ request, locals }) => {
+		const f = await request.formData();
+		const id = String(f.get('id') ?? '');
+		const on = f.get('on') === '1';
+		const prefs = await loadUserPrefs(locals.user!.id);
+		if (!id || !resolveTheme(id, prefs.themes)) {
+			return fail(400, { section: 'themes', error: 'Unbekanntes Theme.' });
+		}
+		const current = prefs.favorites.map((t) => t.id).filter((x) => x !== id);
+		if (on && current.length >= FAVORITES_MAX) {
+			return fail(400, { section: 'themes', error: `Höchstens ${FAVORITES_MAX} Favoriten.` });
+		}
+		try {
+			await setSetting(locals.ctx, 'core.user.themeFavorites', on ? [...current, id] : current);
+		} catch (e) {
+			return fail(400, {
+				section: 'themes',
+				error: isCoreError(e) ? e.message : 'Favorit konnte nicht gespeichert werden.'
+			});
+		}
+		return { section: 'themes' };
 	},
 
 	activateTheme: async ({ request, locals }) => {
