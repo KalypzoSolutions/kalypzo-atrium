@@ -149,3 +149,36 @@ test('Profilbild: über das Bild hinaus herauszoomen, Ränder in der Hintergrund
 	expect(px.red[0]).toBeGreaterThan(200);
 	expect(px.blue[2]).toBeGreaterThan(200);
 });
+
+test('Profilbild: Hintergrund transparent lässt die Ränder durchsichtig', async ({ page }) => {
+	await login(page);
+	await openAvatarDialog(page);
+	await page
+		.locator('#avatar-file')
+		.setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: await landscapePng() });
+	const crop = page.getByRole('dialog', { name: 'Profilbild zuschneiden' });
+	await expect(crop.getByRole('button', { name: 'Übernehmen' })).toBeEnabled();
+
+	await crop.getByRole('application').focus();
+	for (let i = 0; i < 20; i++) await page.keyboard.press('-');
+	await expect(crop.getByText('25 %')).toBeVisible();
+	await crop.getByRole('checkbox', { name: 'Transparent' }).click();
+	await expect(crop.getByRole('button', { name: 'Hintergrundfarbe' })).toBeDisabled();
+	if (SHOTS) await page.screenshot({ path: `${SHOTS}/crop-transparent.png` });
+	await crop.getByRole('button', { name: 'Übernehmen' }).click();
+	await expect(crop).toBeHidden();
+
+	const px = await page.locator('#avatar-file').evaluate(async (el) => {
+		const f = (el as HTMLInputElement).files![0]!;
+		const bmp = await createImageBitmap(f);
+		const c = new OffscreenCanvas(bmp.width, bmp.height);
+		const ctx = c.getContext('2d')!;
+		ctx.drawImage(bmp, 0, 0);
+		const at = (x: number, y: number) => [...ctx.getImageData(x, y, 1, 1).data];
+		return { name: f.name, corner: at(5, 5), red: at(180, 256) };
+	});
+	expect(px.name).toMatch(/^logo\.(webp|png)$/);
+	expect(px.corner[3]).toBe(0);
+	expect(px.red[3]).toBe(255);
+	expect(px.red[0]).toBeGreaterThan(200);
+});

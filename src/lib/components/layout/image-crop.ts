@@ -30,7 +30,10 @@ export interface ImageCropOptions {
 	/** Lange Kante des Ergebnisses in Pixeln */
 	maxEdge?: number;
 	title?: string;
-	/** Startfarbe für Ränder beim Herauszoomen und transparente Flächen (Standard Weiß) */
+	/**
+	 * Startwert für Ränder beim Herauszoomen und transparente Flächen: Farbe `#rrggbb` (Standard Weiß)
+	 * oder `'transparent'` (Ergebnis mit Alphakanal)
+	 */
 	background?: string | null;
 }
 
@@ -43,6 +46,15 @@ export interface DrawRect {
 
 /** Standard-Hintergrund für Ränder und transparente Flächen */
 export const DEFAULT_CROP_BACKGROUND = '#ffffff';
+
+/** Hintergrund „durchsichtig lassen“ (`ImageCropOptions.background`) */
+export const TRANSPARENT_CROP_BACKGROUND = 'transparent';
+
+/** Füllfarbe für das Canvas: `null` = nicht füllen (transparent), leere Farbe → Weiß */
+export function cropFill(transparent: boolean, color: string | null | undefined): string | null {
+	if (transparent) return null;
+	return color?.trim() ? color : DEFAULT_CROP_BACKGROUND;
+}
 
 /** Größter Zoom über „füllt den Rahmen“ hinaus */
 export const MAX_CROP_ZOOM = 5;

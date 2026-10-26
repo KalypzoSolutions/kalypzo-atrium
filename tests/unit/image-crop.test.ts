@@ -3,6 +3,7 @@ import {
 	MAX_CROP_ZOOM,
 	clampOffset,
 	coverScale,
+	cropFill,
 	croppedFileName,
 	frameFor,
 	minZoom,
@@ -164,5 +165,14 @@ describe('croppedFileName', () => {
 		expect(croppedFileName('Foto 1.HEIC.jpeg', 'image/webp')).toBe('Foto 1.HEIC.webp');
 		expect(croppedFileName('bild.png', 'image/jpeg')).toBe('bild.jpg');
 		expect(croppedFileName('.png', 'image/png')).toBe('bild.png');
+	});
+});
+
+describe('cropFill', () => {
+	it('transparent → nicht füllen, sonst Farbe, leer → Weiß', () => {
+		expect(cropFill(true, '#123456')).toBeNull();
+		expect(cropFill(false, '#123456')).toBe('#123456');
+		expect(cropFill(false, null)).toBe('#ffffff');
+		expect(cropFill(false, '  ')).toBe('#ffffff');
 	});
 });

@@ -4,12 +4,15 @@
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { ColorPicker } from '$lib/components/ui/color-picker';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Slider } from '$lib/components/ui/slider';
 	import { BUSY_LOAD, BUSY_SAVE } from './busy';
 	import {
 		DEFAULT_CROP_BACKGROUND,
+		TRANSPARENT_CROP_BACKGROUND,
+		cropFill,
 		MAX_CROP_ZOOM,
 		croppedFileName,
 		displaySize,
@@ -49,7 +52,7 @@
 		/** Lange Kante des Ergebnisses in Pixeln */
 		maxEdge?: number;
 		title?: string;
-		/** Startfarbe für Ränder und transparente Flächen (im Dialog änderbar) */
+		/** Startwert für Ränder und transparente Flächen: Farbe oder `'transparent'` (im Dialog änderbar) */
 		background?: string | null;
 		onconfirm: (file: File) => void;
 		oncancel?: () => void;
@@ -65,6 +68,7 @@
 	let busy = $state(false);
 	let crop = $state<CropState>({ zoom: 1, offset: { x: 0, y: 0 } });
 	let bg = $state<string | null>(DEFAULT_CROP_BACKGROUND);
+	let transparent = $state(false);
 	/** Geschlossen über „Übernehmen“ (sonst gilt Schließen als Abbrechen) */
 	let confirmed = false;
 
@@ -76,8 +80,18 @@
 	const ready = $derived(natural.width > 0 && !loadError);
 	const shown = $derived(displaySize(natural, frame, crop.zoom));
 	const minZ = $derived(ready ? minZoom(natural, frame) : 1);
-	const fill = $derived(bg ?? DEFAULT_CROP_BACKGROUND);
-	const startColor = $derived(background ?? DEFAULT_CROP_BACKGROUND);
+	const startsTransparent = $derived(background === TRANSPARENT_CROP_BACKGROUND);
+	const startColor = $derived(
+		background && !startsTransparent ? background : DEFAULT_CROP_BACKGROUND
+	);
+	/** `null` = Ränder bleiben durchsichtig */
+	const fill = $derived(cropFill(transparent, bg));
+	/** Schachbrett als Vorschau für „durchsichtig“ (feste Grautöne wie die übrige Bildbühne) */
+	const CHECKERBOARD =
+		'background-color: #ffffff; background-image: conic-gradient(#d4d4d4 25%, transparent 0 50%, #d4d4d4 0 75%, transparent 0); background-size: 16px 16px;';
+	const frameBackground = $derived(
+		!ready ? '' : fill ? `background-color: ${fill};` : CHECKERBOARD
+	);
 	const bgPresets = $derived(
 		[...new Set(['#ffffff', '#000000', startColor.toLowerCase()])].filter(Boolean)
 	);
@@ -90,7 +104,8 @@
 		natural = { width: 0, height: 0 };
 		loadError = '';
 		crop = { zoom: 1, offset: { x: 0, y: 0 } };
-		bg = background ?? DEFAULT_CROP_BACKGROUND;
+		bg = startColor;
+		transparent = startsTransparent;
 		confirmed = false;
 		return () => {
 			URL.revokeObjectURL(url);
@@ -227,12 +242,16 @@
 			if (!ctx) throw new Error('Canvas nicht verfügbar');
 			ctx.imageSmoothingQuality = 'high';
 			// Erst die Hintergrundfarbe (Ränder beim Herauszoomen, transparente Flächen), dann das Bild
-			ctx.fillStyle = fill;
-			ctx.fillRect(0, 0, size.width, size.height);
+			if (fill) {
+				ctx.fillStyle = fill;
+				ctx.fillRect(0, 0, size.width, size.height);
+			}
 			ctx.drawImage(imgEl, rect.dx, rect.dy, rect.dw, rect.dh);
 			let blob = await toBlob(canvas, 'image/webp');
-			// Browser ohne WebP-Encoder (Safari) liefern PNG → JPEG
-			if (!blob || blob.type !== 'image/webp') blob = await toBlob(canvas, 'image/jpeg');
+			// Browser ohne WebP-Encoder (Safari): mit Farbe JPEG, transparent PNG (behält den Alphakanal)
+			if (!blob || blob.type !== 'image/webp') {
+				blob = await toBlob(canvas, fill ? 'image/jpeg' : 'image/png');
+			}
 			if (!blob) throw new Error('Bild konnte nicht erzeugt werden');
 			const out = new File([blob], croppedFileName(file.name, blob.type), { type: blob.type });
 			confirmed = true;
@@ -298,7 +317,7 @@
 					bind:clientWidth={frameWidth}
 					class="absolute inset-[8%]"
 					class:rounded-full={shape === 'circle'}
-					style:background-color={ready ? fill : undefined}
+					style={frameBackground}
 				>
 					{#if src}
 						<img
@@ -380,9 +399,13 @@
 				label="Hintergrundfarbe"
 				bind:value={bg}
 				presets={bgPresets}
-				disabled={!ready}
+				disabled={!ready || transparent}
 			/>
-			<span class="text-xs text-muted-foreground">
+			<label class="flex items-center gap-2 text-sm">
+				<Checkbox bind:checked={transparent} disabled={!ready} />
+				Transparent
+			</label>
+			<span class="w-full text-xs text-muted-foreground">
 				für Ränder beim Herauszoomen und durchsichtige Bilder
 			</span>
 		</div>
