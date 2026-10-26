@@ -115,6 +115,12 @@ kein Chromium; ≤ 50 MB, ≤ 4 MP, 10 s, ein Lauf je Prozess, Nicht-PDF 422) �
   `core.system.housekeeping` nur mit Zählern. Einstellungen: Verwaltung → Einstellungen → Allgemein. Indizes `audit_log_target_idx`,
   `audit_log_action_pattern_idx` (0007). Tests `core-housekeeping`, `core-health`, `api-log-path`.
 
+## Live-Updates (2026-10-26)
+- Muster für Echtzeit (erste Nutzerin: `whiteboard`): **Server-Sent Events** über einen normalen Modul-Endpunkt (Handler gibt eine `Response` mit
+  `ReadableStream` zurück, `text/event-stream`, `x-accel-buffering: no`, Heartbeat), Änderungen per POST. Verteilung im Prozess → **eine Instanz**.
+  Kein WebSocket (adapter-node ohne Upgrade-Hook). Im Stream keine offene Modul-Transaktion halten; Zugriff regelmäßig neu prüfen.
+- Vollflächige Modulseiten: `ModuleUi.fullBleedRoutes` → Catch-all `+page.ts` setzt `fullBleed`, `(internal)/+layout.svelte` lässt Rand/`max-w` weg.
+
 ## Sicherheit
 Security-Header und CSP aus `hooks.server.ts`/`svelte.config.js`; CSRF über SvelteKit-Origin-Check.
 Öffentliche Modul-Endpoints sind **verboten** (`permission` darf nicht `null` sein) – Phase 3 führt ein

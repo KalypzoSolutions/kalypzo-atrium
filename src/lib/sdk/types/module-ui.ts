@@ -79,6 +79,11 @@ export interface ModuleUi {
 	userAdminSections?: UserAdminSection[];
 	/** Kacheln auf dem Dashboard (`/dashboard`) */
 	dashboardWidgets?: DashboardWidget[];
+	/**
+	 * Schlüssel aus `routes`, die die ganze Fläche neben Seitenleiste und Kopfzeile nutzen (ohne Rand und
+	 * ohne Maximalbreite, Höhe = Fensterhöhe minus Kopfzeile), z. B. Editoren wie das Whiteboard.
+	 */
+	fullBleedRoutes?: string[];
 }
 
 /** Breite einer Dashboard-Kachel im Raster: `sm` = 1 Spalte, `md` = 2 Spalten, `lg` = volle Breite */

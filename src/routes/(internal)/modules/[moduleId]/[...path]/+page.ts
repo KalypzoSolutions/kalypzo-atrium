@@ -17,5 +17,10 @@ export const load: PageLoad = async ({ data }) => {
 	const route = match && ui.routes[match.key];
 	if (!match || !route) throw error(404, 'Seite nicht gefunden');
 	const component = (await route()).default;
-	return { ...data, component, params: match.params };
+	return {
+		...data,
+		component,
+		params: match.params,
+		fullBleed: ui.fullBleedRoutes?.includes(match.key) ?? false
+	};
 };

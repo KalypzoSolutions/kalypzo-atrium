@@ -36,6 +36,7 @@ paths:
   **Dateityp-Farben** (2026-10-26): `--file-pdf|word|sheet|slides|image|archive|media|code` → `text-file-<art>`, getönt `bg-file-<art>-muted`
   (nur für Dateisymbole, Zuordnung in `files/pages/file-types.ts`; Kontrast im selben Test).
   Akzentfarbige Symbole/Links = `text-link` (auch `text-link/80`), nie `text-primary`.
+  **Whiteboard-Fläche** (2026-10-26) ist „Papier“: immer hell, Nutzerfarben als Inline-Style/SVG-Attribute (`whiteboard/pages/editor/render.ts`), Leisten folgen dem Theme.
 - **Persönliche Themes** (2026-10-26): Hintergrund als feste Ebene `body::before` hinter der Seite (`[data-app-theme='on']`,
   Variablen `--app-bg-*`/`--app-veil-*`/`--app-sidebar-*` am `<html>`), Seitenleiste `bg-sidebar-surface`, Kopfzeile `bg-topbar-surface` + `app-glass`
   (Weichzeichner nur mit Theme), mobiles Sheet `app-backdrop`. **`--background` bleibt immer einfarbig** (Fläche für Knöpfe, Tabs, Leisten) –
@@ -51,6 +52,8 @@ paths:
   Elemente ohne eigenen Stil, Utility `focus-ring` für native Elemente; Core-Bausteine `focus-visible:ring-ring` (nie `/50`). Skip-Link
   „Zum Inhalt springen“ (`.skip-link`) als erstes Element im `(internal)`-Layout. `prefers-reduced-motion` global in `app.css`
   (Ladekreisel drehen langsam weiter). Ladetexte als Konstanten `BUSY_SAVE` („Speichert …“) & Co. (`layout/busy.ts`).
+- **Vollflächige Modulseiten** (Editoren): `ui.ts` `fullBleedRoutes: ['<routen-schlüssel>']` → kein Rand/`max-w`, Höhe `100dvh` − Kopfzeile; die Seite
+  bringt eigenen Kopf mit Rücklink mit (Muster `whiteboard/pages/editor/Editor.svelte`).
 - Layout: Sidebar links (`w-56`, Einträge `py-1.5`, flache Liste nach `order`, „Administration“ aufklappbar und nach dem Laden zu), Kopfzeile `h-14`, Inhalt in `max-w`-freier
   Spalte mit `p-4…8`. Abstände `space-y-4` (innerhalb) / `space-y-6` (Abschnitte). Raster: `grid gap-4 sm:grid-cols-2 lg:grid-cols-3`.
 - Texte deutsch, du-Ansprache, kurze Sätze. Gendern mit `*` (Teilnehmende*r, Besitzer*in). UI mit echten Umlauten.

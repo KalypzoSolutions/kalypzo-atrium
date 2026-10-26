@@ -273,7 +273,18 @@
   Core-Baustein `GradientEditor`. Details: `architecture.md` → „Konto, Darstellung“, `ui-design.md`. Offen: `theme-color`-Meta folgt dem Theme nicht;
   Safari/iOS (feste Ebene, Weichzeichner) ungeprüft.
 
+- **Modul `whiteboard` – Whiteboards (2026-10-26, v1.0.0)**: Whiteboards anlegen und **live mit mehreren Personen** bearbeiten (SSE-Stream +
+  gebündelte Änderungen, zuletzt geschrieben gewinnt je Element, Live-Cursor/Auswahl der anderen, Wiederverbinden mit Nachholen): Notizzettel und
+  Formen in Farben, Text, Verbinder (an Formen gebunden, gerade/gewinkelt/gebogen, Pfeilspitzen, Beschriftung), Freihand (Stift/Marker/Radierer),
+  Rahmen, Bilder und Dateien (Upload, Drag & Drop, Einfügen), Links, Karten aus Aktionen/Aufgaben/Terminen/Galerien/Dateien/Whiteboards (je
+  Betrachter*in aufgelöst), Versionsverlauf (stündlich + benannt, Wiederherstellen), Teilen an Principals, **mehrere Boards je Aktion** (Karte in der
+  Aktion), Export PNG/SVG/PDF und Archiv `.epwhiteboard` mit Import, Touch (Pinch, Stift, Long-Press). Core: `ModuleUi.fullBleedRoutes` (vollflächige
+  Modulseiten), Verträge `TaskRefsService`, `FileRefsService`, `GalleryRefsService.*Cards`; nginx-Location für SSE. Neue Abhängigkeit `perfect-freehand`.
+  Details: `module-whiteboard.md`. Offen: nur **eine** App-Instanz (Hub im Prozess), echte Tablets/Stifte und SSE hinter Traefik nach Deploy ungeprüft.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Whiteboards (2026-10-26): eigenes Modul; Dateien direkt hochladen **und** aus „Dateien“ verknüpfen; **mehrere** Boards je Aktion; erste Version
+  mit Freihand, Live-Cursor/Anwesenheit, Rahmen, Versionsverlauf und Karten für Aufgaben, Termine, Galerien, Dateien und Aktionen.
 - Themes (2026-10-26): **nur persönlich** (keine Stammes-Themes); Hintergrund wirkt auf **Seite + Seitenleiste**, Karten bleiben einfarbig;
   **je Modus eigener Hintergrund**, der Modus (Hell/Dunkel/System) bleibt getrennt wählbar.
 - Aufgaben (2026-10-25): eigenes Modul + optional je Aktion ein Board; Spalten frei je Board (eine Erledigt-Spalte); Unteraufgaben als Checkliste;

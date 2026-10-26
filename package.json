@@ -82,6 +82,7 @@
 		"openai": "^7.32.0",
 		"pdf-lib": "1.17.1",
 		"pdfjs-dist": "6.4.299",
+		"perfect-freehand": "^1.2.2",
 		"pg": "^8.23.1",
 		"playwright": "^1.64.0",
 		"qrcode": "^1.5.4",
