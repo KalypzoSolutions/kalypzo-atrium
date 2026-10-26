@@ -5,9 +5,11 @@ import {
 	coverScale,
 	croppedFileName,
 	frameFor,
+	minZoom,
+	outputFor,
 	outputSize,
 	panBy,
-	sourceRect,
+	placement,
 	zoomAround
 } from '$lib/components/layout/image-crop';
 
@@ -62,11 +64,13 @@ describe('zoomAround', () => {
 		expect(s.offset.x).toBeCloseTo(-0.25);
 		expect(s.offset.y).toBeCloseTo(-0.25);
 	});
-	it('Zoom wird auf 1 … MAX begrenzt und Verschiebung nachgezogen', () => {
+	it('Zoom wird auf minZoom … MAX begrenzt, Verschiebung bleibt im Rahmen', () => {
 		const zoomed = { zoom: 3, offset: { x: 2, y: 1 } };
-		const out = zoomAround(zoomed, 0.2, { x: 0, y: 0 }, landscape, square);
-		expect(out.zoom).toBe(1);
-		expect(out.offset).toEqual({ x: 0.5, y: 0 });
+		const out = zoomAround(zoomed, 0.01, { x: 0, y: 0 }, landscape, square);
+		expect(out.zoom).toBeCloseTo(0.25);
+		// angezeigt 0,5 × 0,25 → Spielraum x ±0,25, y ±0,375
+		expect(Math.abs(out.offset.x)).toBeLessThanOrEqual(0.25);
+		expect(Math.abs(out.offset.y)).toBeLessThanOrEqual(0.375);
 		expect(zoomAround(zoomed, 99, { x: 0, y: 0 }, landscape, square).zoom).toBe(MAX_CROP_ZOOM);
 	});
 });
@@ -78,33 +82,66 @@ describe('panBy', () => {
 	});
 });
 
-describe('sourceRect', () => {
-	it('Mitte des Querformats ohne Zoom = mittleres Quadrat', () => {
-		const r = sourceRect({ zoom: 1, offset: { x: 0, y: 0 } }, landscape, square);
-		expect(r.sw).toBeCloseTo(1000);
-		expect(r.sh).toBeCloseTo(1000);
-		expect(r.sx).toBeCloseTo(500);
-		expect(r.sy).toBeCloseTo(0);
+describe('minZoom', () => {
+	it('Quadrat 0,5, Querformat 2:1 0,25, Hochformat 1:2 0,25', () => {
+		expect(minZoom({ width: 500, height: 500 }, square)).toBeCloseTo(0.5);
+		expect(minZoom(landscape, square)).toBeCloseTo(0.25);
+		expect(minZoom(portrait, square)).toBeCloseTo(0.25);
 	});
-	it('Bild ganz nach rechts geschoben zeigt die linke Kante', () => {
-		const r = sourceRect({ zoom: 1, offset: { x: 0.5, y: 0 } }, landscape, square);
-		expect(r.sx).toBeCloseTo(0);
+	it('leeres Bild → 1', () => {
+		expect(minZoom({ width: 0, height: 0 }, square)).toBe(1);
 	});
-	it('Bild ganz nach links geschoben zeigt die rechte Kante', () => {
-		const r = sourceRect({ zoom: 1, offset: { x: -0.5, y: 0 } }, landscape, square);
-		expect(r.sx + r.sw).toBeCloseTo(2000);
+});
+
+describe('clampOffset herausgezoomt', () => {
+	it('Bild kleiner als der Rahmen bleibt ganz im Rahmen', () => {
+		// Zoom 0,5: angezeigt 1 × 0,5 → x fest, y ±0,25
+		expect(clampOffset({ x: 1, y: 1 }, landscape, square, 0.5)).toEqual({ x: 0, y: 0.25 });
+		expect(clampOffset({ x: -1, y: -1 }, landscape, square, 0.5)).toEqual({ x: 0, y: -0.25 });
 	});
-	it('maximaler Zoom in der Ecke bleibt im Bild', () => {
-		const r = sourceRect({ zoom: MAX_CROP_ZOOM, offset: { x: 99, y: 99 } }, landscape, square);
-		expect(r.sw).toBeCloseTo(1000 / MAX_CROP_ZOOM);
-		expect(r.sx).toBeCloseTo(0);
-		expect(r.sy).toBeCloseTo(0);
+});
+
+describe('placement und outputFor', () => {
+	it('Mitte ohne Zoom: mittleres Quadrat, Ausgabe = Rahmen in Originalpixeln', () => {
+		const st = { zoom: 1, offset: { x: 0, y: 0 } };
+		const out = outputFor(st, landscape, square, 5000);
+		expect(out).toEqual({ width: 1000, height: 1000 });
+		const r = placement(st, landscape, square, out);
+		expect(r.dw).toBeCloseTo(2000);
+		expect(r.dh).toBeCloseTo(1000);
+		expect(r.dx).toBeCloseTo(-500);
+		expect(r.dy).toBeCloseTo(0);
 	});
-	it('2:1-Rahmen über Hochformat: volle Breite, halbe Breite hoch', () => {
-		const r = sourceRect({ zoom: 1, offset: { x: 0, y: 0 } }, portrait, frameFor(2));
-		expect(r.sw).toBeCloseTo(600);
-		expect(r.sh).toBeCloseTo(300);
-		expect(r.sy).toBeCloseTo(450);
+	it('ganz nach rechts geschoben zeigt die linke Kante', () => {
+		const st = { zoom: 1, offset: { x: 0.5, y: 0 } };
+		const r = placement(st, landscape, square, { width: 1000, height: 1000 });
+		expect(r.dx).toBeCloseTo(0);
+	});
+	it('herausgezoomt: ganzes Bild mittig mit Rändern oben und unten', () => {
+		const st = { zoom: 0.5, offset: { x: 0, y: 0 } };
+		const out = outputFor(st, landscape, square, 1200);
+		// Rahmen = 2000 Originalpixel → auf 1200 begrenzt
+		expect(out).toEqual({ width: 1200, height: 1200 });
+		const r = placement(st, landscape, square, out);
+		expect(r.dx).toBeCloseTo(0);
+		expect(r.dw).toBeCloseTo(1200);
+		expect(r.dh).toBeCloseTo(600);
+		expect(r.dy).toBeCloseTo(300);
+	});
+	it('herausgezoomt in die Ecke geschoben', () => {
+		const st = { zoom: 0.25, offset: { x: -9, y: 9 } };
+		const r = placement(st, landscape, square, { width: 1000, height: 1000 });
+		// angezeigt 0,5 × 0,25 Rahmen → links unten
+		expect(r.dx).toBeCloseTo(0);
+		expect(r.dy + r.dh).toBeCloseTo(1000);
+	});
+	it('maximaler Zoom skaliert nicht hoch', () => {
+		const st = { zoom: MAX_CROP_ZOOM, offset: { x: 0, y: 0 } };
+		expect(outputFor(st, landscape, square, 1200)).toEqual({ width: 200, height: 200 });
+	});
+	it('2:1-Rahmen über Hochformat: volle Breite', () => {
+		const st = { zoom: 1, offset: { x: 0, y: 0 } };
+		expect(outputFor(st, portrait, frameFor(2), 5000)).toEqual({ width: 600, height: 300 });
 	});
 });
 

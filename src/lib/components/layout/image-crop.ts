@@ -30,14 +30,19 @@ export interface ImageCropOptions {
 	/** Lange Kante des Ergebnisses in Pixeln */
 	maxEdge?: number;
 	title?: string;
+	/** Startfarbe für Ränder beim Herauszoomen und transparente Flächen (Standard Weiß) */
+	background?: string | null;
 }
 
-export interface SourceRect {
-	sx: number;
-	sy: number;
-	sw: number;
-	sh: number;
+export interface DrawRect {
+	dx: number;
+	dy: number;
+	dw: number;
+	dh: number;
 }
+
+/** Standard-Hintergrund für Ränder und transparente Flächen */
+export const DEFAULT_CROP_BACKGROUND = '#ffffff';
 
 /** Größter Zoom über „füllt den Rahmen“ hinaus */
 export const MAX_CROP_ZOOM = 5;
@@ -57,22 +62,40 @@ export function coverScale(img: Size, frame: Size): number {
 	return Math.max(frame.width / img.width, frame.height / img.height);
 }
 
-export function clampZoom(zoom: number): number {
+/**
+ * Kleinster Zoom: das ganze Bild halb so groß, wie es „ganz hineinpassend“ wäre (Herauszoomen über das Bild
+ * hinaus, Ränder bekommen die Hintergrundfarbe). Quadrat im Quadrat → 0,5; Querformat 2:1 im Quadrat → 0,25.
+ */
+export function minZoom(img: Size, frame: Size): number {
+	if (img.width <= 0 || img.height <= 0) return 1;
+	const contain = Math.min(frame.width / img.width, frame.height / img.height);
+	return (contain / coverScale(img, frame)) * 0.5;
+}
+
+export function clampZoom(zoom: number, min = 1): number {
 	if (!Number.isFinite(zoom)) return 1;
-	return Math.min(MAX_CROP_ZOOM, Math.max(1, zoom));
+	return Math.min(MAX_CROP_ZOOM, Math.max(min, zoom));
+}
+
+/** Maßstab (Rahmeneinheiten je Bildpixel) beim Zoom `zoom`, begrenzt auf `minZoom` … `MAX_CROP_ZOOM` */
+export function scaleAt(img: Size, frame: Size, zoom: number): number {
+	return coverScale(img, frame) * clampZoom(zoom, minZoom(img, frame));
 }
 
 /** Angezeigte Bildgröße in Rahmeneinheiten */
 export function displaySize(img: Size, frame: Size, zoom: number): Size {
-	const s = coverScale(img, frame) * clampZoom(zoom);
+	const s = scaleAt(img, frame, zoom);
 	return { width: img.width * s, height: img.height * s };
 }
 
-/** Verschiebung begrenzen, sodass das Bild den Rahmen immer ganz füllt (keine leeren Ränder) */
+/**
+ * Verschiebung begrenzen: Ist das Bild größer als der Rahmen, bleibt kein leerer Rand; ist es kleiner
+ * (herausgezoomt), bleibt es ganz im Rahmen. Spielraum je Achse = |angezeigt − Rahmen| / 2.
+ */
 export function clampOffset(offset: Point, img: Size, frame: Size, zoom: number): Point {
 	const d = displaySize(img, frame, zoom);
-	const mx = Math.max(0, (d.width - frame.width) / 2);
-	const my = Math.max(0, (d.height - frame.height) / 2);
+	const mx = Math.abs(d.width - frame.width) / 2;
+	const my = Math.abs(d.height - frame.height) / 2;
 	// `+ 0` macht aus −0 eine 0
 	const fix = (v: number, m: number) => (Number.isFinite(v) ? Math.min(m, Math.max(-m, v)) + 0 : 0);
 	return { x: fix(offset.x, mx), y: fix(offset.y, my) };
@@ -102,30 +125,15 @@ export function zoomAround(
 	img: Size,
 	frame: Size
 ): CropState {
-	const from = clampZoom(state.zoom);
-	const to = clampZoom(newZoom);
+	const min = minZoom(img, frame);
+	const from = clampZoom(state.zoom, min);
+	const to = clampZoom(newZoom, min);
 	const k = to / from;
 	const offset = {
 		x: point.x - (point.x - state.offset.x) * k,
 		y: point.y - (point.y - state.offset.y) * k
 	};
 	return { zoom: to, offset: clampOffset(offset, img, frame, to) };
-}
-
-/** Sichtbarer Ausschnitt in Originalpixeln (für `drawImage`) */
-export function sourceRect(state: CropState, img: Size, frame: Size): SourceRect {
-	const s = coverScale(img, frame) * clampZoom(state.zoom);
-	const off = clampOffset(state.offset, img, frame, state.zoom);
-	const sw = Math.min(img.width, frame.width / s);
-	const sh = Math.min(img.height, frame.height / s);
-	const sx = img.width / 2 - off.x / s - sw / 2;
-	const sy = img.height / 2 - off.y / s - sh / 2;
-	return {
-		sx: Math.min(img.width - sw, Math.max(0, sx)),
-		sy: Math.min(img.height - sh, Math.max(0, sy)),
-		sw,
-		sh
-	};
 }
 
 /** Zielmaße des Ergebnisses: lange Kante höchstens `maxEdge`, nie hochskalieren, mindestens 1 px */
@@ -135,6 +143,28 @@ export function outputSize(sw: number, sh: number, maxEdge: number): Size {
 	return {
 		width: Math.max(1, Math.round(sw * scale)),
 		height: Math.max(1, Math.round(sh * scale))
+	};
+}
+
+/**
+ * Ausgabemaße: der Rahmen in Originalpixeln, lange Kante höchstens `maxEdge`. Hineingezoomte Ausschnitte
+ * werden nicht hochskaliert; herausgezoomt wächst das Ergebnis höchstens bis `maxEdge`.
+ */
+export function outputFor(state: CropState, img: Size, frame: Size, maxEdge: number): Size {
+	const s = scaleAt(img, frame, state.zoom);
+	return outputSize(frame.width / s, frame.height / s, maxEdge);
+}
+
+/** Lage des ganzen Bildes in Ausgabepixeln (`drawImage(img, dx, dy, dw, dh)`; das Canvas schneidet ab) */
+export function placement(state: CropState, img: Size, frame: Size, out: Size): DrawRect {
+	const k = out.width / frame.width;
+	const d = displaySize(img, frame, state.zoom);
+	const off = clampOffset(state.offset, img, frame, state.zoom);
+	return {
+		dx: (frame.width / 2 + off.x - d.width / 2) * k,
+		dy: (frame.height / 2 + off.y - d.height / 2) * k,
+		dw: d.width * k,
+		dh: d.height * k
 	};
 }
 

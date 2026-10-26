@@ -224,6 +224,7 @@
 		shape={crop.shape}
 		maxEdge={crop.maxEdge}
 		title={crop.title}
+		background={crop.background}
 		onconfirm={onCropped}
 		oncancel={onCropCancel}
 	/>
