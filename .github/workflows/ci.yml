@@ -53,6 +53,9 @@ jobs:
         run: npx prettier --check src tests docs
 
       - name: Typprüfung (svelte-check)
+        # Standard-Heap (~2 GB) reicht für das ganze Projekt nicht mehr (OOM seit 2026-10-26)
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: npm run check
 
       - name: Lint (eslint)
