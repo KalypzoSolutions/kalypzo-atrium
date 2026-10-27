@@ -11,6 +11,23 @@ getauscht** ist: statt PocketBase holt sie Termine und Galerien **serverseitig**
 **Redesign 2026-10-25 (Nutzerauftrag, Konzept-Artifact „Stammeswebsite – Redesign-Konzept“ inkl. Unterseiten):** löst das Design vom 24.10.
 (Indigo, Linien, eine Textspalte) ab. Inhalte, Daten und Routen bleiben.
 
+## SEO, Crawler, Performance, Bot-Falle (2026-10-27)
+- `Seo.svelte` (title, description, canonical, `og:*`, Twitter, `robots` bei `noindex`, JSON-LD über `jsonLd`/`breadcrumbs`) auf **allen** Seiten statt eigener
+  `<svelte:head>`-Blöcke; Bausteine in `lib/seo.ts` (`organization`, `website`, `breadcrumb`, `event`, `faqPage`, `blogPosting`, `serializeJsonLd` escaped `< > &`
+  und U+2028/9). Basis-URL `PUBLIC_SITE_URL` → `ORIGIN` → Anfrage (`lib/server/site-url.ts`). Standard-Vorschaubild `static/og-default.jpg` (JPEG, nicht AVIF).
+- `robots.txt` (KI-Crawler ausdrücklich erlaubt; gesperrt `/kontakt/challenge`, Falle), `sitemap.xml` (statisch + Gruppen/Termine/Galerien/Blog, fehlertolerant),
+  `llms.txt` (Markdown-Kurzprofil für KI) – reine Funktionen in `lib/server/discovery.ts`.
+- Performance: `inlineStyleThreshold` 40 000 (kein render-blockierendes CSS), Leaflet-CSS lädt erst mit der Karte (`Map.svelte`), gzip dynamischer Antworten
+  in `hooks.server.ts` (`lib/server/compress.ts`, aus mit `COMPRESS=0`, falls der Proxy schon komprimiert), Hero mit `srcset` (`pfadfinder-1280|2400.avif`),
+  Gruppenkarten mit `thumb` (`/bilder/gruppe/<slug>?v=…&size=thumb`, 640 px), `logo-sm.avif` für Navigation/Fuß, `ContactGuard` holt die Aufgabe erst, wenn das
+  Formular in Sicht kommt (Fokus/Klick) und wartet beim Absenden bis die Aufgabe ≥ 3,5 s alt ist.
+- **Bot-Falle** (`lib/server/bot-trap.ts`): versteckter Link „Archiv“ im Fuß → `/pfad-ins-unterholz` (in robots.txt verboten); Aufruf sperrt die IP 24 h
+  (Speicher, ≤ 10 000, gute Suchmaschinen per User-Agent ausgenommen) → `/kontakt/challenge` 403, Kontakt-/Probestunden-Actions antworten neutral mit Erfolg
+  ohne Backend. Honeypot-Felder `website` **und** `fax` (`HONEYPOT_FIELDS` in `lib/server/contact.ts`).
+- Eckdaten `<dl class="facts">`: Symbol steht **im** `<dt>` (`<div class="fact"><dt><span class="ic">…</span>Label</dt><dd>…</dd></div>`), sonst meldet Lighthouse
+  ungültige Listen. „ab N Jahren“ (Start, FAQ) = kleinstes `ageMin` der Website-Gruppen, Rückfall 6.
+- Tests `tests/unit/website-seo.test.ts`, `website-bot-trap.test.ts`, `website-contact.test.ts`.
+
 ## Gestaltung und Dunkelmodus
 - **Stil**: weißer Grund, „Wolke“ `#f5f5f5` (`bg-subtle`, Hover `bg-subtle-2`) für Flächen/Karten/Felder, Tinte `#111` (`text-ink`, Hauptknopf, Fuß).
   Farbe kommt nur aus Fotos, Wappen und kleinen Gruppen-Punkten (`.dot` mit `--g`). Knöpfe immer als Pille, Bilder/Flächen eckig, **keine Schatten,
@@ -33,7 +50,7 @@ getauscht** ist: statt PocketBase holt sie Termine und Galerien **serverseitig**
   liefert jetzt `events` **und** `galleries`; vorher fehlten die Termine auf der Gruppenseite), Termine (Suche, Chips, Kalender/Kacheln/Liste, Seitenspalte
   „Regelmäßige Termine“; Kalenderbalken nur mit Titel), Termin (Infokasten, Bilder, weitere Termine – Loader `more`), Galerie (Aufmacher + Raster),
   Album (Spalten, Lightbox, weitere Alben – Loader `more`), Blog (Aufmacher auf Seite 1 + Raster), Beitrag (Seitenspalte „Dazu passend“), Team, FAQ
-  (Suche ab 5 Fragen, „Auf einen Blick“), Kontakt (Formular, Ansprechpartner*innen, Karte), CPD (Aufbau Bund → Gruppen, Epochen-Akkordeon),
+  (Suche ab 5 Fragen, „Auf einen Blick“), Kontakt (Formular, Ansprechpartner*innen, Karte), CPD (Aufbau Bund → Gruppen, **Zeitstrahl** der Geschichte nach Epochen),
   Impressum/Datenschutz (Texte unverändert), Fehlerseite.
 - Gruppenzeit jetzt „16:30–18:00 Uhr“ (`toGroup`); Startzeit über `time.split(/[–\s]/)[0]`.
 - Dunkelmodus = `html.dark` (Tokens in `app.css` umgeschaltet: Grund `#0e0e0f`, Wolke `#1b1b1d`, Tinte `#f3f3f3`). Cookie `theme` (`light|dark`, 1 Jahr,
@@ -102,7 +119,7 @@ Compose (`docker-compose.yml`, `docker-compose.dokploy.yml`): Dienst `website` m
 | `/blog`, `/blog/[slug]`, `/blog/rss.xml` | Modul `website`: Liste (Themen-Chips `?thema=`, Seiten `?seite=`, 12 je Seite), Beitrag (Titelbild, Text über `lib/server/rich-text.ts` `renderRichText` – zweite Bereinigung + Bilder auf den Proxy, Themen, Verknüpfungen nur wenn öffentlich gelistet, Teilen, OG), RSS 2.0 (20 neueste, 10 min Cache) |
 | `/faq` | alle aktiven Fragen (`FaqList.svelte`, Akkordeon mit IDs), Rückfall `lib/faqs.ts` bei Ausfall |
 | `/bilder/blog/[slug]/[imageId]/[variant]` | Bild-Proxy (`blogImage`, nur Bilder veröffentlichter Beiträge) |
-| `/termine` | `fetchEvents`; Ansichten **Kalender** (Standard, `MonthCalendar.svelte`, mobil Agenda) / **Kacheln** / **Liste** (nach Monaten), Wahl in `?ansicht=` + `localStorage`; Filter-Chips Gruppen/Themen + Suche (`?gruppe=&thema=&q=&monat=`, alte `?tags=` der Gruppenseite gelten weiter); Serien in Kacheln/Liste einmal als „Regelmäßige Termine“, Vergangene aufklappbar |
+| `/termine` | `fetchEvents`; Ansichten **Kalender** (Standard, `MonthCalendar.svelte`, mobil Agenda) / **Kacheln** / **Liste** (nach Monaten), Wahl in `?ansicht=` + `localStorage`; Filter-Chips Gruppen + Menü „Tags“ (`TagMenu.svelte`: Popover, mobil Blatt von unten, Suche ab 8 Tags, gewählte als entfernbare Chips) + Suche (`?gruppe=&thema=&q=&monat=`, alte `?tags=` der Gruppenseite gelten weiter); Serien in Kacheln/Liste einmal als „Regelmäßige Termine“, Vergangene aufklappbar |
 | `/termine/[id]` | `fetchEvent` (404 unbekannt, 503 Backend weg): Datum/Uhrzeit, Ort mit Link „In Karte öffnen“ (OSM-Suche, nur Link), Gruppen → Gruppenseite, verknüpfte Galerien, Teilen, OG-Tags |
 | `/galerie`, `/galerie/[id]` | `fetchGalleries` / `fetchGallery`: Karten mit Titelbild (Maße, lazy), Bildanzahl, Gruppen; Filter Jahr/Gruppe/Suche (`?jahr=&gruppe=&q=`); Detail mit Bildern in Spalten (`thumb`, echte Seitenverhältnisse, Alt-Text = Bildbeschreibung), Lightbox (`web`, Unterschrift, Zähler, Tastatur/Wischen), Links zu den Terminen |
 | `/meute/[slug]`, `/sippe/[slug]` | **aus dem Intern-Bereich** (`fetchGroup`, gemeinsamer Loader `lib/server/group-page.ts`, Vorlage `GroupPage.svelte`: Kopf mit Bild/Name, Eckdaten, Text, nächste Termine der Gruppe serverseitig, Kontakt, Karte). Falscher Typ → 308 auf `/<type>/<slug>`; `/meute` → 307 auf die erste Meute |

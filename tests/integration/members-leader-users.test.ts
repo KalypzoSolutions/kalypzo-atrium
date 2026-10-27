@@ -145,7 +145,6 @@ describe('Benutzerkonten als Gruppenleitung', () => {
 						onWebsite: false,
 						slug: null,
 						description: null,
-						ageRange: null,
 						contactEmail: 'Gruen@Stamm.Test'
 					}
 				}

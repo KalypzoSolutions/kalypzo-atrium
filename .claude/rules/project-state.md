@@ -299,7 +299,15 @@
   ÷ 7 Jugendfreizeit, abgerundet) – auch in Kalkulation/Abrechnung; eigenes Konto für Zuschussanträge in den Modul-Einstellungen (Kontoinhaber, Bank,
   IBAN, BIC), Kontoinhaber wird jetzt mitgedruckt. Details: `module-actions.md`.
 
+- **Stammeswebsite: SEO, Performance, Bot-Falle, Alter von/bis (2026-10-27)**: Gemeinde heißt „Ev. Kirchengemeinde Bremen-Hastedt“; CPD-Geschichte als
+  Zeitstrahl; Hero abgedunkelt; Tags auf `/termine` im Menü „Tags“; `<dl>` repariert; `Seo`-Komponente mit JSON-LD, `robots.txt`/`sitemap.xml`/`llms.txt`;
+  CSS inline, gzip, kleinere Bilder; Bot-Falle + zweites Honeypot-Feld. Backend: Gruppen-Alter als Zahlen von/bis (`members` Migr. 0017, v1.13.0),
+  Probestunde ordnet danach zu; Gruppenbild `?size=thumb`. Details: `website.md`, `module-members.md`. Offen: Lighthouse/Rich Results erst nach Deploy,
+  gzip hinter dem Proxy (ggf. `COMPRESS=0`), Bot-Falle nur je Prozess.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Stammeswebsite (2026-10-27): Bot-Falle = versteckter Link + IP-Sperre (24 h) zusätzlich zum Formular-Honeypot; CPD-Zeitstrahl **ersetzt** die Akkordeons;
+  Tags im Knopf „Tags“ (Gruppen bleiben Chips).
 - Zuschussantrag (2026-10-27): Taschengeld-Grenze aus **allen** Personen auf dem Antrag (Leitungen zählen mit), korrekt abrunden;
   Antragskonto **ohne Rückfall** auf Stammkonto/Kasse.
 - Kasse mobil (2026-10-26): Konzept-Empfehlungen übernommen – Bereichsleiste unten, keine Wischgesten, Zahlung erfassen in 3 Schritten, ＋ als Blatt

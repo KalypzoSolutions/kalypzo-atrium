@@ -176,7 +176,8 @@ beforeAll(async () => {
 					onWebsite: true,
 					slug: 'woelflinge',
 					description: 'Spiel und Spaß für Kinder',
-					ageRange: '7 bis 10 Jahre',
+					ageMin: 7,
+					ageMax: 10,
 					contactEmail: 'Woelflinge@Stamm.Example'
 				}
 			})
@@ -229,6 +230,8 @@ describe('Gruppen: Website-Felder', () => {
 			slug: 'woelflinge',
 			description: 'Spiel und Spaß für Kinder',
 			ageRange: '7 bis 10 Jahre',
+			ageMin: 7,
+			ageMax: 10,
 			contactEmail: 'woelflinge@stamm.example'
 		});
 		const list = ok<Group[]>(await call('editor', 'GET', '/groups'));
@@ -245,6 +248,8 @@ describe('Gruppen: Website-Felder', () => {
 			slug: null,
 			description: null,
 			ageRange: null,
+			ageMin: null,
+			ageMax: null,
 			contactEmail: null
 		});
 	});
@@ -459,6 +464,8 @@ describe('Website-API', () => {
 				'type',
 				'description',
 				'ageRange',
+				'ageMin',
+				'ageMax',
 				'meetingPlace',
 				'meetingWeekday',
 				'meetingTime',
@@ -475,6 +482,8 @@ describe('Website-API', () => {
 			type: 'meute',
 			description: 'Spiel und Spaß für Kinder',
 			ageRange: '7 bis 10 Jahre',
+			ageMin: 7,
+			ageMax: 10,
 			contactEmail: 'woelflinge@stamm.example',
 			meetingWeekday: 3,
 			meetingTime: '17:00',
@@ -533,7 +542,7 @@ describe('Website-API', () => {
 	it('Bild mit Storage: bereinigtes WebP, public-Cache, nosniff; imagePath gesetzt', async () => {
 		await installFakeStorage(admin);
 		const png = new Uint8Array(
-			await sharp({ create: { width: 16, height: 16, channels: 3, background: '#2a6' } })
+			await sharp({ create: { width: 1200, height: 900, channels: 3, background: '#2a6' } })
 				.png()
 				.toBuffer()
 		);
@@ -555,7 +564,19 @@ describe('Website-API', () => {
 		expect(res.headers.get('x-content-type-options')).toBe('nosniff');
 		const served = await sharp(Buffer.from(await res.arrayBuffer())).metadata();
 		expect(served.format).toBe('webp');
-		expect(served.width).toBe(16);
+		expect(served.width).toBe(1200);
+
+		// kleine Fassung für Karten (#Lighthouse): lange Kante 640 px, WebP
+		const thumb = await raw('website', 'GET', '/website/groups/woelflinge/image?size=thumb');
+		expect(thumb.status).toBe(200);
+		expect(thumb.headers.get('content-type')).toBe('image/webp');
+		const small = await sharp(Buffer.from(await thumb.arrayBuffer())).metadata();
+		expect([small.width, small.height]).toEqual([640, 480]);
+		fail(
+			await call('website', 'GET', '/website/groups/woelflinge/image?size=riesig'),
+			422,
+			'validation_failed'
+		);
 
 		// Gruppe nicht mehr auf der Website → Bild 404
 		ok<Group>(

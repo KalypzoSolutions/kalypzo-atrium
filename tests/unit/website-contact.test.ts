@@ -7,7 +7,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
 	CONTACT_SUBJECT,
 	HONEYPOT_FIELD,
+	HONEYPOT_FIELDS,
 	buildContactMessage,
+	isHoneypotFilled,
 	parseContactForm,
 	parseTrialForm,
 	trialAsContact
@@ -70,6 +72,26 @@ describe('parseContactForm', () => {
 	it('erkennt den Honeypot (auch mit sonst ungültigen Feldern) als Spam', () => {
 		const r = parseContactForm(form({ [HONEYPOT_FIELD]: 'http://spam.example' }));
 		expect(r.ok && r.spam).toBe(true);
+	});
+
+	it('kennt zwei Honeypot-Felder: website und fax', () => {
+		expect(HONEYPOT_FIELDS).toEqual(['website', 'fax']);
+		expect(HONEYPOT_FIELD).toBe('website');
+	});
+
+	it('wertet das zweite Honeypot-Feld fax als Spam (auch bei sonst gültigen Feldern)', () => {
+		const r = parseContactForm(form({ ...valid, fax: 'erika@example.org' }));
+		expect(r).toMatchObject({ ok: true, spam: true });
+		const broken = parseContactForm(form({ fax: 'bot@example.org' }));
+		expect(broken).toMatchObject({ ok: true, spam: true });
+	});
+
+	it('leere bzw. nur aus Leerzeichen bestehende Honeypot-Felder sind kein Spam', () => {
+		expect(isHoneypotFilled(form({ website: '', fax: '   ' }))).toBe(false);
+		expect(isHoneypotFilled(form({}))).toBe(false);
+		expect(isHoneypotFilled(form({ fax: 'x' }))).toBe(true);
+		const r = parseContactForm(form({ ...valid, website: ' ', fax: '' }));
+		expect(r).toMatchObject({ ok: true, spam: false });
 	});
 });
 
@@ -268,6 +290,10 @@ describe('Probestunden-Formular', () => {
 	});
 	it('Honeypot wie Erfolg; SMTP-Rückfall enthält Kind und Alter', () => {
 		expect(parseTrialForm(form({ [HONEYPOT_FIELD]: 'x' }))).toMatchObject({ ok: true, spam: true });
+		expect(parseTrialForm(form({ ...ok, fax: 'x@example.org' }))).toMatchObject({
+			ok: true,
+			spam: true
+		});
 		const r = parseTrialForm(form(ok), ['fuechse']);
 		if (!r.ok) throw new Error('ungültig');
 		expect(trialAsContact(r.value, 'Meute Füchse').message).toContain(

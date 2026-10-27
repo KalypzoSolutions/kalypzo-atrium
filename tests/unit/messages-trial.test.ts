@@ -3,16 +3,49 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { groupsForAge, parseAgeRange } from '$lib/modules/messages/age-range';
+import { groupAgeRange, groupsForAge, parseAgeRange } from '$lib/modules/messages/age-range';
 import * as copy from '../../website/src/lib/age-range';
 import { pickTrialGroup, trialSubject } from '$lib/modules/messages/trial.service';
 import type { WebsiteGroupRef } from '$lib/modules/members/contract';
 
 const groups: WebsiteGroupRef[] = [
-	{ id: '1', slug: 'meute', name: 'Füchse', type: 'meute', ageRange: '6 bis 10 Jahre' },
-	{ id: '2', slug: 'jung', name: 'Löwen', type: 'sippe', ageRange: '11–14' },
-	{ id: '3', slug: 'alt', name: 'Panther', type: 'sippe', ageRange: 'ab 15 Jahren' },
-	{ id: '4', slug: 'frei', name: 'Ohne', type: 'sippe', ageRange: 'für alle' }
+	{
+		id: '1',
+		slug: 'meute',
+		name: 'Füchse',
+		type: 'meute',
+		ageRange: '6 bis 10 Jahre',
+		ageMin: 6,
+		ageMax: 10
+	},
+	// Altbestand ohne Zahlen: Zuordnung über den Text
+	{
+		id: '2',
+		slug: 'jung',
+		name: 'Löwen',
+		type: 'sippe',
+		ageRange: '11–14',
+		ageMin: null,
+		ageMax: null
+	},
+	{
+		id: '3',
+		slug: 'alt',
+		name: 'Panther',
+		type: 'sippe',
+		ageRange: 'ab 15 Jahren',
+		ageMin: 15,
+		ageMax: null
+	},
+	{
+		id: '4',
+		slug: 'frei',
+		name: 'Ohne',
+		type: 'sippe',
+		ageRange: 'für alle',
+		ageMin: null,
+		ageMax: null
+	}
 ];
 
 describe('parseAgeRange', () => {
@@ -43,6 +76,15 @@ describe('groupsForAge', () => {
 	});
 	it('nimmt sonst die nächstgelegene (nicht exakt)', () => {
 		expect(groupsForAge(groups, 4)).toEqual({ groups: [groups[0]], exact: false });
+	});
+	it('Zahlen gehen vor dem Text', () => {
+		const g = { ageRange: '6 bis 10 Jahre', ageMin: 12, ageMax: null };
+		expect(groupAgeRange(g)).toEqual({ min: 12, max: null });
+		expect(groupsForAge([g], 8)).toEqual({ groups: [g], exact: false });
+		expect(groupAgeRange({ ageRange: null, ageMin: null, ageMax: 9 })).toEqual({
+			min: null,
+			max: 9
+		});
 	});
 	it('ohne lesbare Altersangaben keine Gruppe', () => {
 		expect(groupsForAge([groups[3]!], 8)).toEqual({ groups: [], exact: false });

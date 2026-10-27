@@ -111,6 +111,8 @@ describe('Website-Typen = Modul-DTOs', () => {
 			type: 'sippe',
 			description: null,
 			ageRange: '11 bis 14 Jahre',
+			ageMin: 11,
+			ageMax: 14,
 			meetingPlace: null,
 			meetingWeekday: 5,
 			meetingTime: '17:00',

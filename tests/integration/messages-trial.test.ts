@@ -171,7 +171,8 @@ beforeAll(async () => {
 				website: {
 					onWebsite: true,
 					slug: 'fuechse',
-					ageRange: '6 bis 10 Jahre',
+					ageMin: 6,
+					ageMax: 10,
 					contactEmail: 'fuechse@pfadfinder.test'
 				}
 			}
@@ -186,7 +187,7 @@ beforeAll(async () => {
 				name: 'Adler',
 				type: 'sippe',
 				leaderIds: [otto.id],
-				website: { onWebsite: true, slug: 'adler', ageRange: 'ab 11 Jahren', contactEmail: null }
+				website: { onWebsite: true, slug: 'adler', ageMin: 11, contactEmail: null }
 			}
 		}),
 		201
