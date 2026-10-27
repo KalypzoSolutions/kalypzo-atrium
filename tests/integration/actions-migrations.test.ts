@@ -4,7 +4,8 @@
  * - 0016_interim_snapshots: alte Zwischenabrechnungen (gesperrte Buchungen über `interim_id`) werden zu
  *   kumulativen Abbildern in `accounting_interim_entries`, `snapshot` bleibt NULL → Anzeige, Kasse und PDF
  *   laufen über `legacySnapshot` (accounting-core.ts). Geprüft: Beträge, PDF (Test-Renderer), Rücknahme,
- *   und dass `legacySnapshot` dieselben Beträge liefert wie ein gespeichertes Abbild.
+ *   und dass `legacySnapshot` dieselben Beträge liefert wie ein gespeichertes Abbild – auch mit gebuchter
+ *   Rückzahlung des Überschusses (Vorschau, PDF, Rücknahme der Rückzahlung neben einer Alt-ZA).
  *
  * Feste UUIDs (die API prüft das Format): Aktion `0a…01`, Empfänger `0b…0N`, Zwischenabrechnung Nr. N `0c…0N`,
  * Buchungen `e0…01` Stamm-Ausgabe (Lebensmittel), `…02` Spende, `…03` Auslage (Bastelmaterial), `…04` Bahnfahrt.
@@ -347,5 +348,105 @@ describe('legacySnapshot liefert dieselben Beträge wie ein gespeichertes Abbild
 		const html = await reportHtml(id, za.id);
 		expect(html).not.toContain('Nachzügler');
 		expect(amountsIn(html)).toEqual(pdfBefore);
+	});
+});
+
+describe('legacySnapshot mit gebuchter Rückzahlung (#64)', () => {
+	interface RefundState {
+		booked: { entryId: string; totalCents: number } | null;
+		surplusCents: number;
+		totalCents: number;
+		items: { name: string; amountCents: number }[];
+	}
+
+	it('ZA mit Rückzahlungsbuchung: Beträge, PDF und Rückzahlung gleich vor und nach `snapshot = NULL`', async () => {
+		const { id } = await data<{ id: string }>(
+			await api('/actions', {
+				method: 'POST',
+				json: {
+					name: 'Herbstfahrt Altbestand',
+					description: null,
+					location: null,
+					startsOn: '2026-10-02',
+					startsTime: null,
+					endsOn: '2026-10-04',
+					endsTime: null
+				}
+			}),
+			201
+		);
+		// 3 Teilnehmende × 200 € Beitrag (automatische Einnahme) − 300 € Ausgabe = 300 € Überschuss
+		await moduleSql('actions', sql`UPDATE actions SET fee_cents = 20000 WHERE id = ${id}`);
+		for (const name of ['Anna', 'Bert', 'Cleo']) {
+			await moduleSql(
+				'actions',
+				sql`INSERT INTO action_participants (id, action_id, name, role)
+					VALUES (${crypto.randomUUID()}, ${id}, ${name}, 'participant')`
+			);
+		}
+		await data(
+			await api(`/actions/${id}/accounting/entries`, {
+				method: 'POST',
+				json: {
+					type: 'expense',
+					category: 'lodging',
+					description: 'Herberge',
+					amountCents: 30000,
+					entryDate: '2026-10-03',
+					paidBy: 'club',
+					payeeId: null
+				}
+			}),
+			201
+		);
+		const booked = await data<RefundState>(
+			await api(`/actions/${id}/accounting/refund`, { method: 'POST', json: {} }),
+			201
+		);
+		expect(booked).toMatchObject({ surplusCents: 30000, totalCents: 30000 });
+		expect(booked.booked).toMatchObject({ totalCents: 30000 });
+		expect(booked.items.map((i) => i.amountCents)).toEqual([10000, 10000, 10000]);
+
+		// ZA nach der Rückzahlung: enthält die Rückzahlungsbuchung
+		const za = await data<AccountingInterim>(
+			await api(`/actions/${id}/accounting/interims`, {
+				method: 'POST',
+				json: { acceptMissingReceipts: true }
+			}),
+			201
+		);
+		const before = totals(await interims(id));
+		expect(before).toHaveLength(1);
+		expect(before[0]).toMatchObject({ number: 1, entryCount: 2, expenseCents: 60000 });
+		const refsBefore = await actionsService.listInterims({ actionIds: [id] });
+		const htmlBefore = await reportHtml(id, za.id);
+		// Der ZA-Bericht zeigt keine Rückzahlung (nur Stand zum Stichtag), die Beträge müssen aber gleich bleiben
+		expect(htmlBefore).toContain('Herberge');
+		const refundBefore = await data<RefundState>(await api(`/actions/${id}/accounting/refund`));
+
+		// Altbestand nachstellen: Abbild leer → `legacySnapshot` baut live aus den enthaltenen Buchungen
+		await moduleSql(
+			'actions',
+			sql`UPDATE accounting_interims SET snapshot = NULL WHERE id = ${za.id}`
+		);
+		expect(totals(await interims(id))).toEqual(before);
+		expect(await actionsService.listInterims({ actionIds: [id] })).toEqual(refsBefore);
+		const htmlAfter = await reportHtml(id, za.id);
+		expect(htmlAfter).toContain('Herberge');
+		expect(amountsIn(htmlAfter)).toEqual(amountsIn(htmlBefore));
+		expect(await data<RefundState>(await api(`/actions/${id}/accounting/refund`))).toEqual(
+			refundBefore
+		);
+
+		// Rücknahme der Rückzahlung funktioniert neben einer Alt-ZA; die ZA bleibt bestehen
+		const reverted = await data<RefundState>(
+			await api(`/actions/${id}/accounting/refund`, { method: 'DELETE' })
+		);
+		expect(reverted.booked).toBeNull();
+		expect(reverted.surplusCents).toBe(30000);
+		const after = totals(await interims(id));
+		expect(after.map((t) => t.number)).toEqual([1]);
+		// Ohne gespeichertes Abbild zählt die Alt-ZA nur noch die verbliebenen Buchungen
+		expect(after[0]).toMatchObject({ entryCount: 1, expenseCents: 30000 });
 	});
 });

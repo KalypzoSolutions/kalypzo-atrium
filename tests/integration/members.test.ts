@@ -1,7 +1,8 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import sharp from 'sharp';
 import { useTestDatabase } from '../helpers/db';
+import { fakeObjects, installFakeStorage, uninstallFakeStorage } from '../helpers/fake-storage';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
@@ -437,6 +438,66 @@ describe('Dokumente (ohne Storage)', () => {
 		});
 		expect(res.ok).toBe(false);
 		expect(res.status).toBeLessThan(600);
+	});
+});
+
+describe('Dokumente löschen (DELETE /members/:id/documents/:kind, #61)', () => {
+	beforeAll(async () => {
+		await installFakeStorage(admin);
+	});
+	afterAll(() => {
+		uninstallFakeStorage();
+	});
+
+	it('löscht das Dokument samt Datei, danach 404; Rechte und Audit ohne Dateinamen', async () => {
+		const form = new FormData();
+		form.set(
+			'file',
+			new File(['%PDF-1.4\n% Einwilligung'], 'Einwilligung Max.pdf', { type: 'application/pdf' })
+		);
+		await data(
+			await call(`/members/${leader.id}/documents/privacy`, { method: 'POST', body: form }),
+			201
+		);
+		expect((await call(`/members/${leader.id}/documents/privacy`)).status).toBe(200);
+		const stored = fakeObjects.size;
+		expect(stored).toBeGreaterThan(0);
+
+		// Nur Leserecht → 403, Dokument bleibt
+		const denied = await api(`${BASE}/members/${leader.id}/documents/privacy`, {
+			method: 'DELETE',
+			token: viewKey
+		});
+		expect(denied.status).toBe(403);
+		expect((await call(`/members/${leader.id}/documents/privacy`)).status).toBe(200);
+
+		// Unbekannte Art → 422, unbekanntes Mitglied → 404
+		expect(
+			(await call(`/members/${leader.id}/documents/unknown`, { method: 'DELETE' })).status
+		).toBe(422);
+		expect(
+			(await call(`/members/${crypto.randomUUID()}/documents/privacy`, { method: 'DELETE' })).status
+		).toBe(404);
+
+		expect(
+			await data<{ deleted: boolean }>(
+				await call(`/members/${leader.id}/documents/privacy`, { method: 'DELETE' })
+			)
+		).toEqual({ deleted: true });
+		expect(fakeObjects.size).toBe(stored - 1);
+		expect((await call(`/members/${leader.id}/documents/privacy`)).status).toBe(404);
+		const member = await data<{ privacyConsent: unknown }>(await call(`/members/${leader.id}`));
+		expect(member.privacyConsent).toBeNull();
+
+		// Zweites Löschen: nichts mehr vorhanden → 404
+		const again = await call(`/members/${leader.id}/documents/privacy`, { method: 'DELETE' });
+		expect(again.status).toBe(404);
+		expect((await again.json()).error.code).toBe('not_found');
+
+		const { rows } = await listAudit({ action: 'members.document.deleted' });
+		const entry = rows.find((r) => r.target === leader.id);
+		expect(entry?.metadata).toEqual({ kind: 'privacy' });
+		expect(JSON.stringify(entry)).not.toContain('Einwilligung');
 	});
 });
 
