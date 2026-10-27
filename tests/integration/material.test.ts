@@ -704,6 +704,87 @@ describe('Ausleihen, Wiederfinden, Listen', () => {
 	});
 });
 
+describe('Set-Typen mit Mengen', () => {
+	it('Mengen gehören zum Set-Typ und kommen beim Reservieren als eigene Zeilen dazu', async () => {
+		const tpl = await data<SetTemplate>(
+			await patch(`/set-templates/${kohte.id}`, 'admin', {
+				parts: [
+					{ articleId: bahn.id, quantity: 4 },
+					{ articleId: tassen.id, quantity: 3 }
+				]
+			})
+		);
+		expect(tpl.parts.find((p) => p.articleId === tassen.id)).toMatchObject({
+			kind: 'bulk',
+			quantity: 3
+		});
+		const set = await data<MaterialSet>(await M(`/sets/${kohte2.id}`, 'admin'));
+		expect(set.bulkParts).toEqual([
+			{ articleId: tassen.id, articleName: 'Tasse', unitLabel: 'Stück', quantity: 3 }
+		]);
+		// Vollständigkeit zählt nur Einzelstücke
+		expect(set.completeness.missing.some((m) => m.articleId === tassen.id)).toBe(false);
+
+		const r = await data<Reservation>(
+			await post('/reservations', 'leitung', {
+				title: 'Zeltlager',
+				startsOn: '2026-09-01',
+				endsOn: '2026-09-02',
+				lines: [{ kind: 'set', setId: kohte2.id }]
+			}),
+			201
+		);
+		const gen = r.lines.find((l) => l.articleId === tassen.id)!;
+		expect(gen).toMatchObject({ kind: 'article', quantity: 3, fromSet: 'Kohte 2' });
+		// Ändern ohne Positionen erzeugt keine doppelten Mengen-Zeilen
+		const again = await data<Reservation>(
+			await patch(`/reservations/${r.id}`, 'leitung', { notes: 'Bitte trocken einpacken' })
+		);
+		expect(again.lines.filter((l) => l.articleId === tassen.id)).toHaveLength(1);
+		const edited = await data<Reservation>(
+			await patch(`/reservations/${r.id}`, 'leitung', {
+				lines: [{ kind: 'set', setId: kohte2.id }]
+			})
+		);
+		expect(edited.lines.filter((l) => l.articleId === tassen.id)).toHaveLength(1);
+	});
+
+	it('Engpass bei den Mengen eines Sets wird am Set gemeldet und verhindert die Reservierung', async () => {
+		await data(
+			await post('/reservations', 'andere', {
+				title: 'Viele Tassen',
+				startsOn: '2026-09-10',
+				endsOn: '2026-09-11',
+				lines: [{ kind: 'article', articleId: tassen.id, quantity: 9 }]
+			}),
+			201
+		);
+		const check = await data<LineAvailability[]>(
+			await post('/availability', 'leitung', {
+				startsOn: '2026-09-10',
+				endsOn: '2026-09-11',
+				lines: [{ kind: 'set', setId: kohte2.id }]
+			}),
+			201
+		);
+		expect(check).toHaveLength(1);
+		expect(check[0]!.ok).toBe(false);
+		expect(check[0]!.message).toMatch(/Tasse/);
+		await fail(
+			await post('/reservations', 'leitung', {
+				title: 'Zu wenig Tassen',
+				startsOn: '2026-09-10',
+				endsOn: '2026-09-11',
+				lines: [{ kind: 'set', setId: kohte2.id }]
+			}),
+			409
+		);
+		// Katalog: ganzer Zelttyp nur so oft frei, wie Tassen reichen (1 frei → 0 Kohten)
+		const cat = await data<Catalog>(await M('/catalog?from=2026-09-10&to=2026-09-11', 'leitung'));
+		expect(cat.templates.find((t) => t.id === kohte.id)!.free).toBe(0);
+	});
+});
+
 describe('Modul deaktiviert', () => {
 	it('liefert 404', async () => {
 		await disableModule(admin, 'material');

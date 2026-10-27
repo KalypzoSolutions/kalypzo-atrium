@@ -5,7 +5,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
-import { migrateModuleRest, migrateModuleTo, moduleSql } from '../helpers/migrations';
+import { migrateModuleTo, moduleSql } from '../helpers/migrations';
 import { registerModule } from '$lib/server/core/modules/registry';
 import materialModule from '$lib/modules/material/module';
 
@@ -30,7 +30,7 @@ describe('material 0002_article_codes', () => {
 				('00000000-0000-4000-8000-000000000001', 'Kohtenbahn', 'unit', '2026-01-01T10:00:00Z'),
 				('00000000-0000-4000-8000-000000000003', 'Axt', 'unit', '2026-01-03T10:00:00Z')`
 		);
-		expect(await migrateModuleRest('material')).toEqual(['0002_article_codes']);
+		expect(await migrateModuleTo('material', '0002_article_codes')).toEqual(['0002_article_codes']);
 		const rows = await moduleSql('material', sql`SELECT name, code FROM articles ORDER BY code`);
 		expect(rows).toEqual([
 			{ name: 'Kohtenbahn', code: 'A-000001' },
