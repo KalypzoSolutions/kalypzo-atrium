@@ -48,6 +48,8 @@ export interface LabelBarcodeElement extends LabelElementBase {
 export interface LabelImageElement extends LabelElementBase {
 	type: 'image';
 	logo: LabelLogo;
+	/** Schwarz-Weiß statt Farbe (Laser-/Thermodrucker) */
+	monochrome?: boolean;
 }
 
 export interface LabelRectElement extends LabelElementBase {

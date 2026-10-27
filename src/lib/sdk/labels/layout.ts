@@ -1,5 +1,6 @@
 import type {
 	LabelElement,
+	LabelImageElement,
 	LabelFormat,
 	LabelFormatPreset,
 	LabelLayout,
@@ -30,6 +31,11 @@ export const LABEL_FORMAT_PRESETS: LabelFormatPreset[] = [
 		key: 'avery-l7163',
 		name: 'Avery L7163 – 99,1 × 38,1 mm, 14 je A4',
 		format: sheet(2, 7, 99.1, 38.1, 2.54, 0)
+	},
+	{
+		key: 'avery-l7159',
+		name: 'Avery Zweckform L7159 – 63,5 × 33,9 mm, 24 je A4',
+		format: sheet(3, 8, 63.5, 33.9, 2.54, 0)
 	},
 	{
 		key: 'avery-l7651',
@@ -164,6 +170,11 @@ export function fitLayout(
 		offsetX: (box.width - layout.widthMm * scale) / 2,
 		offsetY: (box.height - layout.heightMm * scale) / 2
 	};
+}
+
+/** Schlüssel des Logos (farbig bzw. `-sw`) */
+export function logoKey(el: Pick<LabelImageElement, 'logo' | 'monochrome'>): string {
+	return el.monochrome ? `${el.logo}-sw` : el.logo;
 }
 
 const PLACEHOLDER = /\{([a-z][a-z0-9-]*)\}/g;

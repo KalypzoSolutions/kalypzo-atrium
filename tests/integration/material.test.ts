@@ -16,8 +16,11 @@ import { setPdfRendererForTests } from '$lib/server/core/pdf';
 import { runJobNow } from '$lib/server/core/jobs';
 import { setTodayForTests } from '$lib/sdk/dates';
 import materialModule from '$lib/modules/material/module';
+import { LABEL_LOGO_DATA } from '$lib/sdk/labels/logos';
 import type {
 	Article,
+	Catalog,
+	FindHit,
 	CodeTarget,
 	LabelTemplate,
 	LineAvailability,
@@ -559,6 +562,145 @@ describe('Etiketten', () => {
 			201
 		);
 		expect(claimed!.code).toBe(codes[0]);
+	});
+});
+
+describe('Ausleihen, Wiederfinden, Listen', () => {
+	it('Katalog: freie Anzahl im Zeitraum und Zelttypen', async () => {
+		const cat = await data<Catalog>(await M('/catalog?from=2026-07-01&to=2026-07-10', 'leitung'));
+		const t = cat.articles.find((a) => a.id === tassen.id)!;
+		expect(t).toMatchObject({ kind: 'bulk', total: 10, free: 10 });
+		expect(t.code).toMatch(/^A-\d{6}$/);
+		const b = cat.articles.find((a) => a.id === bahn.id)!;
+		expect(b.free).toBeLessThanOrEqual(b.total);
+		const tpl = cat.templates.find((x) => x.id === kohte.id)!;
+		expect(tpl.free).toBe(Math.floor(b.free / 4));
+		const search = await data<Catalog>(
+			await M('/catalog?from=2026-07-01&to=2026-07-10&search=kohte', 'leitung')
+		);
+		expect(search.templates.map((x) => x.name)).toEqual(['Kohte']);
+	});
+
+	it('„Wo ist …?“ findet Kisten, Mengen und Orte mit Pfad', async () => {
+		const hits = await data<FindHit[]>(await M('/find?q=Kochkiste', 'nurlesen'));
+		expect(hits.find((h) => h.id === kochkiste.id)).toMatchObject({
+			type: 'container',
+			place: 'Materialraum'
+		});
+		const byCode = await data<FindHit[]>(await M(`/find?q=${tassen.code}`, 'nurlesen'));
+		expect(byCode[0]).toMatchObject({ type: 'article', quantity: 10 });
+		expect(byCode[0]!.place).toContain('Regal A');
+		expect(await data<CodeTarget>(await M(`/codes/${tassen.code}`, 'nurlesen'))).toMatchObject({
+			type: 'article',
+			id: tassen.id
+		});
+	});
+
+	it('Ausgabeliste als PDF: nach Lagerort, Kisteninhalt eingerückt', async () => {
+		const r = await data<Reservation>(
+			await post('/reservations', 'leitung', {
+				title: 'Packliste',
+				startsOn: '2026-08-01',
+				endsOn: '2026-08-02',
+				lines: [
+					{ kind: 'unit', unitId: kochkiste.id },
+					{ kind: 'article', articleId: tassen.id, quantity: 4 }
+				]
+			}),
+			201
+		);
+		const res = await M(`/reservations/${r.id}/handout.pdf`, 'nurlesen');
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toBe('application/pdf');
+		expect(lastPdfHtml).toContain('Ausgabeliste Packliste');
+		expect(lastPdfHtml).toContain('Kreuz 1');
+		expect(lastPdfHtml).toContain('in der Kiste');
+		expect(lastPdfHtml).toContain('4 Stück');
+		// nur lesen darf nicht reservieren
+		await fail(
+			await post('/reservations', 'nurlesen', {
+				title: 'X',
+				startsOn: '2026-08-01',
+				endsOn: '2026-08-01',
+				lines: []
+			}),
+			403
+		);
+	});
+
+	it('Bestandsliste als PDF mit Ortsfilter und Mengen', async () => {
+		const res = await post('/inventory.pdf', 'nurlesen', {
+			locationId: raum.id,
+			columns: ['code', 'name', 'place', 'check']
+		});
+		expect(res.status).toBe(200);
+		expect(lastPdfHtml).toContain('Bestandsliste Material');
+		expect(lastPdfHtml).toContain('Kochkiste 1');
+		expect(lastPdfHtml).toContain('Geprüft');
+		expect(lastPdfHtml).toContain('Mengen');
+		await fail(await post('/inventory.pdf', 'nurlesen', { columns: ['gibtsnicht'] }), 422);
+	});
+
+	it('Etiketten für Mengenartikel mit Schwarz-Weiß-Wappen auf L7159', async () => {
+		const tpl = await data<LabelTemplate>(
+			await post('/label-templates', 'admin', {
+				name: 'Regalfach',
+				target: 'article',
+				formatKey: 'avery-l7159',
+				layout: {
+					widthMm: 63.5,
+					heightMm: 33.9,
+					elements: [
+						{ id: 'l', type: 'image', x: 2, y: 2, w: 8, h: 8, logo: 'wappen', monochrome: true },
+						{
+							id: 'n',
+							type: 'text',
+							x: 12,
+							y: 2,
+							w: 30,
+							h: 6,
+							text: '{name} ({total} {unit})',
+							fontSizePt: 10,
+							bold: true,
+							align: 'left',
+							valign: 'top',
+							maxLines: 1
+						},
+						{
+							id: 'v',
+							type: 'line',
+							x: 44,
+							y: 2,
+							w: 1,
+							h: 28,
+							stroke: 0.3,
+							orientation: 'vertical'
+						},
+						{
+							id: 'q',
+							type: 'barcode',
+							x: 46,
+							y: 2,
+							w: 16,
+							h: 16,
+							symbology: 'qrcode',
+							value: '{url}'
+						}
+					]
+				}
+			}),
+			201
+		);
+		const res = await post('/labels.pdf', 'admin', {
+			templateId: tpl.id,
+			target: 'article',
+			ids: [tassen.id]
+		});
+		expect(res.status).toBe(200);
+		expect(lastPdfHtml).toContain('Tasse (10 Stück)');
+		expect(lastPdfHtml).toContain(LABEL_LOGO_DATA['wappen-sw']!);
+		expect(lastPdfHtml).not.toContain(LABEL_LOGO_DATA.wappen!);
+		expect(lastPdfHtml).toContain('x1="0.15" y1="0" x2="0.15" y2="28"');
 	});
 });
 

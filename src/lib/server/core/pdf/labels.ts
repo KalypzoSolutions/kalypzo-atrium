@@ -10,7 +10,7 @@ import {
 	type LabelPdfInput
 } from '$lib/sdk/labels';
 import { barcodeSvg } from '$lib/sdk/labels/barcode';
-import { LABEL_LOGO_DATA } from '$lib/sdk/labels/logos';
+import { logoDataUrl } from '$lib/sdk/labels/logos';
 import { errors } from '../errors';
 import { CARLITO_STACK, carlitoFontFaceCss } from './fonts';
 import { escapeHtml } from './templates';
@@ -51,7 +51,7 @@ function renderElement(el: LabelElement): string {
 		case 'image':
 			return box(
 				el,
-				`<img src="${LABEL_LOGO_DATA[el.logo]}" alt="" style="width:100%;height:100%;object-fit:contain;" />`
+				`<img src="${logoDataUrl(el)}" alt="" style="width:100%;height:100%;object-fit:contain;" />`
 			);
 		case 'rect': {
 			const s = el.stroke;

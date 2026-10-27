@@ -58,13 +58,14 @@ async function setup(page: Page) {
 test('Bestand, Scan-Seite und Stück-Blatt', async ({ page }) => {
 	const { units } = await setup(page);
 	const first = units[0]!;
-	await page.goto(`/modules/material?tab=inventory`);
+	await page.goto(`/modules/material/lager`);
+	await page.getByRole('searchbox').first().fill(first.code);
 	await expect(page.getByText(first.name).first()).toBeVisible();
 
 	await page.goto(`/modules/material/scan/${first.code}`);
 	await expect(page.getByText(first.name).first()).toBeVisible();
 
-	await page.goto(`/modules/material?open=${first.id}`);
+	await page.goto(`/modules/material/lager?open=${first.id}`);
 	await expect(page.getByRole('dialog').getByText(first.code).first()).toBeVisible();
 });
 
@@ -76,10 +77,11 @@ test('Reservierung anlegen (Bahnen-Anfrage) und öffnen', async ({ page }) => {
 		endsOn: '2030-07-05',
 		lines: [{ kind: 'article', articleId: bahn.id, quantity: 3 }]
 	});
-	await page.goto(`/modules/material?tab=reservations&open=${r.id}`);
-	const dialog = page.getByRole('dialog');
-	await expect(dialog.getByText(`Lager ${run}`)).toBeVisible();
-	await expect(dialog.getByText(`Kohtenbahn ${run}`).first()).toBeVisible();
+	await page.goto(`/modules/material/reservierung/${r.id}`);
+	await expect(page.getByRole('heading', { level: 1, name: `Lager ${run}` })).toBeVisible();
+	await expect(page.getByText(`Kohtenbahn ${run}`).first()).toBeVisible();
+	const pdf = await page.request.get(`/api/v1${M}/reservations/${r.id}/handout.pdf`);
+	expect(pdf.status()).toBe(200);
 	// mehr als vorhanden → 409
 	const res = await page.request.post(`/api/v1${M}/reservations`, {
 		headers: { origin: ORIGIN, 'content-type': 'application/json' },
@@ -140,4 +142,21 @@ test('Etiketten: Designer lädt Layout, PDF wird erzeugt', async ({ page }) => {
 	expect(pdf.status()).toBe(200);
 	const body = await pdf.body();
 	expect(body.subarray(0, 5).toString()).toBe('%PDF-');
+});
+
+test('Ausleihen: Artikel in die Merkliste und reservieren', async ({ page }) => {
+	const { bahn } = await setup(page);
+	void bahn;
+	await page.goto(`/modules/material?from=2031-05-02&to=2031-05-03`);
+	await page.getByRole('searchbox').first().fill(`Kohtenbahn ${run}`);
+	const plus = page.getByRole('button', { name: `Menge Kohtenbahn ${run} erhöhen` }).first();
+	await plus.click();
+	await plus.click();
+	await page.getByRole('button', { name: 'Reservieren' }).first().click();
+	const dialog = page.getByRole('dialog');
+	await dialog.getByLabel(/Titel/).fill(`Wochenende ${run}`);
+	await dialog.getByRole('button', { name: 'Reservieren' }).click();
+	await page.waitForURL(/\/modules\/material\/reservierung\//);
+	await expect(page.getByRole('heading', { level: 1, name: `Wochenende ${run}` })).toBeVisible();
+	await expect(page.getByText(`Kohtenbahn ${run}`).first()).toBeVisible();
 });

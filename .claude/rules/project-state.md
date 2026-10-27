@@ -320,7 +320,14 @@
   Seitengröße), `$lib/sdk/labels`, `BarcodeScanner`/`listenForScanner`, bwip-js + barcode-detector (zxing-wasm selbst gehostet), CSP `'wasm-unsafe-eval'`,
   `Permissions-Policy camera=(self)`. Details: `module-material.md`. Offen: echte Handy-Kamera (iOS) und Etikettendrucker erst nach Deploy mit HTTPS.
 
+- **Material neu gegliedert „Ausleihen zuerst“ (2026-10-27, v1.1.0, Migr. 0002)**: Bereiche Ausleihen (Katalog + Merkliste, Zelte als Typ × Anzahl) ·
+  Meine Reservierungen · Reservierungsseite · Scannen · Lager (für alle mit Leserecht, „Wo ist …?“, Orte-Baum inkl. „Ohne Ort“) · Ausgabe & Rückgabe ·
+  Etiketten; Gestaltung nach Taste Skill (App-Screens, „Achromatic ledger“) und Web-Interface-Guidelines-Review. Neu: Artikel-Codes `A-…` + Etiketten für
+  Mengenartikel, Format L7159 (63,5 × 33,9 mm), Schwarz-Weiß-Wappen/-Lilie, senkrechte Linien im Designer, PDF Ausgabeliste und Bestandsliste.
+  Details: `module-material.md`.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Material (2026-10-27, Nachtrag): Aufbau **„Ausleihen zuerst“**; Reservieren für alle mit dem Recht `material.reservation.create` (keine Rollenänderung).
 - Material (2026-10-27): Einzelstücke **und** Mengen; Reservierung **direkt** (ohne Freigabe); Zelte als **freie Bahnen-Anfrage** (Sets nur Vorschlag,
   dürfen aufgeteilt werden); Etiketten für A4-Bögen **und** Etikettendrucker; Scannen per Handy-Kamera **und** USB-Handscanner; Ausgabe/Rückgabe per Scan.
 - Rückzahlung spenden (2026-10-27): Standard **auszahlen** (sofort an die Kasse); über den Link auszahlen, alles oder **einen Teil** spenden (ohne IBAN-Abfrage);

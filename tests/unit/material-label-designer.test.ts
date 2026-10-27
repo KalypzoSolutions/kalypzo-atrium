@@ -195,4 +195,45 @@ describe('Etiketten: Startlayouts', () => {
 			expect(overflowing(layout), s.id).toEqual([]);
 		}
 	});
+
+	it('Regalfach/Artikel und Kiste klein liegen auf Avery L7159, mindestens ein s/w-Logo', () => {
+		const shelf = LABEL_STARTERS.find((s) => s.id === 'shelf-article');
+		const box = LABEL_STARTERS.find((s) => s.id === 'box-small');
+		expect(shelf?.target).toBe('article');
+		expect(shelf?.formatKey).toBe('avery-l7159');
+		expect(box?.formatKey).toBe('avery-l7159');
+		const preset = LABEL_FORMAT_PRESETS.find((p) => p.key === 'avery-l7159')!;
+		expect(shelf!.widthMm).toBe(preset.format.labelWidthMm);
+		expect(shelf!.heightMm).toBe(preset.format.labelHeightMm);
+		const fields = new Set(['name', 'category', 'locations', 'url', 'code']);
+		const used = shelf!.elements.flatMap((e) =>
+			e.type === 'text' ? [e.text] : e.type === 'barcode' ? [e.value] : []
+		);
+		for (const f of fields) expect(used.join(' ')).toContain(`{${f}}`);
+		expect(
+			LABEL_STARTERS.some((s) =>
+				s.elements.some((e) => e.type === 'image' && e.monochrome === true)
+			)
+		).toBe(true);
+	});
+});
+
+describe('Etiketten-Designer: neue Linien und Logos', () => {
+	it('senkrechte Linie ist schmal, fast etiketthoch und passt hinein', () => {
+		const layout: LabelLayout = { widthMm: 63.5, heightMm: 33.9, elements: [] };
+		const el = createElement('line', layout, { orientation: 'vertical' });
+		expect(el).toMatchObject({ type: 'line', orientation: 'vertical', w: 1, y: 2, h: 29.9 });
+		expect(overflowing({ ...layout, elements: [el] })).toEqual([]);
+		const h = createElement('line', layout);
+		expect(h).toMatchObject({ orientation: 'horizontal', h: 1 });
+	});
+
+	it('Logo in Schwarz-Weiß nur auf Wunsch', () => {
+		const layout = { widthMm: 70, heightMm: 37 };
+		expect(createElement('image', layout, { logo: 'lilie', monochrome: true })).toMatchObject({
+			logo: 'lilie',
+			monochrome: true
+		});
+		expect('monochrome' in createElement('image', layout, { logo: 'wappen' })).toBe(false);
+	});
 });

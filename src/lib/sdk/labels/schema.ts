@@ -32,7 +32,12 @@ export const labelElementSchema = z.discriminatedUnion('type', [
 		symbology: z.enum(BARCODE_TYPES),
 		value: z.string().min(1).max(300)
 	}),
-	z.object({ ...base, type: z.literal('image'), logo: z.enum(LABEL_LOGOS) }),
+	z.object({
+		...base,
+		type: z.literal('image'),
+		logo: z.enum(LABEL_LOGOS),
+		monochrome: z.boolean().optional()
+	}),
 	z.object({
 		...base,
 		type: z.literal('rect'),
