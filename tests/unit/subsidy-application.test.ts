@@ -150,8 +150,60 @@ describe('planSubsidyApplications', () => {
 			],
 			{ freizeitType: 'kids' }
 		);
-		// 20 Kinder → Grenze 4 (< 5 Zeilen)
-		expect(big.forms[0]!.allowance).toHaveLength(4);
+		// 20 Kinder + 10 Team auf der Jugendliste = 30 Personen → Grenze 6, höchstens 5 Zeilen
+		expect(big.forms[0]!.allowance).toHaveLength(5);
+	});
+
+	it('Taschengeld-Grenze zählt alle auf dem Antrag, auch die Leitungen selbst', () => {
+		// Kinderfreizeit: 3 Kinder + 2 Leitungen (22 J., Bremen) = 5 → genau 1 Taschengeld
+		const [f, m] = team(2);
+		const pair: [EligibilityParticipant, LeaderGender][] = [
+			[f!, 'female'],
+			[m!, 'male']
+		];
+		const one = plan([...kids(3), f!, m!], pair, { freizeitType: 'kids' });
+		expect(one.forms[0]!.children).toHaveLength(3);
+		expect(one.forms[0]!.youth).toHaveLength(2);
+		expect(one.forms[0]!.allowance).toHaveLength(1);
+		expect(one.unassigned.filter((u) => u.reason === 'allowance-limit')).toHaveLength(1);
+
+		// 2 Kinder + 2 Leitungen = 4 → kein Taschengeld (abgerundet)
+		const none = plan([...kids(2), f!, m!], pair, { freizeitType: 'kids' });
+		expect(none.forms[0]!.allowance).toHaveLength(0);
+
+		// Jugendfreizeit: 5 Jugendliche + 2 Leitungen = 7 → 1; Kinder zählen mit (3 + 4 + 2 = 9 → 1)
+		expect(plan([...youth(5), f!, m!], pair).forms[0]!.allowance).toHaveLength(1);
+		expect(plan([...youth(4), f!, m!], pair).forms[0]!.allowance).toHaveLength(0);
+		expect(plan([...kids(3), ...youth(2), f!, m!], pair).forms[0]!.allowance).toHaveLength(1);
+
+		// Leitungen über 27 bzw. ohne Bremen stehen nicht auf der Liste und zählen nicht mit
+		const [of, om] = team(2, { birthDate: '1990-01-01' });
+		const old = plan(
+			[...kids(4), of!, om!],
+			[
+				[of!, 'female'],
+				[om!, 'male']
+			],
+			{ freizeitType: 'kids' }
+		);
+		expect(old.forms[0]!.youth).toHaveLength(0);
+		expect(old.forms[0]!.allowance).toHaveLength(0);
+	});
+
+	it('Taschengeld-Grenze gilt je Antrag', () => {
+		const t = team(4);
+		const r = plan(
+			[...youth(30), ...t],
+			[
+				[t[0]!, 'female'],
+				[t[1]!, 'male'],
+				[t[2]!, 'female'],
+				[t[3]!, 'male']
+			]
+		);
+		// 34 Personen auf 2 Anträge: je 2 Team + 15 Jugendliche = 17 → je 2 Taschengelder
+		expect(r.forms.map((f) => f.youth.length)).toEqual([17, 17]);
+		expect(r.forms.map((f) => f.allowance.length)).toEqual([2, 2]);
 	});
 
 	it('schließt ausdrücklich Ausgeschlossene, über 27 und ohne Bremen aus', () => {
@@ -214,7 +266,12 @@ describe('fillSubsidyApplicationPdf', () => {
 			location: 'Zeltplatz',
 			topic: 'Wikinger 🛶',
 			inclusion: true,
-			bank: { name: 'Sparkasse', iban: 'DE89370400440532013000', bic: 'COBADEFFXXX' }
+			bank: {
+				holder: 'Förderverein Stamm',
+				name: 'Sparkasse',
+				iban: 'DE89 3704 0044 0532 0130 00',
+				bic: 'COBADEFFXXX'
+			}
 		});
 		const doc = await PDFDocument.load(bytes);
 		expect(doc.getPageCount()).toBe(4);
@@ -230,6 +287,9 @@ describe('fillSubsidyApplicationPdf', () => {
 		expect(front).toContain('Gemeinde Süd');
 		expect(front).toContain('10.07.2026');
 		expect(front).toContain('Antrag 1 von 2');
+		expect(front).toContain('Förderverein Stamm');
+		expect(front).toContain('Sparkasse');
+		expect(front).toContain('DE89 3704 0044 0532 0130 00');
 		// Zeichen außerhalb der Standardschrift werden ersetzt statt abzubrechen
 		expect(front).toContain('Wikinger ?');
 		expect(await textOf(2)).toContain('Jörg Weiß-Übel');

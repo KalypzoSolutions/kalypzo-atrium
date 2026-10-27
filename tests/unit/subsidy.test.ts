@@ -87,26 +87,43 @@ describe('computeSubsidy Gemeinderäume', () => {
 });
 
 describe('Taschengeld', () => {
-	it('Kinderfreizeit: Limit 1 je 5 Kinder', () => {
-		const r = computeSubsidy(base({ children: 12, teamWithJuleica: 1, teamWithoutJuleica: 3 }));
+	it('Kinderfreizeit: Limit 1 je 5 Personen (Kinder und Jugendliche)', () => {
+		// 12 Kinder + 0 Jugendliche = 12 → 2
+		const r = computeSubsidy(
+			base({ children: 12, youth: 0, teamWithJuleica: 1, teamWithoutJuleica: 3 })
+		);
 		expect(r.allowance.limit).toBe(2);
 		expect(r.allowance.withJuleica).toBe(1);
 		expect(r.allowance.withoutJuleica).toBe(1);
 		expect(r.allowance.totalCents).toBe((1500 + 1000) * 3);
 		expect(r.warnings).toContain(
-			'Es sind höchstens 2 Ehrenamtliche zuschussfähig (1 je 5 Kinder bzw. 7 Jugendliche).'
+			'Es sind höchstens 2 Ehrenamtliche zuschussfähig (1 je 5 Personen auf dem Antrag, Team mitgezählt).'
 		);
 	});
-	it('Jugendfreizeit: Limit 1 je 7 Jugendliche', () => {
+	it('Jugendfreizeit: Limit 1 je 7 Personen, Kinder zählen mit', () => {
+		// 20 Kinder + 15 Jugendliche = 35 → 5
 		const r = computeSubsidy(
-			base({ freizeitType: 'youth', children: 20, youth: 15, teamWithoutJuleica: 5 })
+			base({ freizeitType: 'youth', children: 20, youth: 15, teamWithoutJuleica: 6 })
 		);
-		expect(r.allowance.limit).toBe(2);
-		expect(r.allowance.withoutJuleica).toBe(2);
-		expect(r.allowance.totalCents).toBe(2 * 1000 * 3);
+		expect(r.allowance.limit).toBe(5);
+		expect(r.allowance.withoutJuleica).toBe(5);
+		expect(r.allowance.totalCents).toBe(5 * 1000 * 3);
+	});
+	it('Team auf der Liste zählt mit, abgerundet', () => {
+		// 3 Kinder + 2 Teamer*innen = 5 → genau 1
+		const one = computeSubsidy(base({ children: 3, youth: 0, teamYouth: 2, teamWithJuleica: 2 }));
+		expect(one.allowance.limit).toBe(1);
+		expect(one.allowance.withJuleica).toBe(1);
+		expect(one.allowance.totalCents).toBe(1500 * 3);
+		// 4 Personen → 0
+		const none = computeSubsidy(base({ children: 2, youth: 0, teamYouth: 2, teamWithJuleica: 2 }));
+		expect(none.allowance.limit).toBe(0);
+		expect(none.allowance.totalCents).toBe(0);
 	});
 	it('Juleica hat Vorrang', () => {
-		const r = computeSubsidy(base({ children: 10, teamWithJuleica: 5, teamWithoutJuleica: 5 }));
+		const r = computeSubsidy(
+			base({ children: 10, youth: 0, teamWithJuleica: 5, teamWithoutJuleica: 5 })
+		);
 		expect(r.allowance.withJuleica).toBe(2);
 		expect(r.allowance.withoutJuleica).toBe(0);
 	});
@@ -129,7 +146,7 @@ describe('Teamer*innen aus Bremen', () => {
 	});
 	it('zählen für die Taschengeld-Grenze der Jugendfreizeit', () => {
 		const r = computeSubsidy(
-			base({ freizeitType: 'youth', youth: 10, teamYouth: 4, teamWithoutJuleica: 5 })
+			base({ freizeitType: 'youth', children: 0, youth: 10, teamYouth: 4, teamWithoutJuleica: 5 })
 		);
 		expect(r.allowance.limit).toBe(2);
 		expect(r.allowance.withoutJuleica).toBe(2);

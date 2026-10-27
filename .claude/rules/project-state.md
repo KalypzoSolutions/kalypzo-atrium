@@ -295,7 +295,13 @@
   (iPhone/Android/iPad, Safari-Zurück-Wischgeste, Safe-Area) nur emuliert geprüft; Familienkonto bleibt Seitenblatt; Jahresbeitrag/Familien/Abrechnungen
   nutzen weiter die Karten-Tabellen.
 
+- **Zuschussantrag: Taschengeld und Konto (2026-10-27)**: Taschengeld-Grenze zählt alle Personen auf dem Antrag inkl. Team (÷ 5 Kinder- bzw.
+  ÷ 7 Jugendfreizeit, abgerundet) – auch in Kalkulation/Abrechnung; eigenes Konto für Zuschussanträge in den Modul-Einstellungen (Kontoinhaber, Bank,
+  IBAN, BIC), Kontoinhaber wird jetzt mitgedruckt. Details: `module-actions.md`.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Zuschussantrag (2026-10-27): Taschengeld-Grenze aus **allen** Personen auf dem Antrag (Leitungen zählen mit), korrekt abrunden;
+  Antragskonto **ohne Rückfall** auf Stammkonto/Kasse.
 - Kasse mobil (2026-10-26): Konzept-Empfehlungen übernommen – Bereichsleiste unten, keine Wischgesten, Zahlung erfassen in 3 Schritten, ＋ als Blatt
   mit 5 Wegen, Kontostand dauerhaft im Kopf; Desktop bleibt unverändert.
 - Zuschussantrag (2026-10-26): Geschlecht der Leitungen **nur im Antrag** (kein Feld an Teilnehmenden/Mitgliedern); **Original-PDF befüllen**;

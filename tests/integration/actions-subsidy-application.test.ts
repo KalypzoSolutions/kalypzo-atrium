@@ -206,6 +206,36 @@ describe('Zuschussantrag', () => {
 		expect(JSON.stringify(entry)).not.toMatch(/Anna|Ben/);
 	});
 
+	it('nutzt nur das eigene Konto für Zuschussanträge (kein Rückfall auf das Stammkonto)', async () => {
+		await setSettings(admin, {
+			'actions.bank.holder': 'Stammkasse',
+			'actions.bank.iban': 'DE89370400440532013000',
+			'actions.bank.name': 'Stammbank'
+		});
+		const empty = await data<SubsidyApplicationDto>(await as('owner', appUrl()));
+		expect(empty.bank).toEqual({ holder: '', name: '', iban: '', bic: '' });
+
+		await setSettings(admin, {
+			'actions.subsidy.bank.holder': 'Förderverein',
+			'actions.subsidy.bank.name': 'Sparkasse Bremen',
+			'actions.subsidy.bank.iban': 'de02120300000000202051',
+			'actions.subsidy.bank.bic': 'byladem1001'
+		});
+		const d = await data<SubsidyApplicationDto>(await as('owner', appUrl()));
+		expect(d.bank).toEqual({
+			holder: 'Förderverein',
+			name: 'Sparkasse Bremen',
+			iban: 'DE02 1203 0000 0000 2020 51',
+			bic: 'BYLADEM1001'
+		});
+	});
+
+	it('lehnt eine ungültige IBAN für Zuschussanträge ab', async () => {
+		await expect(
+			setSettings(admin, { 'actions.subsidy.bank.iban': 'DE00123' })
+		).rejects.toMatchObject({ status: 422 });
+	});
+
 	it('Löschen eines Teammitglieds entfernt seine Leitungsangabe', async () => {
 		await data(
 			await as('owner', `/actions/${actionId}/participants/${team.Ben}`, { method: 'DELETE' })
