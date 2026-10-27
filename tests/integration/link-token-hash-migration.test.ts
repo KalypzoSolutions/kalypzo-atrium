@@ -247,7 +247,7 @@ describe('actions/0020: CHECKs und Fremdschlüssel', () => {
 		);
 	});
 
-	it('Löschen der Buchung räumt Rückzahlungs-Verweise auf (SET NULL / CASCADE)', async () => {
+	it('Löschen der Buchung räumt Rückzahlungs-Verweise auf (SET NULL)', async () => {
 		await moduleSql(
 			'actions',
 			sql`INSERT INTO accounting_entries (id, action_id, type, category, description, amount_cents,
@@ -269,12 +269,13 @@ describe('actions/0020: CHECKs und Fremdschlüssel', () => {
 			sql`SELECT entry_id FROM accounting_refunds WHERE id = 'r-legacy'`
 		);
 		expect(refund!.entry_id).toBeNull();
-		expect(
-			await moduleSql(
-				'actions',
-				sql`SELECT 1 FROM action_refund_booking WHERE action_id = ${actionId}`
-			)
-		).toHaveLength(0);
+		// Seit 0024 (Rückzahlung spenden) bleibt der Snapshot, nur der Verweis wird NULL (vorher CASCADE)
+		const booking = await moduleSql(
+			'actions',
+			sql`SELECT entry_id FROM action_refund_booking WHERE action_id = ${actionId}`
+		);
+		expect(booking).toHaveLength(1);
+		expect(booking[0]!.entry_id).toBeNull();
 	});
 });
 

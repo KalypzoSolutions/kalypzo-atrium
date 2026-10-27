@@ -305,7 +305,13 @@
   Probestunde ordnet danach zu; Gruppenbild `?size=thumb`. Details: `website.md`, `module-members.md`. Offen: Lighthouse/Rich Results erst nach Deploy,
   gzip hinter dem Proxy (ggf. `COMPRESS=0`), Bot-Falle nur je Prozess.
 
+- **Rückzahlung spenden (2026-10-27, `actions` v1.7.0, Migr. 0024)**: je Person die Rückzahlung ganz/teilweise (ganze Euro) dem Stamm spenden – intern in der
+  Abrechnung oder über Brief (PDF) mit QR-Code und öffentliche Seite `/p/actions/rueckzahlung/<token>`; Buchung und Kassen-Auszahlung umfassen nur den
+  Rest, Bericht mit Block „An den Stamm gespendet“. Details: `module-actions.md` → „Rückzahlung spenden“. Offen: Spendenquittung, Benachrichtigung bei Wahl.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Rückzahlung spenden (2026-10-27): Standard **auszahlen** (sofort an die Kasse); über den Link auszahlen, alles oder **einen Teil** spenden (ohne IBAN-Abfrage);
+  Spende als **eigener Block** in der Abrechnung, keine zusätzliche Einnahme.
 - Stammeswebsite (2026-10-27): Bot-Falle = versteckter Link + IP-Sperre (24 h) zusätzlich zum Formular-Honeypot; CPD-Zeitstrahl **ersetzt** die Akkordeons;
   Tags im Knopf „Tags“ (Gruppen bleiben Chips).
 - Zuschussantrag (2026-10-27): Taschengeld-Grenze aus **allen** Personen auf dem Antrag (Leitungen zählen mit), korrekt abrunden;

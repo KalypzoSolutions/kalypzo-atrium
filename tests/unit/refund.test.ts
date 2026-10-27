@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
 	MIN_REFUND_PER_HEAD_CENTS,
+	choiceOf,
 	computeManualRefund,
 	computeRefund,
-	refundThresholdOk
+	donationForChoice,
+	donationTotals,
+	payoutCents,
+	refundThresholdOk,
+	validateDonation
 } from '$lib/modules/actions/refund';
 
 const payer = (id: string, feeCents: number) => ({ id, name: `P${id}`, feeCents });
@@ -109,5 +114,40 @@ describe('computeManualRefund', () => {
 		expect(
 			refundThresholdOk(computeManualRefund({ surplusCents: 6000, count: 10 }).perHeadCents)
 		).toBe(true);
+	});
+});
+
+describe('Spende der Rückzahlung', () => {
+	it('validateDonation: 0, ganze Euro, krummer Anteil komplett, zu viel, ungültig', () => {
+		expect(validateDonation(16666, 0)).toBeNull();
+		expect(validateDonation(16666, 16600)).toBeNull();
+		// „alles spenden“ auch bei krummem Anteil
+		expect(validateDonation(16666, 16666)).toBeNull();
+		expect(validateDonation(16666, 1050)).toMatch(/ganze Euro/);
+		expect(validateDonation(16666, 16700)).toMatch(/höher/);
+		expect(validateDonation(16666, -100)).toMatch(/ungültig/);
+		expect(validateDonation(16666, 1.5)).toMatch(/ungültig/);
+	});
+
+	it('donationTotals, payoutCents, choiceOf, donationForChoice', () => {
+		const items = [
+			{ amountCents: 20000, donatedCents: 0 },
+			{ amountCents: 20000, donatedCents: 5000 },
+			{ amountCents: 20000, donatedCents: 20000 },
+			// Spende über dem Anteil wird gekappt
+			{ amountCents: 1000, donatedCents: 3000 }
+		];
+		expect(donationTotals(items)).toEqual({
+			donatedCents: 26000,
+			payoutCents: 35000,
+			donorCount: 3
+		});
+		expect(payoutCents({ amountCents: 20000, donatedCents: 5000 })).toBe(15000);
+		expect(payoutCents({ amountCents: 1000, donatedCents: 3000 })).toBe(0);
+		expect(items.slice(0, 3).map(choiceOf)).toEqual(['payout', 'partial', 'donate']);
+		expect(donationForChoice(20000, 'payout', 500)).toBe(0);
+		expect(donationForChoice(20000, 'donate')).toBe(20000);
+		expect(donationForChoice(20000, 'partial', 7000)).toBe(7000);
+		expect(donationForChoice(20000, 'partial', Number.NaN)).toBe(0);
 	});
 });

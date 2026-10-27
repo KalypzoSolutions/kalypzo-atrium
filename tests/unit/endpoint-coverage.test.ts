@@ -55,7 +55,9 @@ const COMPOSED = 'Getestet über zusammengesetzten Pfad';
 const UNTESTED: Record<string, Record<string, string>> = {
 	actions: {
 		'DELETE /actions/:id/calculation/apply': `${COMPOSED} (actions-calculation.test.ts: calcPath + /apply)`,
-		'DELETE /actions/:id/accounting/entries/:entryId/receipt': `${COMPOSED} (actions-accounting.test.ts: entriesPath + /receipt)`
+		'DELETE /actions/:id/accounting/entries/:entryId/receipt': `${COMPOSED} (actions-accounting.test.ts: entriesPath + /receipt)`,
+		'PUT /actions/:id/subsidy-application': `${COMPOSED} (actions-subsidy-application.test.ts: appUrl())`,
+		'GET /actions/:id/subsidy-application.pdf': `${COMPOSED} (actions-subsidy-application.test.ts: appUrl() + .pdf)`
 	},
 	events: {},
 	files: {},
