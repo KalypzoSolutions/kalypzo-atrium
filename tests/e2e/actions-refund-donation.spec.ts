@@ -123,9 +123,17 @@ test('Rückzahlung je Person spenden – intern und über den Link', async ({ pa
 	const money = dialog.getByLabel('Spende von Bent Brandt in Euro');
 	await money.fill('50');
 	await money.blur();
-	await dialog.getByRole('button', { name: 'Speichern' }).click();
+	await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
 	await expect(dialog.getByText(/· gespendet 300,00/)).toBeVisible();
-	await expect(dialog.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+	await expect(dialog.getByRole('button', { name: 'Speichern', exact: true })).toBeEnabled();
+
+	// Frist setzen: Kasse wartet, Link bis dahin offen
+	const due = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
+	await dialog.getByLabel('Rückmeldung bis').fill(due);
+	await dialog.getByRole('button', { name: 'Frist speichern' }).click();
+	await expect(dialog.getByText(/Die Kasse zahlt erst/)).toBeVisible();
+	await expect(dialog.getByRole('button', { name: 'Frist entfernen' })).toBeVisible();
+	await page.screenshot({ path: 'test-results/refund-donation-deadline.png' });
 	await page.screenshot({ path: 'test-results/refund-donation-dialog.png' });
 
 	// Clara wählt über den Link (mobil)
@@ -142,6 +150,7 @@ test('Rückzahlung je Person spenden – intern und über den Link', async ({ pa
 	await pub.goto(path);
 	await expect(pub.getByRole('heading', { name: /Rückzahlung – Pfingstfahrt/ })).toBeVisible();
 	await expect(pub.getByText('Rückzahlung für Clara Cordes')).toBeVisible();
+	await expect(pub.getByText(/Bitte wähle bis zum/)).toBeVisible();
 	await pub.getByRole('radio', { name: /Einen Teil spenden/ }).click();
 	await expect(pub.getByRole('radio', { name: /Einen Teil spenden/ })).toHaveAttribute(
 		'aria-checked',

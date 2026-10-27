@@ -4,6 +4,7 @@ import {
 	choiceOf,
 	computeManualRefund,
 	computeRefund,
+	deadlineRunning,
 	donationForChoice,
 	donationTotals,
 	payoutCents,
@@ -149,5 +150,14 @@ describe('Spende der Rückzahlung', () => {
 		expect(donationForChoice(20000, 'donate')).toBe(20000);
 		expect(donationForChoice(20000, 'partial', 7000)).toBe(7000);
 		expect(donationForChoice(20000, 'partial', Number.NaN)).toBe(0);
+	});
+});
+
+describe('deadlineRunning', () => {
+	it('läuft bis einschließlich des Fristtags, ohne Frist nie', () => {
+		expect(deadlineRunning(null, '2026-06-01')).toBe(false);
+		expect(deadlineRunning('2026-06-10', '2026-06-01')).toBe(true);
+		expect(deadlineRunning('2026-06-10', '2026-06-10')).toBe(true);
+		expect(deadlineRunning('2026-06-10', '2026-06-11')).toBe(false);
 	});
 });

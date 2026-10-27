@@ -76,6 +76,8 @@ interface RefundDto {
 		totalCents: number;
 		donatedCents: number;
 		payoutCents: number;
+		deadline: string | null;
+		deadlineRunning: boolean;
 		items: Item[];
 	};
 	items: Item[];
@@ -401,5 +403,85 @@ describe('Rückzahlung spenden', () => {
 		expect(r.booked!.donatedCents).toBe(27000);
 		expect(r.booked!.items.every((i) => !i.hasLink)).toBe(true);
 		expect((await refundEntry(imp.id))!.amountCents).toBe(33000);
+	});
+});
+
+describe('Rückmeldefrist', () => {
+	const setDeadline = (id: string, deadline: string | null, apiKey: string = key) =>
+		A(`/actions/${id}/accounting/refund/deadline`, { method: 'PUT', json: { deadline } }, apiKey);
+
+	it('Kasse wartet bis zur Frist, danach Link zu und Auszahlung; intern weiter änderbar', async () => {
+		setTodayForTests('2026-06-01');
+		const { id, items } = await bookedAction();
+		expect((await refundPayables(id)).filter((p) => !p.cancelledAt)).toHaveLength(3);
+
+		expect((await setDeadline(id, '2026-05-31')).status).toBe(422);
+		expect((await setDeadline(id, '2026-06-10', readerKey)).status).toBe(404);
+		expect(await data<{ deadline: string }>(await setDeadline(id, '2026-06-10'))).toEqual({
+			deadline: '2026-06-10'
+		});
+		const r = await getRefund(id);
+		expect(r.booked).toMatchObject({ deadline: '2026-06-10', deadlineRunning: true });
+		// Frist läuft: bestehende, unbezahlte Auszahlungen werden storniert, keine neuen
+		expect((await refundPayables(id)).filter((p) => !p.cancelledAt)).toHaveLength(0);
+
+		const token = await linkToken(id, items.Anna!.id);
+		const view = await data<{ deadline: string; locked: boolean; lockedReason: null }>(
+			await P(token)
+		);
+		expect(view).toMatchObject({ deadline: '2026-06-10', locked: false, lockedReason: null });
+		await data(await P(token, { method: 'POST', json: { choice: 'donate' } }));
+
+		// Letzter Tag der Frist zählt noch dazu
+		setTodayForTests('2026-06-10');
+		expect((await P(token)).status).toBe(200);
+		expect((await refundPayables(id)).filter((p) => !p.cancelledAt)).toHaveLength(0);
+
+		// Nach Ablauf: Kasse zahlt aus (ohne Annas Spende), Link gesperrt, intern geht es weiter
+		setTodayForTests('2026-06-11');
+		const open = (await refundPayables(id)).filter((p) => !p.cancelledAt);
+		expect(open.map((p) => p.recipientName).sort()).toEqual(['Bert Bauer', 'Cleo Cramer']);
+		const after = await data<{ locked: boolean; lockedReason: string; choice: string }>(
+			await P(token)
+		);
+		expect(after).toMatchObject({ locked: true, lockedReason: 'deadline', choice: 'donate' });
+		expect((await P(token, { method: 'POST', json: { choice: 'payout' } })).status).toBe(409);
+		expect((await getRefund(id)).booked!.deadlineRunning).toBe(false);
+		await data(await donate(id, items.Bert!.id, 20000));
+		expect((await refundPayables(id)).filter((p) => !p.cancelledAt)).toHaveLength(1);
+
+		// Frist entfernen ist erlaubt; Audit ohne Namen
+		expect(await data<{ deadline: null }>(await setDeadline(id, null))).toEqual({ deadline: null });
+		const audit = (await listAudit({ limit: 500 })).rows.filter(
+			(x) => x.action === 'actions.accounting.refund-deadline-set'
+		);
+		expect(audit.length).toBeGreaterThanOrEqual(2);
+		setTodayForTests('2026-06-01');
+	});
+
+	it('Frist im Brief und im Archiv', async () => {
+		setTodayForTests('2026-06-01');
+		const { id } = await bookedAction();
+		await data(await setDeadline(id, '2026-06-20'));
+		let html = '';
+		setPdfRendererForTests(async (h) => {
+			html += h;
+			const d = await PDFDocument.create();
+			d.addPage([200, 300]);
+			return d.save();
+		});
+		expect(
+			(await A(`/actions/${id}/accounting/refund/letters.pdf`, { method: 'POST', json: {} })).status
+		).toBe(200);
+		expect(html).toContain('20.06.2026');
+		const zip = new Uint8Array(await (await A(`/actions/${id}/export`)).arrayBuffer());
+		expect(parseArchive(zip).document.refund!.deadline).toBe('2026-06-20');
+		const fd = new FormData();
+		fd.set('file', new File([zip], 'export.zip', { type: 'application/zip' }));
+		const imp = await data<{ id: string }>(
+			await A('/actions/import', { method: 'POST', body: fd }),
+			201
+		);
+		expect((await getRefund(imp.id)).booked!.deadline).toBe('2026-06-20');
 	});
 });

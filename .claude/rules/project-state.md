@@ -307,11 +307,13 @@
 
 - **Rückzahlung spenden (2026-10-27, `actions` v1.7.0, Migr. 0024)**: je Person die Rückzahlung ganz/teilweise (ganze Euro) dem Stamm spenden – intern in der
   Abrechnung oder über Brief (PDF) mit QR-Code und öffentliche Seite `/p/actions/rueckzahlung/<token>`; Buchung und Kassen-Auszahlung umfassen nur den
-  Rest, Bericht mit Block „An den Stamm gespendet“. Details: `module-actions.md` → „Rückzahlung spenden“. Offen: Spendenquittung, Benachrichtigung bei Wahl.
+  Rest, Bericht mit Block „An den Stamm gespendet“. **Rückmeldefrist** (Migr. 0025, v1.8.0): bis zum Fristtag Link offen und Kasse wartet, danach wird
+  ausgezahlt; intern weiter änderbar. Details: `module-actions.md` → „Rückzahlung spenden“. Offen: Spendenquittung, Benachrichtigung bei Wahl.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Rückzahlung spenden (2026-10-27): Standard **auszahlen** (sofort an die Kasse); über den Link auszahlen, alles oder **einen Teil** spenden (ohne IBAN-Abfrage);
-  Spende als **eigener Block** in der Abrechnung, keine zusätzliche Einnahme.
+  Spende als **eigener Block** in der Abrechnung, keine zusätzliche Einnahme. Frist (2026-10-27): **Kasse wartet bis zum Fristablauf**, danach Link zu,
+  **intern weiter änderbar**.
 - Stammeswebsite (2026-10-27): Bot-Falle = versteckter Link + IP-Sperre (24 h) zusätzlich zum Formular-Honeypot; CPD-Zeitstrahl **ersetzt** die Akkordeons;
   Tags im Knopf „Tags“ (Gruppen bleiben Chips).
 - Zuschussantrag (2026-10-27): Taschengeld-Grenze aus **allen** Personen auf dem Antrag (Leitungen zählen mit), korrekt abrunden;
