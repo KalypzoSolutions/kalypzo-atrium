@@ -2,6 +2,7 @@ import type { Component } from 'svelte';
 import Backpack from '@lucide/svelte/icons/backpack';
 import Bell from '@lucide/svelte/icons/bell';
 import Box from '@lucide/svelte/icons/box';
+import Boxes from '@lucide/svelte/icons/boxes';
 import Briefcase from '@lucide/svelte/icons/briefcase';
 import Calendar from '@lucide/svelte/icons/calendar';
 import Cloud from '@lucide/svelte/icons/cloud';
@@ -38,6 +39,7 @@ type Icon = Component<any>;
 const ICONS: Record<string, Icon> = {
 	backpack: Backpack,
 	bell: Bell,
+	boxes: Boxes,
 	box: Box,
 	briefcase: Briefcase,
 	calendar: Calendar,

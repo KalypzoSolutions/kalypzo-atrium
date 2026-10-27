@@ -53,3 +53,5 @@ export type { CalendarItem } from './month-calendar';
 export { default as PageTitle } from './PageTitle.svelte';
 export { documentTitle, navLabelFor } from './page-title';
 export { BUSY_SAVE, BUSY_LOAD, BUSY_DELETE, BUSY_SEND, BUSY_UPLOAD } from './busy';
+export { default as BarcodeScanner } from './BarcodeScanner.svelte';
+export { ScanBuffer, listenForScanner, type ScanBufferOptions } from './scan-input';

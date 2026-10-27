@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-26)
+# Projektstand (zuletzt aktualisiert: 2026-10-27)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -310,7 +310,19 @@
   Rest, Bericht mit Block „An den Stamm gespendet“. **Rückmeldefrist** (Migr. 0025, v1.8.0): bis zum Fristtag Link offen und Kasse wartet, danach wird
   ausgezahlt; intern weiter änderbar. Details: `module-actions.md` → „Rückzahlung spenden“. Offen: Spendenquittung, Benachrichtigung bei Wahl.
 
+- **Modul `material` – Materialverwaltung (2026-10-27, v1.0.0)**: Bestand mit Lagerorten (Baum), Kategorien, Artikeln als **Einzelstücke** (eigener
+  Code `M-…`) **oder Menge** (Bestand je Ort/Kiste), Kisten als verschachtelbare Behälter mit Packliste (Soll/Ist), Zustand/Schaden, Ausmustern, Verlauf;
+  **Zelt-Sets** aus konfigurierbaren Set-Typen (Kohte, Jurte …) mit Vollständigkeits-Ampel und Umbau; **direkte Reservierung** (frei oder je Aktion, Karte in
+  der Aktion) mit Live-Verfügbarkeit je Tag und **freier Bahnen-Anfrage** („8 Kohtenbahnen“ – Zuteilung teilt möglichst wenige Sets auf); Ausgabe/Rückgabe
+  per Scan (Kiste nimmt Inhalt mit, Zustand je Stück, Rest als verloren), überfällige Rückgaben (Tagesjob, Amt + Person); Scan-Seite (Handy-Kamera,
+  USB-Scanner, QR öffnet `/modules/material/scan/<code>`), **Etiketten-Designer** (mm, Text mit Platzhaltern, QR/Code 128/DataMatrix, Logo, Rahmen, Linie)
+  und Druck auf A4-Bögen (Startfeld) oder Etikettendrucker-Rollen, Leer-Etiketten mit vorab vergebenen Codes. Core: `core.pdf.labels` (freie
+  Seitengröße), `$lib/sdk/labels`, `BarcodeScanner`/`listenForScanner`, bwip-js + barcode-detector (zxing-wasm selbst gehostet), CSP `'wasm-unsafe-eval'`,
+  `Permissions-Policy camera=(self)`. Details: `module-material.md`. Offen: echte Handy-Kamera (iOS) und Etikettendrucker erst nach Deploy mit HTTPS.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Material (2026-10-27): Einzelstücke **und** Mengen; Reservierung **direkt** (ohne Freigabe); Zelte als **freie Bahnen-Anfrage** (Sets nur Vorschlag,
+  dürfen aufgeteilt werden); Etiketten für A4-Bögen **und** Etikettendrucker; Scannen per Handy-Kamera **und** USB-Handscanner; Ausgabe/Rückgabe per Scan.
 - Rückzahlung spenden (2026-10-27): Standard **auszahlen** (sofort an die Kasse); über den Link auszahlen, alles oder **einen Teil** spenden (ohne IBAN-Abfrage);
   Spende als **eigener Block** in der Abrechnung, keine zusätzliche Einnahme. Frist (2026-10-27): **Kasse wartet bis zum Fristablauf**, danach Link zu,
   **intern weiter änderbar**.

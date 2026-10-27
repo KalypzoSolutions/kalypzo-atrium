@@ -255,7 +255,7 @@ describe('headers: Security-Header', () => {
 		expect(response.headers.get('x-content-type-options')).toBe('nosniff');
 		expect(response.headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
 		expect(response.headers.get('permissions-policy')).toBe(
-			'camera=(), microphone=(), geolocation=()'
+			'camera=(self), microphone=(), geolocation=()'
 		);
 		expect(response.headers.get('x-frame-options')).toBe('DENY');
 	});

@@ -34,6 +34,7 @@ Modul- und Bereichsregeln (`module-*.md`, `website.md`, `ui-design.md` …) lade
 | `rules/module-files.md` | Modul Dateien: eine Ansicht (eigene + Freigegebenes), Upload/Drag & Drop, Rechtsklick, Vorschau, Freigabe an Principals/Stamm, öffentliche Ansicht-/Upload-Links, Papierkorb, Kontingent, Sicherheitsregeln |
 | `rules/module-tasks.md` | Modul Aufgaben: Kanban-Boards, Spalten, Aufgaben mit Zuständigen/Fälligkeit/Priorität, Unteraufgaben, Freigaben, Board je Aktion |
 | `rules/module-website.md` | Modul Website: Banner/Hinweise, FAQ, Blog (Bilder im Text, Mitschreiben, geplantes Veröffentlichen), Website-API `website.content.read` |
+| `rules/module-material.md` | Modul Material: Bestand (Orte, Kisten, Stücke, Mengen), Zelt-Sets, Reservierungen mit Bahnen-Anfrage, Ausgabe/Rückgabe per Scan, Etiketten-Designer/-Druck |
 | `rules/module-whiteboard.md` | Modul Whiteboards: Live-Bearbeitung (SSE + Ops, zuletzt geschrieben gewinnt), Formen/Verbinder/Freihand/Rahmen, Bilder/Dateien, Karten aus Modulen, Versionen, Export PNG/SVG/PDF/Archiv, Touch |
 | `rules/website.md` | Stammeswebsite `website/` = alte Website mit neuem Backend (`WEBSITE_API_KEY`): Anbindung, Routen, Demo |
 | `rules/project-state.md` | Stand, getroffene Entscheidungen, offene Punkte |
@@ -50,6 +51,7 @@ Modul- und Bereichsregeln (`module-*.md`, `website.md`, `ui-design.md` …) lade
 | `node scripts/demo-server.mjs` | Demo-App auf http://localhost:4300 (`admin@demo.test` / `Demo-Admin-2026!`) |
 | `node scripts/screenshots.mjs …` | Screenshots für visuelle Prüfung (siehe `rules/workflow.md`) |
 | `cd website && npm run check && npm run build` | Stammeswebsite prüfen/bauen (eigenes Projekt; 3 bekannte Altfehler, siehe `rules/website.md`) |
+| `node scripts/seed-demo-material.mjs` | Material-Demodaten (Orte, Zelte/Sets, Kisten, Reservierungen, Etikett-Layouts) |
 | `node scripts/seed-demo-whiteboard.mjs` | Whiteboard-Demodaten (aktiviert das Modul, Beispiel-Board mit Aktions-Karte) |
 | `node scripts/seed-demo-website.mjs` | Website-Demodaten + API-Key → `website/.env`; Start `cd website && node --env-file=.env build` (:3001) |
 

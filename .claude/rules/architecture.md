@@ -34,6 +34,7 @@ invalidiert sofort (`invalidateStorageConfigCache`, `storage/config-cache.ts`). 
 Seit 2026-10-22: `permissions.usersWith(key)` (aktive Konten mit wirksamem Recht, ohne Prüfung, für Benachrichtigungen), `mail.sendMessage`
 mit `messageId`/`inReplyTo`/`references` → `{ messageId }`, `mail.send({ autoSubmitted })` (`Auto-Submitted` + `X-EP-Intern`).
 Seit 2026-10-25: `notifications.send(ctx, moduleId, items)` (E-Mail/Web Push nach Wahl der Person, siehe „Benachrichtigungen und PWA“) und `notifications.migratePreferences`.
+`pdf.labels(ctx, { title, format, layout, labels, startIndex?, outlines? })` (seit 2026-10-27, `core/pdf/labels.ts`): Etiketten als PDF (Bogen/Rolle, freie Seitengröße, Barcodes per bwip-js), Modell in `$lib/sdk/labels`.
 `pdf.renderPage(bytes, { page?, maxEdge?, timeoutMs? })` (seit 2026-10-26, `core/pdf/raster.ts`): eine PDF-Seite als PNG (pdf.js + `@napi-rs/canvas`,
 kein Chromium; ≤ 50 MB, ≤ 4 MP, 10 s, ein Lauf je Prozess, Nicht-PDF 422) – für Vorschaubilder, danach durch `images.process` (sharp bleibt für PDF gesperrt).
 `images.process(bytes, { variants })` (sharp, nur Core): Inhalt prüfen (JPEG/PNG/WebP/AVIF/GIF, ≤ 50 MP), nach EXIF drehen,

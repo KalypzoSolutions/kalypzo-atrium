@@ -32,6 +32,7 @@ const MIGRATED_MODULES = [
 	'files',
 	'galleries',
 	'members',
+	'material',
 	'orders',
 	'offices',
 	'tasks',

@@ -41,6 +41,8 @@ const FORMATS: PdfFormat[] = ['A3', 'A4', 'A5', 'Letter', 'Legal'];
 export interface RenderOptions {
 	format: PdfFormat;
 	landscape: boolean;
+	/** Freie Seitengröße in mm (z. B. Etikettenrolle); ersetzt `format`/`landscape` */
+	pageSizeMm?: { width: number; height: number };
 	margins: PdfMargins;
 	displayHeaderFooter: boolean;
 	headerTemplate: string;
@@ -137,8 +139,9 @@ const chromiumRenderer: PdfRenderer = async (html, o) => {
 		const page = await context.newPage();
 		await page.setContent(html, { waitUntil: 'load' });
 		const pdf = await page.pdf({
-			format: o.format,
-			landscape: o.landscape,
+			...(o.pageSizeMm
+				? { width: `${o.pageSizeMm.width}mm`, height: `${o.pageSizeMm.height}mm` }
+				: { format: o.format, landscape: o.landscape }),
 			margin: o.margins,
 			printBackground: true,
 			displayHeaderFooter: o.displayHeaderFooter,
@@ -152,6 +155,11 @@ const chromiumRenderer: PdfRenderer = async (html, o) => {
 };
 
 let renderer: PdfRenderer = chromiumRenderer;
+
+/** Aktueller Renderer (Chromium oder Testadapter) – für weitere Dokumentarten im Core */
+export function pdfRenderer(): PdfRenderer {
+	return renderer;
+}
 
 /** Ersetzt Chromium durch einen Testadapter. */
 export function setPdfRendererForTests(fn: PdfRenderer | undefined): void {

@@ -49,6 +49,7 @@ import {
 import { readAvatar } from './auth/profile';
 import * as pdf from './pdf';
 import { renderPdfPage } from './pdf/raster';
+import { generateLabels } from './pdf/labels';
 import { MESSAGE_ID_RE, previewMailHtml, sendMail } from './mail';
 import { errors } from './errors';
 import { env } from './env';
@@ -377,7 +378,9 @@ export const core = {
 		registerTemplate: pdf.registerTemplate,
 		listTemplates: pdf.listTemplates,
 		/** Eine PDF-Seite als PNG rendern (Vorschaubilder; danach durch `images.process` schicken) */
-		renderPage: renderPdfPage
+		renderPage: renderPdfPage,
+		/** Etiketten (Bogen oder Rolle) aus einem Layout mit Platzhaltern, Barcodes als Vektor */
+		labels: generateLabels
 	},
 	ai: {
 		generate: ai.generate,

@@ -154,6 +154,34 @@ const pdf = await core.pdf.generate(ctx, {
 - Chromium läuft ohne JavaScript, externe Requests werden blockiert.
 - `generate` verlangt nur eine Identität; die Berechtigung `core.pdf.generate` wird im API-Endpunkt geprüft.
 
+### Etiketten (`core.pdf.labels`, 2026-10-27)
+
+```ts
+import { LABEL_FORMAT_PRESETS } from '$lib/sdk/labels';
+const pdf = await core.pdf.labels(ctx, {
+  title: 'Etiketten Kisten',
+  format: LABEL_FORMAT_PRESETS.find((p) => p.key === 'zweckform-3474')!.format, // Bogen oder { kind: 'roll', labelWidthMm, labelHeightMm }
+  layout: { widthMm: 70, heightMm: 37, elements: [
+    { id: 't', type: 'text', x: 2, y: 2, w: 40, h: 8, text: '{name}', fontSizePt: 10, bold: true, align: 'left', valign: 'top', maxLines: 1 },
+    { id: 'q', type: 'barcode', x: 45, y: 2, w: 22, h: 22, symbology: 'qrcode', value: '{url}' }
+  ] },
+  labels: [{ name: 'Kochkiste 1', url: 'https://…' }],   // Platzhalter-Werte je Etikett
+  startIndex: 3, outlines: false                          // angebrochener Bogen, Probedruck-Umrisse
+});
+```
+
+- Modell und reine Rechnung im SDK `$lib/sdk/labels` (Client + Server): `types.ts` (Elemente `text|barcode|image|rect|line` in mm, Formate
+  `sheet`/`roll`), `layout.ts` (`LABEL_FORMAT_PRESETS` Avery Zweckform/Brother/Dymo, `placeLabels`, `labelsPerPage`, `labelPageSize`, `fitLayout` –
+  Layout wird gleichmäßig in das Etikettfeld eingepasst, `fillPlaceholders` `{feld}`, `resolveLayout`, `formatProblem`), `schema.ts` (Zod),
+  `barcode.ts` (`barcodeSvg`/`barcodeDataUrl` über **bwip-js**: QR, Code 128, DataMatrix als skalierbares SVG; im Browser nur dynamisch importieren),
+  `logos.ts` (Wappen/Lilie verkleinert).
+- Server `core/pdf/labels.ts`: `buildLabelsHtml` (absolute mm-Divs, Carlito, alle Werte escaped, Barcodes inline als SVG) → bestehender
+  Chromium-Renderer mit **freier Seitengröße** (`RenderOptions.pageSizeMm`, Rolle = ein Etikett je Seite). Grenzen 2000 Etiketten, Werte ≤ 500 Zeichen.
+  Test `tests/unit/labels.test.ts`.
+- Scannen im Browser: `BarcodeScanner` (`$lib/components/layout`; natives `BarcodeDetector`, sonst Polyfill `barcode-detector`/zxing-wasm mit
+  **selbst gehostetem** WASM, CSP `script-src 'wasm-unsafe-eval'`, `Permissions-Policy: camera=(self)`), USB-Handscanner über
+  `listenForScanner`/`ScanBuffer` (`layout/scan-input.ts`, schnelle Tastenfolge + Enter, nicht in Eingabefeldern außer `data-scan-field`).
+
 ### Briefvorlagen
 
 Vorlagen mit festem Seitenlayout (Briefkopf, Falzmarken, Adressfeld, Fußzeile) liegen **im Code**, nicht in der DB:

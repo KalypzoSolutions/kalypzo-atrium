@@ -33,7 +33,7 @@
 
 ## Header und CSP
 
-`svelte.config.js` (`kit.csp`, Modus `auto` mit Nonces/Hashes): `default-src 'self'`, `script-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, `base-uri 'self'`. Zusätzlich `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, HSTS bei HTTPS. Keine Inline-Skripte (Theme per Cookie serverseitig).
+`svelte.config.js` (`kit.csp`, Modus `auto` mit Nonces/Hashes): `default-src 'self'`, `script-src 'self' 'wasm-unsafe-eval'` (seit 2026-10-27 für den Barcode-Scanner: zxing-wasm, WASM selbst gehostet, kein `eval` für JavaScript), `object-src 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, `base-uri 'self'`. Zusätzlich `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` (`camera=(self)` für das Scannen im Modul Material, sonst Mikrofon/Standort gesperrt), HSTS bei HTTPS. Keine Inline-Skripte (Theme per Cookie serverseitig).
 
 ## Autorisierung
 
