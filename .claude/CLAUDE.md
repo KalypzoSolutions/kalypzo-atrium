@@ -54,6 +54,15 @@ Modul- und Bereichsregeln (`module-*.md`, `website.md`, `ui-design.md` …) lade
 | `node scripts/seed-demo-material.mjs` | Material-Demodaten (Orte, Zelte/Sets, Kisten, Reservierungen, Etikett-Layouts) |
 | `node scripts/seed-demo-whiteboard.mjs` | Whiteboard-Demodaten (aktiviert das Modul, Beispiel-Board mit Aktions-Karte) |
 | `node scripts/seed-demo-website.mjs` | Website-Demodaten + API-Key → `website/.env`; Start `cd website && node --env-file=.env build` (:3001) |
+| `code-review-graph status` / `update` / `build` | Code-Graph (SQLite in `.code-review-graph/`, gitignored) anzeigen / inkrementell / komplett neu |
+
+## Code-Graph (code-review-graph, MCP)
+MCP-Server `code-review-graph` (`.mcp.json`, Python-Paket `code-review-graph`) kennt Symbole, Aufrufe, Importe und Tests aller
+getrackten Dateien (TS, Svelte, JS, SQL). **Vor** breitem Grep/Lesen für Struktur-Fragen nutzen: `semantic_search_nodes_tool`
+(Symbol finden), `query_graph_tool` (Aufrufer/Aufgerufene/Importe/Tests), `get_impact_radius_tool` (Auswirkung einer Änderung),
+`get_review_context_tool`/`detect_changes_tool` (Review des aktuellen Diffs). Skills: `explore-codebase`, `review-changes`,
+`debug-issue`, `refactor-safely`. Hook in `.claude/settings.json` aktualisiert den Graphen nach Edit/Write; Code selbst danach
+trotzdem lesen – der Graph ersetzt keine Verifikation.
 
 ## Die zehn wichtigsten Regeln
 

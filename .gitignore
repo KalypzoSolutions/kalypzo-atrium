@@ -30,3 +30,5 @@ vite.config.ts.timestamp-*
 
 # Coverage
 /coverage
+# Added by code-review-graph
+.code-review-graph/
