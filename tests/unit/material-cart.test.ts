@@ -61,6 +61,8 @@ function entry(partial: Partial<CatalogEntry> & Pick<CatalogEntry, 'kind' | 'id'
 		items: [],
 		code: null,
 		locationName: null,
+		sets: [],
+		parts: [],
 		...partial
 	} satisfies CatalogEntry;
 }
@@ -83,13 +85,45 @@ const catalog: Pick<Catalog, 'entries'> = {
 					free: 1,
 					locationName: 'Regal A',
 					condition: 'ok',
-					thumbUrl: null
+					thumbUrl: null,
+					setId: null,
+					setName: null
 				}
 			]
 		}),
-		entry({ kind: 'item', id: 'item-tampen', name: 'Tampen', code: 'M-000002', total: 4, free: 4 })
+		entry({ kind: 'item', id: 'item-tampen', name: 'Tampen', code: 'M-000002', total: 4, free: 4 }),
+		entry({ kind: 'tent', id: 'tent-jurte', name: 'Jurte (neu)', total: 2, free: 2 })
 	]
 };
+
+/** Felder einer Reservierungszeile, die für den Warenkorb keine Rolle spielen */
+const LINE_EXTRA = {
+	tentId: null,
+	label: '',
+	assignments: [],
+	missing: 0,
+	slotSize: null,
+	mixedSlots: 0,
+	parts: []
+};
+
+describe('Zelte im Warenkorb', () => {
+	it('fasst gleiche Zelte zusammen, gleicht Namen ab und entfernt archivierte', () => {
+		const tent = { kind: 'tent' as const, tentId: 'tent-jurte', name: 'Jurte', thumbUrl: null };
+		const lines = addLine(addLine([], { ...tent, quantity: 1 }), { ...tent, quantity: 2 });
+		expect(lines).toHaveLength(1);
+		expect(lines[0]!.quantity).toBe(3);
+		const r = reconcileCart(
+			[...lines, { kind: 'tent', tentId: 'tent-weg', name: 'Kohte', thumbUrl: null, quantity: 1 }],
+			catalog
+		);
+		expect(r.lines.map((l) => l.name)).toEqual(['Jurte (neu)']);
+		expect(r.removed).toEqual(['Kohte']);
+		expect(
+			parseDraft({ lines: [{ kind: 'tent', tentId: 'x', quantity: 2 }] }, TODAY).lines
+		).toEqual([{ kind: 'tent', tentId: 'x', name: '', thumbUrl: null, quantity: 2 }]);
+	});
+});
 
 describe('Entwurf', () => {
 	it('beginnt heute und endet zwei Tage später', () => {
@@ -228,6 +262,10 @@ describe('fromReservation', () => {
 			createdByName: 'Tessa',
 			createdAt: '2026-06-01T10:00:00Z',
 			canEdit: true,
+			handedOutAt: null,
+			handedOutByName: null,
+			canHandOut: false,
+			notices: [],
 			lines: [
 				{
 					id: 'l1',
@@ -238,7 +276,8 @@ describe('fromReservation', () => {
 					code: null,
 					locationName: null,
 					quantity: 4,
-					thumbUrl: null
+					thumbUrl: null,
+					...LINE_EXTRA
 				},
 				{
 					id: 'l2',
@@ -249,7 +288,21 @@ describe('fromReservation', () => {
 					code: 'M-000002',
 					locationName: 'Kiste 1',
 					quantity: 3,
-					thumbUrl: null
+					thumbUrl: null,
+					...LINE_EXTRA
+				},
+				{
+					id: 'l3',
+					kind: 'tent',
+					typeId: null,
+					itemId: null,
+					name: 'Jurte',
+					code: null,
+					locationName: null,
+					quantity: 2,
+					thumbUrl: null,
+					...LINE_EXTRA,
+					tentId: 'tent-jurte'
 				}
 			]
 		} satisfies Reservation;
@@ -264,7 +317,8 @@ describe('fromReservation', () => {
 		});
 		expect(toLines(d.lines)).toEqual([
 			{ kind: 'type', typeId: 'type-bahn', quantity: 4 },
-			{ kind: 'item', itemId: 'item-tampen', quantity: 3 }
+			{ kind: 'item', itemId: 'item-tampen', quantity: 3 },
+			{ kind: 'tent', tentId: 'tent-jurte', quantity: 2 }
 		]);
 		expect(d.lines[1]!.kind === 'item' && d.lines[1]!.max).toBeNull();
 	});

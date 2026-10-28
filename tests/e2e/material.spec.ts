@@ -81,6 +81,8 @@ test('Lager: Tabelle, Artikel-Dialog zentriert, QR-Link öffnet den Artikel', as
 	const { items } = await setup(page);
 	const first = items[0]!;
 	await page.goto(`${M}?tab=lager`);
+	// Erst tippen, wenn die Tabelle im Browser geladen ist (sonst geht die Eingabe vor der Hydrierung verloren)
+	await expect(page.getByRole('button', { name: `Kohtenbahn ${run}` }).first()).toBeVisible();
 	await page.getByRole('textbox', { name: 'Lager durchsuchen' }).fill(first.code);
 	await expect(page.getByText(first.name).first()).toBeVisible();
 
@@ -100,7 +102,10 @@ test('Reservieren: Katalog → konkreter Artikel → Warenkorb → Reservierung'
 	const title = `E2E ${run}`;
 	await page.goto(`${M}?from=2031-05-02&to=2031-05-03&title=${encodeURIComponent(title)}`);
 	await page.getByRole('searchbox', { name: 'Material suchen' }).fill(`Kohtenbahn ${run}`);
-	await page.getByRole('button', { name: `Kohtenbahn ${run} ansehen` }).first().click();
+	await page
+		.getByRole('button', { name: `Kohtenbahn ${run} ansehen` })
+		.first()
+		.click();
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible();
 	await dialog
@@ -174,4 +179,40 @@ test('Etiketten: Kacheln, Designer, echtes PDF', async ({ page }) => {
 	});
 	expect(pdf.status()).toBe(200);
 	expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
+});
+
+test('Sets und Zelte: Zelt reservieren, Zuteilung im Detail, Ausgabe markieren', async ({
+	page
+}) => {
+	const { type, items } = await setup(page);
+	const set = await api<{ id: string; name: string }>(page, 'POST', `${M}/sets`, {
+		name: `S${run}`,
+		itemIds: items.map((i) => i.id)
+	});
+	const tent = await api<{ id: string }>(page, 'POST', `${M}/tents`, {
+		name: `Mini-Kohte ${run}`,
+		parts: [{ kind: 'type', typeId: type.id, label: 'Bahnen', quantity: 3, fromOneSet: true }]
+	});
+
+	// Lager → Sets und Zelte
+	await page.goto(`${M}?tab=lager&view=sets`);
+	await expect(page.getByRole('heading', { name: `Set ${set.name}` })).toBeVisible();
+	await page.getByRole('tab', { name: /Zelte/ }).click();
+	await expect(page.getByRole('heading', { name: `Mini-Kohte ${run}` })).toBeVisible();
+
+	// Reservieren über die API, Zuteilung im Detail
+	const from = new Date(Date.now() + 40 * 86_400_000).toISOString().slice(0, 10);
+	const r = await api<{ id: string }>(page, 'POST', `${M}/reservations`, {
+		title: `Zeltlager ${run}`,
+		startsOn: from,
+		endsOn: from,
+		lines: [{ kind: 'tent', tentId: tent.id, quantity: 1 }]
+	});
+	await page.goto(`${M}?tab=alle&open=${r.id}`);
+	const dialog = page.getByRole('dialog');
+	await expect(dialog.getByText(`Zelt 1 · Set ${set.name}:`)).toBeVisible();
+	for (const i of items) await expect(dialog.getByText(i.name, { exact: true })).toBeVisible();
+	await dialog.getByRole('button', { name: 'Ausgegeben' }).click();
+	await expect(dialog.getByRole('button', { name: 'Ausgabe zurücknehmen' })).toBeVisible();
+	await expect(dialog.getByText('Ausgegeben', { exact: true }).first()).toBeVisible();
 });

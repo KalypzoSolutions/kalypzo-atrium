@@ -466,7 +466,12 @@ describe('Exporte und Etiketten', () => {
 		const pdf = await get(`/reservations/${r.id}/packing-list?format=pdf`, 'leitung');
 		expect(pdf.status).toBe(200);
 		expect(lastPdfHtml).toContain('Packliste Später');
-		expect(lastPdfHtml).toContain('Kohtenbahn (beliebige)');
+		// Typ-Zeilen stehen mit den zugeteilten Bahnen auf der Packliste; K1.2 ist inzwischen defekt,
+		// die dritte Bahn fehlt deshalb und steht als „noch nicht zugeteilt“ darunter
+		expect(lastPdfHtml).toContain('K1.1');
+		expect(lastPdfHtml).toContain('K1.3');
+		expect(lastPdfHtml).not.toContain('K1.2');
+		expect(lastPdfHtml).toContain('Kohtenbahn (beliebige, noch nicht zugeteilt)');
 		const csv = await get(`/reservations/${r.id}/packing-list?format=csv`, 'leitung');
 		expect(await csv.text()).toContain('Keller');
 		const all = await post('/exports/reservations', 'admin', {

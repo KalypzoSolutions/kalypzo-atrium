@@ -118,3 +118,72 @@ describe('material 0004_rebuild', () => {
 		).toEqual([{ id: 'v1-images' }]);
 	});
 });
+
+describe('material 0005_sets_tents', () => {
+	it('lässt bestehende Reservierungszeilen unverändert und erweitert die Prüfung um Zelte', async () => {
+		// Zustand nach 0004 aus dem Test oben: Typ, Artikel und eine Reservierung mit Typ- und Artikel-Zeile
+		await moduleSql(
+			'material',
+			sql`INSERT INTO types (id, name) VALUES ('00000000-0000-4000-8000-0000000000c1', 'Kohtenbahn')`
+		);
+		await moduleSql(
+			'material',
+			sql`INSERT INTO items (id, type_id, name, code) VALUES
+				('00000000-0000-4000-8000-0000000000c2', '00000000-0000-4000-8000-0000000000c1', 'K1', 'M-000008')`
+		);
+		await moduleSql(
+			'material',
+			sql`INSERT INTO reservations (id, title, starts_on, ends_on) VALUES
+				('00000000-0000-4000-8000-0000000000c3', 'Lager', '2026-07-01', '2026-07-03')`
+		);
+		await moduleSql(
+			'material',
+			sql`INSERT INTO reservation_lines (id, reservation_id, type_id, item_id, quantity) VALUES
+				('00000000-0000-4000-8000-0000000000c4', '00000000-0000-4000-8000-0000000000c3',
+					'00000000-0000-4000-8000-0000000000c1', NULL, 1),
+				('00000000-0000-4000-8000-0000000000c5', '00000000-0000-4000-8000-0000000000c3',
+					NULL, '00000000-0000-4000-8000-0000000000c2', 1)`
+		);
+
+		expect(await migrateModuleTo('material', '0005_sets_tents')).toEqual(['0005_sets_tents']);
+
+		const lines = await moduleSql(
+			'material',
+			sql`SELECT id, tent_id, parent_line_id, label, slot_size FROM reservation_lines ORDER BY id`
+		);
+		expect(lines).toEqual([
+			{
+				id: '00000000-0000-4000-8000-0000000000c4',
+				tent_id: null,
+				parent_line_id: null,
+				label: '',
+				slot_size: null
+			},
+			{
+				id: '00000000-0000-4000-8000-0000000000c5',
+				tent_id: null,
+				parent_line_id: null,
+				label: '',
+				slot_size: null
+			}
+		]);
+		expect(await moduleSql('material', sql`SELECT set_id FROM items`)).toEqual([{ set_id: null }]);
+		// Genau ein Ziel je Zeile (Typ, Artikel oder Zelt)
+		await expect(
+			moduleSql(
+				'material',
+				sql`INSERT INTO reservation_lines (id, reservation_id, quantity) VALUES
+					('00000000-0000-4000-8000-0000000000c6', '00000000-0000-4000-8000-0000000000c3', 1)`
+			)
+		).rejects.toThrow();
+		// slot_size nur an Typ-Zeilen
+		await expect(
+			moduleSql(
+				'material',
+				sql`INSERT INTO reservation_lines (id, reservation_id, item_id, quantity, slot_size) VALUES
+					('00000000-0000-4000-8000-0000000000c7', '00000000-0000-4000-8000-0000000000c3',
+						'00000000-0000-4000-8000-0000000000c2', 1, 2)`
+			)
+		).rejects.toThrow();
+	});
+});
