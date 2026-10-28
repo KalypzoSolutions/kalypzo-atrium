@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-27)
+# Projektstand (zuletzt aktualisiert: 2026-10-28)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -326,10 +326,17 @@
   Mengenartikel, Format L7159 (63,5 × 33,9 mm), Schwarz-Weiß-Wappen/-Lilie, senkrechte Linien im Designer, PDF Ausgabeliste und Bestandsliste.
   Details: `module-material.md`.
 
+- **Material neu aufgebaut (2026-10-28, `material` v2.0.0, Migr. 0004)**: altes Modell (Stücke/Kisten/Mengen, Zelt-Sets, Ausgabe/Rückgabe, eigene
+  Bereichsseiten) verworfen. Neu: Lager als große Tabelle mit **Typen** und **Lagerartikeln** (mit Anzahl, Typ optional), Kategorien mit Icon/Farbe
+  (gemeinsam mit `files` über `$lib/sdk/style-presets.ts`), flache Lagerorte, Reservieren wie „Bestellen“ (Katalog + Warenkorb) nach Typ **und** Artikel
+  für Aktion/Gruppe/Sonstiges, Zustand/Schäden, Bilder, Scannen (Kamera/USB) in Reservieren und Lager, Etiketten-Kacheln + Etikettgrößen, Exporte
+  (Materialliste nach Kategorie/Ort, Packliste, Reservierungsübersicht als PDF/CSV). Details: `module-material.md`.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
-- Material (2026-10-27, Nachtrag): Aufbau **„Ausleihen zuerst“**; Reservieren für alle mit dem Recht `material.reservation.create` (keine Rollenänderung).
-- Material (2026-10-27): Einzelstücke **und** Mengen; Reservierung **direkt** (ohne Freigabe); Zelte als **freie Bahnen-Anfrage** (Sets nur Vorschlag,
-  dürfen aufgeteilt werden); Etiketten für A4-Bögen **und** Etikettendrucker; Scannen per Handy-Kamera **und** USB-Handscanner; Ausgabe/Rückgabe per Scan.
+- Material (2026-10-28, ersetzt die Entscheidungen vom 2026-10-27): altes Modul **verworfen** (Altdaten gelöscht); Typen + Lagerartikel mit Anzahl,
+  Typ optional; Reservieren wie „Bestellen“ nach Typ **und** Artikel, mit Zeitraum und Zweck Aktion/Gruppe/Sonstiges; **keine** Ausgabe/Rückgabe, **keine**
+  Zelt-Sets; Zustand/Schäden und Bilder bleiben; Lagerorte flach; Reiter wie Bestellungen; Etiketten-Designer bleibt (Größen im Menü, Kacheln);
+  Scannen per Kamera (QR/Strichcode, auch vom Bildschirm) oder USB; Artikel-Popup zentriert.
 - Rückzahlung spenden (2026-10-27): Standard **auszahlen** (sofort an die Kasse); über den Link auszahlen, alles oder **einen Teil** spenden (ohne IBAN-Abfrage);
   Spende als **eigener Block** in der Abrechnung, keine zusätzliche Einnahme. Frist (2026-10-27): **Kasse wartet bis zum Fristablauf**, danach Link zu,
   **intern weiter änderbar**.

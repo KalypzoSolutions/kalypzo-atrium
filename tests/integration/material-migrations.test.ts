@@ -56,3 +56,65 @@ describe('material 0002_article_codes', () => {
 		).rejects.toThrow();
 	});
 });
+
+describe('material 0004_rebuild', () => {
+	it('verwirft den alten Bestand und stellt Etikett-Layouts auf die neuen Ziele um', async () => {
+		// Zustand nach 0002 aus dem Test oben: Artikel + Layout mit Ziel `article`
+		expect(await migrateModuleTo('material', '0003_set_bulk_lines')).toEqual([
+			'0003_set_bulk_lines'
+		]);
+		await moduleSql(
+			'material',
+			sql`INSERT INTO locations (id, name, code) VALUES
+				('00000000-0000-4000-8000-0000000000b1', 'Keller', 'L-000001')`
+		);
+		await moduleSql(
+			'material',
+			sql`INSERT INTO label_templates (id, name, target, layout, format_key) VALUES
+				('00000000-0000-4000-8000-0000000000ab', 'Stück', 'unit',
+					'{"elements":[{"text":"{article} {name}"}]}'::jsonb, 'avery-l7159'),
+				('00000000-0000-4000-8000-0000000000ac', 'Ort', 'location', '{}'::jsonb, 'avery-l7159')`
+		);
+		await moduleSql(
+			'material',
+			sql`INSERT INTO label_formats (id, name, format) VALUES
+				('00000000-0000-4000-8000-0000000000ad', 'Eigen', '{"kind":"roll"}'::jsonb)`
+		);
+		await moduleSql('material', sql`INSERT INTO code_counters (prefix, value) VALUES ('M', 7)`);
+
+		expect(await migrateModuleTo('material', '0004_rebuild')).toEqual(['0004_rebuild']);
+
+		const templates = await moduleSql(
+			'material',
+			sql`SELECT name, target, layout::text AS layout FROM label_templates ORDER BY name`
+		);
+		expect(templates.map((t) => [t.name, t.target])).toEqual([
+			['Ort', 'location'],
+			['Regal', 'item'],
+			['Stück', 'item']
+		]);
+		expect(String(templates.find((t) => t.name === 'Stück')!.layout)).toContain('{type} {name}');
+		expect(await moduleSql('material', sql`SELECT name FROM label_formats`)).toEqual([
+			{ name: 'Eigen' }
+		]);
+		const counters = await moduleSql(
+			'material',
+			sql`SELECT prefix, value FROM code_counters ORDER BY prefix`
+		);
+		expect(counters.map((c) => [c.prefix, Number(c.value)])).toEqual([['M', 7]]);
+		// Alte Tabellen sind weg, neue leer
+		await expect(moduleSql('material', sql`SELECT 1 FROM articles`)).rejects.toThrow();
+		expect(await moduleSql('material', sql`SELECT id FROM locations`)).toEqual([]);
+		expect(await moduleSql('material', sql`SELECT id FROM items`)).toEqual([]);
+		await expect(
+			moduleSql(
+				'material',
+				sql`INSERT INTO label_templates (id, name, target, layout, format_key)
+					VALUES ('00000000-0000-4000-8000-0000000000ae', 'X', 'set', '{}'::jsonb, 'avery-l7159')`
+			)
+		).rejects.toThrow();
+		expect(
+			await moduleSql('material', sql`SELECT id FROM legacy_cleanup WHERE done_at IS NULL`)
+		).toEqual([{ id: 'v1-images' }]);
+	});
+});

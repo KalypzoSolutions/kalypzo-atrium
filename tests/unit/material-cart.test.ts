@@ -1,161 +1,304 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-	articleTotals,
-	cartLines,
-	cartSummary,
-	clampCart,
-	emptyCart,
-	freeFromAvailability,
-	maxArticleQuantity,
-	maxTentCount,
-	nextWeekend,
-	parseCart,
-	partsText,
-	problemsByArticle,
-	setArticleQuantity,
-	setTentCount,
-	type Cart
-} from '$lib/modules/material/pages/borrow/cart';
+	CART_KEY,
+	addLine,
+	cartCount,
+	clearDraft,
+	editCartKey,
+	emptyDraft,
+	fromReservation,
+	itemQuantityInCart,
+	lineKey,
+	loadDraft,
+	parseDraft,
+	reconcileCart,
+	removeLine,
+	saveDraft,
+	setQuantity,
+	shiftDate,
+	toLines,
+	typeQuantityInCart,
+	type CartLine
+} from '$lib/modules/material/pages/reserve/cart';
+import type { Catalog, CatalogEntry, Reservation } from '$lib/modules/material/schemas';
 
-const bahn = { id: 'bahn', name: 'Kohtenbahn', unitLabel: 'Stück', kind: 'unit' as const };
-const kreuz = { id: 'kreuz', name: 'Kohtenkreuz', unitLabel: 'Stück', kind: 'unit' as const };
-const tasse = { id: 'tasse', name: 'Tasse', unitLabel: 'Stück', kind: 'bulk' as const };
+const TODAY = '2026-10-28';
 
-const kohte = {
-	id: 'kohte',
-	name: 'Kohte',
-	free: 2,
-	parts: [
-		{ articleId: 'bahn', articleName: 'Kohtenbahn', quantity: 4 },
-		{ articleId: 'kreuz', articleName: 'Kohtenkreuz', quantity: 1 }
+const bahnen: CartLine = {
+	kind: 'type',
+	typeId: 'type-bahn',
+	name: 'Kohtenbahn',
+	thumbUrl: null,
+	quantity: 3
+};
+const k11: CartLine = {
+	kind: 'item',
+	itemId: 'item-k11',
+	name: 'Kohtenbahn K1.1',
+	code: 'M-000001',
+	thumbUrl: null,
+	quantity: 1,
+	max: 1
+};
+const tampen: CartLine = {
+	kind: 'item',
+	itemId: 'item-tampen',
+	name: 'Tampen',
+	code: 'M-000002',
+	thumbUrl: null,
+	quantity: 5,
+	max: 21
+};
+
+function entry(partial: Partial<CatalogEntry> & Pick<CatalogEntry, 'kind' | 'id' | 'name'>) {
+	return {
+		description: '',
+		category: null,
+		images: [],
+		thumbUrl: null,
+		total: 1,
+		free: 1,
+		items: [],
+		code: null,
+		locationName: null,
+		...partial
+	} satisfies CatalogEntry;
+}
+
+const catalog: Pick<Catalog, 'entries'> = {
+	entries: [
+		entry({
+			kind: 'type',
+			id: 'type-bahn',
+			name: 'Kohtenbahn (neu)',
+			thumbUrl: '/thumb/bahn',
+			total: 8,
+			free: 6,
+			items: [
+				{
+					id: 'item-k11',
+					name: 'Kohtenbahn K1.1',
+					code: 'M-000001',
+					quantity: 1,
+					free: 1,
+					locationName: 'Regal A',
+					condition: 'ok',
+					thumbUrl: null
+				}
+			]
+		}),
+		entry({ kind: 'item', id: 'item-tampen', name: 'Tampen', code: 'M-000002', total: 4, free: 4 })
 	]
 };
-const jurte = {
-	id: 'jurte',
-	name: 'Jurte',
-	free: 1,
-	parts: [{ articleId: 'bahn', articleName: 'Kohtenbahn', quantity: 8 }]
-};
 
-describe('Merkliste', () => {
-	it('Artikel hinzufügen, ändern, mit 0 entfernen', () => {
-		let c = setArticleQuantity(emptyCart(), tasse, 10);
-		c = setArticleQuantity(c, bahn, 2);
-		expect(c.articles.map((a) => [a.articleId, a.quantity])).toEqual([
-			['tasse', 10],
-			['bahn', 2]
-		]);
-		c = setArticleQuantity(c, tasse, 12);
-		expect(c.articles[0]!.quantity).toBe(12);
-		c = setArticleQuantity(c, tasse, 0);
-		expect(c.articles.map((a) => a.articleId)).toEqual(['bahn']);
+describe('Entwurf', () => {
+	it('beginnt heute und endet zwei Tage später', () => {
+		const d = emptyDraft(TODAY);
+		expect(d.from).toBe(TODAY);
+		expect(d.to).toBe('2026-10-30');
+		expect(d.lines).toEqual([]);
+		expect(d.purpose).toBe('other');
 	});
 
-	it('ungültige Mengen werden geklemmt (NaN, negativ, Kommazahl)', () => {
-		expect(setArticleQuantity(emptyCart(), tasse, Number.NaN).articles).toEqual([]);
-		expect(setArticleQuantity(emptyCart(), tasse, -3).articles).toEqual([]);
-		expect(setArticleQuantity(emptyCart(), tasse, 2.9).articles[0]!.quantity).toBe(2);
+	it('rechnet Datumsgrenzen über Monats- und Jahreswechsel', () => {
+		expect(shiftDate('2026-12-31', 1)).toBe('2027-01-01');
+		expect(shiftDate('2026-03-01', -1)).toBe('2026-02-28');
 	});
 
-	it('Zelt → Teile als Artikel-Zeilen, gleiche Artikel zusammengezählt', () => {
-		let c = setTentCount(emptyCart(), kohte, 2);
-		c = setTentCount(c, jurte, 1);
-		c = setArticleQuantity(c, bahn, 3);
-		c = setArticleQuantity(c, tasse, 20);
-		// Bahnen: 2 × 4 (Kohten) + 8 (Jurte) + 3 (direkt) = 19; Kreuze: 2 × 1
-		expect(Object.fromEntries(articleTotals(c))).toEqual({ bahn: 19, kreuz: 2, tasse: 20 });
-		expect(cartLines(c)).toEqual([
-			{ kind: 'article', articleId: 'bahn', quantity: 19 },
-			{ kind: 'article', articleId: 'kreuz', quantity: 2 },
-			{ kind: 'article', articleId: 'tasse', quantity: 20 }
-		]);
-		expect(cartSummary(c)).toEqual({ positions: 4, items: 41 });
-		expect(partsText(c.tents[0]!.parts)).toBe('4 × Kohtenbahn, 1 × Kohtenkreuz');
-	});
-
-	it('Stepper-Grenzen: Artikel abzüglich Zelte, Zelte abzüglich übriger Merkliste', () => {
-		let c = setTentCount(emptyCart(), kohte, 1);
-		expect(maxArticleQuantity(c, 'bahn', 10)).toBe(6);
-		expect(maxArticleQuantity(c, 'bahn', 3)).toBe(0);
-		c = setArticleQuantity(c, bahn, 3);
-		const free = new Map([
-			['bahn', 10],
-			['kreuz', 5]
-		]);
-		// Kohte: (10 − 3 direkt) / 4 = 1 (eigene Kohte zählt nicht gegen sich selbst)
-		expect(maxTentCount(c, kohte, free)).toBe(1);
-		// Jurte: (10 − 4 Kohte − 3 direkt) / 8 = 0
-		expect(maxTentCount(c, jurte, free)).toBe(0);
-		// Ohne Angaben gilt die freie Zahl des Zelttyps
-		expect(maxTentCount(emptyCart(), kohte, new Map())).toBe(2);
-	});
-
-	it('Begrenzen: erst Zelte, dann Artikel mit dem Rest; unbekannte bleiben', () => {
-		let c: Cart = setTentCount(emptyCart(), kohte, 2);
-		c = setArticleQuantity(c, bahn, 5);
-		c = setArticleQuantity(c, tasse, 50);
-		const out = clampCart(
-			c,
-			new Map([
-				['bahn', 6],
-				['kreuz', 9]
-			])
-		);
-		// 6 Bahnen → 1 Kohte (4), Rest 2 direkt; Tassen unbekannt → 50
-		expect(out.tents.map((t) => t.count)).toEqual([1]);
-		expect(out.articles.map((a) => [a.articleId, a.quantity])).toEqual([
-			['bahn', 2],
-			['tasse', 50]
-		]);
-		expect(clampCart(c, new Map([['bahn', 0]]))).toEqual({
-			tents: [],
-			articles: [c.articles[1]!]
-		});
-	});
-
-	it('Verfügbarkeit je Zeile auf Artikel abbilden', () => {
-		const lines = [{ articleId: 'bahn' }, { articleId: 'kreuz' }, { articleId: 'tasse' }];
-		const res = [
-			{ index: 0, ok: false, available: 6, message: 'Nur 6 frei', notes: [] },
-			{ index: 1, ok: true, available: 9, message: null, notes: [] },
-			{ index: 2, ok: false, available: null, message: null, notes: [] }
-		];
-		expect(Object.fromEntries(freeFromAvailability(lines, res))).toEqual({ bahn: 6, kreuz: 9 });
-		expect(Object.fromEntries(problemsByArticle(lines, res))).toEqual({
-			bahn: { message: 'Nur 6 frei', available: 6 },
-			tasse: { message: 'Im Zeitraum nicht frei', available: null }
-		});
-	});
-
-	it('Gespeicherte Merkliste robust lesen', () => {
-		const good = setTentCount(setArticleQuantity(emptyCart(), kreuz, 2), kohte, 1);
-		expect(parseCart(JSON.parse(JSON.stringify(good)))).toEqual(good);
-		expect(parseCart(null)).toEqual(emptyCart());
-		expect(
-			parseCart({
-				articles: [
-					{ articleId: 'a', name: 'A', quantity: 0 },
-					{ articleId: 'b', name: 'B', quantity: 2, kind: 'x' },
-					{ articleId: 'b', name: 'B', quantity: 3 }
+	it('liest kaputte oder fremde Daten tolerant', () => {
+		expect(parseDraft(null, TODAY)).toEqual(emptyDraft(TODAY));
+		expect(parseDraft('x', TODAY)).toEqual(emptyDraft(TODAY));
+		const d = parseDraft(
+			{
+				lines: [
+					bahnen,
+					{ kind: 'type', typeId: 'type-bahn', quantity: 1 }, // doppelt → verworfen
+					{ kind: 'set', id: 'x' }, // unbekannte Art
+					{ ...tampen, quantity: 999 }, // über der Anzahl → geklemmt
+					{ ...k11, quantity: Number.NaN }
 				],
-				tents: [{ templateId: 't', name: 'T', count: 1, parts: [] }]
-			})
-		).toEqual({
-			articles: [{ articleId: 'b', name: 'B', unitLabel: 'Stück', kind: 'unit', quantity: 2 }],
-			tents: []
-		});
+				from: '2026-11-01',
+				to: '2026-11-03',
+				purpose: 'quatsch',
+				title: 'Lager',
+				actionId: 42
+			},
+			TODAY
+		);
+		expect(d.lines.map(lineKey)).toEqual(['t:type-bahn', 'i:item-tampen', 'i:item-k11']);
+		expect(d.lines[1]!.quantity).toBe(21);
+		expect(d.lines[2]!.quantity).toBe(1);
+		expect(d.purpose).toBe('other');
+		expect(d.actionId).toBeNull();
+		expect(d.from).toBe('2026-11-01');
+	});
+
+	it('setzt einen vergangenen Zeitraum auf heute zurück', () => {
+		const old = parseDraft({ from: '2026-01-01', to: '2026-01-03' }, TODAY);
+		expect([old.from, old.to]).toEqual([TODAY, '2026-10-30']);
+		const running = parseDraft({ from: '2026-10-20', to: '2026-11-02' }, TODAY);
+		expect([running.from, running.to]).toEqual([TODAY, '2026-11-02']);
+		const swapped = parseDraft({ from: '2026-11-05', to: '2026-11-04' }, TODAY);
+		expect(swapped.to).toBe('2026-11-05');
+		// Bearbeiten: laufende Reservierung behält ihren Beginn
+		const kept = parseDraft({ from: '2026-10-20', to: '2026-11-02' }, TODAY, { keepDates: true });
+		expect([kept.from, kept.to]).toEqual(['2026-10-20', '2026-11-02']);
 	});
 });
 
-describe('Kommendes Wochenende', () => {
-	it.each([
-		['2026-10-26', '2026-10-31'], // Montag
-		['2026-10-30', '2026-10-31'], // Freitag
-		['2026-10-31', '2026-10-31'], // Samstag → dieses
-		['2026-11-01', '2026-11-07'] // Sonntag → nächstes
-	])('%s → Samstag %s', (today, sat) => {
-		const w = nextWeekend(today);
-		expect(w.from).toBe(sat);
-		expect(new Date(`${w.to}T12:00:00Z`).getUTCDay()).toBe(0);
+describe('Zeilen', () => {
+	it('fasst gleiche Typen und Artikel zusammen', () => {
+		let lines = addLine([], bahnen);
+		lines = addLine(lines, { ...bahnen, quantity: 2 });
+		lines = addLine(lines, tampen);
+		expect(lines).toHaveLength(2);
+		expect(typeQuantityInCart(lines, 'type-bahn')).toBe(5);
+		expect(cartCount(lines)).toBe(10);
+	});
+
+	it('begrenzt Artikel auf ihre Anzahl', () => {
+		let lines = addLine([], tampen);
+		lines = addLine(lines, { ...tampen, quantity: 30 });
+		expect(itemQuantityInCart(lines, 'item-tampen')).toBe(21);
+		lines = addLine([], k11);
+		lines = addLine(lines, k11);
+		expect(itemQuantityInCart(lines, 'item-k11')).toBe(1);
+	});
+
+	it('setzt und entfernt Anzahlen (mindestens 1)', () => {
+		let lines: CartLine[] = [bahnen, tampen];
+		lines = setQuantity(lines, 't:type-bahn', 0);
+		expect(lines[0]!.quantity).toBe(1);
+		lines = setQuantity(lines, 'i:item-tampen', 50);
+		expect(lines[1]!.quantity).toBe(21);
+		lines = setQuantity(lines, 'i:item-tampen', 7.8);
+		expect(lines[1]!.quantity).toBe(7);
+		lines = removeLine(lines, 't:type-bahn');
+		expect(lines.map(lineKey)).toEqual(['i:item-tampen']);
+	});
+
+	it('baut die API-Zeilen', () => {
+		expect(toLines([bahnen, tampen])).toEqual([
+			{ kind: 'type', typeId: 'type-bahn', quantity: 3 },
+			{ kind: 'item', itemId: 'item-tampen', quantity: 5 }
+		]);
+	});
+});
+
+describe('reconcileCart', () => {
+	it('aktualisiert Namen und Obergrenzen und entfernt Unbekanntes', () => {
+		const gone: CartLine = { ...bahnen, typeId: 'type-weg', name: 'Jurtenbahn' };
+		const r = reconcileCart([bahnen, gone, { ...tampen, quantity: 10 }, k11], catalog);
+		expect(r.changed).toBe(true);
+		expect(r.removed).toEqual(['Jurtenbahn']);
+		expect(r.lines.map(lineKey)).toEqual(['t:type-bahn', 'i:item-tampen', 'i:item-k11']);
+		expect(r.lines[0]!.name).toBe('Kohtenbahn (neu)');
+		expect(r.lines[0]!.thumbUrl).toBe('/thumb/bahn');
+		const t = r.lines[1]!;
+		expect(t.kind === 'item' && t.max).toBe(4);
+		expect(t.quantity).toBe(4);
+		// Artikel eines Typs bekommt das Bild des Typs
+		expect(r.lines[2]!.thumbUrl).toBe('/thumb/bahn');
+	});
+
+	it('meldet keine Änderung, wenn alles passt', () => {
+		const first = reconcileCart([bahnen, k11], catalog).lines;
+		const again = reconcileCart(first, catalog);
+		expect(again.changed).toBe(false);
+		expect(again.removed).toEqual([]);
+	});
+});
+
+describe('fromReservation', () => {
+	it('übernimmt Angaben und Zeilen', () => {
+		const r = {
+			id: 'r1',
+			title: 'Sommerlager',
+			startsOn: '2026-07-01',
+			endsOn: '2026-07-10',
+			status: 'reserved',
+			state: 'upcoming',
+			purpose: 'action',
+			actionId: 'a1',
+			actionName: 'Sommerlager 2026',
+			groupId: null,
+			groupName: null,
+			notes: 'Bitte trocken lagern',
+			createdBy: 'u1',
+			createdByName: 'Tessa',
+			createdAt: '2026-06-01T10:00:00Z',
+			canEdit: true,
+			lines: [
+				{
+					id: 'l1',
+					kind: 'type',
+					typeId: 'type-bahn',
+					itemId: null,
+					name: 'Kohtenbahn',
+					code: null,
+					locationName: null,
+					quantity: 4,
+					thumbUrl: null
+				},
+				{
+					id: 'l2',
+					kind: 'item',
+					typeId: null,
+					itemId: 'item-tampen',
+					name: 'Tampen',
+					code: 'M-000002',
+					locationName: 'Kiste 1',
+					quantity: 3,
+					thumbUrl: null
+				}
+			]
+		} satisfies Reservation;
+		const d = fromReservation(r);
+		expect(d).toMatchObject({
+			from: '2026-07-01',
+			to: '2026-07-10',
+			title: 'Sommerlager',
+			purpose: 'action',
+			actionId: 'a1',
+			notes: 'Bitte trocken lagern'
+		});
+		expect(toLines(d.lines)).toEqual([
+			{ kind: 'type', typeId: 'type-bahn', quantity: 4 },
+			{ kind: 'item', itemId: 'item-tampen', quantity: 3 }
+		]);
+		expect(d.lines[1]!.kind === 'item' && d.lines[1]!.max).toBeNull();
+	});
+});
+
+describe('sessionStorage', () => {
+	let store: Map<string, string>;
+	beforeEach(() => {
+		store = new Map();
+		vi.stubGlobal('sessionStorage', {
+			getItem: (k: string) => store.get(k) ?? null,
+			setItem: (k: string, v: string) => void store.set(k, v),
+			removeItem: (k: string) => void store.delete(k)
+		});
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('speichert getrennt für Entwurf und Bearbeiten', () => {
+		const d = { ...emptyDraft(TODAY), title: 'Neu', lines: [bahnen] };
+		saveDraft(CART_KEY, d);
+		saveDraft(editCartKey('r1'), { ...d, title: 'Bearbeitet' });
+		expect(loadDraft(CART_KEY, TODAY)?.title).toBe('Neu');
+		expect(loadDraft(editCartKey('r1'), TODAY)?.title).toBe('Bearbeitet');
+		clearDraft(editCartKey('r1'));
+		expect(loadDraft(editCartKey('r1'), TODAY)).toBeNull();
+		expect(loadDraft(CART_KEY, TODAY)?.lines).toHaveLength(1);
+	});
+
+	it('übersteht kaputtes JSON und fehlenden Speicher', () => {
+		store.set(CART_KEY, '{kaputt');
+		expect(loadDraft(CART_KEY, TODAY)).toBeNull();
+		vi.stubGlobal('sessionStorage', undefined);
+		expect(loadDraft(CART_KEY, TODAY)).toBeNull();
+		expect(() => saveDraft(CART_KEY, emptyDraft(TODAY))).not.toThrow();
+		expect(() => clearDraft(CART_KEY)).not.toThrow();
 	});
 });

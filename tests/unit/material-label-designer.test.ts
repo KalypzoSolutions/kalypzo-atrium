@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { labelLayoutSchema, type LabelLayout } from '$lib/sdk/labels';
+import { labelLayoutSchema, placeholdersIn, type LabelLayout } from '$lib/sdk/labels';
+import { LABEL_FIELDS, LABEL_TARGETS } from '$lib/modules/material/schemas';
 import {
 	createElement,
 	createHistory,
@@ -158,8 +159,10 @@ describe('Etiketten-Designer: Mitskalieren und Ebenen', () => {
 	});
 
 	it('liefert Beispielwerte je Ziel', () => {
-		expect(sampleValues('set').name).toBe('Kohte 3');
+		expect(sampleValues('item').name).toBe('Kohtenbahn K1.1');
+		expect(sampleValues('location').name).toBe('Kiste 1');
 		expect(sampleValues('blank').name).toBeUndefined();
+		expect(sampleValues('blank').code).toBe('M-000200');
 	});
 });
 
@@ -196,16 +199,38 @@ describe('Etiketten: Startlayouts', () => {
 		}
 	});
 
+	it('Startlayouts nutzen nur die Ziele item/location/blank und deren Platzhalter', () => {
+		for (const s of LABEL_STARTERS) {
+			expect(LABEL_TARGETS, s.id).toContain(s.target);
+			const known = new Set(LABEL_FIELDS[s.target].map((f) => f.key));
+			const layout = starterLayout(s, s.widthMm, s.heightMm);
+			const used = layout.elements.flatMap((e) =>
+				e.type === 'text'
+					? placeholdersIn(e.text)
+					: e.type === 'barcode'
+						? placeholdersIn(e.value)
+						: []
+			);
+			for (const key of used) expect(known.has(key), `${s.id}: {${key}}`).toBe(true);
+		}
+		for (const t of LABEL_TARGETS) {
+			expect(
+				LABEL_STARTERS.some((s) => s.target === t),
+				t
+			).toBe(true);
+		}
+	});
+
 	it('Regalfach/Artikel und Kiste klein liegen auf Avery L7159, mindestens ein s/w-Logo', () => {
-		const shelf = LABEL_STARTERS.find((s) => s.id === 'shelf-article');
-		const box = LABEL_STARTERS.find((s) => s.id === 'box-small');
-		expect(shelf?.target).toBe('article');
+		const shelf = LABEL_STARTERS.find((s) => s.id === 'shelf-item');
+		const box = LABEL_STARTERS.find((s) => s.id === 'item-small');
+		expect(shelf?.target).toBe('item');
 		expect(shelf?.formatKey).toBe('avery-l7159');
 		expect(box?.formatKey).toBe('avery-l7159');
 		const preset = LABEL_FORMAT_PRESETS.find((p) => p.key === 'avery-l7159')!;
 		expect(shelf!.widthMm).toBe(preset.format.labelWidthMm);
 		expect(shelf!.heightMm).toBe(preset.format.labelHeightMm);
-		const fields = new Set(['name', 'category', 'locations', 'url', 'code']);
+		const fields = new Set(['name', 'category', 'location', 'url', 'code']);
 		const used = shelf!.elements.flatMap((e) =>
 			e.type === 'text' ? [e.text] : e.type === 'barcode' ? [e.value] : []
 		);

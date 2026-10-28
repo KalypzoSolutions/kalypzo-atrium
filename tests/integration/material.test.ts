@@ -16,26 +16,26 @@ import { setPdfRendererForTests } from '$lib/server/core/pdf';
 import { runJobNow } from '$lib/server/core/jobs';
 import { setTodayForTests } from '$lib/sdk/dates';
 import materialModule from '$lib/modules/material/module';
-import { LABEL_LOGO_DATA } from '$lib/sdk/labels/logos';
 import type {
-	Article,
 	Catalog,
-	FindHit,
+	Category,
 	CodeTarget,
+	Inventory,
+	Item,
+	ItemDetail,
 	LabelTemplate,
 	LineAvailability,
 	Location,
-	MaterialSet,
+	MaterialType,
+	Overview,
 	Reservation,
-	SetTemplate,
-	StockEntry,
-	UnitDetail,
-	UnitSummary
+	ReservationListItem,
+	ReservationPage
 } from '$lib/modules/material/schemas';
 import type { RequestContext } from '$lib/sdk/types';
 
-// Modul „Material“: Bestand (Orte, Artikel, Stücke, Kisten, Mengen), Sets, Reservierungen mit
-// Verfügbarkeit und Bahnen-Anfrage, Ausgabe/Rückgabe, Codes, Etiketten, Rechte, Modul aus.
+// Modul „Material“ v2: Kategorien (Icon/Farbe), Lagerorte, Typen und Lagerartikel, Reservierungen nach Typ
+// und Artikel mit Verfügbarkeit, Zweck, Rechte, Zustand melden, Codes, Exporte, Etiketten, Modul aus.
 
 const PW = 'material-password-123';
 let close: () => Promise<void>;
@@ -61,9 +61,11 @@ function api(path: string, init: RequestInit & { token?: string; json?: unknown 
 }
 const M = (path: string, who: string, init: Parameters<typeof api>[1] = {}) =>
 	api(`/modules/material${path}`, { token: keys[who], ...init });
+const get = (path: string, who: string) => M(path, who);
 const post = (path: string, who: string, json: unknown = {}) =>
 	M(path, who, { method: 'POST', json });
 const patch = (path: string, who: string, json: unknown) => M(path, who, { method: 'PATCH', json });
+const del = (path: string, who: string) => M(path, who, { method: 'DELETE' });
 
 async function data<T>(res: Response, status = 200): Promise<T> {
 	const body = await res.json();
@@ -89,17 +91,15 @@ async function mkUser(name: string, permissions: string[]) {
 	keys[name] = (await createApiKey(ctx, { name: 'k', scopes: [...ctx.permissions] })).key;
 }
 
-let raum: Location;
-let regal: Location;
-let bahn: Article;
-let kreuz: Article;
-let tassen: Article;
-let kiste: Article;
-let bahnen: UnitSummary[] = [];
-let kochkiste: UnitSummary;
-let kohte: SetTemplate;
-let kohte1: MaterialSet;
-let kohte2: MaterialSet;
+let zelte: Category;
+let kiste1: Location;
+let keller: Location;
+let kohtenbahn: MaterialType;
+let bahnen: Item[] = [];
+let tampen: Item;
+let ersteReservierung: Reservation;
+
+const period = { startsOn: '2026-07-01', endsOn: '2026-07-05' };
 
 beforeAll(async () => {
 	({ close } = await useTestDatabase());
@@ -139,364 +139,362 @@ afterAll(async () => {
 	await close();
 });
 
-describe('Bestand', () => {
-	it('legt Orte als Baum an und verhindert Zyklen', async () => {
-		raum = await data<Location>(await post('/locations', 'admin', { name: 'Materialraum' }), 201);
-		regal = await data<Location>(
-			await post('/locations', 'admin', { name: 'Regal A', parentId: raum.id }),
+describe('Lager', () => {
+	it('Kategorien mit Icon und Farbe, unbekanntes Icon → 422', async () => {
+		zelte = await data<Category>(
+			await post('/categories', 'admin', { name: 'Zelte', icon: 'tent', color: '#16A34A' }),
 			201
 		);
-		expect(regal.path).toBe('Materialraum › Regal A');
-		expect(regal.code).toMatch(/^L-\d{6}$/);
+		expect(zelte).toMatchObject({ name: 'Zelte', icon: 'tent', color: '#16a34a', count: 0 });
 		const err = await fail(
-			await patch(`/locations/${raum.id}`, 'admin', { parentId: regal.id }),
+			await post('/categories', 'admin', { name: 'X', icon: 'gibt-es-nicht-xyz' }),
 			422
 		);
 		expect(err.code).toBe('validation_failed');
-		expect(
-			(await fail(await M(`/locations/${raum.id}`, 'admin', { method: 'DELETE' }), 409)).message
-		).toMatch(/Unterorte/);
+		await fail(await post('/categories', 'nurlesen', { name: 'Y' }), 403);
 	});
 
-	it('Artikel und mehrere nummerierte Stücke mit fortlaufenden Codes', async () => {
-		bahn = await data<Article>(
-			await post('/articles', 'admin', { name: 'Kohtenbahn', kind: 'unit' }),
-			201
+	it('Lagerorte flach mit Code, Reihenfolge', async () => {
+		kiste1 = await data<Location>(await post('/locations', 'admin', { name: 'Kiste 1' }), 201);
+		keller = await data<Location>(await post('/locations', 'admin', { name: 'Keller' }), 201);
+		expect(kiste1.code).toMatch(/^L-\d{6}$/);
+		const list = await data<Location[]>(
+			await M('/locations/order', 'admin', { method: 'PUT', json: { ids: [keller.id, kiste1.id] } })
 		);
-		kreuz = await data<Article>(
-			await post('/articles', 'admin', { name: 'Kohtenkreuz', kind: 'unit' }),
-			201
-		);
-		tassen = await data<Article>(
-			await post('/articles', 'admin', { name: 'Tasse', kind: 'bulk', minQuantity: 20 }),
-			201
-		);
-		kiste = await data<Article>(
-			await post('/articles', 'admin', { name: 'Kochkiste', kind: 'unit' }),
-			201
-		);
-		bahnen = await data<UnitSummary[]>(
-			await post('/units', 'admin', { articleId: bahn.id, count: 10, locationId: regal.id }),
-			201
-		);
-		expect(bahnen).toHaveLength(10);
-		expect(bahnen[0]!.name).toBe('Kohtenbahn 01');
-		expect(bahnen[9]!.name).toBe('Kohtenbahn 10');
-		expect(new Set(bahnen.map((b) => b.code)).size).toBe(10);
-		expect(bahnen[0]!.locationPath).toBe('Materialraum › Regal A');
-		// Mengenartikel haben keine Stücke
-		await fail(await post('/units', 'admin', { articleId: tassen.id }), 422);
-		// nur lesen → 403
-		await fail(await post('/units', 'nurlesen', { articleId: bahn.id }), 403);
+		expect(list.map((l) => l.name)).toEqual(['Keller', 'Kiste 1']);
 	});
 
-	it('eigener Code: frei → übernommen, doppelt → 422', async () => {
-		const [k] = await data<UnitSummary[]>(
-			await post('/units', 'admin', {
-				articleId: kiste.id,
-				label: 'Kochkiste 1',
-				code: 'kk-1',
-				isContainer: true,
-				locationId: raum.id
+	it('Typ und mehrere nummerierte Artikel, Artikel ohne Typ mit Anzahl', async () => {
+		kohtenbahn = await data<MaterialType>(
+			await post('/types', 'admin', { name: 'Kohtenbahn', categoryId: zelte.id }),
+			201
+		);
+		bahnen = await data<Item[]>(
+			await post('/items', 'admin', {
+				typeId: kohtenbahn.id,
+				name: 'K1.',
+				count: 3,
+				locationId: keller.id,
+				// mit Typ wird eine eigene Kategorie ignoriert
+				categoryId: zelte.id
 			}),
 			201
 		);
-		kochkiste = k!;
-		expect(kochkiste.code).toBe('KK-1');
-		await fail(await post('/units', 'admin', { articleId: kiste.id, code: 'KK-1' }), 422);
-		const target = await data<CodeTarget>(
-			await M(
-				`/codes/${encodeURIComponent('https://x.test/modules/material/scan/KK-1')}`,
-				'nurlesen'
+		expect(bahnen.map((b) => b.name)).toEqual(['K1.1', 'K1.2', 'K1.3']);
+		expect(new Set(bahnen.map((b) => b.code)).size).toBe(3);
+		expect(bahnen[0]).toMatchObject({
+			typeName: 'Kohtenbahn',
+			locationName: 'Keller',
+			category: { name: 'Zelte' }
+		});
+		tampen = (
+			await data<Item[]>(
+				await post('/items', 'admin', { name: 'Tampen', quantity: 21, locationId: kiste1.id }),
+				201
 			)
-		);
-		expect(target).toMatchObject({ type: 'unit', id: kochkiste.id });
-		await fail(await M('/codes/GIBTSNICHT', 'nurlesen'), 404);
+		)[0]!;
+		expect(tampen.quantity).toBe(21);
+		// eigener Code nur einzeln, doppelt → 422
+		await fail(await post('/items', 'admin', { name: 'X', code: 'kk-1', count: 2 }), 422);
+		await data(await post('/items', 'admin', { name: 'Kochkiste', code: 'kk-1' }), 201);
+		await fail(await post('/items', 'admin', { name: 'Kochkiste 2', code: 'KK-1' }), 422);
+		await fail(await post('/items', 'admin', { name: 'X', typeId: zelte.id }), 422);
 	});
 
-	it('Kisten: Inhalt, Ort über die Kiste, keine Kiste in sich selbst', async () => {
-		const [kreuz1] = await data<UnitSummary[]>(
-			await post('/units', 'admin', {
-				articleId: kreuz.id,
-				label: 'Kreuz 1',
-				containerId: kochkiste.id
-			}),
-			201
+	it('Lagertabelle gruppiert nach Typ und filtert', async () => {
+		const inv = await data<Inventory>(await get('/inventory', 'nurlesen'));
+		expect(inv.types).toHaveLength(1);
+		expect(inv.types[0]!).toMatchObject({
+			name: 'Kohtenbahn',
+			totalQuantity: 3,
+			usableQuantity: 3
+		});
+		expect(inv.types[0]!.items).toHaveLength(3);
+		expect(inv.items.map((i) => i.name).sort()).toEqual(['Kochkiste', 'Tampen']);
+		const inKiste = await data<Inventory>(
+			await get(`/inventory?locationId=${kiste1.id}`, 'nurlesen')
 		);
-		expect(kreuz1!.locationPath).toBe('Materialraum › Kochkiste 1');
-		await fail(
-			await post(`/units/${kochkiste.id}/move`, 'admin', { containerId: kochkiste.id }),
-			422
-		);
-		const stock = await data<StockEntry[]>(
-			await post('/stock/set', 'admin', {
-				articleId: tassen.id,
-				holder: { containerId: kochkiste.id },
-				quantity: 12
-			}),
-			201
-		);
-		expect(stock[0]).toMatchObject({ quantity: 12, holderName: 'Materialraum › Kochkiste 1' });
+		expect(inKiste.types).toHaveLength(0);
+		expect(inKiste.items.map((i) => i.name)).toEqual(['Tampen']);
+		const search = await data<Inventory>(await get('/inventory?search=K1.2', 'nurlesen'));
+		expect(search.types[0]!.items.map((i) => i.name)).toEqual(['K1.2']);
+	});
+
+	it('Umlagern und Codes auflösen (Code, Scan-URL, Ort)', async () => {
 		await data(
-			await M(`/units/${kochkiste.id}/targets`, 'admin', {
-				method: 'PUT',
-				json: { targets: [{ articleId: tassen.id, quantity: 15 }] }
-			})
-		);
-		const detail = await data<UnitDetail>(await M(`/units/${kochkiste.id}`, 'nurlesen'));
-		expect(detail.contents?.units.map((u) => u.name)).toEqual(['Kreuz 1']);
-		expect(detail.contents?.targets[0]).toMatchObject({ target: 15, actual: 12 });
-		await fail(
-			await post('/stock/move', 'admin', {
-				articleId: tassen.id,
-				from: { containerId: kochkiste.id },
-				to: { locationId: regal.id },
-				quantity: 20
-			}),
-			409
-		);
-		const moved = await data<StockEntry[]>(
-			await post('/stock/move', 'admin', {
-				articleId: tassen.id,
-				from: { containerId: kochkiste.id },
-				to: { locationId: regal.id },
-				quantity: 2
-			}),
+			await post('/items/move', 'admin', { itemIds: [bahnen[2]!.id], locationId: kiste1.id }),
 			201
 		);
-		expect(moved.map((s) => s.quantity).sort()).toEqual([10, 2]);
-		const deep = await data<{ items: UnitSummary[] }>(
-			await M(`/units?locationId=${raum.id}&deep=1`, 'nurlesen')
+		const code = bahnen[2]!.code;
+		const t = await data<CodeTarget>(await get(`/codes/${code.toLowerCase()}`, 'nurlesen'));
+		expect(t).toMatchObject({ type: 'item', id: bahnen[2]!.id });
+		const url = encodeURIComponent(
+			`https://intern.example.org/modules/material/scan/${kiste1.code}`
 		);
-		expect(deep.items).toHaveLength(12);
+		expect(await data<CodeTarget>(await get(`/codes/${url}`, 'nurlesen'))).toMatchObject({
+			type: 'location',
+			id: kiste1.id
+		});
+		await fail(await get('/codes/M-999999', 'nurlesen'), 404);
+		const detail = await data<ItemDetail>(await get(`/items/${bahnen[2]!.id}`, 'nurlesen'));
+		expect(detail.locationName).toBe('Kiste 1');
 	});
 });
 
-describe('Sets', () => {
-	it('Vorlage und Sets mit Vollständigkeit', async () => {
-		kohte = await data<SetTemplate>(
-			await post('/set-templates', 'admin', {
-				name: 'Kohte',
-				parts: [{ articleId: bahn.id, quantity: 4 }]
-			}),
-			201
-		);
-		kohte1 = await data<MaterialSet>(
-			await post('/sets', 'admin', {
-				templateId: kohte.id,
-				name: 'Kohte 1',
-				unitIds: bahnen.slice(0, 4).map((b) => b.id)
-			}),
-			201
-		);
-		expect(kohte1.completeness.complete).toBe(true);
-		kohte2 = await data<MaterialSet>(
-			await post('/sets', 'admin', {
-				templateId: kohte.id,
-				name: 'Kohte 2',
-				unitIds: bahnen.slice(4, 7).map((b) => b.id)
-			}),
-			201
-		);
-		expect(kohte2.completeness.missing).toEqual([
-			{ articleId: bahn.id, articleName: 'Kohtenbahn', count: 1 }
-		]);
-		// Umbau: Bahn 08 in Kohte 2, Bahn 01 wandert von Kohte 1 nach Kohte 2
-		kohte2 = await data<MaterialSet>(
-			await patch(`/sets/${kohte2.id}`, 'admin', {
-				unitIds: [...bahnen.slice(4, 8).map((b) => b.id), bahnen[0]!.id]
-			})
-		);
-		expect(kohte2.units).toHaveLength(5);
-		expect(kohte2.completeness.extra[0]).toMatchObject({ count: 1 });
-		kohte1 = await data<MaterialSet>(await M(`/sets/${kohte1.id}`, 'admin'));
-		expect(kohte1.completeness.complete).toBe(false);
-		// zurückbauen
-		kohte2 = await data<MaterialSet>(
-			await patch(`/sets/${kohte2.id}`, 'admin', { unitIds: bahnen.slice(4, 8).map((b) => b.id) })
-		);
-		kohte1 = await data<MaterialSet>(
-			await patch(`/sets/${kohte1.id}`, 'admin', { unitIds: bahnen.slice(0, 4).map((b) => b.id) })
-		);
-		expect(kohte1.completeness.complete && kohte2.completeness.complete).toBe(true);
-		await fail(await M(`/set-templates/${kohte.id}`, 'admin', { method: 'DELETE' }), 409);
+describe('Reservieren', () => {
+	it('Katalog: Typen und Artikel ohne Typ mit freier Anzahl', async () => {
+		const cat = await data<Catalog>(await get('/catalog?from=2026-07-01&to=2026-07-05', 'leitung'));
+		const bahn = cat.entries.find((e) => e.kind === 'type')!;
+		expect(bahn).toMatchObject({ name: 'Kohtenbahn', total: 3, free: 3 });
+		expect(bahn.items).toHaveLength(3);
+		expect(cat.entries.find((e) => e.name === 'Tampen')).toMatchObject({ kind: 'item', free: 21 });
+		await fail(await get('/catalog?from=2026-07-05&to=2026-07-01', 'leitung'), 422);
 	});
-});
 
-describe('Reservierungen', () => {
-	let sommer: Reservation;
-
-	it('Bahnen-Anfrage gegen den Bestand, Set-Aufteilung als Hinweis', async () => {
-		// 10 Bahnen: 2 Sets à 4 + 2 lose
-		const check = await data<LineAvailability[]>(
-			await post('/availability', 'leitung', {
-				startsOn: '2026-07-01',
-				endsOn: '2026-07-10',
-				lines: [{ kind: 'article', articleId: bahn.id, quantity: 7 }]
-			}),
-			201
-		);
-		expect(check[0]).toMatchObject({ ok: true, available: 10 });
-		expect(check[0]!.notes.join(' ')).toMatch(/aufgeteilt/);
-		sommer = await data<Reservation>(
+	it('nach Typ und konkretem Artikel; Überbuchung → 409 mit Zeilen', async () => {
+		ersteReservierung = await data<Reservation>(
 			await post('/reservations', 'leitung', {
 				title: 'Sommerlager',
-				startsOn: '2026-07-01',
-				endsOn: '2026-07-10',
+				...period,
 				lines: [
-					{ kind: 'article', articleId: bahn.id, quantity: 6 },
-					{ kind: 'unit', unitId: kochkiste.id },
-					{ kind: 'article', articleId: tassen.id, quantity: 10 }
+					{ kind: 'type', typeId: kohtenbahn.id, quantity: 2 },
+					{ kind: 'item', itemId: bahnen[0]!.id, quantity: 1 },
+					{ kind: 'item', itemId: tampen.id, quantity: 10 },
+					{ kind: 'item', itemId: tampen.id, quantity: 5 }
 				]
 			}),
 			201
 		);
-		expect(sommer.lines).toHaveLength(3);
-		expect(sommer.canEdit).toBe(true);
-	});
+		expect(ersteReservierung.lines).toHaveLength(3);
+		expect(ersteReservierung.lines.find((l) => l.itemId === tampen.id)!.quantity).toBe(15);
+		expect(ersteReservierung).toMatchObject({ purpose: 'other', state: 'upcoming', canEdit: true });
 
-	it('Überschneidung: Kiste schon verplant, Bahnen nur noch 4, Tassen nur 2 → 409', async () => {
 		const err = await fail(
 			await post('/reservations', 'andere', {
 				title: 'Wochenende',
 				startsOn: '2026-07-05',
 				endsOn: '2026-07-06',
 				lines: [
-					{ kind: 'unit', unitId: kochkiste.id },
-					{ kind: 'article', articleId: bahn.id, quantity: 5 },
-					{ kind: 'article', articleId: tassen.id, quantity: 3 }
+					{ kind: 'type', typeId: kohtenbahn.id, quantity: 1 },
+					{ kind: 'item', itemId: tampen.id, quantity: 6 }
 				]
 			}),
 			409
 		);
-		expect(err.message).toMatch(/Kochkiste 1 ist im Zeitraum schon verplant/);
-		expect(err.message).toMatch(/Nur 4 Kohtenbahn/);
-		expect(err.message).toMatch(/Nur 2 von 12 Tasse/);
-		// außerhalb des Zeitraums geht alles
+		const lines = (err.details as { lines: LineAvailability[] }).lines;
+		expect(lines.map((l) => [l.ok, l.available])).toEqual([
+			[false, 0],
+			[true, 6]
+		]);
+		// danach ist wieder alles frei
 		await data(
 			await post('/reservations', 'andere', {
-				title: 'Herbst',
-				startsOn: '2026-10-01',
-				endsOn: '2026-10-02',
-				lines: [{ kind: 'set', setId: kohte1.id }]
-			}),
-			201
-		);
-		// ein Set im Sommer kollidiert nicht, solange Bahnen frei sind (4 frei, Set hat 4)
-		const ok = await data<LineAvailability[]>(
-			await post('/availability', 'andere', {
-				startsOn: '2026-07-05',
+				title: 'Später',
+				startsOn: '2026-07-06',
 				endsOn: '2026-07-06',
-				lines: [{ kind: 'set', setId: kohte2.id }]
+				lines: [{ kind: 'type', typeId: kohtenbahn.id, quantity: 3 }]
 			}),
 			201
 		);
-		expect(ok[0]!.ok).toBe(true);
+		const cat = await data<Catalog>(await get('/catalog?from=2026-07-01&to=2026-07-01', 'leitung'));
+		expect(cat.entries.find((e) => e.name === 'Tampen')!.free).toBe(6);
 	});
 
-	it('fremde Reservierung nicht änderbar, eigene schon', async () => {
-		await fail(await patch(`/reservations/${sommer.id}`, 'andere', { title: 'X' }), 403);
-		const r = await data<Reservation>(
-			await patch(`/reservations/${sommer.id}`, 'leitung', { notes: 'Bitte packen' })
-		);
-		expect(r.notes).toBe('Bitte packen');
-	});
-
-	it('Zuteilung, Ausgabe mit Kiste und Rückgabe mit Schaden', async () => {
-		const plan = await data<{ units: UnitSummary[]; splitSets: string[]; missing: number }[]>(
-			await M(`/reservations/${sommer.id}/allocation`, 'leitung')
-		);
-		// 6 Bahnen: ein ganzes Set (4) + 2 lose → kein Set aufgeteilt
-		expect(plan[0]!.units).toHaveLength(6);
-		expect(plan[0]!.splitSets).toEqual([]);
-		expect(plan[0]!.missing).toBe(0);
-		const tassenLine = sommer.lines.find((l) => l.articleId === tassen.id)!;
-		let r = await data<Reservation>(
-			await post(`/reservations/${sommer.id}/issue`, 'leitung', {
-				unitIds: [...plan[0]!.units.map((u) => u.id), kochkiste.id],
-				bulk: [{ lineId: tassenLine.id, quantity: 10 }]
+	it('Verfügbarkeit ohne Speichern, eigene Reservierung beim Bearbeiten ausgenommen', async () => {
+		const res = await data<LineAvailability[]>(
+			await post('/availability', 'leitung', {
+				...period,
+				excludeReservationId: ersteReservierung.id,
+				lines: [{ kind: 'type', typeId: kohtenbahn.id, quantity: 3 }]
 			}),
 			201
 		);
-		expect(r.status).toBe('issued');
-		// Kiste + Kreuz darin + 6 Bahnen
-		expect(r.assigned).toHaveLength(8);
-		// fremdes Stück ohne allowExtra → 422
-		const extra = bahnen.find((b) => !plan[0]!.units.some((u) => u.id === b.id))!;
-		await fail(
-			await post(`/reservations/${sommer.id}/issue`, 'leitung', { unitIds: [extra.id] }),
+		expect(res[0]).toMatchObject({ ok: true, available: 3 });
+	});
+
+	it('Zweck: Gruppe ohne aktives Mitglieder-Modul → 422, Aktion ohne Pflichtfeld → 422', async () => {
+		const base = {
+			title: 'Gruppenstunde',
+			...period,
+			lines: [{ kind: 'item', itemId: tampen.id, quantity: 1 }]
+		};
+		const g = await fail(
+			await post('/reservations', 'leitung', {
+				...base,
+				purpose: 'group',
+				groupId: '00000000-0000-4000-8000-000000000001'
+			}),
 			422
 		);
-		const detail = await data<UnitDetail>(await M(`/units/${kochkiste.id}`, 'nurlesen'));
-		expect(detail.issued?.title).toBe('Sommerlager');
-
-		// Teil-Rückgabe: Kiste (mit Inhalt) + eine Bahn beschädigt
-		const damaged = plan[0]!.units[0]!;
-		r = await data<Reservation>(
-			await post(`/reservations/${sommer.id}/return`, 'leitung', {
-				units: [
-					{ unitId: kochkiste.id, condition: 'ok' },
-					{ unitId: damaged.id, condition: 'damaged', note: 'Riss' }
-				],
-				bulk: [{ lineId: tassenLine.id, quantity: 8 }]
-			}),
-			201
-		);
-		expect(r.status).toBe('issued');
-		expect(r.assigned.filter((a) => a.returnedAt)).toHaveLength(3);
-		// Rest: verloren abschließen → Tassenbestand sinkt um 2
-		r = await data<Reservation>(
-			await post(`/reservations/${sommer.id}/return`, 'leitung', { closeMissingAsLost: true }),
-			201
-		);
-		expect(r.status).toBe('returned');
-		const stock = await data<StockEntry[]>(await M(`/stock?articleId=${tassen.id}`, 'nurlesen'));
-		expect(stock.reduce((s, x) => s + x.quantity, 0)).toBe(10);
-		const d = await data<UnitDetail>(await M(`/units/${damaged.id}`, 'nurlesen'));
-		expect(d.condition).toBe('damaged');
-		expect(d.history.map((h) => h.kind)).toContain('returned');
-		const lost = await data<UnitDetail>(await M(`/units/${plan[0]!.units[1]!.id}`, 'nurlesen'));
-		expect(lost.condition).toBe('lost');
-		const { rows } = await listAudit({ action: 'material.reservation', limit: 50 });
-		const actions = new Set(rows.map((x) => x.action));
-		for (const a of ['created', 'issued', 'returned'])
-			expect(actions).toContain(`material.reservation.${a}`);
-		expect(JSON.stringify(rows.map((x) => x.metadata))).not.toMatch(/Riss/);
+		expect(JSON.stringify(g.details)).toContain('groupId');
+		await fail(await post('/reservations', 'leitung', { ...base, purpose: 'action' }), 422);
 	});
 
-	it('überfällige Rückgabe wird einmal gemeldet', async () => {
-		const r = await data<Reservation>(
-			await post('/reservations', 'leitung', {
-				title: 'Hajk',
-				startsOn: '2026-05-20',
-				endsOn: '2026-05-25',
-				lines: [{ kind: 'unit', unitId: kohte2.units[0]!.id }]
+	it('Rechte: nur lesen darf nicht reservieren; fremde Reservierungen nicht ändern; alle nur mit Verwaltung', async () => {
+		await fail(
+			await post('/reservations', 'nurlesen', {
+				title: 'X',
+				...period,
+				lines: [{ kind: 'item', itemId: tampen.id, quantity: 1 }]
 			}),
+			403
+		);
+		const body = {
+			title: 'Sommerlager (geändert)',
+			...period,
+			lines: [{ kind: 'type', typeId: kohtenbahn.id, quantity: 3 }]
+		};
+		await fail(await patch(`/reservations/${ersteReservierung.id}`, 'andere', body), 403);
+		const changed = await data<Reservation>(
+			await patch(`/reservations/${ersteReservierung.id}`, 'leitung', body)
+		);
+		expect(changed.title).toBe('Sommerlager (geändert)');
+		expect(changed.lines).toHaveLength(1);
+		await fail(await get('/reservations?scope=all', 'leitung'), 403);
+		const all = await data<ReservationPage>(await get('/reservations?scope=all', 'admin'));
+		expect(all.total).toBe(2);
+		const mine = await data<ReservationPage>(await get('/reservations', 'leitung'));
+		expect(mine.items.map((r) => r.title)).toEqual(['Sommerlager (geändert)']);
+		expect(mine.items[0]!.itemSummary).toBe('3 × Kohtenbahn');
+		const my = await data<ReservationListItem[]>(await get('/my/reservations', 'leitung'));
+		expect(my).toHaveLength(1);
+	});
+
+	it('Stornieren gibt frei; Löschen nur storniert oder vergangen', async () => {
+		await fail(await del(`/reservations/${ersteReservierung.id}`, 'leitung'), 409);
+		const c = await data<Reservation>(
+			await post(`/reservations/${ersteReservierung.id}/cancel`, 'leitung'),
 			201
 		);
-		await data(
-			await post(`/reservations/${r.id}/issue`, 'leitung', { unitIds: [kohte2.units[0]!.id] }),
-			201
+		expect(c).toMatchObject({ status: 'cancelled', state: 'cancelled', canEdit: false });
+		const cat = await data<Catalog>(await get('/catalog?from=2026-07-01&to=2026-07-06', 'leitung'));
+		expect(cat.entries.find((e) => e.kind === 'type')!.free).toBe(0); // „Später“ (6.7.) belegt alle 3
+		const first = await data<Catalog>(
+			await get('/catalog?from=2026-07-01&to=2026-07-04', 'leitung')
 		);
-		const first = await runJobNow(admin, 'material.overdue');
-		expect(JSON.stringify(first)).toMatch(/1 überfällige/);
-		const second = await runJobNow(admin, 'material.overdue');
-		expect(JSON.stringify(second)).toMatch(/Keine/);
-		// Stornieren geht nach der Ausgabe nicht mehr
-		await fail(await post(`/reservations/${r.id}/cancel`, 'leitung'), 409);
+		expect(first.entries.find((e) => e.kind === 'type')!.free).toBe(3);
+		await data(await del(`/reservations/${ersteReservierung.id}`, 'leitung'));
+		await fail(await get(`/reservations/${ersteReservierung.id}`, 'leitung'), 404);
 	});
 });
 
-describe('Etiketten', () => {
-	it('Layout anlegen und Etiketten drucken', async () => {
+describe('Zustand, Archiv, Löschen', () => {
+	it('Schaden melden: auch mit Reservierungsrecht, defekt zählt nicht mehr', async () => {
+		await fail(
+			await post(`/items/${bahnen[1]!.id}/condition`, 'nurlesen', { condition: 'defect' }),
+			403
+		);
+		const item = await data<Item>(
+			await post(`/items/${bahnen[1]!.id}/condition`, 'leitung', {
+				condition: 'defect',
+				note: 'Riss in der Bahn'
+			}),
+			201
+		);
+		expect(item.condition).toBe('defect');
+		const detail = await data<ItemDetail>(await get(`/items/${bahnen[1]!.id}`, 'admin'));
+		expect(detail.conditionReportedByName).toBe('leitung');
+		const cat = await data<Catalog>(await get('/catalog?from=2026-08-01&to=2026-08-02', 'leitung'));
+		expect(cat.entries.find((e) => e.kind === 'type')).toMatchObject({ total: 2, free: 2 });
+		const overview = await data<Overview>(await get('/overview', 'admin'));
+		expect(overview.damagedCount).toBe(1);
+	});
+
+	it('Artikel mit Reservierungen nicht löschbar, Archivieren geht; Typ mit Artikeln nicht löschbar', async () => {
+		await data(
+			await post('/reservations', 'leitung', {
+				title: 'Tampen',
+				startsOn: '2026-09-01',
+				endsOn: '2026-09-02',
+				lines: [{ kind: 'item', itemId: tampen.id, quantity: 2 }]
+			}),
+			201
+		);
+		await fail(await del(`/items/${tampen.id}`, 'admin'), 409);
+		await fail(await del(`/types/${kohtenbahn.id}`, 'admin'), 409);
+		const archived = await data<Item>(
+			await patch(`/items/${tampen.id}`, 'admin', { archived: true })
+		);
+		expect(archived.archived).toBe(true);
+		const inv = await data<Inventory>(await get('/inventory', 'admin'));
+		expect(inv.items.map((i) => i.name)).not.toContain('Tampen');
+		const withArchived = await data<Inventory>(await get('/inventory?archived=1', 'admin'));
+		expect(withArchived.items.map((i) => i.name)).toContain('Tampen');
+		await data(await patch(`/items/${tampen.id}`, 'admin', { archived: false }));
+	});
+
+	it('Lagerort löschen: Artikel sind danach ohne Ort', async () => {
+		const tmp = await data<Location>(await post('/locations', 'admin', { name: 'Tmp' }), 201);
+		await data(
+			await post('/items/move', 'admin', { itemIds: [tampen.id], locationId: tmp.id }),
+			201
+		);
+		const res = await data<{ itemsWithoutPlace: number }>(
+			await del(`/locations/${tmp.id}`, 'admin')
+		);
+		expect(res.itemsWithoutPlace).toBe(1);
+		const ohne = await data<Inventory>(await get('/inventory?locationId=none', 'admin'));
+		expect(ohne.items.map((i) => i.name)).toContain('Tampen');
+	});
+});
+
+describe('Exporte und Etiketten', () => {
+	it('Materialliste als CSV nach Kategorie und als PDF nach Lagerort', async () => {
+		const csv = await post('/exports/inventory', 'nurlesen', {
+			format: 'csv',
+			groupBy: 'category'
+		});
+		expect(csv.status).toBe(200);
+		expect(csv.headers.get('content-type')).toContain('text/csv');
+		const text = await csv.text();
+		expect(text).toContain('Zelte');
+		expect(text).toContain('K1.1');
+		expect(text).toContain('Ohne Kategorie');
+		const pdf = await post('/exports/inventory', 'nurlesen', {
+			format: 'pdf',
+			groupBy: 'location'
+		});
+		expect(pdf.status).toBe(200);
+		expect(pdf.headers.get('content-type')).toBe('application/pdf');
+		expect(lastPdfHtml).toContain('Materialliste nach Lagerort');
+		expect(lastPdfHtml).toContain('Keller');
+	});
+
+	it('Packliste und Übersicht der Reservierungen', async () => {
+		const page = await data<ReservationPage>(await get('/reservations?scope=all', 'admin'));
+		const r = page.items.find((x) => x.title === 'Später')!;
+		const pdf = await get(`/reservations/${r.id}/packing-list?format=pdf`, 'leitung');
+		expect(pdf.status).toBe(200);
+		expect(lastPdfHtml).toContain('Packliste Später');
+		expect(lastPdfHtml).toContain('Kohtenbahn (beliebige)');
+		const csv = await get(`/reservations/${r.id}/packing-list?format=csv`, 'leitung');
+		expect(await csv.text()).toContain('Keller');
+		const all = await post('/exports/reservations', 'admin', {
+			format: 'csv',
+			from: '2026-06-01',
+			to: '2026-12-31'
+		});
+		const text = await all.text();
+		expect(text).toContain('Später');
+		expect(text).toContain('Tampen');
+		// ohne Verwaltungsrecht nur die eigenen
+		const own = await post('/exports/reservations', 'leitung', {
+			format: 'csv',
+			from: '2026-06-01',
+			to: '2026-12-31'
+		});
+		expect(await own.text()).not.toContain('Später');
+	});
+
+	it('Etikett für Artikel und Lagerort drucken', async () => {
 		const tpl = await data<LabelTemplate>(
 			await post('/label-templates', 'admin', {
 				name: 'Standard',
-				target: 'unit',
-				formatKey: 'zweckform-3474',
+				target: 'item',
+				formatKey: 'avery-l7159',
 				layout: {
-					widthMm: 70,
-					heightMm: 37,
+					widthMm: 63.5,
+					heightMm: 33.9,
 					elements: [
 						{
 							id: 'n',
@@ -505,7 +503,7 @@ describe('Etiketten', () => {
 							y: 2,
 							w: 40,
 							h: 8,
-							text: '{name}',
+							text: '{type} {name} ({quantity})',
 							fontSizePt: 10,
 							bold: true,
 							align: 'left',
@@ -515,10 +513,10 @@ describe('Etiketten', () => {
 						{
 							id: 'q',
 							type: 'barcode',
-							x: 45,
+							x: 42,
 							y: 2,
-							w: 22,
-							h: 22,
+							w: 20,
+							h: 20,
 							symbology: 'qrcode',
 							value: '{url}'
 						}
@@ -529,266 +527,54 @@ describe('Etiketten', () => {
 		);
 		const res = await post('/labels.pdf', 'admin', {
 			templateId: tpl.id,
-			target: 'unit',
-			ids: [kochkiste.id, bahnen[1]!.id],
-			copies: 2,
-			startIndex: 3
+			target: 'item',
+			ids: [bahnen[0]!.id, tampen.id]
 		});
 		expect(res.status).toBe(200);
-		expect(res.headers.get('content-type')).toBe('application/pdf');
-		expect(lastPdfHtml.match(/class="label"/g)).toHaveLength(4);
-		expect(lastPdfHtml).toContain('Kochkiste 1');
-		// nur lesen darf nicht drucken
+		expect(lastPdfHtml).toContain('Kohtenbahn K1.1 (1)');
+		expect(lastPdfHtml).toContain('Tampen (21)');
 		await fail(
-			await post('/labels.pdf', 'nurlesen', {
+			await post('/labels.pdf', 'leitung', {
 				templateId: tpl.id,
-				target: 'unit',
-				ids: [kochkiste.id]
+				target: 'item',
+				ids: [tampen.id]
 			}),
 			403
 		);
-		// Leer-Etiketten mit vorab vergebenen Codes
-		const { codes } = await data<{ codes: string[] }>(
-			await post('/codes/reserve', 'admin', { count: 3 }),
-			201
-		);
-		expect(codes).toHaveLength(3);
-		expect(await data<CodeTarget>(await M(`/codes/${codes[0]}`, 'nurlesen'))).toEqual({
-			type: 'reserved',
-			code: codes[0]
-		});
-		const [claimed] = await data<UnitSummary[]>(
-			await post('/units', 'admin', { articleId: bahn.id, code: codes[0] }),
-			201
-		);
-		expect(claimed!.code).toBe(codes[0]);
-	});
-});
-
-describe('Ausleihen, Wiederfinden, Listen', () => {
-	it('Katalog: freie Anzahl im Zeitraum und Zelttypen', async () => {
-		const cat = await data<Catalog>(await M('/catalog?from=2026-07-01&to=2026-07-10', 'leitung'));
-		const t = cat.articles.find((a) => a.id === tassen.id)!;
-		expect(t).toMatchObject({ kind: 'bulk', total: 10, free: 10 });
-		expect(t.code).toMatch(/^A-\d{6}$/);
-		const b = cat.articles.find((a) => a.id === bahn.id)!;
-		expect(b.free).toBeLessThanOrEqual(b.total);
-		const tpl = cat.templates.find((x) => x.id === kohte.id)!;
-		expect(tpl.free).toBe(Math.floor(b.free / 4));
-		const search = await data<Catalog>(
-			await M('/catalog?from=2026-07-01&to=2026-07-10&search=kohte', 'leitung')
-		);
-		expect(search.templates.map((x) => x.name)).toEqual(['Kohte']);
-	});
-
-	it('„Wo ist …?“ findet Kisten, Mengen und Orte mit Pfad', async () => {
-		const hits = await data<FindHit[]>(await M('/find?q=Kochkiste', 'nurlesen'));
-		expect(hits.find((h) => h.id === kochkiste.id)).toMatchObject({
-			type: 'container',
-			place: 'Materialraum'
-		});
-		const byCode = await data<FindHit[]>(await M(`/find?q=${tassen.code}`, 'nurlesen'));
-		expect(byCode[0]).toMatchObject({ type: 'article', quantity: 10 });
-		expect(byCode[0]!.place).toContain('Regal A');
-		expect(await data<CodeTarget>(await M(`/codes/${tassen.code}`, 'nurlesen'))).toMatchObject({
-			type: 'article',
-			id: tassen.id
-		});
-	});
-
-	it('Ausgabeliste als PDF: nach Lagerort, Kisteninhalt eingerückt', async () => {
-		const r = await data<Reservation>(
-			await post('/reservations', 'leitung', {
-				title: 'Packliste',
-				startsOn: '2026-08-01',
-				endsOn: '2026-08-02',
-				lines: [
-					{ kind: 'unit', unitId: kochkiste.id },
-					{ kind: 'article', articleId: tassen.id, quantity: 4 }
-				]
-			}),
-			201
-		);
-		const res = await M(`/reservations/${r.id}/handout.pdf`, 'nurlesen');
-		expect(res.status).toBe(200);
-		expect(res.headers.get('content-type')).toBe('application/pdf');
-		expect(lastPdfHtml).toContain('Ausgabeliste Packliste');
-		expect(lastPdfHtml).toContain('Kreuz 1');
-		expect(lastPdfHtml).toContain('in der Kiste');
-		expect(lastPdfHtml).toContain('4 Stück');
-		// nur lesen darf nicht reservieren
-		await fail(
-			await post('/reservations', 'nurlesen', {
-				title: 'X',
-				startsOn: '2026-08-01',
-				endsOn: '2026-08-01',
-				lines: []
-			}),
-			403
-		);
-	});
-
-	it('Bestandsliste als PDF mit Ortsfilter und Mengen', async () => {
-		const res = await post('/inventory.pdf', 'nurlesen', {
-			locationId: raum.id,
-			columns: ['code', 'name', 'place', 'check']
-		});
-		expect(res.status).toBe(200);
-		expect(lastPdfHtml).toContain('Bestandsliste Material');
-		expect(lastPdfHtml).toContain('Kochkiste 1');
-		expect(lastPdfHtml).toContain('Geprüft');
-		expect(lastPdfHtml).toContain('Mengen');
-		await fail(await post('/inventory.pdf', 'nurlesen', { columns: ['gibtsnicht'] }), 422);
-	});
-
-	it('Etiketten für Mengenartikel mit Schwarz-Weiß-Wappen auf L7159', async () => {
-		const tpl = await data<LabelTemplate>(
-			await post('/label-templates', 'admin', {
-				name: 'Regalfach',
-				target: 'article',
-				formatKey: 'avery-l7159',
-				layout: {
-					widthMm: 63.5,
-					heightMm: 33.9,
-					elements: [
-						{ id: 'l', type: 'image', x: 2, y: 2, w: 8, h: 8, logo: 'wappen', monochrome: true },
-						{
-							id: 'n',
-							type: 'text',
-							x: 12,
-							y: 2,
-							w: 30,
-							h: 6,
-							text: '{name} ({total} {unit})',
-							fontSizePt: 10,
-							bold: true,
-							align: 'left',
-							valign: 'top',
-							maxLines: 1
-						},
-						{
-							id: 'v',
-							type: 'line',
-							x: 44,
-							y: 2,
-							w: 1,
-							h: 28,
-							stroke: 0.3,
-							orientation: 'vertical'
-						},
-						{
-							id: 'q',
-							type: 'barcode',
-							x: 46,
-							y: 2,
-							w: 16,
-							h: 16,
-							symbology: 'qrcode',
-							value: '{url}'
-						}
-					]
-				}
-			}),
-			201
-		);
-		const res = await post('/labels.pdf', 'admin', {
+		const loc = await post('/labels.pdf', 'admin', {
 			templateId: tpl.id,
-			target: 'article',
-			ids: [tassen.id]
+			target: 'location',
+			ids: [kiste1.id]
 		});
-		expect(res.status).toBe(200);
-		expect(lastPdfHtml).toContain('Tasse (10 Stück)');
-		expect(lastPdfHtml).toContain(LABEL_LOGO_DATA['wappen-sw']!);
-		expect(lastPdfHtml).not.toContain(LABEL_LOGO_DATA.wappen!);
-		expect(lastPdfHtml).toContain('x1="0.15" y1="0" x2="0.15" y2="28"');
-	});
-});
-
-describe('Set-Typen mit Mengen', () => {
-	it('Mengen gehören zum Set-Typ und kommen beim Reservieren als eigene Zeilen dazu', async () => {
-		const tpl = await data<SetTemplate>(
-			await patch(`/set-templates/${kohte.id}`, 'admin', {
-				parts: [
-					{ articleId: bahn.id, quantity: 4 },
-					{ articleId: tassen.id, quantity: 3 }
-				]
-			})
-		);
-		expect(tpl.parts.find((p) => p.articleId === tassen.id)).toMatchObject({
-			kind: 'bulk',
-			quantity: 3
-		});
-		const set = await data<MaterialSet>(await M(`/sets/${kohte2.id}`, 'admin'));
-		expect(set.bulkParts).toEqual([
-			{ articleId: tassen.id, articleName: 'Tasse', unitLabel: 'Stück', quantity: 3 }
-		]);
-		// Vollständigkeit zählt nur Einzelstücke
-		expect(set.completeness.missing.some((m) => m.articleId === tassen.id)).toBe(false);
-
-		const r = await data<Reservation>(
-			await post('/reservations', 'leitung', {
-				title: 'Zeltlager',
-				startsOn: '2026-09-01',
-				endsOn: '2026-09-02',
-				lines: [{ kind: 'set', setId: kohte2.id }]
-			}),
-			201
-		);
-		const gen = r.lines.find((l) => l.articleId === tassen.id)!;
-		expect(gen).toMatchObject({ kind: 'article', quantity: 3, fromSet: 'Kohte 2' });
-		// Ändern ohne Positionen erzeugt keine doppelten Mengen-Zeilen
-		const again = await data<Reservation>(
-			await patch(`/reservations/${r.id}`, 'leitung', { notes: 'Bitte trocken einpacken' })
-		);
-		expect(again.lines.filter((l) => l.articleId === tassen.id)).toHaveLength(1);
-		const edited = await data<Reservation>(
-			await patch(`/reservations/${r.id}`, 'leitung', {
-				lines: [{ kind: 'set', setId: kohte2.id }]
-			})
-		);
-		expect(edited.lines.filter((l) => l.articleId === tassen.id)).toHaveLength(1);
-	});
-
-	it('Engpass bei den Mengen eines Sets wird am Set gemeldet und verhindert die Reservierung', async () => {
-		await data(
-			await post('/reservations', 'andere', {
-				title: 'Viele Tassen',
-				startsOn: '2026-09-10',
-				endsOn: '2026-09-11',
-				lines: [{ kind: 'article', articleId: tassen.id, quantity: 9 }]
-			}),
-			201
-		);
-		const check = await data<LineAvailability[]>(
-			await post('/availability', 'leitung', {
-				startsOn: '2026-09-10',
-				endsOn: '2026-09-11',
-				lines: [{ kind: 'set', setId: kohte2.id }]
-			}),
-			201
-		);
-		expect(check).toHaveLength(1);
-		expect(check[0]!.ok).toBe(false);
-		expect(check[0]!.message).toMatch(/Tasse/);
+		expect(loc.status).toBe(200);
 		await fail(
-			await post('/reservations', 'leitung', {
-				title: 'Zu wenig Tassen',
-				startsOn: '2026-09-10',
-				endsOn: '2026-09-11',
-				lines: [{ kind: 'set', setId: kohte2.id }]
+			await post('/label-templates', 'admin', {
+				name: 'Alt',
+				target: 'unit',
+				formatKey: 'avery-l7159',
+				layout: tpl.layout
 			}),
-			409
+			422
 		);
-		// Katalog: ganzer Zelttyp nur so oft frei, wie Tassen reichen (1 frei → 0 Kohten)
-		const cat = await data<Catalog>(await M('/catalog?from=2026-09-10&to=2026-09-11', 'leitung'));
-		expect(cat.templates.find((t) => t.id === kohte.id)!.free).toBe(0);
 	});
 });
 
-describe('Modul deaktiviert', () => {
-	it('liefert 404', async () => {
+describe('Audit, Job, Modul aus', () => {
+	it('Audit ohne Personendaten', async () => {
+		const audit = await listAudit({ action: 'material.reservation.created' });
+		expect(audit.rows.length).toBeGreaterThan(0);
+		expect(JSON.stringify(audit.rows.map((r) => r.metadata))).not.toContain('Sommerlager');
+	});
+
+	it('Aufräum-Job läuft einmal und ist danach erledigt', async () => {
+		const first = await runJobNow(admin, 'material.legacy-cleanup');
+		expect(first.lastStatus).toBe('ok');
+		const second = await runJobNow(admin, 'material.legacy-cleanup');
+		expect(second.lastMessage).toBe('Nichts zu tun');
+	});
+
+	it('Modul deaktiviert → 404', async () => {
 		await disableModule(admin, 'material');
-		await fail(await M('/articles', 'admin'), 404);
-		await enableModule(admin, 'material');
+		await fail(await get('/inventory', 'admin'), 404);
 	});
 });

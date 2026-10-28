@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// Material: Bestand anzeigen und Stück-Blatt öffnen, Scan-Seite löst einen Code auf, Reservierung mit
-// Bahnen-Anfrage im Dialog, Etiketten-Designer lädt ein Layout, echtes Etiketten-PDF (Chromium).
+// Material v2: Lagertabelle und zentrierter Artikel-Dialog (auch über den QR-Link `/scan/<code>`),
+// Reservieren wie „Bestellen“ (Katalog → Detail → Warenkorb → Reservieren), Etiketten-Kacheln und echtes PDF.
 
 const ADMIN = { email: 'admin@example.test', password: 'e2e-admin-password-1' };
 const ORIGIN = 'http://localhost:4173';
 const run = Date.now().toString(36);
+const M = '/modules/material';
 
 async function login(page: Page) {
 	await page.goto('/login');
@@ -29,7 +30,7 @@ async function api<T>(page: Page, method: string, path: string, body?: unknown):
 	return (text ? (JSON.parse(text) as { data: T }).data : null) as T;
 }
 
-interface Unit {
+interface Item {
 	id: string;
 	code: string;
 	name: string;
@@ -39,67 +40,81 @@ async function setup(page: Page) {
 	await login(page);
 	const list = await api<{ manifest: { id: string }; enabled: boolean }[]>(page, 'GET', '/modules');
 	if (!list.find((m) => m.manifest.id === 'material')?.enabled) {
-		await api(page, 'POST', '/modules/material/enable');
+		await api(page, 'POST', `${M}/enable`);
 	}
-	const M = '/modules/material';
-	const loc = await api<{ id: string }>(page, 'POST', `${M}/locations`, { name: `Raum ${run}` });
-	const bahn = await api<{ id: string }>(page, 'POST', `${M}/articles`, {
-		name: `Kohtenbahn ${run}`,
-		kind: 'unit'
+	const cat = await api<{ id: string }>(page, 'POST', `${M}/categories`, {
+		name: `Zelte ${run}`,
+		icon: 'tent',
+		color: '#92400e'
 	});
-	const units = await api<Unit[]>(page, 'POST', `${M}/units`, {
-		articleId: bahn.id,
-		count: 4,
+	const loc = await api<{ id: string; code: string }>(page, 'POST', `${M}/locations`, {
+		name: `Kiste ${run}`
+	});
+	const type = await api<{ id: string }>(page, 'POST', `${M}/types`, {
+		name: `Kohtenbahn ${run}`,
+		categoryId: cat.id
+	});
+	const items = await api<Item[]>(page, 'POST', `${M}/items`, {
+		typeId: type.id,
+		name: `K${run}.`,
+		count: 3,
 		locationId: loc.id
 	});
-	return { M, bahn, units };
+	return { loc, type, items };
 }
 
-test('Bestand, Scan-Seite und Stück-Blatt', async ({ page }) => {
-	const { units } = await setup(page);
-	const first = units[0]!;
-	await page.goto(`/modules/material/lager`);
-	await page.getByRole('searchbox').first().fill(first.code);
+test('Lager: Tabelle, Artikel-Dialog zentriert, QR-Link öffnet den Artikel', async ({ page }) => {
+	const { items } = await setup(page);
+	const first = items[0]!;
+	await page.goto(`${M}?tab=lager`);
+	await page.getByRole('searchbox', { name: 'Lager durchsuchen' }).fill(first.code);
 	await expect(page.getByText(first.name).first()).toBeVisible();
 
-	await page.goto(`/modules/material/scan/${first.code}`);
-	await expect(page.getByText(first.name).first()).toBeVisible();
-
-	await page.goto(`/modules/material/lager?open=${first.id}`);
-	await expect(page.getByRole('dialog').getByText(first.code).first()).toBeVisible();
+	await page.goto(`${M}/scan/${first.code}`);
+	await page.waitForURL(/tab=lager/);
+	const dialog = page.getByRole('dialog');
+	await expect(dialog).toBeVisible();
+	await expect(dialog.getByText(first.code).first()).toBeVisible();
+	// zentriert (kein Seitenblatt): Mitte des Dialogs ≈ Mitte des Fensters
+	const box = (await dialog.boundingBox())!;
+	const width = page.viewportSize()!.width;
+	expect(Math.abs(box.x + box.width / 2 - width / 2)).toBeLessThan(40);
 });
 
-test('Reservierung anlegen (Bahnen-Anfrage) und öffnen', async ({ page }) => {
-	const { M, bahn } = await setup(page);
-	const r = await api<{ id: string; title: string }>(page, 'POST', `${M}/reservations`, {
-		title: `Lager ${run}`,
-		startsOn: '2030-07-01',
-		endsOn: '2030-07-05',
-		lines: [{ kind: 'article', articleId: bahn.id, quantity: 3 }]
-	});
-	await page.goto(`/modules/material/reservierung/${r.id}`);
-	await expect(page.getByRole('heading', { level: 1, name: `Lager ${run}` })).toBeVisible();
-	await expect(page.getByText(`Kohtenbahn ${run}`).first()).toBeVisible();
-	const pdf = await page.request.get(`/api/v1${M}/reservations/${r.id}/handout.pdf`);
-	expect(pdf.status()).toBe(200);
-	// mehr als vorhanden → 409
-	const res = await page.request.post(`/api/v1${M}/reservations`, {
-		headers: { origin: ORIGIN, 'content-type': 'application/json' },
-		data: JSON.stringify({
-			title: `Zu viel ${run}`,
-			startsOn: '2030-07-02',
-			endsOn: '2030-07-03',
-			lines: [{ kind: 'article', articleId: bahn.id, quantity: 2 }]
-		})
-	});
-	expect(res.status()).toBe(409);
+test('Reservieren: Katalog → konkreter Artikel → Warenkorb → Reservierung', async ({ page }) => {
+	const { type, items } = await setup(page);
+	const title = `E2E ${run}`;
+	await page.goto(`${M}?from=2031-05-02&to=2031-05-03&title=${encodeURIComponent(title)}`);
+	await page.getByRole('searchbox', { name: 'Material suchen' }).fill(`Kohtenbahn ${run}`);
+	await page.getByRole('button', { name: `Kohtenbahn ${run} ansehen` }).click();
+	const dialog = page.getByRole('dialog');
+	await expect(dialog).toBeVisible();
+	await dialog
+		.getByRole('checkbox', { name: new RegExp(items[1]!.name.replace('.', '\\.')) })
+		.click();
+	await dialog.getByRole('button', { name: 'In den Warenkorb' }).click();
+	await expect(dialog).toBeHidden();
+
+	await page.getByRole('button', { name: 'Reservieren', exact: true }).click();
+	const confirm = page.getByRole('alertdialog').or(page.getByRole('dialog'));
+	await confirm.getByRole('button', { name: 'Reservieren', exact: true }).click();
+	await expect(page.getByText(title).first()).toBeVisible();
+
+	const mine = await api<{ items: { title: string; itemSummary: string }[] }>(
+		page,
+		'GET',
+		`${M}/reservations?state=all`
+	);
+	const r = mine.items.find((x) => x.title === title)!;
+	expect(r.itemSummary).toBe(items[1]!.name);
+	void type;
 });
 
-test('Etiketten: Designer lädt Layout, PDF wird erzeugt', async ({ page }) => {
-	const { M, units } = await setup(page);
+test('Etiketten: Kacheln, Designer, echtes PDF', async ({ page }) => {
+	const { items } = await setup(page);
 	const tpl = await api<{ id: string }>(page, 'POST', `${M}/label-templates`, {
 		name: `Bahn ${run}`,
-		target: 'unit',
+		target: 'item',
 		formatKey: 'brother-62x29',
 		layout: {
 			widthMm: 62,
@@ -112,7 +127,7 @@ test('Etiketten: Designer lädt Layout, PDF wird erzeugt', async ({ page }) => {
 					y: 2,
 					w: 58,
 					h: 6,
-					text: '{name}',
+					text: '{type} {name}',
 					fontSizePt: 11,
 					bold: true,
 					align: 'left',
@@ -132,31 +147,17 @@ test('Etiketten: Designer lädt Layout, PDF wird erzeugt', async ({ page }) => {
 			]
 		}
 	});
-	await page.goto(`/modules/material/labels/${tpl.id}`);
+	await page.goto(`${M}?tab=etiketten`);
+	await expect(page.getByRole('button', { name: /Erstellen/ })).toBeVisible();
+	await expect(page.getByText(`Bahn ${run}`).first()).toBeVisible();
+
+	await page.goto(`${M}/labels/${tpl.id}`);
 	await expect(page.locator('input').first()).toHaveValue(`Bahn ${run}`);
 
 	const pdf = await page.request.post(`/api/v1${M}/labels.pdf`, {
 		headers: { origin: ORIGIN, 'content-type': 'application/json' },
-		data: JSON.stringify({ templateId: tpl.id, target: 'unit', ids: units.map((u) => u.id) })
+		data: JSON.stringify({ templateId: tpl.id, target: 'item', ids: items.map((i) => i.id) })
 	});
 	expect(pdf.status()).toBe(200);
-	const body = await pdf.body();
-	expect(body.subarray(0, 5).toString()).toBe('%PDF-');
-});
-
-test('Ausleihen: Artikel in die Merkliste und reservieren', async ({ page }) => {
-	const { bahn } = await setup(page);
-	void bahn;
-	await page.goto(`/modules/material?from=2031-05-02&to=2031-05-03`);
-	await page.getByRole('searchbox').first().fill(`Kohtenbahn ${run}`);
-	const plus = page.getByRole('button', { name: `Menge Kohtenbahn ${run} erhöhen` }).first();
-	await plus.click();
-	await plus.click();
-	await page.getByRole('button', { name: 'Reservieren' }).first().click();
-	const dialog = page.getByRole('dialog');
-	await dialog.getByLabel(/Titel/).fill(`Wochenende ${run}`);
-	await dialog.getByRole('button', { name: 'Reservieren' }).click();
-	await page.waitForURL(/\/modules\/material\/reservierung\//);
-	await expect(page.getByRole('heading', { level: 1, name: `Wochenende ${run}` })).toBeVisible();
-	await expect(page.getByText(`Kohtenbahn ${run}`).first()).toBeVisible();
+	expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
 });
