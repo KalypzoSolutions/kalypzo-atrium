@@ -63,11 +63,25 @@ async function setup(page: Page) {
 	return { loc, type, items };
 }
 
+test('Reiter wechseln ohne Reload', async ({ page }) => {
+	await setup(page);
+	await page.goto(M);
+	await page.getByRole('tab', { name: 'Lager' }).click();
+	await expect(page.getByRole('textbox', { name: 'Lager durchsuchen' })).toBeVisible();
+	await page.getByRole('tab', { name: 'Etiketten' }).click();
+	await expect(page.getByRole('button', { name: /Erstellen/ })).toBeVisible();
+	await page.getByRole('tab', { name: 'Reservieren' }).click();
+	await expect(page.getByRole('searchbox', { name: 'Material suchen' })).toBeVisible();
+	await page.getByRole('tab', { name: 'Meine Reservierungen' }).click();
+	await expect(page).toHaveURL(/tab=meine/);
+	await expect(page.getByRole('searchbox', { name: 'Material suchen' })).toBeHidden();
+});
+
 test('Lager: Tabelle, Artikel-Dialog zentriert, QR-Link öffnet den Artikel', async ({ page }) => {
 	const { items } = await setup(page);
 	const first = items[0]!;
 	await page.goto(`${M}?tab=lager`);
-	await page.getByRole('searchbox', { name: 'Lager durchsuchen' }).fill(first.code);
+	await page.getByRole('textbox', { name: 'Lager durchsuchen' }).fill(first.code);
 	await expect(page.getByText(first.name).first()).toBeVisible();
 
 	await page.goto(`${M}/scan/${first.code}`);
@@ -86,7 +100,7 @@ test('Reservieren: Katalog → konkreter Artikel → Warenkorb → Reservierung'
 	const title = `E2E ${run}`;
 	await page.goto(`${M}?from=2031-05-02&to=2031-05-03&title=${encodeURIComponent(title)}`);
 	await page.getByRole('searchbox', { name: 'Material suchen' }).fill(`Kohtenbahn ${run}`);
-	await page.getByRole('button', { name: `Kohtenbahn ${run} ansehen` }).click();
+	await page.getByRole('button', { name: `Kohtenbahn ${run} ansehen` }).first().click();
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible();
 	await dialog
