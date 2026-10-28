@@ -332,7 +332,18 @@
   für Aktion/Gruppe/Sonstiges, Zustand/Schäden, Bilder, Scannen (Kamera/USB) in Reservieren und Lager, Etiketten-Kacheln + Etikettgrößen, Exporte
   (Materialliste nach Kategorie/Ort, Packliste, Reservierungsübersicht als PDF/CSV). Details: `module-material.md`.
 
+- **Formular-Builder, Logo, QR-Login (2026-10-28)**: Anmeldeformular springt nach dem Autosave nicht mehr an den Seitenanfang (Ursache: `actionId={action.id}`
+  löste den Lade-Effekt der Reiter erneut aus); Felder per Drag & Drop sortierbar, Vollbild-Vorschau (Handy/Tablet/Desktop), Infotext mit formatiertem Text
+  und neuer Typ „Abschnitt“ (`forms.md`). Logo-Upload wie das Profilbild (Zuschnitt, Vorschau, Entfernen); Logo wird Favicon, App-Icon (PWA/iOS/Push) und
+  erscheint in Seitenleiste und Login (`architecture.md` → „Logo, Favicon und App-Icons“). Login: zweispaltig ab Tablet mit **QR-Code-Anmeldung** über ein
+  angemeldetes Handy (Core-Migration 0011, `architecture.md` → „Anmeldung per QR-Code“); Fußzeile mit Datenschutz/Impressum am Seitenende auf Login,
+  Passwort-Seiten und `/p/…`, Hinweis unter Einstellungen → Allgemein, solange Links fehlen.
+  Offen: QR-Scan mit echter Handy-Kamera und PWA-Icons auf echten Geräten erst nach Deploy (HTTPS); QR-Rate-Limits im Arbeitsspeicher.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Login/Logo (2026-10-28): QR-Login nur mit Bestätigen-Knopf auf dem Handy (Geräteangaben + Warnung bei anderem Netz, **kein** Vergleichscode); Fußzeile
+  nur auf Login und öffentlichen Seiten (nicht im internen Bereich); Logo für Favicon, App-Icon (PWA/iOS/Push), Seitenleiste und Login; Infotexte als
+  formatierter Text + Abschnittstitel.
 - Material (2026-10-28, ersetzt die Entscheidungen vom 2026-10-27): altes Modul **verworfen** (Altdaten gelöscht); Typen + Lagerartikel mit Anzahl,
   Typ optional; Reservieren wie „Bestellen“ nach Typ **und** Artikel, mit Zeitraum und Zweck Aktion/Gruppe/Sonstiges; **keine** Ausgabe/Rückgabe, **keine**
   Zelt-Sets; Zustand/Schäden und Bilder bleiben; Lagerorte flach; Reiter wie Bestellungen; Etiketten-Designer bleibt (Größen im Menü, Kacheln);

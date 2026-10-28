@@ -437,7 +437,7 @@ npm run build && WEBSITE_API_KEY=epk_… WEBSITE_API_URL=http://127.0.0.1:3000 P
 
 ## App auf dem Handy und Push-Benachrichtigungen
 
-- Die Oberfläche ist eine installierbare Web-App (Manifest `static/manifest.webmanifest`, Service Worker `src/service-worker.ts`).
+- Die Oberfläche ist eine installierbare Web-App (Manifest `/manifest.webmanifest` mit Icons aus dem Logo, Service Worker `src/service-worker.ts`).
   **HTTPS ist Pflicht** (ohne sichere Verbindung gibt es weder Installation noch Push; `localhost` gilt als sicher).
 - Push braucht nichts zusätzlich: Die VAPID-Schlüssel erzeugt der Server beim ersten Bedarf selbst und speichert sie verschlüsselt in der
   Datenbank (sie wandern mit der Datensicherung). Ausgehende HTTPS-Verbindungen zu den Push-Diensten (`fcm.googleapis.com`,

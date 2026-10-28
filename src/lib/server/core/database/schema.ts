@@ -441,3 +441,25 @@ export const notificationQueue = pgTable(
 	},
 	(t) => [index('notification_queue_user_idx').on(t.userId, t.createdAt)]
 );
+
+/** Anmeldung per QR-Code (Migration 0011): Token/Geheimnis nur als SHA-256, kurzlebig */
+export const loginQrRequest = pgTable(
+	'login_qr_request',
+	{
+		id: id(),
+		tokenHash: text('token_hash').notNull().unique('login_qr_request_token_hash_unique'),
+		secretHash: text('secret_hash').notNull(),
+		status: text('status').notNull().default('pending'),
+		userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+		ip: text('ip'),
+		userAgent: text('user_agent'),
+		createdAt: createdAt(),
+		expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+		scannedAt: timestamp('scanned_at', { withTimezone: true }),
+		decidedAt: timestamp('decided_at', { withTimezone: true })
+	},
+	(t) => [
+		index('login_qr_request_expires_idx').on(t.expiresAt),
+		index('login_qr_request_user_idx').on(t.userId)
+	]
+);

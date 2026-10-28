@@ -2,11 +2,14 @@
 	/**
 	 * Fußzeile mit Datenschutz- und Impressum-Link (Einstellungen `core.legal.privacyUrl` /
 	 * `core.legal.imprintUrl`). Für Login und öffentliche Seiten `/p/*`; `notice` ergänzt einen
-	 * Hinweis für Seiten, die Daten erheben. Ohne Links wird nichts angezeigt.
+	 * Hinweis für Seiten, die Daten erheben. Ohne Props kommen die Links aus dem Root-Layout (`page.data.legal`).
+	 * Ohne Links wird nichts angezeigt.
 	 */
+	import { page } from '$app/state';
+
 	let {
-		privacyUrl = null,
-		imprintUrl = null,
+		privacyUrl,
+		imprintUrl,
 		notice = false,
 		class: className = ''
 	}: {
@@ -28,8 +31,11 @@
 		}
 	}
 
-	const privacy = $derived(safe(privacyUrl));
-	const imprint = $derived(safe(imprintUrl));
+	const fromLayout = $derived(
+		(page.data as { legal?: { privacyUrl: string | null; imprintUrl: string | null } }).legal
+	);
+	const privacy = $derived(safe(privacyUrl === undefined ? fromLayout?.privacyUrl : privacyUrl));
+	const imprint = $derived(safe(imprintUrl === undefined ? fromLayout?.imprintUrl : imprintUrl));
 </script>
 
 {#if privacy || imprint}

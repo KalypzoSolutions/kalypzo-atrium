@@ -108,7 +108,13 @@ const fieldSchema = z.discriminatedUnion('type', [
 	z.strictObject({
 		...baseShape,
 		type: z.literal('info'),
-		text: z.string().max(2000, 'Höchstens 2000 Zeichen')
+		text: z.string().max(10000, 'Höchstens 10000 Zeichen'),
+		format: z.literal('html').optional()
+	}),
+	z.strictObject({
+		...baseShape,
+		type: z.literal('section'),
+		text: z.string().max(500, 'Höchstens 500 Zeichen').optional()
 	}),
 	z.strictObject({
 		...baseShape,
@@ -161,9 +167,19 @@ export const formDefinitionSchema = z
 // Antworten
 // ---------------------------------------------------------------------------
 
-/** Sichtbare, beantwortbare Felder (nicht `hidden`, nicht `info`). */
+/** Sichtbare, beantwortbare Felder (nicht `hidden`, keine Anzeige-Typen wie `info`/`section`). */
 export function visibleFields(def: FormDefinition): FieldDefinition[] {
 	return def.fields.filter((f) => !f.hidden && getFieldType(f.type).hasValue);
+}
+
+/** Anzuzeigende Felder in Reihenfolge (nicht `hidden`), inkl. Infotexte und Abschnitte. */
+export function displayFields(def: FormDefinition): FieldDefinition[] {
+	return def.fields.filter((f) => !f.hidden);
+}
+
+/** Feld hat eine Antwort (kein reiner Anzeige-Typ) */
+export function fieldHasValue(f: FieldDefinition): boolean {
+	return getFieldType(f.type).hasValue;
 }
 
 /** Leere Startwerte je Feld (`''`, `false`, `[]`, `null`). */

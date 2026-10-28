@@ -32,11 +32,13 @@
 	let {
 		user,
 		systemName,
+		logoUrl = null,
 		permissions,
 		navigation
 	}: {
 		user: { name: string; email: string; image?: string | null };
 		systemName: string;
+		logoUrl?: string | null;
 		permissions: string[];
 		navigation: ModuleNavEntry[];
 	} = $props();
@@ -102,7 +104,12 @@
 		<!-- Volle Höhe, Kopf fest, Navigation scrollt (kleine Geräte, Querformat) -->
 		<SheetContent side="left" class="app-backdrop flex h-dvh w-72 max-w-[85vw] flex-col gap-0 p-0">
 			<SheetHeader class="shrink-0 border-b p-4">
-				<SheetTitle>{systemName}</SheetTitle>
+				<SheetTitle class="flex items-center gap-2.5">
+					{#if logoUrl}
+						<img src={logoUrl} alt="" class="size-8 shrink-0 object-contain" />
+					{/if}
+					<span class="truncate">{systemName}</span>
+				</SheetTitle>
 			</SheetHeader>
 			<div
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]"

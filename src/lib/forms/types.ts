@@ -14,6 +14,7 @@ export const FIELD_TYPES = [
 	'multiselect',
 	'boolean',
 	'info',
+	'section',
 	'consent'
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
@@ -90,7 +91,16 @@ export interface BooleanField extends BaseField {
 /** Reiner Anzeigetext ohne Antwort. */
 export interface InfoField extends BaseField {
 	type: 'info';
+	/** Einfacher Text (Zeilenumbrüche) oder bei `format: 'html'` formatierter Text aus dem `RichTextEditor` */
 	text: string;
+	/** `html`: formatierter Text (Anzeige über `parseRichText`, nie `{@html}`); fehlt bei älteren Infotexten */
+	format?: 'html';
+}
+/** Abschnittsüberschrift zum Gliedern (`label` = Überschrift), ohne Antwort. */
+export interface SectionField extends BaseField {
+	type: 'section';
+	/** Untertitel (optional, einfacher Text) */
+	text?: string;
 }
 /** Pflicht-Zustimmung (Checkbox) mit Text und optionalem Link (z. B. Datenschutz). */
 export interface ConsentField extends BaseField {
@@ -111,6 +121,7 @@ export type FieldDefinition =
 	| MultiselectField
 	| BooleanField
 	| InfoField
+	| SectionField
 	| ConsentField;
 
 export interface FormDefinition {

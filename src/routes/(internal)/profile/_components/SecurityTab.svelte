@@ -21,7 +21,7 @@
 	import { ConfirmDialog, EmptyState, FormField } from '$lib/components/layout';
 	import { callAction, submitter } from './actions';
 	import type { ProfileData } from './types';
-	import { describeUserAgent } from './user-agent';
+	import { describeUserAgent } from '$lib/user-agent';
 
 	let { data }: { data: ProfileData } = $props();
 

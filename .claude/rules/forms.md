@@ -18,7 +18,7 @@ src/lib/forms/                    framework-neutral, KEINE Modul- oder Server-Im
   registry.ts                     Feldtypen-Registry: registerFieldType({ type, label, icon, create(), schema(field) })
   schema.ts                       buildFormSchema(def) → Zod-Schema; validateValues(def, values) → { ok, values, errors }
   conditions.ts                   (optional) showIf-Auswertung
-  field-types/*.ts                text, textarea, number, email, phone, date, select, multiselect, boolean, info, consent
+  field-types/*.ts                text, textarea, number, email, phone, date, select, multiselect, boolean, info, section, consent
 src/lib/components/forms/         UI auf Basis der Core-Bausteine
   FormRenderer.svelte             rendert eine FormDefinition (Eingabe + Fehler) – für Vorschau UND öffentliche Seite
   FormBuilder.svelte              Editor: Felder hinzufügen/sortieren/bearbeiten/löschen, Vorschau-Umschalter
@@ -36,7 +36,7 @@ interface BaseField { id: string; key: string; type: string; label: string; help
                       mandatory?: boolean /* Pflicht-Standardfeld: weder ausblendbar noch optional (Host erzwingt) */;
                       health?: boolean /* Antwort = Gesundheitsdaten (Host speichert geschützt), Schalter im FieldEditor */ }
 // Typen: text{maxLength} · textarea{maxLength} · number{min,max,step} · email · phone · date{min,max}
-//        select{options} · multiselect{options,min,max} · boolean · info{text} · consent{text,required}
+//        select{options} · multiselect{options,min,max} · boolean · info{text, format?: 'html'} · section{label, text?} · consent{text,required}
 // `key` ist stabil (snake/camel, eindeutig) – Antworten werden unter `key` gespeichert, nicht unter `id`.
 ```
 - Antworten: `Record<key, string | number | boolean | string[] | null>`.
@@ -65,3 +65,16 @@ interface BaseField { id: string; key: string; type: string; label: string; help
 `tests/unit/forms-*.test.ts`: Schema-Aufbau je Feldtyp (Pflicht, Grenzen, Optionen, unbekannte Schlüssel), Registry
 (unbekannter Typ → Fehler), Rundlauf JSON → Definition → Validierung. Integration: Host-Modul-Endpoint mit Rate-Limit,
 Honeypot, Duplikat, geschlossen/Frist/Plätze.
+
+## Anzeige-Typen, Sortieren, Vorschau (2026-10-28)
+- `info` (Infotext) mit `format: 'html'` = formatierter Text aus dem `RichTextEditor`; ältere Infotexte ohne `format` bleiben einfacher Text
+  (Editor wandelt per `plainToRichText`). Anzeige **nur** über `RichTextView` (`$lib/forms/rich-text.ts` `parseRichText`: Allowlist-Baum, Links nur
+  http(s)/mailto, `<script>`/`<style>`/`<iframe>` samt Inhalt weg, kein `{@html}`, auch SSR). Host bereinigt zusätzlich serverseitig
+  (`actions/form-html.ts` → `sanitizeRichText`). `section` = Abschnittsüberschrift (`label`) mit optionalem Untertitel.
+- Anzeige-Typen haben `hasValue: false`: `visibleFields` (Antworten/Validierung) ohne sie, `displayFields` (Renderer) mit ihnen; Host-Code prüft
+  `fieldHasValue(f)` statt `type === 'info'`. Palette gruppiert „Eingabefelder“ / „Text & Gliederung“.
+- `FormBuilder`: Ziehen am Griff (Pointer-Events am Fenster, `touch-none`, Auto-Scroll am Rand, Reihenfolge erst beim Loslassen übernommen,
+  `animate:flip`), Pfeiltasten auf dem Griff; „Vollbild-Vorschau“ = `FormPreviewDialog` (Handy/Tablet/Desktop, „Absenden“ prüft Pflichtfelder lokal).
+- Falle (behoben 2026-10-28): Kind-Komponenten nie `prop={obj.id}` aus einem neu geladenen Objekt geben, wenn sie in `$effect` darauf laden –
+  Svelte memoisiert Member-Ausdrücke nicht, der Effekt läuft bei jedem Neuladen (Anmelde-Tab sprang nach jedem Autosave nach oben). Lösung:
+  `const actionId = $derived(action?.id ?? id)` (gleiches Ergebnis → keine Benachrichtigung).

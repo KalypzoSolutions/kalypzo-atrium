@@ -1,10 +1,23 @@
 <script lang="ts">
 	import { PageTitle } from '$lib/components/layout';
+	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import * as Card from '$lib/components/ui/card';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const filled = (key: string) => {
+		const v = data.fields.find((f) => f.key === key)?.value;
+		return typeof v === 'string' && v.trim() !== '';
+	};
+	/** Fehlen beide Links, zeigen Login und öffentliche Seiten keine Fußzeile */
+	const missingLegal = $derived(
+		[
+			!filled('core.legal.imprintUrl') && 'Impressum',
+			!filled('core.legal.privacyUrl') && 'Datenschutzerklärung'
+		].filter(Boolean) as string[]
+	);
 </script>
 
 <PageTitle title="Allgemein · Einstellungen" />
@@ -18,7 +31,15 @@
 				PDF-Dokumente).
 			</Card.Description>
 		</Card.Header>
-		<Card.Content>
+		<Card.Content class="space-y-4">
+			{#if missingLegal.length}
+				<Alert variant="info">
+					<AlertDescription>
+						Noch ohne Link: {missingLegal.join(' und ')}. Die Anmeldeseite und öffentliche Seiten
+						zeigen in der Fußzeile nur hinterlegte Links.
+					</AlertDescription>
+				</Alert>
+			{/if}
 			<SettingsForm fields={data.fields} canEdit={data.canEdit} />
 		</Card.Content>
 	</Card.Root>

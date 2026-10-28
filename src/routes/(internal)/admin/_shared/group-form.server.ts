@@ -23,7 +23,7 @@ const SELECT_OPTIONS: Record<string, string[]> = {
 };
 
 /** Farbfelder (`#rrggbb`): Oberfläche mit ColorPicker und Kontrastanzeige */
-const COLOR_KEYS = new Set(['core.design.accentColor']);
+const COLOR_KEYS = new Set(['core.design.accentColor', 'core.design.iconBackground']);
 
 const MULTILINE_KEYS = new Set(['core.mail.signature', 'core.mail.footerText']);
 

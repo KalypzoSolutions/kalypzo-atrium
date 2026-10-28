@@ -1,9 +1,8 @@
 import { fail, type RequestEvent } from '@sveltejs/kit';
 import { z } from 'zod';
 import { sendMail } from '$lib/server/core/mail';
-import { upload } from '$lib/server/core/storage';
+import { removeLogo, setLogo } from '$lib/server/core/branding';
 import { isCoreError } from '$lib/server/core/errors';
-import { setSetting } from '$lib/server/core/settings/service';
 import { loadFields, saveFields, type FieldDescriptor } from './group-form.server';
 import { requirePerm, toFail } from './server-utils';
 
@@ -59,9 +58,6 @@ export async function testMailAction({ request, locals }: RequestEvent) {
 	}
 }
 
-const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-const MAX_LOGO_BYTES = 2 * 1024 * 1024;
-
 /** Darf Logos hochladen: Einstellungen ändern + Storage schreiben. */
 export function canUploadLogo(locals: App.Locals): boolean {
 	const p = locals.ctx.permissions;
@@ -70,29 +66,31 @@ export function canUploadLogo(locals: App.Locals): boolean {
 	);
 }
 
-/** Logo hochladen (Storage `core/branding/…`) und als `core.design.logoFileId` setzen. */
+/** Logo hochladen (neu kodiert, Storage `core/branding/…`) und als `core.design.logoFileId` setzen. */
 export async function uploadLogoAction({ request, locals }: RequestEvent) {
 	requirePerm(locals, 'core.settings.manage');
 	const file = (await request.formData()).get('logo');
 	if (!(file instanceof File) || file.size === 0) {
 		return fail(422, { message: 'Bitte wähle eine Bilddatei aus' });
 	}
-	if (!LOGO_TYPES.includes(file.type)) {
-		return fail(422, { message: 'Erlaubt sind PNG, JPEG und WebP' });
-	}
-	if (file.size > MAX_LOGO_BYTES) {
-		return fail(422, { message: 'Das Logo darf maximal 2 MB groß sein' });
-	}
 	try {
-		const stored = await upload(locals.ctx, {
-			module: 'core',
-			path: `branding/logo-${Date.now()}`,
-			file: new Uint8Array(await file.arrayBuffer()),
+		await setLogo(locals.ctx, {
+			data: new Uint8Array(await file.arrayBuffer()),
 			contentType: file.type,
 			name: file.name.slice(0, 120)
 		});
-		await setSetting(locals.ctx, 'core.design.logoFileId', stored.id);
-		return { success: true, message: 'Logo hochgeladen' };
+		return { success: true, message: 'Logo gespeichert' };
+	} catch (e) {
+		return toFail(e);
+	}
+}
+
+/** Logo entfernen (Wappen als Favicon/App-Icon, PDFs ohne Logo). */
+export async function removeLogoAction({ locals }: RequestEvent) {
+	requirePerm(locals, 'core.settings.manage');
+	try {
+		await removeLogo(locals.ctx);
+		return { success: true, message: 'Logo entfernt' };
 	} catch (e) {
 		return toFail(e);
 	}

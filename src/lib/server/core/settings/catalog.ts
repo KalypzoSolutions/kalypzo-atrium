@@ -150,6 +150,15 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		group: 'design'
 	}),
 	g({
+		key: 'core.design.iconBackground',
+		label: 'Hintergrund der App-Icons',
+		description:
+			'Füllfarbe hinter dem Logo bei App-Icons auf dem Home-Bildschirm (iOS, Android). Favicon und Logo bleiben durchsichtig.',
+		schema: hexColor,
+		default: '#ffffff',
+		group: 'design'
+	}),
+	g({
 		key: 'core.design.accentColor',
 		label: 'Akzentfarbe',
 		schema: hexColor,

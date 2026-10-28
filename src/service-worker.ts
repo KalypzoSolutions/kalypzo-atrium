@@ -53,7 +53,7 @@ sw.addEventListener('push', (event) => {
 		sw.registration.showNotification(title, {
 			body: data.body ?? '',
 			tag: data.tag,
-			icon: '/icons/icon-192.png',
+			icon: '/branding/icon-192.png',
 			badge: '/icons/badge-96.png',
 			lang: 'de',
 			data: { url: safeUrl(data.url) }

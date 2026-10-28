@@ -12,6 +12,16 @@ export {
 	validateFormValues,
 	formDefinitionSchema,
 	visibleFields,
+	displayFields,
+	fieldHasValue,
 	emptyValues,
 	slugKey
 } from './schema';
+export {
+	parseRichText,
+	richTextToPlain,
+	plainToRichText,
+	safeHref,
+	type RichNode,
+	type RichTag
+} from './rich-text';

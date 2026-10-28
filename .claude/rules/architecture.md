@@ -235,7 +235,7 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   Einstellungen `core.push.enabled|vapidPublicKey|vapidPrivateKey` (Schlüssel automatisch erzeugt, privat verschlüsselt). Backup: `notification_pref` in
   `core:users`, Geräte/Warteschlange nie; Reset `users` räumt alle drei; Datenauskunft enthält Einstellungen, Geräte (nur Label/Datum), Warteschlange.
 - Push-Endpunkte nur von bekannten Push-Diensten (`isAllowedPushEndpoint`, SSRF). REST `/api/v1/notifications/*` nur per Session (`sessionOnly`).
-- PWA: `static/manifest.webmanifest`, Icons `static/icons/` (aus dem Wappen), `src/service-worker.ts` (Push anzeigen, nur App-Pfade öffnen, **kein**
+- PWA: Manifest dynamisch (`src/routes/manifest.webmanifest/+server.ts`, Name aus `core.system.name`), Icons über `/branding/<datei>` (aus dem Logo, sonst `static/icons/` = Wappen), `src/service-worker.ts` (Push anzeigen, nur App-Pfade öffnen, **kein**
   Offline-Cache), CSP `worker-src`/`manifest-src 'self'`, `app.html` mit Manifest/Apple-Tags. Client `$lib/sdk/client/push.ts`.
   **Klick auf Push** (2026-10-25): SW wählt das aktive App-Fenster, fokussiert es und schickt `ep:navigate` → `sw-navigation.ts` (im Root-Layout)
   öffnet die Seite per `goto` und bestätigt per Port; sonst `client.navigate`, sonst `openWindow`. Für Kaltstarts, die auf der Startseite landen (iOS),
@@ -263,3 +263,26 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   (`treasury`: IBAN-Hashes, `files`: Link-Token-Hash). **Neue `*_hash`-Spalte mit `core.crypto.forModule(id).hash` → Hook ergänzen.**
 - Storage-Rohzugriff nur Core-intern: `readObjectUnchecked`, `putObjectUnchecked`, `objectExistsUnchecked`, `deleteObjectUnchecked`.
 - Tests: `tests/unit/backup-*.test.ts`, `tests/integration/backup-*.test.ts`, `core-backup*.test.ts` (Seed `tests/helpers/backup-seed.ts`), E2E `admin-backup.spec.ts`.
+
+## Logo, Favicon und App-Icons (2026-10-28)
+- `core/branding.ts`: `setLogo`/`removeLogo` (Recht `core.settings.manage`, Speichern braucht `core.storage.write`; Typ + Magic Bytes, `processImage` →
+  PNG ≤ 1024 px ohne Metadaten, Storage `core/branding/…`, Einstellung `core.design.logoFileId`, Audit `core.design.logo_updated|logo_removed`).
+  Icons (`BRAND_ICONS`: `favicon-32`, `apple-touch-icon` 180, `icon-192/512`, `maskable-512` mit 18 % Rand) entstehen **bei Bedarf** per sharp aus dem
+  Logo und werden im Prozess gecacht (keine Icon-Dateien im Storage); Füllfarbe für Apple/maskierbar = `core.design.iconBackground`.
+- Öffentliche Route `/branding/<datei>` (`logo.png` + Icons; ohne Logo 302 auf `static/icons/…`), `PUBLIC_PREFIXES` in `hooks.server.ts`. `app.html` nutzt
+  `%app.brand%` (Version aus Logo-ID + Hintergrund, `brandVersion`) für Cache-Busting; Service Worker zeigt `/branding/icon-192.png`.
+- Root-Layout liefert `logoUrl` (Seitenleiste `AppSidebar`, mobiles Menü `Topbar`, Login) und `legal` (Datenschutz/Impressum für `LegalLinks`, das ohne Props
+  `page.data.legal` nutzt). Verwaltung: `/admin/settings/design` (Dialog mit `FileField crop` quadratisch/transparent, Vorschau Favicon/iPhone/Android).
+  Test `tests/integration/core-branding.test.ts`.
+
+## Anmeldung per QR-Code (2026-10-28, Core-Migration 0011)
+- `core/auth/qr-login.ts`: Tabelle `login_qr_request` (Token im QR und Browser-Geheimnis nur als SHA-256, Status pending|approved|denied|consumed,
+  `scanned_at`). `createQrLogin` (30/10 min je IP, TTL 120 s, räumt Altes auf) → `inspectQrLogin` (Handy, markiert gescannt) → `decideQrLogin`
+  (nur `actor.type = 'user'`, offen + nicht abgelaufen, Audit `core.auth.qr_login_approved|denied`, danach 60 s zum Einlösen) → `consumeQrLogin`
+  (nur mit Geheimnis, einmalig, Audit `core.auth.login` mit `method: 'qr'`).
+- Sitzung über das Better-Auth-Plugin `qr-login-plugin.ts` (`getAuth().api.qrLoginClaim`, `internalAdapter.createSession` + `setSessionCookie`, gleiche
+  Datenbank-Hooks wie der Passwort-Login); HTTP-Weg `/api/auth/qr-login/claim` → 404.
+- Routen: `POST/GET /login/qr` (Code anlegen + Cookie `ep_qr` httpOnly/SameSite strict/Pfad `/login/qr`, Stand), `POST /login/qr/claim`, Handy-Seite
+  `/login/qr/<token>` (Login nötig; Gerät, IP, Zeit, Warnung bei anderem Netz, Knöpfe Anmelden/Ablehnen als Form-Actions). Login-Seite zeigt den QR-Code
+  ab 768 px (`QrLoginPanel`, Abfrage alle 2 s, erneuert sich max. 15×). Nutzerentscheidung: nur Bestätigen-Knopf (kein Vergleichscode).
+  Test `tests/integration/core-qr-login.test.ts`.

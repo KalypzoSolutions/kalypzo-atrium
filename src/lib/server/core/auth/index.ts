@@ -21,6 +21,7 @@ import {
 	loginPairKey
 } from './auth-limits';
 import { CLIENT_IP_HEADER, currentClientIp } from './client-ip';
+import { qrLoginPlugin } from './qr-login-plugin';
 
 /** Payload eines Bestätigungs-Tokens (JWT) lesen, ohne Prüfung – nur zur Unterscheidung der Abläufe. */
 function verificationPayload(token: string | null | undefined): {
@@ -65,6 +66,7 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 	const secure = e.ORIGIN.startsWith('https://');
 	const plugins = [
 		twoFactor({ issuer: 'EP Intern' }),
+		qrLoginPlugin(),
 		...(opts.sveltekitCookies ? [sveltekitCookies(getRequestEvent)] : [])
 	];
 

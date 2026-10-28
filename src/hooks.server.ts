@@ -11,13 +11,22 @@ import { applyClientIpHeader, clientAddress } from '$lib/server/core/auth/client
 import { logError } from '$lib/server/core/db-errors';
 import { initCore } from '$lib/server/core/init';
 import { startJobRunner } from '$lib/server/core/jobs';
+import { brandVersion, brandingState } from '$lib/server/core/branding';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
 import { getSetting } from '$lib/server/core/settings/service';
 import { applyAppearance, loadUserPrefs } from '$lib/server/core/settings/user-prefs';
 
-const PUBLIC_PAGES = ['/login', '/forgot-password', '/reset-password'];
-/** Öffentliche Modulseiten (`/p/<moduleId>/…`): keine Session nötig */
-const PUBLIC_PREFIXES = ['/p/'];
+const PUBLIC_PAGES = [
+	'/login',
+	'/forgot-password',
+	'/reset-password',
+	'/manifest.webmanifest',
+	// QR-Anmeldung: Code anfordern/Stand abfragen/einlösen (die Bestätigungsseite `/login/qr/<token>` braucht Login)
+	'/login/qr',
+	'/login/qr/claim'
+];
+/** Öffentliche Modulseiten (`/p/<moduleId>/…`) sowie Logo/Icons (`/branding/…`): keine Session nötig */
+const PUBLIC_PREFIXES = ['/p/', '/branding/'];
 
 if (!building) {
 	// Startsequenz (Migrationen, Registrierung, Synchronisation). Fehler beenden den Start laut.
@@ -107,13 +116,16 @@ async function appearanceFor(event: Parameters<Handle>[0]['event']) {
 
 const headers: Handle = async ({ event, resolve }) => {
 	let appearance: ReturnType<typeof appearanceFor> | undefined;
+	let brand: Promise<string> | undefined;
 	const response = await resolve(event, {
 		// Läuft beim Rendern (nach Session und Layout-Load): der Theme-Cookie ist dann bereits abgeglichen
 		transformPageChunk: async ({ html }) => {
 			if (!html.includes('%app.')) return html;
 			appearance ??= appearanceFor(event);
-			const a = await appearance;
-			return applyAppearance(html, {
+			brand ??= brandingState().then(brandVersion);
+			const [a, v] = await Promise.all([appearance, brand]);
+			// Favicon/Apple-Icon aus dem Logo: Version in der URL, damit Browser ein neues Logo laden
+			return applyAppearance(html.replaceAll('%app.brand%', v), {
 				theme: event.cookies.get('theme'),
 				density: a.density,
 				accent: a.accent,

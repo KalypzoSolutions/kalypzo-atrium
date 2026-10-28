@@ -315,7 +315,7 @@ werden (`core.push.vapidPublicKey`, `core.push.vapidPrivateKey` verschlüsselt).
 **Einstellungen → Benachrichtigungen** (`/admin/settings/notifications`; neue Schlüssel entfernen alle Geräte). Geräte in `push_subscription`
 (≤ 10 je Person, Upsert über den Endpoint); 404/410 entfernt ein Gerät sofort, andere Fehler nach 5 Versuchen. Endpunkte nur von bekannten
 Push-Diensten (`isAllowedPushEndpoint`, SSRF-Schutz). Client: `$lib/sdk/client/push.ts` (`pushSupport`, `enablePush`, `disablePush`), Service Worker
-`src/service-worker.ts` (zeigt Push, öffnet nur App-Pfade, kein Offline-Cache), Manifest `static/manifest.webmanifest`, Icons `static/icons/`.
+`src/service-worker.ts` (zeigt Push, öffnet nur App-Pfade, kein Offline-Cache), Manifest dynamisch unter `/manifest.webmanifest`, Icons aus dem Logo über `/branding/<datei>` (Rückfall `static/icons/`).
 
 REST (nur Session, nicht per API-Key): `GET/PUT /api/v1/notifications/preferences`, `GET /notifications/push/key`,
 `GET/POST /notifications/push/subscriptions`, `POST /notifications/push/subscriptions/remove`, `DELETE /notifications/push/subscriptions/:id`,

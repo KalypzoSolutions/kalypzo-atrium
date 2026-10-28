@@ -16,11 +16,13 @@
 </svelte:head>
 <PageTitle title={data.moduleName} />
 
-<div class="mx-auto w-full max-w-2xl px-4 py-8">
+<div class="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-4 py-8">
 	{#if systemName}
 		<p class="mb-6 text-sm font-medium text-muted-foreground">{systemName}</p>
 	{/if}
-	<Page params={data.params} path={data.path} />
+	<div class="flex-1">
+		<Page params={data.params} path={data.path} />
+	</div>
 	<LegalLinks
 		privacyUrl={data.legal.privacyUrl}
 		imprintUrl={data.legal.imprintUrl}

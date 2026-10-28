@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import SelectField from '$lib/components/ui/select-field/select-field.svelte';
 	import NumberStepper from '$lib/components/layout/NumberStepper.svelte';
+	import { RichTextEditor } from '$lib/components/ui/rich-text-editor';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -14,6 +15,8 @@
 	import {
 		getFieldType,
 		listFieldTypes,
+		plainToRichText,
+		richTextToPlain,
 		slugKey,
 		type FieldDefinition,
 		type FieldOption,
@@ -62,9 +65,19 @@
 				: undefined
 	);
 
-	const hasRequired = $derived(field.type !== 'info');
+	/** Feld mit Antwort (nicht Infotext/Abschnitt): Pflicht, Hilfetext, Gesundheitsdaten möglich */
+	const hasValue = $derived(getFieldType(field.type).hasValue);
+	const hasRequired = $derived(hasValue);
 	/** Kennzeichen „Gesundheitsdaten“ nur für Felder mit Antwort (nicht Info/Zustimmung) */
-	const hasHealthFlag = $derived(field.type !== 'info' && field.type !== 'consent');
+	const hasHealthFlag = $derived(hasValue && field.type !== 'consent');
+	/** Infotext als HTML für den Editor (ältere Infotexte sind einfacher Text) */
+	const infoHtml = $derived(
+		field.type === 'info'
+			? field.format === 'html'
+				? field.text
+				: plainToRichText(field.text)
+			: ''
+	);
 	const keyReadonly = $derived(disabled || field.locked || keyLocked);
 
 	function changeType(next: string | null) {
@@ -81,6 +94,13 @@
 		// nur Werte übernehmen, die für den neuen Typ dieselbe Bedeutung haben
 		for (const k of ['maxLength', 'placeholder', 'options', 'text']) {
 			if (old[k] !== undefined && k in created) out[k] = old[k];
+		}
+		// Text zwischen formatiert (Infotext) und einfach (Abschnitt, Zustimmung) umwandeln
+		if (typeof out.text === 'string' && out.text === old.text) {
+			const wasHtml = old.format === 'html';
+			if (out.type === 'info' && !wasHtml) out.text = plainToRichText(out.text);
+			else if (out.type !== 'info' && wasHtml) out.text = richTextToPlain(out.text);
+			if (out.type === 'section') out.text = (out.text as string).slice(0, 500) || undefined;
 		}
 		field = out as unknown as FieldDefinition;
 	}
@@ -171,7 +191,13 @@
 	{/if}
 
 	<div class="space-y-1.5">
-		<label for="{uid}-label" class={rowLabel}>Beschriftung</label>
+		<label for="{uid}-label" class={rowLabel}
+			>{field.type === 'section'
+				? 'Überschrift'
+				: field.type === 'info'
+					? 'Bezeichnung (nur im Editor sichtbar)'
+					: 'Beschriftung'}</label
+		>
 		<Input
 			id="{uid}-label"
 			data-focus-first
@@ -185,7 +211,7 @@
 		/>
 	</div>
 
-	{#if field.type !== 'info'}
+	{#if hasValue}
 		<div class="space-y-1.5">
 			<label for="{uid}-help" class={rowLabel}>Hilfetext (optional)</label>
 			<Input
@@ -481,18 +507,37 @@
 		{/if}
 	{:else if field.type === 'info'}
 		<div class="space-y-1.5">
-			<label for="{uid}-text" class={rowLabel}>Text</label>
-			<Textarea
+			<p class={rowLabel}>Text</p>
+			<RichTextEditor
 				id="{uid}-text"
-				rows={4}
-				maxlength={2000}
-				value={field.text}
+				label="Infotext"
+				value={infoHtml}
+				minHeight="8rem"
+				{disabled}
+				onchange={(html) => {
+					if (field.type === 'info') {
+						field.text = html;
+						field.format = 'html';
+					}
+				}}
+			/>
+			<p class="text-xs text-muted-foreground">
+				Erscheint im Formular als Text ohne Eingabe, z. B. für Hinweise oder Erklärungen.
+			</p>
+		</div>
+	{:else if field.type === 'section'}
+		<div class="space-y-1.5">
+			<label for="{uid}-subtitle" class={rowLabel}>Untertitel (optional)</label>
+			<Textarea
+				id="{uid}-subtitle"
+				rows={2}
+				maxlength={500}
+				value={field.text ?? ''}
 				oninput={(e) => {
-					if (field.type === 'info') field.text = e.currentTarget.value;
+					if (field.type === 'section') field.text = strOrUndef(e.currentTarget.value);
 				}}
 				{disabled}
 			/>
-			<p class="text-xs text-muted-foreground">Zeilenumbrüche bleiben erhalten.</p>
 		</div>
 	{:else if field.type === 'consent'}
 		<div class="space-y-1.5">

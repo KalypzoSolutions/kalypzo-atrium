@@ -14,9 +14,9 @@ describe('Feldtypen-Registry', () => {
 		expect(listFieldTypes().map((s) => s.type)).toEqual([...FIELD_TYPES]);
 	});
 
-	it('hasValue nur bei info false; Labels deutsch', () => {
+	it('hasValue nur bei info und section false; Labels deutsch', () => {
 		for (const s of listFieldTypes()) {
-			expect(s.hasValue).toBe(s.type !== 'info');
+			expect(s.hasValue).toBe(s.type !== 'info' && s.type !== 'section');
 			expect(s.label.length).toBeGreaterThan(0);
 			expect(s.icon.length).toBeGreaterThan(0);
 		}

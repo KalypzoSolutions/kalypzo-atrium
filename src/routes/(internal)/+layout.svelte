@@ -35,6 +35,7 @@
 <div class="flex min-h-screen">
 	<AppSidebar
 		systemName={data.systemName}
+		logoUrl={data.logoUrl}
 		permissions={data.permissions}
 		navigation={data.navigation}
 	/>
@@ -43,6 +44,7 @@
 			<Topbar
 				user={data.user}
 				systemName={data.systemName}
+				logoUrl={data.logoUrl}
 				permissions={data.permissions}
 				navigation={data.navigation}
 			/>

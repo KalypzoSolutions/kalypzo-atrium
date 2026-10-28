@@ -7,6 +7,7 @@ import { infoFieldType } from './info';
 import { multiselectFieldType } from './multiselect';
 import { numberFieldType } from './number';
 import { phoneFieldType } from './phone';
+import { sectionFieldType } from './section';
 import { selectFieldType } from './select';
 import { textFieldType } from './text';
 import { textareaFieldType } from './textarea';
@@ -22,6 +23,7 @@ const builtIns = [
 	multiselectFieldType,
 	booleanFieldType,
 	infoFieldType,
+	sectionFieldType,
 	consentFieldType
 ] as unknown as FieldTypeSpec[];
 

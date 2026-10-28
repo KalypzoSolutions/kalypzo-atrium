@@ -5,7 +5,9 @@
 	import SelectField from '$lib/components/ui/select-field/select-field.svelte';
 	import MultiSelect from '$lib/components/ui/multi-select/multi-select.svelte';
 	import { cn } from '$lib/utils';
+	import RichTextView from './RichTextView.svelte';
 	import {
+		displayFields,
 		visibleFields,
 		type FieldDefinition,
 		type FormDefinition,
@@ -45,6 +47,8 @@
 	let otherMode = $state<Record<string, boolean>>({});
 
 	const fields = $derived(visibleFields(definition));
+	/** Alles Sichtbare in Reihenfolge, auch Infotexte und Abschnitte */
+	const shown = $derived(displayFields(definition));
 	const ro = $derived(disabled || readonly);
 
 	const fid = (f: FieldDefinition, part = 'input') => `${prefix}-${f.id}-${part}`;
@@ -132,11 +136,22 @@
 {/snippet}
 
 <div bind:this={root} class={cn('relative space-y-5', className)}>
-	{#each fields as f (f.id)}
+	{#each shown as f, i (f.id)}
 		{@const err = errorOf(f)}
 		<div data-field-id={f.id} class="space-y-1.5">
 			{#if f.type === 'info'}
-				<p class="text-sm whitespace-pre-line text-foreground">{f.text}</p>
+				{#if f.format === 'html'}
+					<RichTextView html={f.text} class="text-foreground" />
+				{:else}
+					<p class="text-sm whitespace-pre-line text-foreground">{f.text}</p>
+				{/if}
+			{:else if f.type === 'section'}
+				<div class={i > 0 ? 'border-t pt-5' : ''}>
+					<h3 class="text-base font-semibold">{f.label}</h3>
+					{#if f.text}
+						<p class="mt-0.5 text-sm whitespace-pre-line text-muted-foreground">{f.text}</p>
+					{/if}
+				</div>
 			{:else if f.type === 'boolean'}
 				<div class="flex items-start gap-3">
 					<Checkbox

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { flip } from 'svelte/animate';
 	import { Input } from '$lib/components/ui/input';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
@@ -11,13 +12,17 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Copy from '@lucide/svelte/icons/copy';
+	import GripVertical from '@lucide/svelte/icons/grip-vertical';
+	import Maximize2 from '@lucide/svelte/icons/maximize-2';
 	import Trash from '@lucide/svelte/icons/trash';
 	import FieldEditor from './FieldEditor.svelte';
 	import FieldPalette, { fieldTypeIcon } from './FieldPalette.svelte';
+	import FormPreviewDialog from './FormPreviewDialog.svelte';
 	import FormRenderer from './FormRenderer.svelte';
 	import {
 		emptyValues,
 		getFieldType,
+		richTextToPlain,
 		listFieldTypes,
 		slugKey,
 		type FieldDefinition,
@@ -55,6 +60,99 @@
 	let confirmOpen = $state(false);
 	let pendingDelete = $state<FieldDefinition | null>(null);
 	let root: HTMLElement | null = $state(null);
+	let fullscreen = $state(false);
+
+	// --- Ziehen zum Sortieren (Maus, Stift, Touch über den Griff) ---------------------------
+	let dragId = $state<string | null>(null);
+	/** Reihenfolge während des Ziehens; erst beim Loslassen übernommen */
+	let dragOrder = $state<FieldDefinition[] | null>(null);
+	const list = $derived(dragOrder ?? definition.fields);
+	let lastY = 0;
+	let scrollTimer: ReturnType<typeof setInterval> | null = null;
+
+	function startDrag(e: PointerEvent, id: string) {
+		if (disabled || e.button !== 0) return;
+		e.preventDefault();
+		dragId = id;
+		dragOrder = [...definition.fields];
+		lastY = e.clientY;
+		window.addEventListener('pointermove', onDragMove);
+		window.addEventListener('pointerup', endDrag);
+		window.addEventListener('pointercancel', cancelDrag);
+		scrollTimer = setInterval(autoScroll, 16);
+	}
+
+	function onDragMove(e: PointerEvent) {
+		lastY = e.clientY;
+		reorderAt(e.clientY);
+	}
+
+	/** Verschiebt das gezogene Feld an die Stelle, die zur Zeigerposition passt */
+	function reorderAt(y: number) {
+		if (!dragId || !dragOrder || !root) return;
+		const others = [...root.querySelectorAll<HTMLElement>('[data-card-id]')].filter(
+			(el) => el.dataset.cardId !== dragId
+		);
+		let target = 0;
+		for (const el of others) {
+			const r = el.getBoundingClientRect();
+			if (y > r.top + r.height / 2) target++;
+		}
+		const from = dragOrder.findIndex((f) => f.id === dragId);
+		if (from < 0 || from === target) return;
+		const next = [...dragOrder];
+		const [moved] = next.splice(from, 1);
+		next.splice(target, 0, moved!);
+		dragOrder = next;
+	}
+
+	/** Am Rand des Fensters automatisch weiterscrollen */
+	function autoScroll() {
+		const edge = 64;
+		const h = window.innerHeight;
+		const d = lastY < edge ? -(edge - lastY) / 4 : lastY > h - edge ? (lastY - (h - edge)) / 4 : 0;
+		if (d) {
+			window.scrollBy(0, d);
+			reorderAt(lastY);
+		}
+	}
+
+	function stopListening() {
+		window.removeEventListener('pointermove', onDragMove);
+		window.removeEventListener('pointerup', endDrag);
+		window.removeEventListener('pointercancel', cancelDrag);
+		if (scrollTimer) clearInterval(scrollTimer);
+		scrollTimer = null;
+	}
+
+	function endDrag() {
+		stopListening();
+		const order = dragOrder;
+		const id = dragId;
+		dragId = null;
+		dragOrder = null;
+		if (!order || !id) return;
+		const changed = order.some((f, i) => f.id !== definition.fields[i]?.id);
+		if (!changed) return;
+		commit(order);
+		const pos = order.findIndex((f) => f.id === id);
+		announce = `„${order[pos]?.label}“ steht jetzt an Position ${pos + 1} von ${order.length}.`;
+	}
+
+	function cancelDrag() {
+		stopListening();
+		dragId = null;
+		dragOrder = null;
+	}
+
+	$effect(() => () => stopListening());
+
+	/** Kurzer Text in der Kopfzeile für Infotexte/Abschnitte */
+	function summary(f: FieldDefinition): string {
+		if (f.type === 'info') return f.format === 'html' ? richTextToPlain(f.text) : f.text;
+		if (f.type === 'section') return f.text ?? '';
+		return '';
+	}
 
 	const specs = $derived(
 		listFieldTypes().filter((t) => !allowedTypes || allowedTypes.includes(t.type as FieldType))
@@ -121,7 +219,7 @@
 		focusCard(id, '[data-focus-first]');
 	}
 
-	async function move(i: number, d: -1 | 1) {
+	async function move(i: number, d: -1 | 1, focusOn: 'arrows' | 'grip' = 'arrows') {
 		const j = i + d;
 		if (j < 0 || j >= definition.fields.length || disabled) return;
 		const next = [...definition.fields];
@@ -134,6 +232,10 @@
 		announce = `„${f.label}“ steht jetzt an Position ${j + 1} von ${next.length}.`;
 		const dir = d < 0 ? 'up' : 'down';
 		await tick();
+		if (focusOn === 'grip') {
+			root?.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(a.id)}"] [data-grip]`)?.focus();
+			return;
+		}
 		const btn = root?.querySelector<HTMLButtonElement>(
 			`[data-card-id="${CSS.escape(f.id)}"] [data-move="${dir}"]`
 		);
@@ -170,10 +272,15 @@
 
 <div bind:this={root} class="space-y-4">
 	<Tabs.Root bind:value={tab} onValueChange={onTab}>
-		<Tabs.List>
-			<Tabs.Trigger value="edit">Bearbeiten</Tabs.Trigger>
-			<Tabs.Trigger value="preview">Vorschau</Tabs.Trigger>
-		</Tabs.List>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<Tabs.List>
+				<Tabs.Trigger value="edit">Bearbeiten</Tabs.Trigger>
+				<Tabs.Trigger value="preview">Vorschau</Tabs.Trigger>
+			</Tabs.List>
+			<Button variant="ghost" size="sm" onclick={() => (fullscreen = true)}>
+				<Maximize2 /> Vollbild-Vorschau
+			</Button>
+		</div>
 
 		<Tabs.Content value="edit" class="space-y-5 pt-4">
 			<div class="grid gap-3">
@@ -218,18 +325,39 @@
 				</div>
 			{:else}
 				<ol class="space-y-3" aria-label="Formularfelder">
-					{#each definition.fields as f, i (f.id)}
+					{#each list as f, i (f.id)}
 						{@const spec = specs.find((s) => s.type === f.type) ?? getFieldType(f.type)}
 						{@const Icon = fieldTypeIcon(spec)}
 						{@const open = expanded[f.id] === true}
 						{@const ferr = errors[f.id] ?? errors[f.key]}
+						{@const note = summary(f)}
 						<li
 							data-card-id={f.id}
+							animate:flip={{ duration: 150 }}
 							class="rounded-xl border bg-card text-card-foreground {ferr
 								? 'border-destructive'
-								: ''} {f.hidden ? 'opacity-70' : ''}"
+								: ''} {f.hidden ? 'opacity-70' : ''} {dragId === f.id
+								? 'relative z-10 shadow-lg ring-2 ring-ring'
+								: ''}"
 						>
 							<div class="flex flex-wrap items-center gap-1 p-2 sm:flex-nowrap">
+								{#if !disabled}
+									<button
+										type="button"
+										data-grip
+										class="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring active:cursor-grabbing md:size-8"
+										aria-label="„{f.label}“ verschieben (ziehen oder Pfeiltasten)"
+										onpointerdown={(e) => startDrag(e, f.id)}
+										onkeydown={(e) => {
+											if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+												e.preventDefault();
+												void move(i, e.key === 'ArrowUp' ? -1 : 1, 'grip');
+											}
+										}}
+									>
+										<GripVertical class="size-4" aria-hidden="true" />
+									</button>
+								{/if}
 								<button
 									type="button"
 									class="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg px-2 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring"
@@ -241,9 +369,18 @@
 											class="size-4 shrink-0"
 										/>{/if}
 									<Icon class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-									<span class="min-w-0 flex-1 truncate text-sm font-medium">
-										{f.label || '(ohne Beschriftung)'}
-										<span class="sr-only">, {spec.label}</span>
+									<span class="flex min-w-0 flex-1 flex-col">
+										<span
+											class="truncate text-sm {f.type === 'section'
+												? 'font-semibold'
+												: 'font-medium'}"
+										>
+											{f.label || '(ohne Beschriftung)'}
+											<span class="sr-only">, {spec.label}</span>
+										</span>
+										{#if note}
+											<span class="truncate text-xs font-normal text-muted-foreground">{note}</span>
+										{/if}
 									</span>
 								</button>
 								<div class="flex flex-wrap items-center gap-1">
@@ -353,6 +490,8 @@
 
 	<p class="sr-only" aria-live="polite">{announce}</p>
 </div>
+
+<FormPreviewDialog bind:open={fullscreen} {definition} />
 
 <ConfirmDialog
 	bind:open={confirmOpen}
