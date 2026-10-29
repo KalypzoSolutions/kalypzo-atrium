@@ -349,7 +349,13 @@
   Befundsatz unter dem Titel, rollenabhängig über Rechte, neue Kacheln „Meine Gruppe“ (Gruppenleitung) und „Kasse“ (Kontostände), Nebensächliches
   standardmäßig ausgeblendet, „Anpassen“ unverändert. Details: `architecture.md` → Dashboard.
 
+- **Modul `notes` – Notizen (2026-10-29, v1.0.0)**: Seitenbaum mit vererbter Freigabe, Live-Bearbeitung mehrerer Personen (Yjs, Cursor),
+  Werkzeugleiste/Slash-Menü/Markdown-Kürzel + Quelltext-Ansicht, Tabellen, Bilder, Whiteboard live eingebettet (neuer Core-Mechanismus `embeds`,
+  Route `/embed/<modul>/<pfad>`), Versionen, Papierkorb, Notizen je Aktion, Export md/zip/html/docx/pdf (Core-PDF-Block `richText`), Import md/zip.
+  Details: `module-notes.md`. **Offen: vor dem Commit nur check/Teil-Tests geprüft – volle Testsuite, Build, E2E und Screenshots stehen aus.**
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Notizen (2026-10-29): eigenes Modul; Markdown-Kürzel **plus** Quelltext-Umschalter; Seitenbaum; Whiteboard live + bearbeitbar einbetten; Export .md/.zip/.pdf/.docx/.html.
 - Dashboard (2026-10-29): rollenabhängig ein Aufbau (Inhalt nach Rechten); nur Wichtiges sichtbar; „Anpassen“ bleibt **wie bisher** (frei
   ein-/ausblenden und sortieren).
 - Login/Logo (2026-10-28): QR-Login nur mit Bestätigen-Knopf auf dem Handy (Geräteangaben + Warnung bei anderem Netz, **kein** Vergleichscode); Fußzeile

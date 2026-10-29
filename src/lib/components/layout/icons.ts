@@ -19,6 +19,7 @@ import SquareKanban from '@lucide/svelte/icons/square-kanban';
 import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 import LayoutGrid from '@lucide/svelte/icons/layout-grid';
 import Mail from '@lucide/svelte/icons/mail';
+import NotebookPen from '@lucide/svelte/icons/notebook-pen';
 import Presentation from '@lucide/svelte/icons/presentation';
 import Puzzle from '@lucide/svelte/icons/puzzle';
 import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
@@ -60,6 +61,7 @@ const ICONS: Record<string, Icon> = {
 	'layout-dashboard': LayoutDashboard,
 	'layout-grid': LayoutGrid,
 	mail: Mail,
+	'notebook-pen': NotebookPen,
 	offices: Briefcase,
 	presentation: Presentation,
 	puzzle: Puzzle,

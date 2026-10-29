@@ -195,7 +195,14 @@ export type PdfBlock =
 			/** Anzeigetext (Standard: href); bricht bei langen Adressen überall um */
 			link?: { href: string; text?: string };
 	  }
-	| { type: 'pageBreak' };
+	| { type: 'pageBreak' }
+	/**
+	 * Formatierter Text als HTML (z. B. Export einer Notiz). Der Core bereinigt ihn immer mit
+	 * `sanitizeDocumentHtml` (`$lib/sdk/server`): Überschriften, Listen, Aufgaben, Tabellen, Code, Zitate,
+	 * Farben/Größen/Markierungen, Links http/https/mailto, Bilder nur als `data:image/…;base64` (≤ 10 MB je Bild).
+	 * Gesamtgröße höchstens 40 MB.
+	 */
+	| { type: 'richText'; html: string };
 
 export type PdfContent = PdfBlock[];
 

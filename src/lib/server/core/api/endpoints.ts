@@ -13,6 +13,7 @@ import { listPermissions } from '../permissions/service';
 import { getPublicSettings, MAX_SETTINGS_PER_WRITE, setSettings } from '../settings/service';
 import { navBadgeCounts } from '../navigation/badges';
 import { notificationEndpoints } from '../notifications/endpoints';
+import { embedEndpoints } from '../embeds/endpoints';
 import { healthCheck } from './health';
 import { buildOpenApiDocument } from './openapi';
 import { defineEndpoint, registerCoreEndpoints } from './registry';
@@ -489,6 +490,7 @@ export function registerCoreApi(): void {
 			query: paging.extend({ action: z.string().max(100).optional() }),
 			handler: ({ query }) => listAudit(query)
 		}),
-		...notificationEndpoints()
+		...notificationEndpoints(),
+		...embedEndpoints()
 	]);
 }

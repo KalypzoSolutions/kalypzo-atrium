@@ -33,6 +33,7 @@ const MIGRATED_MODULES = [
 	'galleries',
 	'members',
 	'material',
+	'notes',
 	'orders',
 	'offices',
 	'tasks',

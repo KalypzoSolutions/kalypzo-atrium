@@ -201,6 +201,15 @@ describe('guard: Modulsperre', () => {
 		expect(r.resolved).toBe(false);
 	});
 
+	it('/embed/<modul>/… braucht Login und ein aktives Modul', async () => {
+		expect(await redirected('/embed/members/x')).toMatchObject({ status: 303 });
+		login();
+		expect((await run('/embed/members/x')).response.status).toBe(200);
+		const r = await run('/embed/treasury/x');
+		expect(r.response.status).toBe(404);
+		expect(r.resolved).toBe(false);
+	});
+
 	it('anonym auf deaktiviertes Modul → Login zuerst (Existenz nicht verraten)', async () => {
 		expect(await redirected('/modules/treasury')).toMatchObject({ status: 303 });
 	});
@@ -271,6 +280,24 @@ describe('headers: Security-Header', () => {
 		expect((await run('/admin/settings/mail')).response.headers.get('x-frame-options')).toBe(
 			'DENY'
 		);
+	});
+
+	it('/embed/…: SAMEORIGIN und frame-ancestors self, andere Seiten behalten none', async () => {
+		login();
+		const csp = "default-src 'self'; frame-ancestors 'none'";
+		const embed = await run('/embed/members/x', {
+			responseHeaders: { 'content-security-policy': csp }
+		});
+		expect(embed.response.headers.get('x-frame-options')).toBe('SAMEORIGIN');
+		expect(embed.response.headers.get('content-security-policy')).toBe(
+			"default-src 'self'; frame-ancestors 'self'"
+		);
+		const other = await run('/modules/members', {
+			responseHeaders: { 'content-security-policy': csp }
+		});
+		expect(other.response.headers.get('x-frame-options')).toBe('DENY');
+		expect(other.response.headers.get('content-security-policy')).toBe(csp);
+		expect((await run('/embedx')).response.headers.get('x-frame-options')).toBe('DENY');
 	});
 
 	it('HSTS nur bei https', async () => {

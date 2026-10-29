@@ -9,6 +9,7 @@ import membersModule from '$lib/modules/members/module';
 import officesModule from '$lib/modules/offices/module';
 import ordersModule from '$lib/modules/orders/module';
 import treasuryModule from '$lib/modules/treasury/module';
+import whiteboardModule from '$lib/modules/whiteboard/module';
 
 const ALL: ModuleDefinition[] = [
 	membersModule,
@@ -18,7 +19,8 @@ const ALL: ModuleDefinition[] = [
 	galleriesModule,
 	officesModule,
 	ordersModule,
-	filesModule
+	filesModule,
+	whiteboardModule
 ];
 
 function fake(over: Partial<ModuleDefinition> & { id?: string } = {}): ModuleDefinition {
@@ -126,5 +128,28 @@ describe('validateModuleReferences (#76, 10-10)', () => {
 		).not.toThrow();
 		expect(() => validateModuleReferences([withImplies('fremd:all')])).not.toThrow();
 		expect(() => validateModuleReferences([withImplies('ohne-doppelpunkt')])).toThrow(/erwartet/);
+	});
+
+	it('embeds: Art eindeutig und gültig, Recht muss bekannt sein', () => {
+		const embed = (kind: string, permission?: string) => ({
+			kind,
+			label: 'Demo',
+			icon: 'box',
+			permission,
+			search: async () => [],
+			describe: async () => new Map()
+		});
+		expect(() =>
+			validateModuleReferences([fake({ embeds: [embed('item', 'demo.item.view')] })])
+		).not.toThrow();
+		expect(() =>
+			validateModuleReferences([fake({ embeds: [embed('item', 'demo.item.nope')] })])
+		).toThrow(/unbekanntes Recht/);
+		expect(() => validateModuleReferences([fake({ embeds: [embed('Item')] })])).toThrow(
+			/Embed-Art/
+		);
+		expect(() =>
+			validateModuleReferences([fake({ embeds: [embed('item'), embed('item')] })])
+		).toThrow(/doppelte Embed-Art/);
 	});
 });

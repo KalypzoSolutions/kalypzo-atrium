@@ -1,4 +1,5 @@
 import type { PdfBlock, PdfFormat, PdfMargins, PdfOrientation, PdfTableCell } from '$lib/sdk/types';
+import { sanitizeDocumentHtml } from '$lib/sdk/server/html';
 import { errors } from '../errors';
 
 export function escapeHtml(value: string): string {
@@ -369,7 +370,49 @@ function renderBox(b: BoxBlock): string {
 	);
 }
 
+/** Größe des HTML aller `richText`-Blöcke eines Dokuments zusammen (Zeichen) */
+export const MAX_RICH_TEXT_CHARS = 40 * 1024 * 1024;
+
+/**
+ * Druck-CSS für `richText` (nur innerhalb `.rich-text`). Steht als `<style>` im Dokument-Body – die CSP des
+ * PDF-Dokuments erlaubt `style-src 'unsafe-inline'`.
+ */
+export const RICH_TEXT_CSS = `
+.rich-text { overflow-wrap: anywhere; }
+.rich-text img { display: block; max-width: 100%; height: auto; margin: .6em 0; break-inside: avoid; }
+.rich-text blockquote { margin: .8em 0; padding: .2em 0 .2em 1em; border-left: 3px solid #d1d5db; color: #374151; }
+.rich-text pre { background: #f3f4f6; border-radius: 4px; padding: 8px 10px; white-space: pre-wrap; font-size: .9em; break-inside: avoid; }
+.rich-text code { font-family: "Courier New", Courier, monospace; font-size: .92em; }
+.rich-text :not(pre) > code { background: #f3f4f6; border-radius: 3px; padding: 0 3px; }
+.rich-text table { table-layout: auto; margin: 12px 0; }
+.rich-text th, .rich-text td { border: 1px solid #d1d5db; padding: 4px 6px; }
+.rich-text th { background: #f3f4f6; }
+.rich-text td > p:last-child, .rich-text th > p:last-child, .rich-text li > p:last-child { margin-bottom: 0; }
+.rich-text ul, .rich-text ol { break-inside: auto; }
+.rich-text ul.task-list { list-style: none; padding-left: .2em; }
+.rich-text li.task-item { display: flex; gap: .45em; align-items: flex-start; }
+.rich-text li.task-item input { margin: .3em 0 0; }
+.rich-text li.task-item.checked > div { color: #6b7280; text-decoration: line-through; }
+.rich-text hr { border: 0; border-top: 1px solid #d1d5db; margin: 1.2em 0; }
+.rich-text mark { padding: 0 1px; }
+.rich-text a { color: inherit; text-decoration: underline; }
+.rich-text .embed-box { border: 1px dashed #9ca3af; border-radius: 6px; padding: 8px 12px; margin: .8em 0; break-inside: avoid; }
+.rich-text .embed-title { font-weight: 600; }
+.rich-text .embed-link { font-size: .9em; color: #4b5563; }
+.rich-text .page-break { break-before: page; height: 0; }
+`;
+
+/** HTML eines `richText`-Blocks: immer bereinigt (Allowlist), nie roh übernommen */
+export function renderRichText(html: string): string {
+	if (typeof html !== 'string') throw errors.badRequest('Ungültiger Textblock im Dokument');
+	if (html.length > MAX_RICH_TEXT_CHARS) throw errors.tooLarge('Dokument ist zu umfangreich');
+	return `<div class="rich-text">${sanitizeDocumentHtml(html)}</div>`;
+}
+
 export function renderBlocks(blocks: PdfBlock[]): string {
+	const rich = blocks.reduce((n, b) => n + (b.type === 'richText' ? b.html.length : 0), 0);
+	if (rich > MAX_RICH_TEXT_CHARS) throw errors.tooLarge('Dokument ist zu umfangreich');
+	let richCss = false;
 	const out: string[] = [];
 	// Harte Seitenumbrüche: nie am Anfang oder Ende, aufeinanderfolgende werden zu einem
 	let pendingBreak = false;
@@ -417,6 +460,13 @@ export function renderBlocks(blocks: PdfBlock[]): string {
 			}
 			case 'box':
 				out.push(renderBox(b));
+				break;
+			case 'richText':
+				if (!richCss) {
+					out.push(`<style>${RICH_TEXT_CSS}</style>`);
+					richCss = true;
+				}
+				out.push(renderRichText(b.html));
 				break;
 			case 'table':
 				if (b.variant === 'grid') {

@@ -21,6 +21,7 @@ import filesModule from '$lib/modules/files/module';
 import galleriesModule from '$lib/modules/galleries/module';
 import membersModule from '$lib/modules/members/module';
 import messagesModule from '$lib/modules/messages/module';
+import notesModule from '$lib/modules/notes/module';
 import officesModule from '$lib/modules/offices/module';
 import ordersModule from '$lib/modules/orders/module';
 import tasksModule from '$lib/modules/tasks/module';
@@ -35,6 +36,7 @@ const MODULES: ModuleDefinition[] = [
 	galleriesModule,
 	membersModule,
 	messagesModule,
+	notesModule,
 	officesModule,
 	ordersModule,
 	tasksModule,
@@ -75,6 +77,7 @@ const UNTESTED: Record<string, Record<string, string>> = {
 		'POST /inbox/test': LEGACY,
 		'POST /inbox/:id/read': LEGACY
 	},
+	notes: {},
 	offices: {},
 	orders: {},
 	tasks: {

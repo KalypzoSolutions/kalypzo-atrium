@@ -55,6 +55,7 @@ import { errors } from './errors';
 import { env } from './env';
 import { qrDataUrl } from './qr';
 import { migratePreferences, sendNotifications } from './notifications/service';
+import { describeEmbeds, listEmbedKinds, searchEmbeds } from './embeds/service';
 import {
 	listPublicSettingsFor,
 	getSetting,
@@ -426,6 +427,17 @@ export const core = {
 		send: sendNotifications,
 		/** Alte Einstellungen eines Moduls übernehmen (idempotent, vorhandene Wahl bleibt) */
 		migratePreferences
+	},
+	embeds: {
+		/**
+		 * Eingebettete Inhalte je Betrachter*in auflösen (`EmbedInfo[]`, Reihenfolge wie `refs`, ≤ 200; kein Zugriff,
+		 * Modul aus oder unbekannt → `available: false`). Nie in einer offenen Modul-Transaktion aufrufen.
+		 */
+		describe: describeEmbeds,
+		/** Einbettbare Inhalte suchen (ab 2 Zeichen, je Art ≤ 10) */
+		search: searchEmbeds,
+		/** Arten, die die Person einbetten darf */
+		kinds: listEmbedKinds
 	},
 	qr: {
 		/** QR-Code als PNG-`data:`-URL (z. B. für den PDF-Bildblock) */

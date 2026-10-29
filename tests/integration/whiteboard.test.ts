@@ -892,6 +892,14 @@ describe('Karten aus anderen Modulen', () => {
 			[false, 'Whiteboard nicht verfügbar']
 		]);
 		expect(JSON.stringify(theirs)).not.toContain('Zelte');
+		// Notiz-Karten (`notes` hier nicht registriert/aktiv) → nicht verfügbar statt Fehler
+		const note = { type: 'note', id: crypto.randomUUID() };
+		const [noteCard] = ok<RefCard[]>(
+			await call('owner', 'POST', '/refs/describe', { items: [note] }),
+			201
+		);
+		expect(noteCard).toMatchObject({ available: false, title: 'Notiz nicht verfügbar' });
+		expect(ok<RefCard[]>(await call('owner', 'GET', '/refs?type=note&search=Lager'))).toEqual([]);
 	});
 });
 

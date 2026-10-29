@@ -120,6 +120,37 @@ export interface ModuleDashboardSources {
 	>;
 }
 
+/**
+ * Einbettbare Inhalte eines Moduls (z. B. Whiteboard in einer Notiz, Vertrag in `$lib/sdk/types/embeds.ts`).
+ * Der Core ruft `search`/`describe` nur bei aktivem Modul und vorhandenem `permission` auf, nacheinander,
+ * nie in einer offenen Transaktion. Beide filtern selbst objektbezogen (nur, was die Person sehen darf).
+ * Die Browser-Seite dazu liegt in `ModuleUi.embedRoutes` und wird unter `/embed/<modul>/<path>` im iframe geladen.
+ */
+export interface ModuleEmbedProvider {
+	/** Art innerhalb des Moduls, `[a-z][a-z0-9-]*`, eindeutig je Modul (z. B. `board`) */
+	kind: string;
+	/** Bezeichnung der Art, z. B. „Whiteboard“ */
+	label: string;
+	/** Icon-Name aus `components/layout/icons.ts` */
+	icon: string;
+	/** Nur mit diesem Recht angeboten/aufgelöst (muss bekannt sein) */
+	permission?: string;
+	/** Treffer für die Auswahl; `query` ist getrimmt, 2–100 Zeichen; höchstens `limit` liefern */
+	search: (
+		ctx: RequestContext,
+		query: string,
+		limit: number
+	) => Promise<{ refId: string; title: string; subtitle?: string | null }[]>;
+	/**
+	 * Verweise je Betrachter*in auflösen: nur sichtbare IDs in der Map (Rest = nicht verfügbar).
+	 * `path` relativ zur Embed-Route bzw. Modulseite (z. B. `<id>` → `/embed/<modul>/<id>`, `/modules/<modul>/<id>`).
+	 */
+	describe: (
+		ctx: RequestContext,
+		ids: readonly string[]
+	) => Promise<Map<string, { title: string; canEdit: boolean; path: string }>>;
+}
+
 /** Angaben für `ModuleDefinition.onUserDeleted` */
 export interface UserDeletedInfo {
 	/** ID des gelöschten Kontos (die Core-Zeile existiert nicht mehr) */
@@ -232,6 +263,8 @@ export interface ModuleDefinition {
 	search?: ModuleSearchProvider;
 	/** Übersicht (`/dashboard`): Einträge für „Zu erledigen“ und „Diese Woche“ */
 	dashboard?: ModuleDashboardSources;
+	/** Einbettbare Inhalte (Auswahl „Einbetten“ in anderen Modulen, Core-Endpunkte `/api/v1/embeds…`) */
+	embeds?: ModuleEmbedProvider[];
 	/** Benachrichtigungstypen (Kanalwahl E-Mail/Push je Person, Versand über `core.notifications.send`) */
 	notifications?: ModuleNotifications;
 	/**

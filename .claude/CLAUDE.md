@@ -36,6 +36,7 @@ Modul- und Bereichsregeln (`module-*.md`, `website.md`, `ui-design.md` …) lade
 | `rules/module-website.md` | Modul Website: Banner/Hinweise, FAQ, Blog (Bilder im Text, Mitschreiben, geplantes Veröffentlichen), Website-API `website.content.read` |
 | `rules/module-material.md` | Modul Material: Bestand (Orte, Kisten, Stücke, Mengen), Zelt-Sets, Reservierungen mit Bahnen-Anfrage, Ausgabe/Rückgabe per Scan, Etiketten-Designer/-Druck |
 | `rules/module-whiteboard.md` | Modul Whiteboards: Live-Bearbeitung (SSE + Ops, zuletzt geschrieben gewinnt), Formen/Verbinder/Freihand/Rahmen, Bilder/Dateien, Karten aus Modulen, Versionen, Export PNG/SVG/PDF/Archiv, Touch |
+| `rules/module-notes.md` | Modul Notizen: Seitenbaum, Live-Bearbeitung (Yjs über SSE + rohe Updates), Markdown/Quelltext, Tabellen/Bilder, Whiteboard einbetten (Core `embeds`), Export md/zip/html/docx/pdf, Import |
 | `rules/website.md` | Stammeswebsite `website/` = alte Website mit neuem Backend (`WEBSITE_API_KEY`): Anbindung, Routen, Demo |
 | `rules/project-state.md` | Stand, getroffene Entscheidungen, offene Punkte |
 

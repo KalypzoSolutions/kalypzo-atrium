@@ -73,6 +73,12 @@ export interface ModuleUi {
 		string,
 		() => Promise<{ default: Component<ModulePageProps> | Component<Record<string, never>> }>
 	>;
+	/**
+	 * Schlanke Seiten zum Einbetten im iframe unter `/embed/<id>/<pfad>` (gleiche Muster wie `routes`, Login nötig,
+	 * ohne Seitenleiste/Kopfzeile, volle Fensterhöhe). Gegenstück zu `ModuleDefinition.embeds` (Server), siehe
+	 * `$lib/sdk/types/embeds.ts`. Links in die App mit `target="_top"` öffnen.
+	 */
+	embedRoutes?: Record<string, () => Promise<{ default: Component<ModulePageProps> }>>;
 	/** Abschnitte auf der Profilseite (`/profile`) */
 	profileSections?: ProfileSection[];
 	/** Abschnitte im Dialog „Benutzer bearbeiten“ der Verwaltung (`/admin/users`) */

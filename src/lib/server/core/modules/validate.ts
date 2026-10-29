@@ -7,7 +7,7 @@ import type { ModuleDefinition } from './types';
  * die Definitionen kommen als Parameter (Aufruf in `syncModules`, Tests direkt).
  *
  * Fehler (Ausnahme): unbekannte Rechte in `defaultRoleGrants`, `navigation[].permission`,
- * `search.permission|anyPermission`; ungültige oder doppelte `resetAreas`-IDs, leere Tabellenlisten,
+ * `search.permission|anyPermission`, `embeds[].permission`; ungültige oder doppelte `embeds[].kind`; ungültige oder doppelte `resetAreas`-IDs, leere Tabellenlisten,
  * `implies` auf unbekannte Bereiche registrierter Module. Ein `implies` auf ein **nicht registriertes**
  * Modul wird übersprungen (Modul nicht im Build, z. B. in Tests).
  *
@@ -48,6 +48,18 @@ export function validateModuleReferences(defs: readonly ModuleDefinition[]): str
 				if (p !== undefined && !known.has(p)) {
 					throw new Error(`Modul ${m.id}: search verlangt unbekanntes Recht "${p}"`);
 				}
+			}
+		}
+		const kinds = new Set<string>();
+		for (const e of d.embeds ?? []) {
+			if (!/^[a-z][a-z0-9-]*$/.test(e.kind) || kinds.has(e.kind)) {
+				throw new Error(`Modul ${m.id}: ungültige oder doppelte Embed-Art "${e.kind}"`);
+			}
+			kinds.add(e.kind);
+			if (e.permission !== undefined && !known.has(e.permission)) {
+				throw new Error(
+					`Modul ${m.id}: Embed-Art "${e.kind}" verlangt unbekanntes Recht "${e.permission}"`
+				);
 			}
 		}
 		const areaIds = new Set<string>();

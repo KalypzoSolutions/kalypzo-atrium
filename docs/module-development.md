@@ -252,6 +252,23 @@ Der Core ruft `count` nur für aktive Module und sichtbare Einträge auf (Zeitbu
 (Aktualisierung nach jeder Navigation, jede Minute und per `refreshNavBadges()` aus `$lib/sdk/client/nav-badges.svelte`). Beispiel: `messages`
 (ungelesene Mails).
 
+### Einbetten in andere Module (`embeds`, `embedRoutes`)
+
+Ein Modul bietet Inhalte zum Einbetten an (erste Anbieterin: Whiteboard, eingebettet in Notizen). Vertrag (Client + Server):
+`$lib/sdk/types/embeds.ts` (`EmbedRef`, `EmbedHit`, `EmbedInfo`, `EmbedKind`).
+- Server: `defineModule({ embeds: [{ kind, label, icon, permission?, search(ctx, q, limit), describe(ctx, ids) }] })`
+  (`ModuleEmbedProvider` aus `$lib/sdk/server`). `kind` `[a-z][a-z0-9-]*`, eindeutig je Modul; `permission` muss bekannt sein
+  (`validateModuleReferences`). `search` liefert `{ refId, title, subtitle? }[]`, `describe` eine `Map<id, { title, canEdit, path }>`
+  nur für sichtbare IDs – beide filtern **selbst objektbezogen**, Kontext/Schlüssel vor der Transaktion (Muster `whiteboard/embeds.ts`).
+- Core-Endpunkte (nur Anmeldung, je Anbieter dessen Recht, nur aktive Module, 120/60 s): `GET /api/v1/embeds?q=` (ab 2 Zeichen, je Art ≤ 10),
+  `GET /api/v1/embeds/kinds`, `POST /api/v1/embeds/describe { items ≤ 200 }` → `EmbedInfo[]` in gleicher Reihenfolge
+  (`embedPath` = `/embed/<modul>/<path>`, `openHref` = `/modules/<modul>/<path>`; unbekannt, kein Zugriff, Modul aus → `available: false`,
+  Titel „Nicht verfügbar“). Server-Code (z. B. Export) nutzt `core.embeds.describe(ctx, refs)`.
+- Browser: `ui.ts` `embedRoutes` (gleiche Muster wie `routes`) → schlanke Seite unter `/embed/<modul>/<pfad>` ohne Seitenleiste/Kopfzeile
+  (`src/routes/embed/`), Login und Modulstatus wie `/modules/<id>`; nur diese Seiten dürfen von der eigenen App eingebettet werden
+  (`x-frame-options: SAMEORIGIN`, CSP `frame-ancestors 'self'`). Links in die App mit `target="_top"`. Gespeichert wird beim Einbettenden nur
+  `{ module, kind, refId }`.
+
 ### Hintergrundjobs und optionale Abhängigkeiten
 
 - Regelmäßige Aufgaben (Abgleich, Erinnerungs-Mails) als `jobs` im `defineModule` deklarieren (`schedule: 'hourly' | 'daily' | { everyMinutes }`,
@@ -453,6 +470,7 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 | `subjectExport` | Beitrag zur Datenauskunft `/admin/privacy` (`findSubjects?`, `resolve?`, `run`, siehe oben). | `members/subject-export.ts` |
 | `backup.rehash(tx, { hash, decrypt })` | Nach Wiederherstellen/Zusammenführen einer Sicherung mit **anderem Schlüssel** (`APP_SECRET`): schlüsselgebundene Hashes mit dem Zielschlüssel neu berechnen; idempotent, Rückgabe `{ updated, unrecoverable }`, keine Core-Services. **Pflicht für jede neue `*_hash`-Spalte mit `core.crypto.forModule(id).hash(…)`.** Ohne Hook passen die Hashes nach dem Umzug auf einen anderen Server zu keiner Eingabe mehr: Lookups über den Hash (Link-Token, Verknüpfungscode, IBAN-Abgleich) finden nichts, Links/Codes sind tot, Zuordnungen fehlen still. Werte ohne entschlüsselbare Quelle als `unrecoverable` auf `NULL` setzen. | `treasury/backup.ts` (IBAN), `files/backup.ts`, `members`/`actions` (`link-tokens.ts`) |
 | `search` | Quelle für die globale Suche (Befehlspalette, `ModuleSearchProvider { permission?, anyPermission?, run(ctx, query, limit) }`): `run` filtert selbst objektbezogen (Freigaben, eigene Daten), liefert nur sichtbare Felder und relative Links; Fehler überspringen die Quelle. | `events/search.ts`, `members/search.ts` |
+| `embeds` | Einbettbare Inhalte (`ModuleEmbedProvider[]`: `kind`, `label`, `icon`, `permission?`, `search`, `describe`), Core-Endpunkte `/api/v1/embeds…` (siehe „Einbetten in andere Module“). | `whiteboard/embeds.ts` |
 | `onEnable(ctx)` / `onDisable(ctx)` | Laufen **nach** dem Aktivieren (Migrationen + Audit, außerhalb der Transaktion) bzw. Deaktivieren über `core.modules.enable|disable`; nicht beim Start und nicht beim Übernehmen des Modulstatus aus einer Sicherung. Für einmalige Nacharbeiten (z. B. Altbestand verschlüsseln/hashen). | `actions`, `members` (`onEnable`); `onDisable` nutzt derzeit kein Modul |
 
 ### Manifest
@@ -473,6 +491,7 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 | `profileSections` | Karten auf `/profile` (siehe oben). | `members`, `offices` |
 | `userAdminSections` | Abschnitte im Dialog „Benutzer bearbeiten“ (`/admin/users`, siehe oben). | `files` |
 | `dashboardWidgets` | Kacheln auf `/dashboard` (siehe oben). | `events`, `treasury` |
+| `embedRoutes` | Seiten zum Einbetten im iframe unter `/embed/<id>/<pfad>` (ohne Seitenleiste/Kopfzeile, volle Höhe, Login nötig), Gegenstück zu `embeds`. | `whiteboard` (`:id`) |
 | `fullBleedRoutes` | Schlüssel aus `routes`, die die ganze Fläche neben Seitenleiste und Kopfzeile nutzen (ohne Rand/`max-w`, Höhe `100dvh` − Kopfzeile) – für Editoren. Die Seite bringt ihren eigenen Kopf mit. | `whiteboard` (`:id`) |
 
 ### Audit-Aktionsnamen

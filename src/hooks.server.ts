@@ -87,8 +87,8 @@ const guard: Handle = async ({ event, resolve }) => {
 				`/login${path !== '/' ? `?redirectTo=${encodeURIComponent(path + event.url.search)}` : ''}`
 			);
 		}
-		// Moduloberfläche: deaktivierte Module sind nicht erreichbar
-		const m = /^\/(?:modules|p)\/([^/]+)/.exec(path);
+		// Moduloberfläche (auch eingebettet): deaktivierte Module sind nicht erreichbar
+		const m = /^\/(?:modules|p|embed)\/([^/]+)/.exec(path);
 		if (m && !(await isModuleEnabled(m[1] as string))) {
 			return new Response('Modul nicht verfügbar', { status: 404 });
 		}
@@ -135,9 +135,20 @@ const headers: Handle = async ({ event, resolve }) => {
 	});
 	response.headers.set('x-content-type-options', 'nosniff');
 	response.headers.set('referrer-policy', 'strict-origin-when-cross-origin');
-	// Nur die E-Mail-Vorschau darf von der eigenen Seite eingebettet werden (iframe in den Einstellungen)
-	const embeddable = event.url.pathname === '/admin/settings/mail-preview';
+	// Nur die E-Mail-Vorschau (iframe in den Einstellungen) und Embed-Seiten (`/embed/<modul>/…`, iframe in
+	// anderen Modulen) dürfen von der eigenen Seite eingebettet werden
+	const embedPage = event.url.pathname.startsWith('/embed/');
+	const embeddable = embedPage || event.url.pathname === '/admin/settings/mail-preview';
 	response.headers.set('x-frame-options', embeddable ? 'SAMEORIGIN' : 'DENY');
+	if (embedPage) {
+		const csp = response.headers.get('content-security-policy');
+		if (csp) {
+			response.headers.set(
+				'content-security-policy',
+				csp.replace(/frame-ancestors 'none'/, "frame-ancestors 'self'")
+			);
+		}
+	}
 	response.headers.set('permissions-policy', 'camera=(self), microphone=(), geolocation=()');
 	if (event.url.protocol === 'https:') {
 		response.headers.set('strict-transport-security', 'max-age=31536000; includeSubDomains');
