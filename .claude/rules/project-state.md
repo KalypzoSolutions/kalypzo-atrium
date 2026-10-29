@@ -355,7 +355,15 @@
   Route `/embed/<modul>/<pfad>`), Versionen, Papierkorb, Notizen je Aktion, Export md/zip/html/docx/pdf (Core-PDF-Block `richText`), Import md/zip.
   Details: `module-notes.md`. **Offen: vor dem Commit nur check/Teil-Tests geprüft – volle Testsuite, Build, E2E und Screenshots stehen aus.**
 
+- **Aufgaben 2.0 (2026-10-29, `tasks` v1.1.0, Migr. 0002; `events` v1.4.0, Migr. 0005)**: Umsetzung des Konzept-Artifacts „Aufgaben 2.0“ –
+  Phasen mit Zeitraum je Board, Beginn + Fälligkeit und Meilensteine je Aufgabe, Ansichten Board · Liste · Zeitleiste (ziehbar) · Kalender,
+  aufgeräumte Karten und Filter, Seitenblatt mit Autosave statt Dialog, Handy-Ansicht nach Muster Kasse, Vorlagen („Fahrt / Lager“, „Tagesaktion“,
+  eigene) relativ zur Aktion, Mitverschieben bei geänderter Aktion, Abhängigkeiten „wartet auf“, Meilensteine im Kalender-Abo. Details: `module-tasks.md`.
+  Offen: echte Touch-Geräte nur emuliert, iCal-Meilensteine in echten Kalender-Apps ungeprüft.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Aufgaben 2.0 (2026-10-29): Phasen je Board, Datum optional; Zeitleiste am Desktop ziehbar, Touch nur ansehen; Abhängigkeiten nur Anzeige/Warnung;
+  Meilensteine optional im Kalender-Abo (Schalter je Board, Standard aus); verschobene Aktion → Nachfrage, nie automatisch; Design wie die übrige App.
 - Notizen (2026-10-29): eigenes Modul; Markdown-Kürzel **plus** Quelltext-Umschalter; Seitenbaum; Whiteboard live + bearbeitbar einbetten; Export .md/.zip/.pdf/.docx/.html.
 - Dashboard (2026-10-29): rollenabhängig ein Aufbau (Inhalt nach Rechten); nur Wichtiges sichtbar; „Anpassen“ bleibt **wie bisher** (frei
   ein-/ausblenden und sortieren).
