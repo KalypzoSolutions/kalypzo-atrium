@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, type Snippet } from 'svelte';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import Image from '@tiptap/extension-image';
@@ -34,6 +34,7 @@
 		onchange,
 		uploadImage,
 		imageSrc,
+		toolbarEnd,
 		class: className
 	}: {
 		/** HTML des Textes (nur einfache Formatierung; der Server bereinigt es erneut) */
@@ -54,8 +55,20 @@
 		uploadImage?: (file: File) => Promise<{ id: string; src: string; alt?: string }>;
 		/** Anzeige-Adresse zu einer gespeicherten Bild-ID (für vorhandenen Inhalt ohne `src`) */
 		imageSrc?: (id: string) => string;
+		/**
+		 * Zusätzliche Knöpfe rechts in der Werkzeugleiste (z. B. Schreibhilfe). `setHtml` ersetzt den Inhalt
+		 * als ein Schritt im Verlauf (Strg+Z stellt den alten Text wieder her) und löst `onchange` aus.
+		 */
+		toolbarEnd?: Snippet<[{ getHtml: () => string; setHtml: (html: string) => void }]>;
 		class?: string;
 	} = $props();
+
+	const editorApi = {
+		getHtml: () => (editor && !editor.isEmpty ? editor.getHTML() : ''),
+		setHtml: (html: string) => {
+			editor?.chain().focus().setContent(html).run();
+		}
+	};
 
 	let element = $state<HTMLDivElement | null>(null);
 	let editor = $state.raw<Editor | null>(null);
@@ -374,6 +387,9 @@
 				</Button>
 			{/each}
 		{/each}
+		{#if toolbarEnd}
+			<div class="ml-auto flex items-center">{@render toolbarEnd(editorApi)}</div>
+		{/if}
 	</div>
 	{#if linkOpen}
 		<form

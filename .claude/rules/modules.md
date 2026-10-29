@@ -133,6 +133,9 @@ return result;
 ## KI und externe Dienste (#69)
 - `core.ai.use` schickt den Prompt an einen externen Anbieter: keine Art.-9-Daten (Gesundheit), keine Kinder-/Kontaktdaten/IBAN, Namen durch
   Platzhalter ersetzen (Pseudonymisierung), Hinweis in der Oberfläche. Jeder neue externe Empfänger kommt in `docs/security.md` → „Externe Empfänger“.
+- **Schreibhilfe** (2026-10-29): Texte nie selbst an `core.ai` schicken, sondern Textstelle in `assist.ts` anmelden (`ModuleDefinition.assist`,
+  Recht `<modul>.ai.use` ohne `defaultRoleGrants`) und das Feld auf `AssistTextarea`/`AssistInput`/`AssistRichTextEditor` umstellen. Kontext-Provider
+  prüfen den Zugriff selbst (`null` → 404) und liefern nur Eckdaten. Details `docs/module-development.md` → „KI-Schreibhilfe“, `docs/core-services.md`.
 
 ## Zähler in der Seitenleiste
 - `defineModule({ navBadge: { path?, count(ctx) } })` → runde Zahl am Navigationseintrag (z. B. ungelesene Mails, `messages`), ab 10 „9+“.

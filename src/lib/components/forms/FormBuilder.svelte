@@ -16,6 +16,7 @@
 	import Maximize2 from '@lucide/svelte/icons/maximize-2';
 	import Trash from '@lucide/svelte/icons/trash';
 	import FieldEditor from './FieldEditor.svelte';
+	import type { AssistConfig } from '$lib/components/layout/writing-assistant/assist.svelte';
 	import FieldPalette, { fieldTypeIcon } from './FieldPalette.svelte';
 	import FormPreviewDialog from './FormPreviewDialog.svelte';
 	import FormRenderer from './FormRenderer.svelte';
@@ -38,6 +39,7 @@
 		disabled = false,
 		errors = {},
 		lockedKeys = [],
+		assist,
 		onchange
 	}: {
 		definition: FormDefinition;
@@ -48,6 +50,8 @@
 		errors?: Record<string, string>;
 		/** Schlüssel, die nicht mehr geändert werden dürfen (z. B. bereits Antworten vorhanden) */
 		lockedKeys?: string[];
+		/** KI-Schreibhilfe für Infotexte (`purpose`) und Beschriftungen (Zweck `form-label` desselben Moduls) */
+		assist?: AssistConfig;
 		onchange?: (definition: FormDefinition) => void;
 	} = $props();
 
@@ -443,6 +447,7 @@
 										{allowedTypes}
 										error={ferr}
 										keyLocked={lockedKeys.includes(f.key)}
+										{assist}
 										existingKeys={definition.fields.filter((x) => x.id !== f.id).map((x) => x.key)}
 									/>
 								</div>

@@ -343,6 +343,23 @@ await core.ai.usage(ctx, { from, to }); // Verbrauch je Modul/Modell (core.ai.vi
 - Es werden nur Zähler gespeichert (`ai_usage`), keine Prompts oder Antworten.
 - `files: [{ module, path }]` liest Dateien über den Storage-Service mit demselben Kontext; unterstützt Bilder, Text/CSV/JSON und PDFs.
 
+### Schreibhilfe (`core/ai/assist/`, seit 2026-10-29)
+Vorschläge für Textstellen, die Module in `ModuleDefinition.assist` anmelden (`purposes`: Zweck-ID → `{ label, description, format: rich|plain,
+maxChars, tasks, placeholders?, extraKeys?, letter?, contexts? }`; `contexts`: Art → `(ctx, id) => { facts, document?, images? } | null`).
+- REST: `GET /api/v1/ai/assist/status` (Anmeldung; `configured`, freigegebene `modules`, `purposes` als `<modul>:<zweck>`, `allowInbox`,
+  `allowImages`, Standard-`address`), `POST /api/v1/ai/assist` (nur Session, 30/60 s; Body `AssistRequest`) → **SSE** (`delta`, dann `done`
+  mit `text`/`variants`/`items`, `checks`, `facts`, `tokens` oder `error`). Prüfungen (403/404/422/429/503) kommen als normale HTTP-Antwort.
+- Ablauf (`prepareAssist`): Zweck eines aktiven Moduls (sonst 404) → Aufgabe erlaubt (400) → `assertAiAccess` (Recht `<modul>.ai.use` oder
+  `core.ai.manage`, Schlüssel, `allowedModules`) → Limit je Person `core.ai.userMonthlyTokenLimit` (`ai_usage.actor_id`, 429) → Kontext nur aus
+  `contexts` des Zwecks über den Provider des Zielmoduls (prüft selbst den Zugriff, `null` → 404) → `document`/`images` nur mit
+  `core.ai.assist.allowInbox`/`allowImages` (sonst weggelassen; Bildbeschreibung → 403) → `extra` nur `extraKeys` → Maskieren (`redact.ts`) →
+  Prompt (`prompt.ts`: Stammeston `core.ai.style.address|tone|greeting|notes`, Inhalte der Person zwischen `<<<`/`>>>` als Daten) →
+  `core.ai.stream` bzw. `generateJson` (Varianten/Listen) → Masken zurück, `normalizeOutput` (`sanitizeRichText` bzw. reiner Text), `verifyOutput`
+  (Platzhalter erhalten/unbekannt, erfundene Zahlen, Überlänge) → Audit `core.ai.assist_used` (Modul, Zweck, Aufgabe, Kontextart, Zähler – kein Text).
+- Oberfläche (`$lib/components/layout`): `AssistRichTextEditor`, `AssistTextarea`, `AssistInput`, `AssistButton`, `WritingAssistant`
+  (Seitenblatt bzw. `BottomSheet`, Wort-Diff, Prüfungen, „Übernehmen“/„Verwerfen“), Prop `assist: AssistConfig { module, purpose, context?, extra? }`.
+  Client `$lib/sdk/client/assist.ts` (`assistStatus`, `requestAssist`, `parseSseChunk`). Tests `tests/unit/ai-assist.test.ts`, `tests/integration/ai-assist.test.ts`.
+
 ## core.storage
 
 | Funktion | Beschreibung |

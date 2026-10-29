@@ -86,6 +86,8 @@ Nur ausdrücklich freigegebene Core-Funktionen sind erreichbar (`registerCoreApi
 | POST | `/pdf` | `core.pdf.generate` | liefert `application/pdf` |
 | POST | `/ai/generate` | `core.ai.use` | |
 | GET | `/ai/usage` | `core.ai.view` | |
+| GET | `/ai/assist/status` | Anmeldung | Schreibhilfe: eingerichtet, freigegebene Module und Textstellen |
+| POST | `/ai/assist` | Anmeldung + `<modul>.ai.use` | nur Session; Antwort `text/event-stream` (`delta`, `done`, `error`) |
 | GET | `/storage/files` | `core.storage.manage` | Query `module`, `prefix` |
 | POST | `/storage/upload-url` | `core.storage.manage` | |
 | POST | `/storage/files/:id/confirm` | `core.storage.manage` | |

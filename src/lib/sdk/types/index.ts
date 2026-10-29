@@ -291,3 +291,4 @@ export interface AiGenerateResult {
 export type * from './search';
 export type * from './dashboard';
 export type * from './notifications';
+export type * from './assist';

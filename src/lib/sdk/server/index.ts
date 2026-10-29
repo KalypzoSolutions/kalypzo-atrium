@@ -12,6 +12,9 @@ export { CoreError, errors, isCoreError } from '$lib/server/core/errors';
 export { describeError, errorSummary, isUniqueViolation } from '$lib/server/core/db-errors';
 export type { ErrorDescription } from '$lib/server/core/db-errors';
 export type {
+	ModuleAssist,
+	ModuleAssistContext,
+	ModuleAssistPurpose,
 	ModuleBackupHooks,
 	ModuleBackupRehashHelpers,
 	DataSubject,

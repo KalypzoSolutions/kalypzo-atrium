@@ -5,7 +5,9 @@
 	import { Button } from '$lib/components/ui/button';
 	import SelectField from '$lib/components/ui/select-field/select-field.svelte';
 	import NumberStepper from '$lib/components/layout/NumberStepper.svelte';
-	import { RichTextEditor } from '$lib/components/ui/rich-text-editor';
+	import AssistRichTextEditor from '$lib/components/layout/writing-assistant/AssistRichTextEditor.svelte';
+	import AssistButton from '$lib/components/layout/writing-assistant/AssistButton.svelte';
+	import type { AssistConfig } from '$lib/components/layout/writing-assistant/assist.svelte';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -29,7 +31,8 @@
 		existingKeys,
 		error,
 		allowedTypes,
-		keyLocked = false
+		keyLocked = false,
+		assist
 	}: {
 		field: FieldDefinition;
 		disabled?: boolean;
@@ -40,7 +43,16 @@
 		allowedTypes?: FieldType[];
 		/** Schlüssel schreibgeschützt (z. B. bereits Antworten gespeichert) */
 		keyLocked?: boolean;
+		/** KI-Schreibhilfe: Infotexte mit diesem Zweck, Beschriftungen mit `form-label` */
+		assist?: AssistConfig;
 	} = $props();
+
+	// Beschriftung nur für echte Eingabefelder (Infotext/Abschnitt haben eigene Texte)
+	const labelAssist = $derived<AssistConfig | undefined>(
+		assist && !field.locked && field.type !== 'info' && field.type !== 'section'
+			? { ...assist, purpose: 'form-label' }
+			: undefined
+	);
 
 	const uid = $props.id();
 	const KEY_RE = /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/;
@@ -198,17 +210,31 @@
 					? 'Bezeichnung (nur im Editor sichtbar)'
 					: 'Beschriftung'}</label
 		>
-		<Input
-			id="{uid}-label"
-			data-focus-first
-			autocomplete="off"
-			maxlength={200}
-			value={field.label}
-			oninput={(e) => (field.label = e.currentTarget.value)}
-			{disabled}
-			aria-invalid={field.label.trim() === '' ? true : undefined}
-			class="h-10 md:h-8"
-		/>
+		<div class="relative">
+			<Input
+				id="{uid}-label"
+				data-focus-first
+				autocomplete="off"
+				maxlength={200}
+				value={field.label}
+				oninput={(e) => (field.label = e.currentTarget.value)}
+				{disabled}
+				aria-invalid={field.label.trim() === '' ? true : undefined}
+				class={['h-10 md:h-8', labelAssist && 'pr-10']}
+			/>
+			{#if labelAssist}
+				<div class="absolute top-1/2 right-1 -translate-y-1/2">
+					<AssistButton
+						config={labelAssist}
+						variant="icon"
+						label="Beschriftung vorschlagen"
+						{disabled}
+						text={() => field.label}
+						onapply={(v) => (field.label = v.slice(0, 200))}
+					/>
+				</div>
+			{/if}
+		</div>
 	</div>
 
 	{#if hasValue}
@@ -508,9 +534,10 @@
 	{:else if field.type === 'info'}
 		<div class="space-y-1.5">
 			<p class={rowLabel}>Text</p>
-			<RichTextEditor
+			<AssistRichTextEditor
 				id="{uid}-text"
 				label="Infotext"
+				{assist}
 				value={infoHtml}
 				minHeight="8rem"
 				{disabled}

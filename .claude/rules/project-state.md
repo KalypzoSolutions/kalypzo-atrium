@@ -361,7 +361,23 @@
   eigene) relativ zur Aktion, Mitverschieben bei geänderter Aktion, Abhängigkeiten „wartet auf“, Meilensteine im Kalender-Abo. Details: `module-tasks.md`.
   Offen: echte Touch-Geräte nur emuliert, iCal-Meilensteine in echten Kalender-Apps ungeprüft.
 
+- **KI-Schreibhilfe (2026-10-29)**: Umsetzung des Konzept-Artifacts „KI-Schreibhilfe EP Intern“ (Phase 1–3). Core-Baustein `core/ai/assist/` (Zwecke aus
+  `ModuleDefinition.assist`, Kontext-Provider mit Zugriffsprüfung, Maskieren von E-Mail/Telefon/IBAN, Stammeston, Prüfung von Platzhaltern/erfundenen
+  Zahlen, SSE), Oberfläche `AssistTextarea`/`AssistInput`/`AssistRichTextEditor` (Seitenblatt, mobil `BottomSheet`), Admin Einstellungen → KI → Karte
+  „Schreibhilfe“ (Anrede, Ton, Grußformel, Hinweise, Limit je Person, Posteingang/Bilder erlauben). Recht `<modul>.ai.use` in actions, messages, events,
+  website, treasury (nur Vorlagen), members (nur Gruppentexte), offices, galleries, tasks, orders. Textstellen: Aktionsbeschreibung, Einleitung/Disclaimer/
+  Infotexte/Feldbeschriftung der Anmeldung, Thema im Zuschussantrag, Packliste (kopieren), Rückblick als Blog-Entwurf, Begleittext im Rückzahlungsbrief
+  (nicht gespeichert), Info-Mail an Teilnehmende (Knopf im Reiter Teilnehmende → Nachrichten mit Aktion als Kontext; `Participant.memberId` neu), Mail/Betreff,
+  Antwortentwurf (eingegangene Mail nur mit Einstellung), Termin, Blog/Titel/Kurztext/FAQ/Banner, Kassen-Mailvorlagen, Jahresbeitrag, Gruppentexte,
+  Amt/Bio, Galerie, Bildbeschreibung (Bild nur mit Einstellung), Aufgabe + Unteraufgaben (neuer `TaskEditor`), Artikel, **Notizen** (Auswahl ersetzen,
+  an der Cursorposition einfügen, zusammenfassen, weiterschreiben, Aufgaben ableiten; `module-notes.md`). Offen: echter Anbieter/Textqualität ungeprüft (nur
+  Fake-Client), Chat-Assistent (Phase 4) bewusst nicht umgesetzt, Absatz in der Datenschutzerklärung nötig.
+
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- KI-Schreibhilfe (2026-10-29): Anrede-Standard **„du“** (Einstellung `core.ai.style.address`, je Text umschaltbar); Nutzung **nur über Rechte**
+  `<modul>.ai.use` je Modul (keine Standard-Vergabe an Rollen); eingegangene Mails und Galeriebilder dürfen an die KI **mit Schutz** (maskiert/ohne
+  Metadaten), je Bereich abschaltbar, **Standard aus**; Vorschläge werden nie automatisch gesendet oder gespeichert.
 - Aufgaben 2.0 (2026-10-29): Phasen je Board, Datum optional; Zeitleiste am Desktop ziehbar, Touch nur ansehen; Abhängigkeiten nur Anzeige/Warnung;
   Meilensteine optional im Kalender-Abo (Schalter je Board, Standard aus); verschobene Aktion → Nachfrage, nie automatisch; Design wie die übrige App.
 - Notizen (2026-10-29): eigenes Modul; Markdown-Kürzel **plus** Quelltext-Umschalter; Seitenbaum; Whiteboard live + bearbeitbar einbetten; Export .md/.zip/.pdf/.docx/.html.

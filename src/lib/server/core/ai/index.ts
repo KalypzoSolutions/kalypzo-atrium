@@ -109,6 +109,8 @@ export interface UsageRepo {
 	record(row: UsageRow): Promise<void>;
 	/** Summe seit `since` für ein Modul */
 	totals(moduleId: string, since: Date): Promise<{ tokens: number; costUsd: number }>;
+	/** Token-Summe seit `since` für eine Person (alle Module) */
+	totalsForActor(actorId: string, since: Date): Promise<number>;
 	summary(from: Date, to: Date): Promise<UsageSummaryRow[]>;
 }
 
@@ -138,6 +140,15 @@ function dbUsageRepo(): UsageRepo {
 				.from(t)
 				.where(and(eq(t.moduleId, moduleId), gte(t.createdAt, since)));
 			return { tokens: Number(r?.tokens ?? 0), costUsd: Number(r?.cost ?? 0) };
+		},
+		async totalsForActor(actorId, since) {
+			const [r] = await getDb()
+				.select({
+					tokens: sql<number>`coalesce(sum(${t.inputTokens} + ${t.outputTokens}), 0)::bigint`
+				})
+				.from(t)
+				.where(and(eq(t.actorId, actorId), gte(t.createdAt, since)));
+			return Number(r?.tokens ?? 0);
 		},
 		async summary(from, to) {
 			const rows = await getDb()
@@ -237,16 +248,52 @@ interface Prepared {
 	client: AiClient;
 }
 
+/** Darf `ctx` den KI-Dienst für `module` nutzen? (Recht `<modul>.ai.use` oder `core.ai.manage`) */
+export function canUseAi(ctx: RequestContext, module: string): boolean {
+	if (ctx.actor.type === 'system') return true;
+	if (!ctx.userId) return false;
+	return has(ctx, `${module}.ai.use`) || has(ctx, 'core.ai.manage');
+}
+
+/** Prüft Recht, Konfiguration und Modul-Freigabe (403/503) – ohne Anfrage an den Anbieter. */
+export async function assertAiAccess(ctx: RequestContext, module: string): Promise<void> {
+	if (ctx.actor.type !== 'system' && !ctx.userId) throw errors.unauthenticated();
+	if (!MODULE_PATTERN.test(module) && module !== 'core') {
+		throw errors.badRequest('Ungültige Modul-ID');
+	}
+	if (!canUseAi(ctx, module)) throw errors.forbidden(`Berechtigung fehlt: ${module}.ai.use`);
+	const config = await loadConfig();
+	if (!config.apiKey) throw errors.unavailable('KI-Dienst ist nicht konfiguriert');
+	if (config.allowedModules.length && !config.allowedModules.includes(module)) {
+		throw errors.forbidden(`Modul "${module}" hat keinen Zugriff auf den KI-Dienst`);
+	}
+}
+
+/** Ist ein KI-Dienst eingerichtet, und für welche der angegebenen Module ist er freigegeben? */
+export async function aiAvailability(
+	modules: string[]
+): Promise<{ configured: boolean; modules: string[] }> {
+	const config = await loadConfig();
+	if (!config.apiKey) return { configured: false, modules: [] };
+	return {
+		configured: true,
+		modules: config.allowedModules.length
+			? modules.filter((m) => config.allowedModules.includes(m))
+			: modules
+	};
+}
+
+/** Verbrauchte Tokens einer Person im laufenden Monat */
+export function actorTokensThisMonth(actorId: string): Promise<number> {
+	return usage().totalsForActor(actorId, monthStart());
+}
+
 async function prepare(ctx: RequestContext, input: AiGenerateInput): Promise<Prepared> {
 	if (ctx.actor.type !== 'system' && !ctx.userId) throw errors.unauthenticated();
 	if (!MODULE_PATTERN.test(input.module) && input.module !== 'core') {
 		throw errors.badRequest('Ungültige Modul-ID');
 	}
-	if (
-		ctx.actor.type !== 'system' &&
-		!has(ctx, `${input.module}.ai.use`) &&
-		!has(ctx, 'core.ai.manage')
-	) {
+	if (!canUseAi(ctx, input.module)) {
 		throw errors.forbidden(`Berechtigung fehlt: ${input.module}.ai.use`);
 	}
 	if (input.prompt.length + (input.system?.length ?? 0) > MAX_PROMPT_CHARS) {

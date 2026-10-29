@@ -316,6 +316,16 @@ export const onUserDeleted: ModuleDefinition['onUserDeleted'] = async (tx, { use
   (`members`, `actions`, `treasury`, `events`, `galleries`, `offices`, `orders`, `files`; Dateien `subject-export.ts` bzw. `actions/privacy.ts`).
   Details: `docs/security.md` → „Löschkonzept“.
 
+### KI-Schreibhilfe (`assist`)
+- Recht `<modul>.ai.use` im Manifest (mit Beschreibung, **keine** `defaultRoleGrants` – die Verwaltung vergibt es über Rollen).
+- `defineModule({ assist: { purposes: { '<zweck>': { label, description, format, maxChars, tasks, placeholders?, extraKeys?, letter?, contexts? } },
+  contexts?: { '<art>': async (ctx, id) => ({ facts }) | null } } })` – Datei `assist.ts` (Muster `actions/assist.ts`). Kontext prüft den Zugriff
+  selbst (wie der Lese-Endpunkt), läuft außerhalb jeder Transaktion und liefert nur Eckdaten: **keine** Namen von Kindern, Teilnehmenden,
+  Kontaktdaten, Gesundheits- oder Bankdaten.
+- Oberfläche: `AssistTextarea`/`AssistInput`/`AssistRichTextEditor` bzw. `AssistButton` aus `$lib/components/layout` mit
+  `assist={{ module, purpose, context?: { module, kind, id }, extra?: () => ({ … }) }}`. Ohne Freigabe erscheint kein Knopf.
+- Platzhalter (z. B. `{{aktion}}`, `{name}`) in `placeholders` nennen – die Prüfung warnt, wenn einer verloren geht.
+
 ### Benachrichtigungen (`core.notifications`, E-Mail und Push)
 
 Benachrichtigungen an Benutzerkonten gehen **nicht** mehr direkt über `core.mail.send`, sondern über

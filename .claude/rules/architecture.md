@@ -37,6 +37,8 @@ Seit 2026-10-25: `notifications.send(ctx, moduleId, items)` (E-Mail/Web Push nac
 `pdf.labels(ctx, { title, format, layout, labels, startIndex?, outlines? })` (seit 2026-10-27, `core/pdf/labels.ts`): Etiketten als PDF (Bogen/Rolle, freie Seitengröße, Barcodes per bwip-js), Modell in `$lib/sdk/labels`.
 `pdf.renderPage(bytes, { page?, maxEdge?, timeoutMs? })` (seit 2026-10-26, `core/pdf/raster.ts`): eine PDF-Seite als PNG (pdf.js + `@napi-rs/canvas`,
 kein Chromium; ≤ 50 MB, ≤ 4 MP, 10 s, ein Lauf je Prozess, Nicht-PDF 422) – für Vorschaubilder, danach durch `images.process` (sharp bleibt für PDF gesperrt).
+`ai` (`generate`, `generateJson`, `stream`, `usage`); darauf die **Schreibhilfe** (seit 2026-10-29, `core/ai/assist/`): Module melden Textstellen in
+`ModuleDefinition.assist` an, REST `GET /ai/assist/status` + `POST /ai/assist` (SSE, nur Session), Details `docs/core-services.md` → „Schreibhilfe“.
 `images.process(bytes, { variants })` (sharp, nur Core): Inhalt prüfen (JPEG/PNG/WebP/AVIF/GIF, ≤ 50 MP), nach EXIF drehen,
 **alle Metadaten inkl. GPS entfernen**, Varianten (WebP/JPEG/PNG) mit Maßen; Typen `ImageVariantSpec` & Co. über `$lib/sdk/server`.
 

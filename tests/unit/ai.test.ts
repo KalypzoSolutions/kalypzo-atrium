@@ -60,6 +60,9 @@ beforeEach(() => {
 		async totals() {
 			return monthTotals;
 		},
+		async totalsForActor() {
+			return 0;
+		},
 		async summary() {
 			return [];
 		}

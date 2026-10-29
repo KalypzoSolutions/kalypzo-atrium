@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { listAudit } from '../audit/service';
 import * as ai from '../ai';
+import { assistStatus, prepareAssist } from '../ai/assist';
+import { assistRequestSchema } from '../ai/assist/schema';
+import { assistStreamResponse } from '../ai/assist/sse';
 import * as pdf from '../pdf';
 import * as storage from '../storage';
 import { createApiKey, listApiKeys, revokeApiKey } from './keys';
@@ -408,6 +411,32 @@ export function registerCoreApi(): void {
 			}),
 			rateLimit: { limit: 20, windowSec: 60 },
 			handler: ({ ctx, body }) => ai.generate(ctx, { ...body, module: 'core' })
+		}),
+		defineEndpoint({
+			method: 'GET',
+			path: '/ai/assist/status',
+			summary: 'Schreibhilfe: eingerichtet? In welchen Modulen darf ich sie nutzen?',
+			tags: ['KI'],
+			permission: null,
+			authenticated: true,
+			handler: ({ ctx }) => assistStatus(ctx)
+		}),
+		defineEndpoint({
+			method: 'POST',
+			path: '/ai/assist',
+			summary: 'Schreibhilfe: Vorschlag für eine Textstelle (Server-Sent Events)',
+			description:
+				'Antwort als `text/event-stream` mit `delta`-, `done`- und `error`-Ereignissen. Recht `<modul>.ai.use`; Kontext nur mit Zugriff auf das Objekt.',
+			tags: ['KI'],
+			permission: null,
+			authenticated: true,
+			sessionOnly: true,
+			body: assistRequestSchema,
+			rateLimit: { limit: 30, windowSec: 60 },
+			handler: async ({ ctx, body, request }) => {
+				const run = await prepareAssist(ctx, body);
+				return assistStreamResponse(run, { requestId: ctx.requestId, signal: request.signal });
+			}
 		}),
 		defineEndpoint({
 			method: 'GET',

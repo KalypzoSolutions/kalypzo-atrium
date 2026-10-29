@@ -16,6 +16,14 @@
 		maximumFractionDigits: 4
 	});
 	const month = new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+
+	/** Einstellungen der Schreibhilfe (Stil, heikle Daten, Limit je Person) eigene Karte */
+	const isAssistKey = (key: string) =>
+		key.startsWith('core.ai.style.') ||
+		key.startsWith('core.ai.assist.') ||
+		key === 'core.ai.userMonthlyTokenLimit';
+	const configFields = $derived(data.fields.filter((f) => !isAssistKey(f.key)));
+	const assistFields = $derived(data.fields.filter((f) => isAssistKey(f.key)));
 </script>
 
 <PageTitle title="KI · Einstellungen" />
@@ -110,7 +118,28 @@
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
-				<SettingsForm fields={data.fields} canEdit={true} />
+				<SettingsForm fields={configFields} canEdit={true} />
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root>
+			<Card.Header>
+				<Card.Title>Schreibhilfe</Card.Title>
+				<Card.Description>
+					Vorschläge für Texte in Nachrichten, Aktionen, Terminen, Website und weiteren Modulen. Wer
+					sie nutzen darf, steuert das Recht „KI-Schreibhilfe“ des jeweiligen Moduls (Rollen).
+				</Card.Description>
+			</Card.Header>
+			<Card.Content class="space-y-4">
+				<Alert.Root variant="info">
+					<Alert.Description>
+						Die Schreibhilfe schickt den Text im Feld und Eckdaten (z. B. Datum, Ort und Beitrag
+						einer Aktion) an den Anbieter, nie Empfängerlisten, Teilnehmende oder Gesundheitsdaten.
+						E-Mail-Adressen, Telefonnummern und IBANs werden vorher maskiert. Bitte einen Absatz zur
+						Schreibhilfe in die Datenschutzerklärung aufnehmen.
+					</Alert.Description>
+				</Alert.Root>
+				<SettingsForm fields={assistFields} canEdit={true} />
 			</Card.Content>
 		</Card.Root>
 	{/if}

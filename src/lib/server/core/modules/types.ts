@@ -1,6 +1,7 @@
 import type { ModuleManifest, ModuleSettingDefinition, RequestContext } from '$lib/sdk/types';
 import type { ApiEndpoint } from '../api/types';
 import type { ModuleNotificationType, NotificationScopeEntry } from '$lib/sdk/types/notifications';
+import type { AssistFormat, AssistTask } from '$lib/sdk/types/assist';
 
 /** Benachrichtigungstypen eines Moduls (siehe `core.notifications`) */
 export interface ModuleNotifications {
@@ -10,6 +11,51 @@ export interface ModuleNotifications {
 	 * Ämter). Läuft nur bei aktivem Modul, nie in einer offenen Transaktion; Fehler blenden die Einträge aus.
 	 */
 	forUser?: (ctx: RequestContext) => Promise<NotificationScopeEntry[]>;
+}
+
+/** Eine Textstelle des Moduls, an der die KI-Schreibhilfe erscheint (siehe `core/ai/assist`) */
+export interface ModuleAssistPurpose {
+	/** Anzeige, z. B. „Aktionsbeschreibung“ */
+	label: string;
+	/** Wofür der Text ist, Zielgruppe, Besonderheiten – steht im Prompt */
+	description: string;
+	format: AssistFormat;
+	/** Höchstlänge des Feldes (Zeichen, bei `rich` inkl. HTML) */
+	maxChars: number;
+	tasks: AssistTask[];
+	/** Platzhalter, die im Text vorkommen dürfen und unverändert bleiben müssen (z. B. `{{aktion}}`) */
+	placeholders?: string[];
+	/** Werte, die der Client in `extra` mitschicken darf (ungespeicherte Formularwerte): Schlüssel → Bezeichnung */
+	extraKeys?: Record<string, string>;
+	/** Tabellen (`table`, `tr`, `th`, `td` …) im HTML erlauben (z. B. Notizen) */
+	richTables?: boolean;
+	/** Text ist eine Nachricht/ein Brief: Anrede und Grußformel des Stamms verwenden */
+	letter?: boolean;
+	/** Erlaubte Kontextquellen als `<modul>:<art>`, z. B. `actions:action` */
+	contexts?: string[];
+}
+
+/** Eckdaten, die ein Kontext-Provider liefert */
+export interface ModuleAssistContext {
+	/** Kurze Fakten (Name → Wert), werden der Person im Blatt angezeigt */
+	facts: Record<string, string>;
+	/** Längerer Text (z. B. eingegangene Mail); nur mit `core.ai.assist.allowInbox` */
+	document?: string;
+	/** Bilder als Data-URL (ohne Metadaten); nur mit `core.ai.assist.allowImages` */
+	images?: string[];
+}
+
+/** Schreibhilfe eines Moduls: eigene Textstellen und Kontextquellen für alle Module */
+export interface ModuleAssist {
+	purposes?: Record<string, ModuleAssistPurpose>;
+	/**
+	 * Kontext je Art (`kind`): prüft selbst den Zugriff mit `ctx` und liefert `null`, wenn die Person das
+	 * Objekt nicht sehen darf (→ 404). Läuft außerhalb jeder Transaktion; nur nötige Felder, keine Personendaten.
+	 */
+	contexts?: Record<
+		string,
+		(ctx: RequestContext, id: string) => Promise<ModuleAssistContext | null>
+	>;
 }
 
 export interface ModuleMigration {
@@ -267,6 +313,8 @@ export interface ModuleDefinition {
 	embeds?: ModuleEmbedProvider[];
 	/** Benachrichtigungstypen (Kanalwahl E-Mail/Push je Person, Versand über `core.notifications.send`) */
 	notifications?: ModuleNotifications;
+	/** KI-Schreibhilfe: Textstellen (`purposes`, Recht `<modul>.ai.use`) und Kontextquellen (`contexts`) */
+	assist?: ModuleAssist;
 	/**
 	 * Zahl am Navigationseintrag des Moduls in der Seitenleiste (z. B. ungelesene Mails). Nur für Personen,
 	 * die den Eintrag sehen; 0 = kein Zähler. `path` wählt den Eintrag (Standard: erster ohne `admin`).

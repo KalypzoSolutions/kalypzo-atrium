@@ -19,13 +19,18 @@ export interface FieldDescriptor {
 
 const SELECT_OPTIONS: Record<string, string[]> = {
 	'core.pdf.defaultFormat': ['A3', 'A4', 'A5', 'Letter', 'Legal'],
-	'core.pdf.defaultOrientation': ['portrait', 'landscape']
+	'core.pdf.defaultOrientation': ['portrait', 'landscape'],
+	'core.ai.style.address': ['du', 'ihr', 'Sie']
 };
 
 /** Farbfelder (`#rrggbb`): Oberfläche mit ColorPicker und Kontrastanzeige */
 const COLOR_KEYS = new Set(['core.design.accentColor', 'core.design.iconBackground']);
 
-const MULTILINE_KEYS = new Set(['core.mail.signature', 'core.mail.footerText']);
+const MULTILINE_KEYS = new Set([
+	'core.mail.signature',
+	'core.mail.footerText',
+	'core.ai.style.notes'
+]);
 
 /** Mehrzeilig: bekannte Textfelder oder Texte mit Zeilenumbruch (z. B. Mail-Vorlagen aus Modulen). */
 function isMultiline(key: string, value: unknown): boolean {

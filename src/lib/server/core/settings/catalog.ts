@@ -365,6 +365,61 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		default: {},
 		group: 'ai'
 	}),
+	g({
+		key: 'core.ai.userMonthlyTokenLimit',
+		label: 'Schreibhilfe: Token-Limit je Person und Monat (0 = unbegrenzt)',
+		schema: z.coerce.number().int().min(0),
+		default: 200_000,
+		group: 'ai'
+	}),
+	g({
+		key: 'core.ai.style.address',
+		label: 'Schreibhilfe: Anrede (Standard, je Text änderbar)',
+		schema: z.enum(['du', 'ihr', 'Sie']),
+		default: 'du',
+		group: 'ai'
+	}),
+	g({
+		key: 'core.ai.style.tone',
+		label: 'Schreibhilfe: Ton',
+		description: 'Wie Texte des Stamms klingen sollen, z. B. „freundlich, locker, klar“.',
+		schema: str(300),
+		default: 'freundlich, locker und klar, wie ein Pfadfinderstamm mit Kindern und Eltern spricht',
+		group: 'ai'
+	}),
+	g({
+		key: 'core.ai.style.greeting',
+		label: 'Schreibhilfe: Grußformel',
+		schema: str(100),
+		default: 'Gut Pfad!',
+		group: 'ai'
+	}),
+	g({
+		key: 'core.ai.style.notes',
+		label: 'Schreibhilfe: Weitere Hinweise zum Stil',
+		description:
+			'Gilt für alle Vorschläge, z. B. „Stammesname: Edelweißpiraten“ oder „keine Emojis“.',
+		schema: str(1000),
+		default: '',
+		group: 'ai'
+	}),
+	g({
+		key: 'core.ai.assist.allowInbox',
+		label: 'Schreibhilfe: Eingegangene Mails für Antwortentwürfe übermitteln',
+		description:
+			'Der Mailtext geht an den KI-Anbieter (E-Mail-Adressen, Telefonnummern und IBANs werden vorher maskiert).',
+		schema: z.boolean(),
+		default: false,
+		group: 'ai'
+	}),
+	g({
+		key: 'core.ai.assist.allowImages',
+		label: 'Schreibhilfe: Galeriebilder für Bildbeschreibungen übermitteln',
+		description: 'Das Bild geht ohne Metadaten an den KI-Anbieter.',
+		schema: z.boolean(),
+		default: false,
+		group: 'ai'
+	}),
 
 	// PDF
 	g({
