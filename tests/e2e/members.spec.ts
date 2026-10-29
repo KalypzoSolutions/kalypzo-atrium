@@ -187,3 +187,38 @@ test('Mitglieder: alle Treffer auswählen und erweiterte Filter', async ({ page 
 	await expect(page.getByRole('row', { name: /Person24 .* anzeigen/ })).toBeVisible();
 	await expect(page.getByRole('row', { name: /Person00 .* anzeigen/ })).toHaveCount(0);
 });
+
+test('Mitglieder: Auswahl bleibt bei neuer Suche erhalten', async ({ page }) => {
+	await login(page);
+	await ensureModules(page, ['members']);
+
+	// Vornamen eindeutig je Lauf, weil die Suche nur einzelne Namensfelder durchsucht
+	const lastName = `Suche${run}`;
+	const anna = `Anna${run}`;
+	const bert = `Bert${run}`;
+	for (const firstName of [anna, bert]) {
+		await api(page, 'POST', '/modules/members/members', {
+			firstName,
+			lastName,
+			birthDate: '2015-03-01',
+			street: 'Am Wall 1',
+			postalCode: '28195',
+			city: 'Bremen',
+			country: 'DE',
+			stage: 'woelfling',
+			emails: [{ name: null, value: `${firstName.toLowerCase()}-${run}@example.test` }]
+		});
+	}
+
+	await page.goto(`/modules/members?search=${encodeURIComponent(anna)}`);
+	await page.getByLabel(`${anna} ${lastName} auswählen`).click();
+	await expect(page.getByText('1 ausgewählt')).toBeVisible();
+
+	// Neue Suche: Anna bleibt ausgewählt, Bert kommt dazu
+	const search = page.getByLabel('Mitglieder suchen');
+	await search.fill(bert);
+	await expect(page).toHaveURL(new RegExp(`search=${bert}`));
+	await page.getByLabel(`${bert} ${lastName} auswählen`).click();
+	await expect(page.getByText('2 ausgewählt')).toBeVisible();
+	await expect(page.getByText('(davon 1 nicht in der aktuellen Liste)')).toBeVisible();
+});
