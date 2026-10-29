@@ -18,6 +18,8 @@
 		type ResolvedDashboardWidget
 	} from '$lib/sdk/client/dashboard-widgets';
 	import type { DashboardWidgetStatus } from '$lib/sdk/types/module-ui';
+	import { feedFinding, loadDashboardFeed } from '$lib/components/dashboard/feed-data';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
 
@@ -47,11 +49,19 @@
 	const SPAN: Record<string, string> = {
 		sm: '',
 		md: 'md:col-span-2',
-		lg: 'md:col-span-2 xl:col-span-3'
+		lg: 'md:col-span-2'
 	};
 
-	// --- Kopf ---
-	const firstName = $derived((data.user?.name ?? '').trim().split(/\s+/)[0] ?? '');
+	// --- Kopf: Datum und der wichtigste Befund aus „Zu erledigen“ (gleicher Abruf wie die Kacheln) ---
+	let finding = $state<{ text: string; overdue: boolean } | null>(null);
+	onMount(() => {
+		loadDashboardFeed()
+			.then((feed) => {
+				const text = feedFinding(feed.todos, feed.today);
+				finding = text ? { text, overdue: feed.todos.some((t) => t.severity === 'overdue') } : null;
+			})
+			.catch(() => (finding = null));
+	});
 	const today = new Intl.DateTimeFormat('de-DE', {
 		weekday: 'long',
 		day: 'numeric',
@@ -176,13 +186,23 @@
 
 <PageTitle title="Dashboard" />
 
-<PageHeader title={firstName ? `Willkommen, ${firstName}` : 'Willkommen'} description={today}>
+<PageHeader title="Dashboard" description={today}>
 	{#snippet actions()}
 		<Button variant="outline" onclick={() => (customizing = true)}>
 			<Settings2 /> Anpassen
 		</Button>
 	{/snippet}
 </PageHeader>
+
+{#if finding}
+	<p class="-mt-2 mb-5 flex items-center gap-2 text-sm" data-testid="dashboard-finding">
+		<span
+			class={['size-2 shrink-0 rounded-full', finding.overdue ? 'bg-destructive' : 'bg-success']}
+			aria-hidden="true"
+		></span>
+		{finding.text}
+	</p>
+{/if}
 
 {#if arranged.visible.length === 0}
 	<EmptyState
@@ -197,7 +217,7 @@
 	</EmptyState>
 {:else}
 	<div
-		class="grid grid-flow-row-dense gap-4 md:grid-cols-2 xl:grid-cols-3"
+		class="grid grid-flow-row-dense items-start gap-4 md:grid-cols-2"
 		data-testid="dashboard-grid"
 	>
 		{#each arranged.visible as w (w.key)}

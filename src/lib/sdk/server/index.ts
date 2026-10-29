@@ -23,6 +23,8 @@ export type {
 	ModuleMigration,
 	ModuleNotifications,
 	ModuleSearchProvider,
+	ModuleDashboardSource,
+	ModuleDashboardSources,
 	ResetArea
 } from '$lib/server/core/modules/types';
 export type { Db, Tx } from '$lib/server/core/database/client';

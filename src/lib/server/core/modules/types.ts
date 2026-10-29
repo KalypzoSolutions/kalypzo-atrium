@@ -94,6 +94,32 @@ export interface ModuleSearchProvider {
 	) => Promise<import('$lib/sdk/types/search').SearchHit[]>;
 }
 
+/**
+ * Quelle eines Moduls für die Übersicht (`/dashboard`, „Zu erledigen“ bzw. „Diese Woche“). Gleiche
+ * Regeln wie `ModuleSearchProvider`: nur bei aktivem Modul und vorhandenem Recht, nie in einer offenen
+ * Transaktion aufgerufen; `run` filtert selbst objektbezogen und liefert nur, was die Person in der
+ * Moduloberfläche auch sieht. Fehler werden protokolliert und die Quelle übersprungen.
+ */
+export interface ModuleDashboardSource<TOpts, TItem> {
+	permission?: string;
+	anyPermission?: string[];
+	run: (ctx: RequestContext, opts: TOpts) => Promise<TItem[]>;
+}
+
+/** `ModuleDefinition.dashboard` */
+export interface ModuleDashboardSources {
+	/** Offene Handlungen der Person (höchstens `limit`), `today` = heute in Europe/Berlin */
+	todos?: ModuleDashboardSource<
+		{ today: string; limit: number },
+		import('$lib/sdk/types/dashboard').DashboardTodo
+	>;
+	/** Einträge im Zeitraum `from`–`to` (beide inklusive, `YYYY-MM-DD`) */
+	agenda?: ModuleDashboardSource<
+		{ today: string; from: string; to: string },
+		import('$lib/sdk/types/dashboard').DashboardAgendaItem
+	>;
+}
+
 /** Angaben für `ModuleDefinition.onUserDeleted` */
 export interface UserDeletedInfo {
 	/** ID des gelöschten Kontos (die Core-Zeile existiert nicht mehr) */
@@ -204,6 +230,8 @@ export interface ModuleDefinition {
 	backup?: ModuleBackupHooks;
 	/** Globale Suche (Befehlspalette): Datensätze des Moduls, die die Person sehen darf */
 	search?: ModuleSearchProvider;
+	/** Übersicht (`/dashboard`): Einträge für „Zu erledigen“ und „Diese Woche“ */
+	dashboard?: ModuleDashboardSources;
 	/** Benachrichtigungstypen (Kanalwahl E-Mail/Push je Person, Versand über `core.notifications.send`) */
 	notifications?: ModuleNotifications;
 	/**

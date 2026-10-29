@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-28)
+# Projektstand (zuletzt aktualisiert: 2026-10-29)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -344,7 +344,14 @@
   Passwort-Seiten und `/p/…`, Hinweis unter Einstellungen → Allgemein, solange Links fehlen.
   Offen: QR-Scan mit echter Handy-Kamera und PWA-Icons auf echten Geräten erst nach Deploy (HTTPS); QR-Rate-Limits im Arbeitsspeicher.
 
+- **Dashboard neu (2026-10-29)**: Konzept + Mockup mit Taste Skill (Stil „Achromatic ledger“), Awesome Design und Web Interface
+  Guidelines (Artifact „EP Intern Übersicht“), umgesetzt: „Zu erledigen“ + „Diese Woche“ aus allen Modulen (`ModuleDefinition.dashboard`),
+  Befundsatz unter dem Titel, rollenabhängig über Rechte, neue Kacheln „Meine Gruppe“ (Gruppenleitung) und „Kasse“ (Kontostände), Nebensächliches
+  standardmäßig ausgeblendet, „Anpassen“ unverändert. Details: `architecture.md` → Dashboard.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Dashboard (2026-10-29): rollenabhängig ein Aufbau (Inhalt nach Rechten); nur Wichtiges sichtbar; „Anpassen“ bleibt **wie bisher** (frei
+  ein-/ausblenden und sortieren).
 - Login/Logo (2026-10-28): QR-Login nur mit Bestätigen-Knopf auf dem Handy (Geräteangaben + Warnung bei anderem Netz, **kein** Vergleichscode); Fußzeile
   nur auf Login und öffentlichen Seiten (nicht im internen Bereich); Logo für Favicon, App-Icon (PWA/iOS/Push), Seitenleiste und Login; Infotexte als
   formatierter Text + Abschnittstitel.

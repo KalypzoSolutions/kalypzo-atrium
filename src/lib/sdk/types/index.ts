@@ -282,4 +282,5 @@ export interface AiGenerateResult {
 	usage: AiUsage;
 }
 export type * from './search';
+export type * from './dashboard';
 export type * from './notifications';

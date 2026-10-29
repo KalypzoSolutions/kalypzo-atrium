@@ -390,7 +390,35 @@ Die Komponente (`DashboardWidgetProps { userId, size, onstatus? }`) lädt ihre D
 gibt – das Dashboard klappt die Kachel dann zu „Nichts Neues bei …“ ein. Auswahl/Anordnung: `selectDashboardWidgets`,
 `applyDashboardLayout` (`$lib/sdk/client/dashboard-widgets`); Core-Kacheln liegen als Pseudo-Modul `core` in
 `src/lib/components/dashboard/`. Jede Person kann Kacheln unter „Anpassen“ aus-/einblenden und sortieren
-(Einstellung `core.user.dashboard`, `PUT /dashboard/layout`).
+(Einstellung `core.user.dashboard`, `PUT /dashboard/layout`). Neue Kacheln mit `order` < 5 (`TOP_ORDER`) landen auch bei
+gespeicherter Anordnung einmalig ganz oben.
+
+**„Zu erledigen“ und „Diese Woche“** (Core-Kacheln `core:todos`, `core:week`): Module liefern Einträge über
+**`ModuleDefinition.dashboard`** statt eigener Kacheln, damit alles Dringende in **einer** Liste steht:
+
+```ts
+dashboard: {
+	todos: {                                   // „Zu erledigen“: je Zeile genau eine Handlung
+		permission: 'treasury.own.view',         // optional, wie bei `search`
+		run: async (ctx, { today, limit }) => [
+			{ id, title, detail, due: 'YYYY-MM-DD', severity: 'overdue' | 'due' | 'info',
+			  amountCents, action: { label: 'Bezahlen', href: '/modules/…' }, payment? }
+		]
+	},
+	agenda: {                                  // „Diese Woche“ (Montag–Sonntag, `from`/`to` inklusive)
+		run: async (ctx, { today, from, to }) => [
+			{ id, kind: 'meeting' | 'event' | 'action' | 'material' | 'deadline', title, date, endDate?,
+			  startTime?: 'HH:MM', endTime?, detail?, href, late? }
+		]
+	}
+}
+```
+
+Gleiche Regeln wie bei `search`: nur aktive Module mit Recht, nie in einer offenen Transaktion, `run` filtert selbst
+objektbezogen, relative Links, Fehler überspringen die Quelle (`failed` in der Antwort). Der Core (`core/dashboard/feed.ts`
+`collectDashboardFeed`, Route `GET /dashboard/feed`) bereinigt, sortiert (überfällig → Frist → Rest), begrenzt (30 bzw. 80)
+und entfernt Gruppenstunden (`meeting`), die am selben Tag als Termin gleichen Titels sichtbar sind. Typen:
+`$lib/sdk/types/dashboard`. Modul-Kacheln, deren Inhalt in diese Listen gewandert ist, bleiben mit `defaultHidden: true` wählbar.
 
 **`defaultRoleGrants`** (im Manifest oder auf `defineModule`): `{ 'Mitglied': ['members.own.view'] }`. Beim Start (`syncModules`)
 wird die Rolle per Name gesucht bzw. angelegt (kein System) und jedes Recht **einmalig je (Modul, Rolle, Recht)** vergeben

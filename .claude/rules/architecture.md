@@ -102,6 +102,13 @@ kein Chromium; ≤ 50 MB, ≤ 4 MP, 10 s, ein Lauf je Prozess, Nicht-PDF 422) �
   in der Schnellwahl der Kopfzeile (`themeChoices`, Wechsel über `POST /profile/theme { activeTheme }`); neue eigene Themes werden automatisch Favorit,
   Löschen entfernt den Favoriten. UI: Profil → Darstellung, Karte „Theme“ (`ThemesCard`, `ThemeEditorDialog` mit Live-Vorschau).
   Tests `appearance.test.ts`, `user-prefs`, `hooks-server`, Integration `profile-extra`, E2E `appearance-themes.spec.ts`.
+- **Dashboard neu (2026-10-29)**: Frage der Seite „Was muss ich jetzt tun, und was steht diese Woche an?“. Core-Kacheln `core:todos`
+  („Zu erledigen“, eine Liste quer über Module, je Zeile eine Handlung, nur die dringendste als gefüllter Knopf, Zahlungsdaten aufklappbar)
+  und `core:week` („Diese Woche“, Mo–So, Arten Gruppenstunde/Termin/Aktion/Material/Frist, heute in Akzentfarbe) aus
+  `ModuleDefinition.dashboard` (`todos`/`agenda`, Regeln wie `search`) über `GET /dashboard/feed` (`core/dashboard/feed.ts`,
+  `collectDashboardFeed`); unter dem Titel ein Befundsatz (`feedFinding`). Modul-Kacheln, deren Inhalt dort aufgeht, sowie Kennzahlen,
+  Aktivitäten, Schnellzugriff, Ämter, Whiteboards, Zuletzt geändert sind `defaultHidden`. Neue Kacheln mit `order` < 5 landen auch bei
+  gespeicherter Anordnung oben (`TOP_ORDER`). Raster 2 Spalten. Konzept/Mockup: Artifact „EP Intern Übersicht“. Tests `dashboard-feed*`.
 - Dashboard (2026-10-20): `dashboard/+page.ts` sammelt `dashboardWidgets` aktiver Module + `CORE_DASHBOARD_WIDGETS` (Pseudo-Modul `core`),
   `selectDashboardWidgets`/`applyDashboardLayout` (`$lib/sdk/client/dashboard-widgets`); Core-Daten `GET /dashboard/core` (je Recht), Anordnung
   `PUT /dashboard/layout` (`core.user.dashboard`, Origin-Check, `null` = Standard). Tests `dashboard-widgets`, `dashboard-layout`, E2E `dashboard.spec.ts`.

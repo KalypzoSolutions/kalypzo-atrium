@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// Dashboard: Kacheln aus Core und Modulen, „Anpassen“ (ein-/ausblenden, Reihenfolge, Standard).
+// Dashboard: „Zu erledigen“ und „Diese Woche“ aus allen Modulen, weitere Kacheln, „Anpassen“
+// (ein-/ausblenden, Reihenfolge, Standard).
 
 const ADMIN = { email: 'admin@example.test', password: 'e2e-admin-password-1' };
 const ORIGIN = 'http://localhost:4173';
@@ -50,22 +51,22 @@ test('Dashboard zeigt Kacheln und lässt sich anpassen', async ({ page }) => {
 	await api(page, 'PUT', '/dashboard/layout', { layout: null });
 	await page.goto('/dashboard');
 
-	await expect(page.getByRole('heading', { level: 1, name: /Willkommen/ })).toBeVisible();
-	const quick = page.locator('[data-widget="core:quick-links"]');
-	await expect(quick.getByText('Schnellzugriff')).toBeVisible();
-	await expect(quick.getByRole('link', { name: 'Mitglieder' }).first()).toBeVisible();
+	await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+	// Neue Standardkacheln oben; Verwaltungskacheln sind standardmäßig aus
+	let order = await widgetOrder(page);
+	expect(order.slice(0, 2)).toEqual(['core:todos', 'core:week']);
+	await expect(page.locator('[data-widget="core:todos"]').getByText('Zu erledigen')).toBeVisible();
+	await expect(page.getByTestId('week-grid')).toBeVisible();
 	const stats = page.locator('[data-widget="core:stats"]');
-	await expect(stats.getByText('Aktive Benutzer*innen')).toBeVisible();
-	await expect(
-		page.locator('[data-widget="core:activity"]').getByText('Letzte Aktivitäten')
-	).toBeVisible();
+	await expect(stats).toHaveCount(0);
+	await expect(page.locator('[data-widget="core:activity"]')).toHaveCount(0);
 
 	if (SHOTS) {
 		await page.setViewportSize({ width: 1440, height: 900 });
 		await page.screenshot({ path: `${SHOTS}/dashboard-desktop.png`, fullPage: true });
 	}
 
-	// Kachel ausschalten → weg, auch nach Reload
+	// Kennzahlen und Aktivitäten einschalten → sichtbar, auch nach Reload
 	await page.getByRole('button', { name: 'Anpassen' }).click();
 	const sheet = page.getByRole('dialog', { name: 'Dashboard anpassen' });
 	await expect(sheet).toBeVisible();
@@ -73,22 +74,20 @@ test('Dashboard zeigt Kacheln und lässt sich anpassen', async ({ page }) => {
 	let save = saved(page);
 	await sheet.getByRole('switch', { name: 'Kennzahlen anzeigen' }).click();
 	await save;
-	await expect(stats).toHaveCount(0);
-	await page.reload();
-	await expect(page.locator('[data-widget="core:quick-links"]')).toBeVisible();
-	await expect(page.locator('[data-widget="core:stats"]')).toHaveCount(0);
-
-	// Wieder einschalten und „Letzte Aktivitäten“ vor die Kennzahlen schieben
-	await page.getByRole('button', { name: 'Anpassen' }).click();
 	save = saved(page);
-	await sheet.getByRole('switch', { name: 'Kennzahlen anzeigen' }).click();
+	await sheet.getByRole('switch', { name: 'Letzte Aktivitäten anzeigen' }).click();
 	await save;
+	await page.reload();
+	await expect(stats.getByText('Aktive Benutzer*innen')).toBeVisible();
+
+	// „Letzte Aktivitäten“ vor die Kennzahlen schieben
+	await page.getByRole('button', { name: 'Anpassen' }).click();
 	save = saved(page);
 	await sheet.getByRole('button', { name: 'Letzte Aktivitäten nach oben' }).click();
 	await save;
 	await page.reload();
 	await expect(page.locator('[data-widget="core:stats"]')).toBeVisible();
-	let order = await widgetOrder(page);
+	order = await widgetOrder(page);
 	expect(order.indexOf('core:activity')).toBeLessThan(order.indexOf('core:stats'));
 
 	// Standard wiederherstellen
@@ -97,16 +96,13 @@ test('Dashboard zeigt Kacheln und lässt sich anpassen', async ({ page }) => {
 	await sheet.getByRole('button', { name: 'Standard wiederherstellen' }).click();
 	await save;
 	await page.reload();
-	await expect(page.locator('[data-widget="core:stats"]')).toBeVisible();
-	order = await widgetOrder(page);
-	expect(order.indexOf('core:stats')).toBeLessThan(order.indexOf('core:activity'));
+	await expect(page.locator('[data-widget="core:todos"]')).toBeVisible();
+	await expect(page.locator('[data-widget="core:stats"]')).toHaveCount(0);
 
 	if (SHOTS) {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.reload();
-		await expect(
-			page.locator('[data-widget="core:stats"]').getByText('Aktive Module')
-		).toBeVisible();
+		await expect(page.getByTestId('week-list')).toBeVisible();
 		await page.screenshot({ path: `${SHOTS}/dashboard-mobil.png`, fullPage: true });
 	}
 });
@@ -127,11 +123,10 @@ test('Mitglied sieht nur seine Kacheln; deaktiviertes Modul verschwindet', async
 	const run = Date.now().toString(36);
 	const today = new Date();
 	const p = (n: number) => String(n).padStart(2, '0');
-	const soon = new Date(today.getTime() + 3 * 86_400_000);
-	const title = `Gruppenstunde ${run}`;
+	const title = `Elternabend ${run}`;
 	await api(page, 'POST', '/api/v1/modules/events/events', {
 		title,
-		startsOn: `${soon.getFullYear()}-${p(soon.getMonth() + 1)}-${p(soon.getDate())}`,
+		startsOn: `${today.getFullYear()}-${p(today.getMonth() + 1)}-${p(today.getDate())}`,
 		groupIds: ['stamm'],
 		shares: [{ type: 'everyone', id: '*', level: 'read' }]
 	});
@@ -159,8 +154,9 @@ test('Mitglied sieht nur seine Kacheln; deaktiviertes Modul verschwindet', async
 	await member.getByRole('button', { name: 'Anmelden' }).click();
 	await member.waitForURL(/\/dashboard/);
 
-	const events = member.locator('[data-widget="events:upcoming"]');
-	await expect(events.getByText(title)).toBeVisible();
+	// Termin von heute steht in „Diese Woche“
+	const week = member.getByTestId('week-grid');
+	await expect(week.getByText(title)).toBeVisible();
 	// Keine Verwaltungs- oder Kassen-Kacheln
 	for (const key of ['core:stats', 'core:activity', 'treasury:tasks', 'actions:open-accounting']) {
 		await expect(member.locator(`[data-widget="${key}"]`)).toHaveCount(0);
@@ -170,12 +166,13 @@ test('Mitglied sieht nur seine Kacheln; deaktiviertes Modul verschwindet', async
 		await member.screenshot({ path: `${SHOTS}/dashboard-mitglied.png`, fullPage: true });
 	}
 
-	// Modul deaktivieren → Kachel weg; danach wieder aktivieren
+	// Modul deaktivieren → Termin weg; danach wieder aktivieren
 	await api(page, 'POST', '/api/v1/modules/events/disable');
 	try {
 		await member.reload();
-		await expect(member.getByRole('heading', { level: 1, name: /Willkommen/ })).toBeVisible();
-		await expect(member.locator('[data-widget="events:upcoming"]')).toHaveCount(0);
+		await expect(member.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+		await expect(member.getByTestId('week-grid')).toBeVisible();
+		await expect(member.getByTestId('week-grid').getByText(title)).toHaveCount(0);
 	} finally {
 		await api(page, 'POST', '/api/v1/modules/events/enable');
 		await ctx.close();

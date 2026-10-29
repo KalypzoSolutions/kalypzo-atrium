@@ -17,6 +17,8 @@ export interface DashboardLayoutPref {
 
 /** Grenzen der gespeicherten Anordnung (Server und Client) */
 export const DASHBOARD_LAYOUT_MAX = 100;
+/** Neue Kacheln mit kleinerem `order` landen auch bei gespeicherter Anordnung ganz oben */
+export const TOP_ORDER = 5;
 export const DASHBOARD_KEY_PATTERN = /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/;
 
 /**
@@ -60,7 +62,8 @@ export interface ArrangedDashboard {
 
 /**
  * Wendet die gespeicherte Anordnung an: gespeicherte Reihenfolge zuerst, neue (noch nicht
- * einsortierte) Kacheln an ihrer Standard-Position relativ zueinander dahinter; unbekannte
+ * einsortierte) Kacheln an ihrer Standard-Position relativ zueinander dahinter – außer neuen
+ * Spitzenkacheln (`order` < `TOP_ORDER`), die davor landen; unbekannte
  * Schlüssel entfallen. Ohne Einstellung gelten Standard-Reihenfolge und `defaultHidden`.
  * Neue Kacheln mit `defaultHidden` bleiben auch bei vorhandener Einstellung aus.
  */
@@ -78,7 +81,11 @@ export function applyDashboardLayout(
 			seen.add(key);
 		}
 	}
-	for (const w of widgets) if (!seen.has(w.key)) ordered.push(w);
+	// Neue Kacheln: Spitzenplätze (`order` < 5, z. B. „Zu erledigen“) vor die gespeicherte Reihenfolge,
+	// alle anderen dahinter
+	const fresh = widgets.filter((w) => !seen.has(w.key));
+	if (pref) ordered.unshift(...fresh.filter((w) => (w.order ?? 100) < TOP_ORDER));
+	for (const w of fresh) if (!ordered.includes(w)) ordered.push(w);
 
 	const known = new Set(pref?.order ?? []);
 	const hidden = new Set<string>();

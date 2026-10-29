@@ -48,12 +48,9 @@
 	<Card.Header class="flex flex-row items-start justify-between gap-2 px-4">
 		<div class="flex min-w-0 items-center gap-2">
 			{#if Icon}
-				<span
-					class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-link"
-					aria-hidden="true"
+				<span class="shrink-0 text-muted-foreground" aria-hidden="true"
+					><Icon class="size-4" /></span
 				>
-					<Icon class="size-4" />
-				</span>
 			{/if}
 			<div class="min-w-0">
 				<Card.Title class="truncate">{title}</Card.Title>

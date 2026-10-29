@@ -80,6 +80,36 @@ describe('applyDashboardLayout', () => {
 		expect(r.visible.map((x) => x.key)).toEqual(['core:stats', 'events:upcoming', 'treasury:mine']);
 	});
 
+	it('neue Spitzenkacheln (order < 5) landen vor der gespeicherten Reihenfolge', () => {
+		const withTop = selectDashboardWidgets(
+			{ ...byModule, core: [...byModule.core, w('todos', { order: 1 }), w('week', { order: 2 })] },
+			['events', 'treasury', 'files'],
+			['events.event.view', 'treasury.own.view', 'core.users.view']
+		);
+		const r = applyDashboardLayout(withTop, {
+			order: ['treasury:mine', 'events:upcoming', 'core:stats'],
+			hidden: []
+		});
+		expect(r.all.map((x) => x.key)).toEqual([
+			'core:todos',
+			'core:week',
+			'treasury:mine',
+			'events:upcoming',
+			'core:stats',
+			'files:recent'
+		]);
+		// einmal gespeichert, gilt wieder die gespeicherte Reihenfolge
+		const again = applyDashboardLayout(withTop, {
+			order: ['treasury:mine', 'core:todos', 'core:week'],
+			hidden: []
+		});
+		expect(again.all.slice(0, 3).map((x) => x.key)).toEqual([
+			'treasury:mine',
+			'core:todos',
+			'core:week'
+		]);
+	});
+
 	it('eingeschaltete defaultHidden-Kachel bleibt sichtbar', () => {
 		const r = applyDashboardLayout(all, { order: ['files:recent'], hidden: [] });
 		expect(r.visible.map((x) => x.key)).toContain('files:recent');

@@ -20,6 +20,8 @@ export default ts.config(
 			'playwright-report/',
 			'test-results/',
 			'coverage/',
+			// Fremde Claude-Skills (vendored, eigener Stil)
+			'.claude/skills/',
 			// Lokale Demo-/Testdaten (PGlite, Screenshots, Skripte) – im sauberen Checkout nicht vorhanden
 			'.data/',
 			// Eigene App mit eigener Lint-Konfiguration (website/eslint.config.js)
