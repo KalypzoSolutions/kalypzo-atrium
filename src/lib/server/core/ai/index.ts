@@ -24,6 +24,8 @@ export interface AiChatParams {
 	temperature?: number;
 	maxOutputTokens?: number;
 	json?: boolean;
+	/** Abbruch (z. B. Verbindung geschlossen): bricht die Anfrage beim Anbieter ab */
+	signal?: AbortSignal;
 }
 
 export interface AiCompletion {
@@ -68,11 +70,14 @@ function openAiClient({ apiKey, baseUrl }: { apiKey: string; baseUrl: string }):
 			};
 		},
 		async *stream(p) {
-			const stream = await client.chat.completions.create({
-				...base(p),
-				stream: true,
-				stream_options: { include_usage: true }
-			});
+			const stream = await client.chat.completions.create(
+				{
+					...base(p),
+					stream: true,
+					stream_options: { include_usage: true }
+				},
+				{ signal: p.signal }
+			);
 			for await (const chunk of stream) {
 				const delta = chunk.choices[0]?.delta?.content;
 				if (delta) yield { delta };
@@ -481,8 +486,10 @@ export async function* stream(
 			model: p.model,
 			messages,
 			temperature: input.temperature,
-			maxOutputTokens: input.maxOutputTokens
+			maxOutputTokens: input.maxOutputTokens,
+			signal: input.signal
 		})) {
+			if (input.signal?.aborted) break;
 			if (chunk.delta) {
 				streamed += chunk.delta.length;
 				yield chunk.delta;
@@ -493,7 +500,8 @@ export async function* stream(
 			}
 		}
 	} catch (e) {
-		mapError(e);
+		// abgebrochen: bisher Erzeugtes trotzdem abrechnen (Schätzung unten)
+		if (!input.signal?.aborted) mapError(e);
 	}
 	// Anbieter ohne Usage-Angabe: grobe Schätzung (~4 Zeichen je Token)
 	if (!inputTokens && !outputTokens && streamed) {

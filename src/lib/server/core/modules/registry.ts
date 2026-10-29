@@ -113,6 +113,21 @@ export function allDefinitions(): ModuleDefinition[] {
 	return [...definitions.values()];
 }
 
+/**
+ * Nach Zurücksetzen oder Wiederherstellen: Module verwerfen ihre Zwischenspeicher (`onDataReplaced`).
+ * Fehler einzelner Module werden geloggt, nie weitergereicht.
+ */
+export async function notifyModuleDataReplaced(): Promise<void> {
+	for (const d of definitions.values()) {
+		if (!d.onDataReplaced) continue;
+		try {
+			await d.onDataReplaced();
+		} catch (e) {
+			console.warn(`[modules] onDataReplaced von ${d.manifest.id} fehlgeschlagen`, e);
+		}
+	}
+}
+
 /** Topologische Prüfung: unbekannte Abhängigkeiten und Zyklen werden abgelehnt. */
 export function assertDependenciesResolvable(): void {
 	for (const d of definitions.values()) {

@@ -25,7 +25,7 @@ import { getDb, type Tx } from '../database/client';
 import { CoreError, errors, isCoreError } from '../errors';
 import { pauseJobs, resumeJobs, runJobNow } from '../jobs';
 import { systemContext } from '../auth/context';
-import { allDefinitions, getDefinition } from '../modules/registry';
+import { allDefinitions, getDefinition, notifyModuleDataReplaced } from '../modules/registry';
 import {
 	acceptedMigrationChecksums,
 	coreMigrationIdentifiers,
@@ -1380,6 +1380,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 
 	// 3) Nach dem Commit -----------------------------------------------------
 	invalidateModuleStateCache();
+	await notifyModuleDataReplaced();
 	let storageOk = oldObjectKeys.length > 0;
 	if (storageOk) {
 		try {

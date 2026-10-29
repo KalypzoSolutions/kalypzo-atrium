@@ -250,8 +250,10 @@ export async function collectDashboardFeed(
 				cleanAgenda(d, await d.dashboard!.agenda!.run(ctx, { today, from, to }), from, to)
 		}));
 
-	const todos = await runAll(todoJobs);
-	const agenda = await runAll(agendaJobs);
+	// mit echtem Pool beide Gruppen gleichzeitig (runAll selbst wartet bei einer Verbindung nacheinander)
+	const [todos, agenda] = databaseAllowsParallelQueries()
+		? await Promise.all([runAll(todoJobs), runAll(agendaJobs)])
+		: [await runAll(todoJobs), await runAll(agendaJobs)];
 	agenda.items = withoutDuplicateMeetings(agenda.items);
 	return {
 		today,

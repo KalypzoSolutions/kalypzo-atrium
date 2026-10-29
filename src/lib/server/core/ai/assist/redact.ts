@@ -28,6 +28,11 @@ function digitCount(s: string): number {
 	return s.replace(/\D/g, '').length;
 }
 
+/** Nur ISO-Daten (`2026-10-29`, auch mehrere wie `2026-10-29 - 2026-11-01`) – keine Telefonnummer */
+function onlyIsoDates(s: string): boolean {
+	return /\d{4}-\d{2}-\d{2}/.test(s) && !/\d/.test(s.replace(/\b\d{4}-\d{2}-\d{2}\b/g, ''));
+}
+
 export function createRedactor(): Redactor {
 	const byValue = new Map<string, string>();
 	const byToken = new Map<string, string>();
@@ -50,7 +55,7 @@ export function createRedactor(): Redactor {
 			for (const { re, label } of KINDS) {
 				out = out.replace(re, (match) => {
 					// Daten, Uhrzeiten und Beträge sind keine Telefonnummern
-					if (label === 'Telefon' && digitCount(match) < 7) return match;
+					if (label === 'Telefon' && (digitCount(match) < 7 || onlyIsoDates(match))) return match;
 					return tokenFor(label, match);
 				});
 			}

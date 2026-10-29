@@ -323,6 +323,12 @@ export interface ModuleDefinition {
 	navBadge?: { path?: string; count: (ctx: RequestContext) => Promise<number> };
 	onEnable?: (ctx: RequestContext) => Promise<void>;
 	onDisable?: (ctx: RequestContext) => Promise<void>;
+	/**
+	 * Daten des Moduls wurden außerhalb seiner Endpunkte ersetzt (Zurücksetzen, Datensicherung wiederherstellen
+	 * oder zusammenführen): Zwischenspeicher im Prozess verwerfen, ohne sie zurückzuschreiben. Läuft nach dem
+	 * Commit für alle registrierten Module, auch inaktive.
+	 */
+	onDataReplaced?: () => Promise<void>;
 }
 
 export const MODULE_ID_PATTERN = /^[a-z][a-z0-9-]{1,30}$/;

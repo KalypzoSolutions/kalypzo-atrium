@@ -275,6 +275,8 @@ export interface AiGenerateInput {
 	files?: { module: string; path: string }[];
 	/** Bilder als Data-URL oder https-URL */
 	images?: string[];
+	/** Abbruch der Erzeugung (nur `stream`), z. B. wenn die Verbindung zum Browser endet */
+	signal?: AbortSignal;
 }
 
 export interface AiUsage {

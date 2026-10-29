@@ -22,7 +22,7 @@ import { getDb, schema, type DbOrTx } from '../database/client';
 import { forModule } from '../database/module-db';
 import { errors } from '../errors';
 import { pauseJobs, resumeJobs } from '../jobs';
-import { allDefinitions } from '../modules/registry';
+import { allDefinitions, notifyModuleDataReplaced } from '../modules/registry';
 import { isModuleEnabled, runModuleMigrations } from '../modules/service';
 import { moduleSchemaName, type ResetArea } from '../modules/types';
 import { getUserPermissions, requirePermission } from '../permissions/service';
@@ -716,6 +716,7 @@ export async function executeReset(
 	} catch (e) {
 		failure = e;
 	} finally {
+		await notifyModuleDataReplaced();
 		resumeJobs();
 		releaseMaintenanceLock();
 	}

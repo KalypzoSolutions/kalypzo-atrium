@@ -11,11 +11,42 @@
  * und die Verbindung schließt, geänderte Stufe → `access` (+ `onLevelChange`).
  */
 import type { RequestContext } from '$lib/sdk/types';
+import { core } from '$lib/server/core';
+import { errors } from '$lib/server/core/errors';
+
+/** Nur die Anmeldedaten einer Anfrage (für die spätere Neuprüfung der Sitzung) */
+export function authHeadersOf(request: Request): Headers {
+	const headers = new Headers();
+	for (const name of ['authorization', 'cookie']) {
+		const value = request.headers.get(name);
+		if (value) headers.set(name, value);
+	}
+	return headers;
+}
+
+/**
+ * Kontext einer offenen Verbindung neu auflösen: Sitzung bzw. API-Key noch gültig, Konto aktiv, aktuelle Rechte.
+ * `null` = nicht mehr angemeldet (Verbindung schließen). System-Kontexte bleiben unverändert.
+ */
+export async function refreshLiveContext(
+	ctx: RequestContext,
+	headers: Headers
+): Promise<RequestContext | null> {
+	if (ctx.actor.type === 'system') return ctx;
+	const meta = { ip: ctx.ip, requestId: ctx.requestId };
+	const authz = headers.get('authorization');
+	const fresh = authz
+		? await core.auth.resolveApiKey(/^Bearer\s+(\S+)$/i.exec(authz)?.[1] ?? '', meta)
+		: await core.auth.resolveSession(headers, meta);
+	if (!fresh || fresh.ctx.userId !== ctx.userId) return null;
+	return fresh.ctx;
+}
 
 export interface LiveSubscriber<L extends string, P> {
 	client: string;
 	objectId: string;
 	userId: string;
+	/** Kontext der letzten Prüfung (wird bei jeder Neuprüfung neu aufgelöst) */
 	ctx: RequestContext;
 	level: L;
 	peer: P;
@@ -69,6 +100,7 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 	const heartbeatMs = options.heartbeatMs ?? 20_000;
 	const recheckMs = options.recheckMs ?? 60_000;
 	const objects = new Map<string, Map<string, LiveSubscriber<L, P>>>();
+	const headersOf = new WeakMap<LiveSubscriber<L, P>, Headers>();
 
 	function subscribersOf(objectId: string): Map<string, LiveSubscriber<L, P>> {
 		let map = objects.get(objectId);
@@ -96,7 +128,10 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 	async function recheckOne(sub: LiveSubscriber<L, P>): Promise<void> {
 		let level: L | null;
 		try {
-			level = await options.resolveLevel(sub.ctx, sub.objectId);
+			// Sitzung, Konto und Rechte neu auflösen – Rollenentzug, Abmelden oder Deaktivieren wirken sofort
+			const fresh = await refreshLiveContext(sub.ctx, headersOf.get(sub) ?? new Headers());
+			if (fresh) sub.ctx = fresh;
+			level = fresh ? await options.resolveLevel(fresh, sub.objectId) : null;
 		} catch (e) {
 			// Datenbank kurz nicht erreichbar: offen lassen, nächster Versuch beim nächsten Takt
 			console.warn(`[${options.name}] Zugriffsprüfung fehlgeschlagen`, e);
@@ -116,6 +151,12 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 
 	function open(input: LiveOpenInput<L, P>): Response {
 		const { ctx, objectId, client } = input;
+		// fremde Kennung übernehmen (Kennungen stehen in `hello`) wäre ein Rauswurf anderer Personen
+		const existing = objects.get(objectId)?.get(client);
+		if (existing && existing.userId !== (ctx.userId ?? '')) {
+			throw errors.conflict('Diese Verbindungskennung ist bereits vergeben');
+		}
+		const authHeaders = authHeadersOf(input.request);
 		let sub: LiveSubscriber<L, P> | null = null;
 		let closed = false;
 		const timers: ReturnType<typeof setInterval>[] = [];
@@ -156,6 +197,7 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 					}
 				};
 				sub = current;
+				headersOf.set(current, authHeaders);
 				const map = subscribersOf(objectId);
 				// gleiche Kennung erneut verbunden (Wiederverbinden): alte Verbindung ablösen
 				map.get(client)?.close();

@@ -33,6 +33,11 @@ describe('Schreibhilfe: Maskieren', () => {
 		const text = 'Vom 13.11.2026 bis 15.11.2026, Abfahrt 10:30 Uhr, Beitrag 65,00 €.';
 		expect(r.mask(text)).toBe(text);
 		expect(r.count).toBe(0);
+		// ISO-Daten aus Formularfeldern (8 Ziffern mit Bindestrichen) sind keine Telefonnummern
+		const iso = 'Beginn: 2026-10-29, Zeitraum 2026-10-29 - 2026-11-01, Tel. 0421 123 4567';
+		const masked = r.mask(iso);
+		expect(masked).toContain('2026-10-29, Zeitraum 2026-10-29 - 2026-11-01');
+		expect(masked).toContain('[Telefon 1]');
 	});
 
 	it('gibt gleichen Werten dieselbe Marke (über mehrere Texte)', () => {

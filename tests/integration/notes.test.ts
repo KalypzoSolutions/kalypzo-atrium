@@ -13,7 +13,7 @@ import { useTestDatabase } from '../helpers/db';
 import { installFakeStorage } from '../helpers/fake-storage';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { contextForUser } from '$lib/server/core/auth/context';
-import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
+import { bootstrapAdmin, createUser, setUserActive } from '$lib/server/core/auth/users';
 import { createRole } from '$lib/server/core/permissions/roles';
 import { registerModule } from '$lib/server/core/modules/registry';
 import { disableModule, enableModule, syncModules } from '$lib/server/core/modules/service';
@@ -30,6 +30,7 @@ import { hub } from '$lib/modules/notes/live';
 import { flushAllForTests, resetDocsForTests } from '$lib/modules/notes/doc.service';
 import { onUserDeleted } from '$lib/modules/notes/privacy';
 import { purgeExpiredTrash } from '$lib/modules/notes/trash.service';
+import { purgeUnusedAssets } from '$lib/modules/notes/assets.service';
 import { runAutoVersions } from '$lib/modules/notes/versions.service';
 import { notesSearch } from '$lib/modules/notes/search';
 import { noteRefsService } from '$lib/modules/notes/refs.service';
@@ -553,6 +554,9 @@ describe('Live: Yjs und SSE', () => {
 		const second = await openLive('helper', childId, 'client-helper-live');
 		const hello2 = await second.waitFor('hello');
 		expect(hello2.peers.map((p) => p.client)).toEqual(['client-owner-live']);
+		// fremde Verbindungskennung (steht in `hello`) darf niemand übernehmen
+		expect((await openLive('helper', childId, 'client-owner-live')).status).toBe(409);
+		expect(first.isEnded()).toBe(false);
 		await first.waitFor('join', (e) => e.peer.client === 'client-helper-live');
 
 		const c = await yClient('helper', childId);
@@ -605,6 +609,16 @@ describe('Live: Yjs und SSE', () => {
 		await vi.waitFor(() => expect(live.isEnded()).toBe(true));
 		fail(await call('helper', 'GET', `/notes/${grandId}`), 404, 'not_found');
 		expect((await openLive('stranger', rootId, 'client-stranger-x')).status).toBe(404);
+	});
+
+	it('Neuprüfung löst den Kontext neu auf: deaktiviertes Konto verliert view-all sofort', async () => {
+		const live = await openLive('viewall', rootId, 'client-viewall-live');
+		await live.waitFor('hello', (e) => e.level === 'read');
+		await setUserActive(admin, userIds.viewall!, false);
+		await hub.recheck(rootId);
+		await live.waitFor('revoked');
+		await vi.waitFor(() => expect(live.isEnded()).toBe(true));
+		await setUserActive(admin, userIds.viewall!, true);
 	});
 
 	it('verdichtet Einzel-Updates ohne Inhaltsverlust', async () => {
@@ -664,6 +678,22 @@ describe('Verschieben und Papierkorb', () => {
 			['Tag 1', 0],
 			['Programm', 1]
 		]);
+		// unter eine anders geteilte Seite (würde den Inhalt weiteren Personen zeigen): nur Eigentümer*in
+		const wider = ok<NoteDetail>(
+			await call('owner', 'POST', '/notes', { title: 'Für alle', parentId: rootId }),
+			201
+		).id;
+		ok(
+			await call('owner', 'PUT', `/notes/${wider}/shares`, {
+				shares: [{ type: 'everyone', id: '*', level: 'read' }]
+			})
+		);
+		fail(
+			await call('helper', 'POST', `/notes/${grandId}/move`, { parentId: wider, position: 0 }),
+			403,
+			'forbidden'
+		);
+		await notesSql(sql`DELETE FROM notes WHERE id = ${wider}`);
 	});
 
 	it('Eigentümer*in verschiebt in fremde Notiz → Eigentum wechselt; zurück an die eigene Wurzel', async () => {
@@ -864,6 +894,32 @@ describe('Versionen, Bilder, Suche', () => {
 			403,
 			'forbidden'
 		);
+	});
+
+	it('löscht ungenutzte Bilder erst nach der Frist', async () => {
+		const fd = new FormData();
+		fd.set('file', new File([(await png()) as BlobPart], 'weg.png', { type: 'image/png' }));
+		const res = await raw('owner', 'POST', `/notes/${rootId}/assets`, { body: fd });
+		expect(res.status).toBe(201);
+		const asset = ((await res.json()) as { data: NoteAsset }).data;
+		// zu neu: bleibt (Rückgängig im Editor könnte es zurückholen)
+		await purgeUnusedAssets();
+		expect((await raw('owner', 'GET', `/assets/${asset.id}/web`)).status).toBe(200);
+		await notesSql(
+			sql`UPDATE note_assets SET created_at = now() - interval '8 days' WHERE id = ${asset.id}`
+		);
+		expect(await purgeUnusedAssets()).toBeGreaterThanOrEqual(1);
+		expect((await raw('owner', 'GET', `/assets/${asset.id}/web`)).status).toBe(404);
+	});
+
+	it('Daten ersetzt (Zurücksetzen/Wiederherstellen): Editoren laden neu', async () => {
+		const live = await openLive('owner', rootId, 'client-owner-reset');
+		await live.waitFor('hello');
+		await flushAllForTests();
+		await notesModule.onDataReplaced!();
+		await live.waitFor('reset');
+		await vi.waitFor(() => expect(live.isEnded()).toBe(true));
+		expect((await raw('owner', 'GET', `/notes/${rootId}/state`)).status).toBe(200);
 	});
 
 	it('Suche, zuletzt geändert, globale Suche und Dienst für andere Module', async () => {

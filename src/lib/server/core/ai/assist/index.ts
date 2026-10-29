@@ -160,7 +160,7 @@ export async function runAssist(
 export async function prepareAssist(
 	ctx: RequestContext,
 	req: AssistRequest
-): Promise<(onDelta?: (text: string) => void) => Promise<AssistResult>> {
+): Promise<(onDelta?: (text: string) => void, signal?: AbortSignal) => Promise<AssistResult>> {
 	const purpose = await resolvePurpose(req.module, req.purpose);
 	if (!purpose.tasks.includes(req.task)) {
 		throw errors.badRequest('Diese Aktion ist für die Textstelle nicht vorgesehen');
@@ -231,7 +231,7 @@ export async function prepareAssist(
 		'\n'
 	);
 
-	return async (onDelta) => {
+	return async (onDelta, signal) => {
 		let result: AssistResult;
 		if (ASSIST_VARIANT_TASKS.includes(req.task) || ASSIST_LIST_TASKS.includes(req.task)) {
 			const isList = ASSIST_LIST_TASKS.includes(req.task);
@@ -256,7 +256,7 @@ export async function prepareAssist(
 				tokens: res.usage.inputTokens + res.usage.outputTokens
 			};
 		} else {
-			const gen = stream(ctx, { ...base, maxOutputTokens: 4000 });
+			const gen = stream(ctx, { ...base, maxOutputTokens: 4000, signal });
 			let raw = '';
 			let next = await gen.next();
 			while (!next.done) {
@@ -265,6 +265,7 @@ export async function prepareAssist(
 				next = await gen.next();
 			}
 			const usage = next.value;
+			if (signal?.aborted) throw errors.badRequest('Die Schreibhilfe wurde abgebrochen');
 			const format = req.task === 'alt-text' ? 'plain' : purpose.format;
 			let text = normalizeOutput(redactor.restore(raw), format, purpose.richTables === true);
 			if (format === 'plain') text = clampPlain(text, purpose.maxChars);

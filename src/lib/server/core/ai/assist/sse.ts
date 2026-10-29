@@ -4,11 +4,13 @@ import { logError } from '../../db-errors';
 import { isCoreError } from '../../errors';
 
 export function assistStreamResponse(
-	run: (onDelta: (text: string) => void) => Promise<AssistResult>,
+	run: (onDelta: (text: string) => void, signal: AbortSignal) => Promise<AssistResult>,
 	info: { requestId: string; signal?: AbortSignal }
 ): Response {
 	const encoder = new TextEncoder();
 	let closed = false;
+	// Browser weg (Abbrechen, Dialog zu): Erzeugung beim Anbieter abbrechen statt bis zum Ende laufen lassen
+	const abort = new AbortController();
 	const stream = new ReadableStream<Uint8Array>({
 		start(controller) {
 			const send = (event: AssistEvent) => {
@@ -28,8 +30,15 @@ export function assistStreamResponse(
 					// bereits geschlossen
 				}
 			};
-			info.signal?.addEventListener('abort', close, { once: true });
-			run((text) => send({ type: 'delta', text }))
+			info.signal?.addEventListener(
+				'abort',
+				() => {
+					abort.abort();
+					close();
+				},
+				{ once: true }
+			);
+			run((text) => send({ type: 'delta', text }), abort.signal)
 				.then((result) => send({ type: 'done', ...result }))
 				.catch((e: unknown) => {
 					if (isCoreError(e)) {
@@ -43,6 +52,7 @@ export function assistStreamResponse(
 		},
 		cancel() {
 			closed = true;
+			abort.abort();
 		}
 	});
 	return new Response(stream, {
