@@ -34,6 +34,7 @@ import { runAutoVersions } from '$lib/modules/notes/versions.service';
 import { notesSearch } from '$lib/modules/notes/search';
 import { noteRefsService } from '$lib/modules/notes/refs.service';
 import {
+	DEFAULT_USER_PREFS,
 	MAX_DEPTH,
 	YDOC_FIELD,
 	type ActionNotes,
@@ -47,7 +48,8 @@ import {
 	type NoteVersion,
 	type NoteVersionDetail,
 	type TrashItem,
-	type UpdateResult
+	type UpdateResult,
+	type UserPrefs
 } from '$lib/modules/notes/schemas';
 import type { RequestContext } from '$lib/sdk/types';
 
@@ -917,8 +919,28 @@ describe('Versionen, Bilder, Suche', () => {
 	});
 });
 
+describe('Persönlicher Hintergrund', () => {
+	it('Standard wie Theme, speichern je Konto, ungültig 422', async () => {
+		expect(ok<UserPrefs>(await call('stranger', 'GET', '/me/prefs'))).toEqual(DEFAULT_USER_PREFS);
+		const saved = ok<UserPrefs>(
+			await call('stranger', 'PUT', '/me/prefs', { surface: { mode: 'fixed', color: '#FBF6EA' } })
+		);
+		expect(saved.surface).toEqual({ mode: 'fixed', color: '#fbf6ea' });
+		expect(ok<UserPrefs>(await call('stranger', 'GET', '/me/prefs')).surface.color).toBe('#fbf6ea');
+		// gilt nur für die eigene Person
+		expect(ok<UserPrefs>(await call('other', 'GET', '/me/prefs'))).toEqual(DEFAULT_USER_PREFS);
+		const bad = await call('stranger', 'PUT', '/me/prefs', {
+			surface: { mode: 'fixed', color: 'red' }
+		});
+		expect(bad.status).toBe(422);
+		const extra = await call('stranger', 'PUT', '/me/prefs', { surface: { mode: 'x' } });
+		expect(extra.status).toBe(422);
+	});
+});
+
 describe('Konto löschen und Modul aus', () => {
 	it('private Notizen weg, geteilte bleiben ohne Eigentümer*in', async () => {
+		await call('other', 'PUT', '/me/prefs', { surface: { mode: 'fixed', color: '#111827' } });
 		const priv = ok<NoteDetail>(await call('other', 'POST', '/notes', { title: 'Privat' }), 201).id;
 		const result = await core.database
 			.forModule('notes')
@@ -933,6 +955,9 @@ describe('Konto löschen und Modul aus', () => {
 			sql`SELECT 1 FROM note_shares WHERE principal_type = 'user' AND principal_id = ${userIds.other!}`
 		);
 		expect(shares).toEqual([]);
+		expect(await notesSql(sql`SELECT 1 FROM user_prefs WHERE user_id = ${userIds.other!}`)).toEqual(
+			[]
+		);
 	});
 
 	it('Modul aus → 404', async () => {
