@@ -348,6 +348,7 @@
   Guidelines (Artifact „EP Intern Übersicht“), umgesetzt: „Zu erledigen“ + „Diese Woche“ aus allen Modulen (`ModuleDefinition.dashboard`),
   Befundsatz unter dem Titel, rollenabhängig über Rechte, neue Kacheln „Meine Gruppe“ (Gruppenleitung) und „Kasse“ (Kontostände), Nebensächliches
   standardmäßig ausgeblendet, „Anpassen“ unverändert. Details: `architecture.md` → Dashboard.
+- **Seitenleiste einklappbar (2026-10-29)**: Desktop-Symbolleiste mit Tooltips, gemerkt je Gerät (Cookie). Details: `architecture.md` → Verwaltung (Sidebar).
 
 - **Modul `notes` – Notizen (2026-10-29, v1.0.0)**: Seitenbaum mit vererbter Freigabe, Live-Bearbeitung mehrerer Personen (Yjs, Cursor),
   Werkzeugleiste/Slash-Menü/Markdown-Kürzel + Quelltext-Ansicht, Tabellen, Bilder, Whiteboard live eingebettet (neuer Core-Mechanismus `embeds`,

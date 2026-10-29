@@ -8,6 +8,14 @@
 	let { data, children } = $props();
 	const fullBleed = $derived((page.data as { fullBleed?: boolean }).fullBleed === true);
 
+	// Seitenleiste ein-/ausklappen: Startwert vom Server (Cookie), Wahl je Gerät im Cookie `sidebar`
+	let sidebarCollapsed = $state(untrack(() => data.sidebarCollapsed));
+	function toggleSidebar(collapsed: boolean) {
+		sidebarCollapsed = collapsed;
+		const secure = location.protocol === 'https:' ? '; secure' : '';
+		document.cookie = `sidebar=${collapsed ? 'collapsed' : 'open'}; path=/; max-age=31536000; samesite=lax${secure}`;
+	}
+
 	// Zähler der Seitenleiste: Startwert aus dem Layout, danach nach jeder Navigation und jede Minute
 	// (nur im sichtbaren Tab) aktualisieren
 	$effect(() => {
@@ -38,6 +46,8 @@
 		logoUrl={data.logoUrl}
 		permissions={data.permissions}
 		navigation={data.navigation}
+		collapsed={sidebarCollapsed}
+		ontoggle={toggleSidebar}
 	/>
 	<div class="flex min-w-0 flex-1 flex-col">
 		{#if data.user}

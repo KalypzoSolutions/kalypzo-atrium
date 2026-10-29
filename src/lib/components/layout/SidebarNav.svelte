@@ -13,15 +13,22 @@
 	import { iconFor } from './icons';
 	import CountBadge from './CountBadge.svelte';
 	import { navBadges } from '$lib/sdk/client/nav-badges.svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	let {
 		permissions,
 		navigation,
-		onnavigate
+		onnavigate,
+		collapsed = false,
+		onexpand
 	}: {
 		permissions: string[];
 		navigation: ModuleNavEntry[];
 		onnavigate?: () => void;
+		/** Schmale Symbolleiste (Desktop): nur Icons, Name als Tooltip, Gruppen zugeklappt */
+		collapsed?: boolean;
+		/** Eingeklappt: Klick auf eine Gruppe klappt die Leiste aus */
+		onexpand?: () => void;
 	} = $props();
 
 	interface Link {
@@ -116,102 +123,168 @@
 		'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none';
 </script>
 
+{#snippet railTip(label: string, trigger: import('svelte').Snippet<[Record<string, unknown>]>)}
+	<Tooltip.Root>
+		<Tooltip.Trigger>
+			{#snippet child({ props })}
+				{@render trigger(props)}
+			{/snippet}
+		</Tooltip.Trigger>
+		<Tooltip.Content side="right" sideOffset={8}>{label}</Tooltip.Content>
+	</Tooltip.Root>
+{/snippet}
+
 {#snippet linkItem(item: Link, nested = false)}
 	{@const Icon = iconFor(item.icon)}
 	{@const active = item.href === activeHref}
-	<a
-		href={item.href}
-		onclick={onnavigate}
-		aria-current={active ? 'page' : undefined}
-		class={cn(linkClass, nested && 'pl-5', active && 'bg-accent text-accent-foreground')}
-	>
-		<Icon class="size-4 shrink-0" aria-hidden="true" />
-		<span class="min-w-0 truncate">{item.label}</span>
-		{#if item.hint}
-			<span class="ml-auto shrink-0 text-xs font-normal text-muted-foreground">{item.hint}</span>
-		{:else if badgeCounts[item.href]}
-			<CountBadge count={badgeCounts[item.href] ?? 0} class="ml-auto" />
-		{/if}
-	</a>
+	{#if collapsed}
+		{@const count = badgeCounts[item.href] ?? 0}
+		{#snippet railLink(props: Record<string, unknown>)}
+			<a
+				{...props}
+				href={item.href}
+				onclick={(e) => {
+					(props.onclick as ((e: MouseEvent) => void) | undefined)?.(e);
+					onnavigate?.();
+				}}
+				aria-current={active ? 'page' : undefined}
+				class={cn(
+					linkClass,
+					'relative size-9 justify-center px-0',
+					active && 'bg-accent text-accent-foreground'
+				)}
+			>
+				<Icon class="size-4 shrink-0" aria-hidden="true" />
+				<span class="sr-only">{item.label}{count ? ` (${count})` : ''}</span>
+				{#if count}
+					<span class="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary" aria-hidden="true"
+					></span>
+				{/if}
+			</a>
+		{/snippet}
+		{@render railTip(item.label, railLink)}
+	{:else}
+		<a
+			href={item.href}
+			onclick={onnavigate}
+			aria-current={active ? 'page' : undefined}
+			class={cn(linkClass, nested && 'pl-5', active && 'bg-accent text-accent-foreground')}
+		>
+			<Icon class="size-4 shrink-0" aria-hidden="true" />
+			<span class="min-w-0 truncate">{item.label}</span>
+			{#if item.hint}
+				<span class="ml-auto shrink-0 text-xs font-normal text-muted-foreground">{item.hint}</span>
+			{:else if badgeCounts[item.href]}
+				<CountBadge count={badgeCounts[item.href] ?? 0} class="ml-auto" />
+			{/if}
+		</a>
+	{/if}
 {/snippet}
 
 {#snippet groupButton(id: string, label: string, icon: string, open: boolean, active = false)}
 	{@const Icon = iconFor(icon)}
-	<!-- `active`: zugeklappte Gruppe enthält die aktuelle Seite -->
-	<button
-		type="button"
-		aria-expanded={open}
-		aria-controls={`nav-${id}`}
-		onclick={() => (toggled[id] = !open)}
-		class={cn(linkClass, 'w-full justify-between', active && 'bg-accent text-accent-foreground')}
-	>
-		<span class="flex items-center gap-2.5">
-			<Icon class="size-4 shrink-0" aria-hidden="true" />
-			{label}
-		</span>
-		<ChevronDown
-			class={cn('size-3.5 transition-transform', !open && '-rotate-90')}
-			aria-hidden="true"
-		/>
-	</button>
+	{#if collapsed}
+		{#snippet railGroup(props: Record<string, unknown>)}
+			<button
+				{...props}
+				type="button"
+				onclick={() => {
+					toggled[id] = true;
+					onexpand?.();
+				}}
+				class={cn(
+					linkClass,
+					'size-9 justify-center px-0',
+					active && 'bg-accent text-accent-foreground'
+				)}
+			>
+				<Icon class="size-4 shrink-0" aria-hidden="true" />
+				<span class="sr-only">{label} (Seitenleiste ausklappen)</span>
+			</button>
+		{/snippet}
+		{@render railTip(label, railGroup)}
+	{:else}
+		<!-- `active`: zugeklappte Gruppe enthält die aktuelle Seite -->
+		<button
+			type="button"
+			aria-expanded={open}
+			aria-controls={`nav-${id}`}
+			onclick={() => (toggled[id] = !open)}
+			class={cn(linkClass, 'w-full justify-between', active && 'bg-accent text-accent-foreground')}
+		>
+			<span class="flex items-center gap-2.5">
+				<Icon class="size-4 shrink-0" aria-hidden="true" />
+				{label}
+			</span>
+			<ChevronDown
+				class={cn('size-3.5 transition-transform', !open && '-rotate-90')}
+				aria-hidden="true"
+			/>
+		</button>
+	{/if}
 {/snippet}
 
-<nav aria-label="Hauptnavigation" class="flex flex-col gap-0.5 p-2">
-	{#each entries as entry (entry.kind === 'link' ? entry.link.href : entry.id)}
-		{#if entry.kind === 'link'}
-			{@render linkItem(entry.link)}
-		{:else}
-			{@const open = isOpen(entry.id, entry.items)}
+<Tooltip.Provider delayDuration={200}>
+	<nav
+		aria-label="Hauptnavigation"
+		class={cn('flex flex-col gap-0.5 p-2', collapsed && 'items-center')}
+	>
+		{#each entries as entry (entry.kind === 'link' ? entry.link.href : entry.id)}
+			{#if entry.kind === 'link'}
+				{@render linkItem(entry.link)}
+			{:else}
+				{@const open = !collapsed && isOpen(entry.id, entry.items)}
+				{@render groupButton(
+					entry.id,
+					entry.label,
+					entry.icon,
+					open,
+					!open && containsActive(entry.items)
+				)}
+				{#if open}
+					<div id={`nav-${entry.id}`} class="flex flex-col gap-0.5">
+						{#each entry.items as item (item.href)}
+							{@render linkItem(item, true)}
+						{/each}
+					</div>
+				{/if}
+			{/if}
+		{/each}
+
+		{#if adminNav}
+			{@const open = !collapsed && isOpen(ADMIN_ID, adminLinks)}
 			{@render groupButton(
-				entry.id,
-				entry.label,
-				entry.icon,
+				ADMIN_ID,
+				ADMIN_GROUP.label,
+				ADMIN_GROUP.icon,
 				open,
-				!open && containsActive(entry.items)
+				!open && containsActive(adminLinks)
 			)}
 			{#if open}
-				<div id={`nav-${entry.id}`} class="flex flex-col gap-0.5">
-					{#each entry.items as item (item.href)}
-						{@render linkItem(item, true)}
+				<div id={`nav-${ADMIN_ID}`} class="flex flex-col gap-0.5">
+					{@render linkItem(adminNav.home, true)}
+					{#each adminNav.sections as section (section.id)}
+						{@const headingId = `nav-admin-${section.id}`}
+						<!-- Überschrift nur sichtbar, wenn sie mehr sagt als der einzige Eintrag („Einstellungen“ › „Einstellungen“) -->
+						{@const redundant =
+							section.items.length === 1 && section.items[0]?.label === section.label}
+						<div role="group" aria-labelledby={headingId} class="mt-2 flex flex-col gap-0.5">
+							<div
+								id={headingId}
+								class={cn(
+									'pr-2.5 pb-0.5 pl-5 text-xs font-medium tracking-wide text-muted-foreground/80 uppercase',
+									redundant && 'sr-only'
+								)}
+							>
+								{section.label}
+							</div>
+							{#each section.items as item (item.href)}
+								{@render linkItem(item, true)}
+							{/each}
+						</div>
 					{/each}
 				</div>
 			{/if}
 		{/if}
-	{/each}
-
-	{#if adminNav}
-		{@const open = isOpen(ADMIN_ID, adminLinks)}
-		{@render groupButton(
-			ADMIN_ID,
-			ADMIN_GROUP.label,
-			ADMIN_GROUP.icon,
-			open,
-			!open && containsActive(adminLinks)
-		)}
-		{#if open}
-			<div id={`nav-${ADMIN_ID}`} class="flex flex-col gap-0.5">
-				{@render linkItem(adminNav.home, true)}
-				{#each adminNav.sections as section (section.id)}
-					{@const headingId = `nav-admin-${section.id}`}
-					<!-- Überschrift nur sichtbar, wenn sie mehr sagt als der einzige Eintrag („Einstellungen“ › „Einstellungen“) -->
-					{@const redundant =
-						section.items.length === 1 && section.items[0]?.label === section.label}
-					<div role="group" aria-labelledby={headingId} class="mt-2 flex flex-col gap-0.5">
-						<div
-							id={headingId}
-							class={cn(
-								'pr-2.5 pb-0.5 pl-5 text-xs font-medium tracking-wide text-muted-foreground/80 uppercase',
-								redundant && 'sr-only'
-							)}
-						>
-							{section.label}
-						</div>
-						{#each section.items as item (item.href)}
-							{@render linkItem(item, true)}
-						{/each}
-					</div>
-				{/each}
-			</div>
-		{/if}
-	{/if}
-</nav>
+	</nav>
+</Tooltip.Provider>

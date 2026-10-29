@@ -229,6 +229,9 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   actions, events (`?event=`), galleries, files, offices, orders, treasury (Rechnungen, Zahler `?payer=`, eigene Rechnungen mit `own.view`).
   Tests `search-core`, `search-modules-a|b`, E2E `search.spec.ts`.
 - **Sidebar** scrollt eigenständig: Desktop `sticky top-0 h-dvh` mit eigenem Scrollbereich, mobil Sheet mit festem Kopf und scrollbarer Liste.
+- **Sidebar einklappbar** (Desktop, 2026-10-29): Knopf „Einklappen“ unten → Symbolleiste `w-14` (nur Icons, Name als `Tooltip` rechts, Zähler als Punkt,
+  Gruppen-Icon klappt aus und öffnet die Gruppe). Zustand je Gerät im Cookie `sidebar=collapsed|open`, `(internal)/+layout.server.ts` liefert
+  `sidebarCollapsed` für SSR ohne Springen. `AppSidebar` (`collapsed`, `ontoggle`), `SidebarNav` (`collapsed`, `onexpand`). E2E `sidebar.spec.ts`.
 - Reiter **Einstellungen → Module** (`/admin/settings/modules`): generische Formulare aus `ModuleDefinition.settings` aktiver Module; Module mit eigener
   Einstellungsseite (Navigation mit `admin: true`, z. B. Kasse) erscheinen nur als Link.
 - Header-Check: nur `/admin/settings/mail-preview` (E-Mail-Vorschau im iframe) bekommt `x-frame-options: SAMEORIGIN`, alles andere `DENY`.

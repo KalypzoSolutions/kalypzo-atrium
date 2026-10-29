@@ -129,7 +129,8 @@
 			{#each days as d (d.date)}
 				<li
 					class={[
-						'flex min-h-36 min-w-0 flex-col gap-1.5 border-t-2 border-l px-1.5 pt-2 pb-3 first:border-l-0',
+						'flex min-w-0 flex-col gap-1.5 border-t-2 border-l px-1.5 pt-2 pb-3 first:border-l-0',
+						feed.agenda.length > 0 && 'min-h-36',
 						d.today ? 'border-t-primary' : 'border-t-transparent',
 						d.weekend && 'bg-muted/40'
 					]}
