@@ -4,6 +4,7 @@
 
 - `Dockerfile`: Multi-Stage (base → deps → build → prod-deps → runtime), `node:24.22.0-bookworm-slim` mit Digest, Chromium (Playwright) für PDF, läuft als Benutzer `app` (UID 10001), Healthcheck auf `/api/v1/health`.
 - `docker-compose.yml`: `db` (PostgreSQL 17, Volume `db-data`, `pg_isready`-Healthcheck), `app`, `website`, optional `nginx` (Profil `proxy`) und `db-backup` (Profil `backup`).
+- `docker-compose.dokploy.yml`: Dokploy-Stack mit MinIO im Stack; `docker-compose.dokploy-external-s3.yml`: derselbe Stack **ohne** MinIO für einen externen S3-Dienst (siehe „Dokploy mit externem S3“).
 - `docker-compose.dev.yml`: nur PostgreSQL + MinIO für lokale Entwicklung (Ports nur auf `127.0.0.1`).
 - `deploy/nginx/nginx.conf`: nginx-Vorlage (HTTP→HTTPS, TLS, Größengrenzen je Pfad, Proxy-Header), `deploy/backup/`: Sicherungsdienst.
 
@@ -86,6 +87,31 @@ Hinweise:
   danach die fachlichen Grenzen (Tabelle „Upload-Grenzen“).
 - Geprüft: Stack lokal gebaut und gestartet (alle Dienste healthy), Anmeldung, PDF-Erzeugung mit Chromium im
   `read_only`-Container, Beleg-Upload und -Download über MinIO.
+
+## Dokploy mit externem S3 (empfohlen für Produktion)
+
+`docker-compose.dokploy-external-s3.yml` entspricht `docker-compose.dokploy.yml`, aber **ohne** `storage`/`storage-init` und
+ohne Volume `s3-data`; die App spricht einen externen S3-kompatiblen Dienst an (Hetzner Object Storage, Cloudflare R2,
+Backblaze B2, AWS S3 …). Variablen-Vorlage: `.env.dokploy-external-s3.example`.
+
+1. Beim Anbieter einen **privaten** Bucket und einen Zugangsschlüssel nur für diesen Bucket anlegen (Lesen, Schreiben,
+   Löschen, Auflisten; keine Rechte auf andere Buckets).
+2. In Dokploy wie oben anlegen, Compose-Pfad `./docker-compose.dokploy-external-s3.yml`.
+3. Environment: Pflicht `ORIGIN`, `APP_SECRET`, `POSTGRES_PASSWORD`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`,
+   `S3_SECRET_ACCESS_KEY`; `S3_ENDPOINT` (leer = AWS), `S3_FORCE_PATH_STYLE` (Standard `false`, `true` nur für Anbieter ohne
+   virtuelle Host-Namen). `MINIO_*` entfällt.
+4. Deploy → unter **Administration → Einstellungen → Speicher** „Verbindung testen“ und einen Beleg hoch-/herunterladen.
+
+Hinweise:
+- `S3_*` werden nur beim **ersten** Start übernommen; bei einer bestehenden Datenbank zählen die Speicher-Einstellungen in der
+  Oberfläche (dort umstellen).
+- Sicherung (`COMPOSE_PROFILES=backup`): `db-backup` spiegelt standardmäßig den externen Bucket mit dem App-Zugang; besser
+  `BACKUP_S3_ACCESS_KEY_ID/SECRET_ACCESS_KEY` mit Nur-Lese-Schlüssel setzen. Ohne Endpoint (AWS) `BACKUP_S3_ENDPOINT` setzen, sonst
+  wird nur die Datenbank gesichert. `RESTIC_REPOSITORY` nie in den App-Bucket legen.
+- **Umzug** vom MinIO-Stack: Wartungsfenster, `rclone sync` vom MinIO-Bucket (Volume `s3-data`, intern `ep-intern-<env>-storage:9000`)
+  in den neuen Bucket, Speicher-Einstellungen in der Oberfläche umstellen, testen, dann Compose-Pfad in Dokploy wechseln und
+  deployen. Das Volume `s3-data` erst nach erfolgreicher Prüfung löschen.
+- Browser-Uploads über signierte URLs (`/storage/upload-url`) brauchen CORS am Bucket für den eigenen `ORIGIN` (`PUT`).
 
 ## Umgebungsvariablen
 

@@ -58,7 +58,7 @@ services:
   # S3-kompatibler Objektspeicher fuer Belege/Dokumente. Nur im internen Netz erreichbar.
   # Hinweis: `minio/minio` wird nicht mehr auf Docker Hub veroeffentlicht; dieses eingefrorene Image (Stand 2025-05)
   # erhaelt keine Sicherheitsupdates (Angriffsflaeche nur intern). Empfehlung fuer den Dauerbetrieb: externer S3-Dienst
-  # (Service `storage`/`storage-init` entfernen, S3_ENDPOINT/S3_REGION/S3_BUCKET/Keys setzen) oder Wechsel auf ein
+  # (fertige Variante: docker-compose.dokploy-external-s3.yml) oder Wechsel auf ein
   # gepflegtes Image – Optionen und Migration in docs/deployment.md → „Objektspeicher (MinIO) absichern“.
   # Root-Zugang (MINIO_ROOT_*) ist vom App-Zugang (S3_*) getrennt (Issue #41); ohne MINIO_ROOT_* gilt aus
   # Kompatibilitaetsgruenden weiter der App-Zugang als Root (storage-init warnt dann).

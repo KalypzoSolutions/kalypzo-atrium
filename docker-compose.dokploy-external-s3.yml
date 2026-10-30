@@ -1,0 +1,217 @@
+# Dokploy / Produktivbetrieb mit EXTERNEM S3-Speicher: App + PostgreSQL (+ Stammeswebsite), ohne MinIO im Stack.
+# Variante von docker-compose.dokploy.yml für einen externen, S3-kompatiblen Dienst (z. B. Hetzner Object Storage,
+# Cloudflare R2, Backblaze B2, AWS S3). Bucket und App-Zugang (Rechte nur auf diesen Bucket) beim Anbieter anlegen.
+#
+# Dokploy: Projekt -> "Compose" -> Provider "Git" (Repository + Branch), Compose-Pfad
+#   ./docker-compose.dokploy-external-s3.yml, Compose-Typ "Docker Compose". Variablen im Reiter "Environment"
+#   setzen (Vorlage: .env.dokploy-external-s3.example). Unter "Domains" die Domain auf Service `app`, Port 3000,
+#   HTTPS (Let's Encrypt) legen. Die App-Daten liegen im Volume `db-data` und im externen Bucket.
+#   Stammeswebsite: zweite Domain auf Service `website`, Port 3001 (Variablen WEBSITE_ORIGIN, WEBSITE_API_KEY).
+#
+# Reihenfolge: db -> app. Migrationen und Modul-Sync laufen beim Start der App automatisch; Storage/SMTP werden beim
+# ersten Start aus S3_*/SMTP_* vorbelegt (danach gelten die Einstellungen in der Oberfläche).
+# Automatische Sicherung: Dienst `db-backup`, aktiv mit COMPOSE_PROFILES=backup (siehe docs/deployment.md); er sichert
+# standardmäßig auch den externen Bucket mit dem App-Zugang (BACKUP_S3_* überschreibt das, z. B. mit Nur-Lese-Schlüssel).
+#
+# Umgebung: DEPLOY_ENV (z. B. prod, staging; Standard prod) – je Stack verschieden setzen. `app` und `website` hängen
+# zusätzlich im gemeinsamen `dokploy-network`, in dem gleichnamige Dienste ANDERER Stacks stecken; deshalb sprechen sich
+# die Dienste über eindeutige Aliase im stackeigenen Netz `internal` an: ep-intern-<DEPLOY_ENV>-app|db|website.
+#
+# Ressourcen und Log-Rotation (Issue #39): Standardwerte für einen kleinen Server (ab 1 vCPU, 4 GB RAM), per
+# *_MEM_LIMIT/*_CPUS überschreibbar. Images mit fester Version + Digest (Issue #74).
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: '10m'
+      max-file: '5'
+
+x-hardening: &hardening
+  security_opt: ['no-new-privileges:true']
+  init: true
+
+services:
+  db:
+    <<: [*logging, *hardening]
+    image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ep_intern}
+      POSTGRES_USER: ${POSTGRES_USER:-ep_intern}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      internal:
+        aliases: ['ep-intern-${DEPLOY_ENV:-prod}-db']
+    mem_limit: ${DB_MEM_LIMIT:-1g}
+    cpus: ${DB_CPUS:-1.0}
+    cpu_shares: 1024
+    pids_limit: 256
+    shm_size: 256m
+    stop_grace_period: 60s
+
+  app:
+    <<: [*logging, *hardening]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-ep_intern}:${POSTGRES_PASSWORD}@ep-intern-${DEPLOY_ENV:-prod}-db:5432/${POSTGRES_DB:-ep_intern}
+      APP_SECRET: ${APP_SECRET:?APP_SECRET muss gesetzt sein}
+      ORIGIN: ${ORIGIN:?ORIGIN muss gesetzt sein (https://deine-domain)}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+      BACKUP_MAX_BYTES: ${BACKUP_MAX_BYTES:-}
+      # Temp-Dateien der Datensicherung auf dem Volume `backup-tmp` statt im RAM-tmpfs /tmp (Issue #38)
+      BACKUP_TMP_DIR: /var/tmp/ep-backup
+      # Traefik (Dokploy) setzt die Forwarded-Header
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: '1'
+      PROTOCOL_HEADER: X-Forwarded-Proto
+      HOST_HEADER: X-Forwarded-Host
+      # Externer Storage (wird beim ersten Start in die Einstellungen übernommen; danach gilt Administration →
+      # Einstellungen → Speicher). S3_ENDPOINT leer = AWS S3.
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:?S3_REGION muss gesetzt sein (z. B. fsn1, auto für R2, eu-central-1)}
+      S3_BUCKET: ${S3_BUCKET:?S3_BUCKET muss gesetzt sein}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?S3_ACCESS_KEY_ID muss gesetzt sein}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?S3_SECRET_ACCESS_KEY muss gesetzt sein}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+      # E-Mail (optional; für Bestätigungs-Mails und Passwort-Reset)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    expose: ['3000']
+    read_only: true
+    volumes:
+      - backup-tmp:/var/tmp/ep-backup
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    cap_drop: [ALL]
+    networks:
+      internal:
+        aliases: ['ep-intern-${DEPLOY_ENV:-prod}-app']
+      dokploy-network: {}
+    mem_limit: ${APP_MEM_LIMIT:-1536m}
+    cpus: ${APP_CPUS:-1.0}
+    cpu_shares: 768
+    pids_limit: 1024
+    stop_grace_period: 30s
+
+  # Öffentliche Stammeswebsite (website/). Domain in Dokploy auf Service `website`, Port 3001 legen.
+  # Holt Termine und Galerien serverseitig über das interne Netz (ep-intern-<env>-app:3000) mit WEBSITE_API_KEY; ohne Key
+  # laufen die statischen Seiten, Termine/Galerie zeigen eine Fehlerseite (Key im Intern-Bereich anlegen, eintragen, neu deployen).
+  website:
+    <<: [*logging, *hardening]
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on: [app]
+    environment:
+      WEBSITE_API_URL: http://ep-intern-${DEPLOY_ENV:-prod}-app:3000
+      WEBSITE_API_KEY: ${WEBSITE_API_KEY:-}
+      ORIGIN: ${WEBSITE_ORIGIN:-https://edelweisspiraten-bremen.de}
+      # Client-IP hinter dem Proxy (Rate-Limit je Besucher*in) und Kontaktformular per SMTP (#20/#31)
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: '1'
+      CONTACT_TO: ${CONTACT_TO:-}
+      SMTP_HOST: ${WEBSITE_SMTP_HOST:-}
+      SMTP_PORT: ${WEBSITE_SMTP_PORT:-587}
+      SMTP_SECURE: ${WEBSITE_SMTP_SECURE:-false}
+      SMTP_USER: ${WEBSITE_SMTP_USER:-}
+      SMTP_PASS: ${WEBSITE_SMTP_PASS:-}
+      SMTP_FROM: ${WEBSITE_SMTP_FROM:-}
+    expose: ['3001']
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    networks:
+      internal:
+        aliases: ['ep-intern-${DEPLOY_ENV:-prod}-website']
+      dokploy-network:
+        aliases: ['ep-intern-${DEPLOY_ENV:-prod}-website']
+    mem_limit: ${WEBSITE_MEM_LIMIT:-256m}
+    cpus: ${WEBSITE_CPUS:-0.5}
+    cpu_shares: 256
+    pids_limit: 128
+    stop_grace_period: 15s
+
+  # Tägliche, verschlüsselte Sicherung von PostgreSQL und Objektspeicher (Issue #40). Aktiv mit COMPOSE_PROFILES=backup.
+  # Dokploy-eigene Datenbank-Backups gelten nur für von Dokploy verwaltete Datenbanken, nicht für `db` in diesem Stack.
+  db-backup:
+    <<: [*logging, *hardening]
+    profiles: ['backup']
+    build:
+      context: ./deploy/backup
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-ep_intern}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-ep_intern}
+      BACKUP_TIME: ${BACKUP_TIME:-02:30}
+      BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-7}
+      BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-4}
+      BACKUP_KEEP_MONTHLY: ${BACKUP_KEEP_MONTHLY:-6}
+      BACKUP_RUN_ON_START: ${BACKUP_RUN_ON_START:-false}
+      BACKUP_HEARTBEAT_URL: ${BACKUP_HEARTBEAT_URL:-}
+      BACKUP_NOTIFY_URL: ${BACKUP_NOTIFY_URL:-}
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-/backups/restic}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:-}
+      BACKUP_REPO_ACCESS_KEY_ID: ${BACKUP_REPO_ACCESS_KEY_ID:-}
+      BACKUP_REPO_SECRET_ACCESS_KEY: ${BACKUP_REPO_SECRET_ACCESS_KEY:-}
+      BACKUP_REPO_REGION: ${BACKUP_REPO_REGION:-}
+      # Quelle Objektspeicher: Standard = externer App-Bucket mit dem App-Zugang (Lesezugriff genügt)
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-${S3_ENDPOINT:-}}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-${S3_REGION:-us-east-1}}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-${S3_BUCKET:-}}
+      BACKUP_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-${S3_ACCESS_KEY_ID}}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-${S3_SECRET_ACCESS_KEY}}
+      BACKUP_S3_FORCE_PATH_STYLE: ${BACKUP_S3_FORCE_PATH_STYLE:-${S3_FORCE_PATH_STYLE:-false}}
+    volumes:
+      - backup-work:/work
+      - backup-repo:/backups
+    networks: [internal]
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    mem_limit: ${BACKUP_MEM_LIMIT:-512m}
+    cpus: ${BACKUP_CPUS:-0.5}
+    cpu_shares: 256
+    pids_limit: 256
+    stop_grace_period: 60s
+
+volumes:
+  db-data:
+  backup-tmp:
+  backup-work:
+  backup-repo:
+
+networks:
+  internal:
+  # von Dokploy bereitgestelltes Netz (Traefik); Domain wird in Dokploy auf `app:3000` gelegt
+  dokploy-network:
+    external: true
