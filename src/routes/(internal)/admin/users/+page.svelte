@@ -3,6 +3,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import type { SubmitFunction } from '@sveltejs/kit';
+	import MailCheckIcon from '@lucide/svelte/icons/mail-check';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import UserCheckIcon from '@lucide/svelte/icons/user-check';
@@ -227,8 +228,17 @@
 					</div>
 				</Table.Cell>
 				<Table.Cell>
-					{#if u.active}<Badge>Aktiv</Badge>{:else}<Badge variant="destructive">Deaktiviert</Badge
-						>{/if}
+					<div class="flex flex-wrap gap-1">
+						{#if u.active}<Badge>Aktiv</Badge>{:else}<Badge variant="destructive">Deaktiviert</Badge
+							>{/if}
+						{#if !u.emailVerified}
+							<Badge
+								variant="warning"
+								title="Die E-Mail-Adresse ist noch nicht bestätigt – Anmeldung erst nach Bestätigung möglich."
+								>Unbestätigt</Badge
+							>
+						{/if}
+					</div>
 				</Table.Cell>
 				<Table.Cell>{u.twoFactorEnabled ? 'Ja' : 'Nein'}</Table.Cell>
 				<Table.Cell>{fmt(u.createdAt)}</Table.Cell>
@@ -243,6 +253,21 @@
 								title={locked ? LOCKED_HINT : 'Bearbeiten'}
 								onclick={() => openEdit(u)}><PencilIcon /></Button
 							>
+							{#if !u.emailVerified}
+								<form method="POST" action="?/verifyEmail" use:enhance={submit()}>
+									<input type="hidden" name="id" value={u.id} />
+									<Button
+										size="icon-sm"
+										variant="outline"
+										type="submit"
+										disabled={busy || locked}
+										aria-label="E-Mail-Adresse bestätigen"
+										title={locked ? LOCKED_HINT : 'E-Mail-Adresse von Hand bestätigen'}
+									>
+										<MailCheckIcon />
+									</Button>
+								</form>
+							{/if}
 							{#if u.id !== data.selfId}
 								<form method="POST" action="?/setActive" use:enhance={submit()}>
 									<input type="hidden" name="id" value={u.id} />
@@ -437,6 +462,7 @@
 							{#if editUser.active}<Badge variant="success">Aktiv</Badge>{:else}<Badge
 									variant="destructive">Deaktiviert</Badge
 								>{/if}
+							{#if !editUser.emailVerified}<Badge variant="warning">E-Mail unbestätigt</Badge>{/if}
 							<Badge variant="outline">{editUser.twoFactorEnabled ? '2FA an' : 'Ohne 2FA'}</Badge>
 							<Badge variant="outline">seit {fmt(editUser.createdAt)}</Badge>
 						</div>

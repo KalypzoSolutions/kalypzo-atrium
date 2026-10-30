@@ -287,12 +287,11 @@ describe('Konto-Verknüpfung', () => {
 			password: PW,
 			relation: 'Oma'
 		};
-		// Mutter + Vater haben den Code verbraucht (Standard 2 Konten je Code, #18): Link nicht mehr gültig
-		expect((await post(`/${token}/register`, body)).status).toBe(404);
-		const status = await data<{ code: { uses: number; maxUses: number; exhausted: boolean } }>(
+		// Mutter + Vater haben den Code schon genutzt; er bleibt bis zum Ablauf gültig
+		const status = await data<{ code: { uses: number; expired: boolean } }>(
 			await call(`/members/${kid1}/links`)
 		);
-		expect(status.code).toMatchObject({ uses: 2, maxUses: 2, exhausted: true });
+		expect(status.code).toMatchObject({ uses: 2, expired: false });
 		await data(await call(`/members/${kid1}/link-code`, { method: 'POST' }), 201);
 		await letter(kid1);
 		({ token, code } = tokenAndCode());

@@ -11,7 +11,7 @@ import { settleMails } from '../helpers/settle';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { getAuth } from '$lib/server/core/auth';
 import { contextForUser } from '$lib/server/core/auth/context';
-import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
+import { bootstrapAdmin, createUser, getUser, verifyUserEmail } from '$lib/server/core/auth/users';
 import { registerModule } from '$lib/server/core/modules/registry';
 import { enableModule, syncModules } from '$lib/server/core/modules/service';
 import { registerCoreApi } from '$lib/server/core/api/endpoints';
@@ -22,7 +22,6 @@ import { createRole } from '$lib/server/core/permissions/roles';
 import { setPdfRendererForTests } from '$lib/server/core/pdf';
 import { setMailTransportForTests } from '$lib/server/core/mail';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
-import { setSetting } from '$lib/server/core/settings/service';
 import membersModule from '$lib/modules/members/module';
 import type { RequestContext } from '$lib/sdk/types';
 
@@ -155,15 +154,15 @@ beforeEach(() => {
 	mails.length = 0;
 });
 
-describe('Verknüpfungscode: Höchstzahl und Benachrichtigung (#18)', () => {
+describe('Verknüpfungscode: bis zum Ablauf gültig, Benachrichtigung (#18)', () => {
 	let kid: string;
 	let token = '';
 	let code = '';
 
-	it('Brief nennt die Höchstzahl (Standard 2)', async () => {
+	it('Brief: mehrere Personen können den Code bis zum Ablauf nutzen', async () => {
 		kid = await mkMember('Lina');
 		({ token, code } = await letterOf(kid));
-		expect(html).toContain('Bis zu 2 Personen');
+		expect(html).toContain('bis zum Ablauf nutzen');
 	});
 
 	it('erste Verknüpfung: keine Hinweismail; wiederholtes Einlösen verbraucht nichts', async () => {
@@ -171,10 +170,8 @@ describe('Verknüpfungscode: Höchstzahl und Benachrichtigung (#18)', () => {
 		await data(await post(`/${token}/claim`, { code }, keys.Mutter), 201);
 		await flush();
 		expect(mails).toHaveLength(0);
-		const l = await data<{ code: { uses: number; exhausted: boolean } }>(
-			await call(`/members/${kid}/links`)
-		);
-		expect(l.code).toMatchObject({ uses: 1, exhausted: false });
+		const l = await data<{ code: { uses: number } }>(await call(`/members/${kid}/links`));
+		expect(l.code).toMatchObject({ uses: 1 });
 	});
 
 	it('zweite Verknüpfung: Mail an das bereits verknüpfte Konto + Audit', async () => {
@@ -187,39 +184,20 @@ describe('Verknüpfungscode: Höchstzahl und Benachrichtigung (#18)', () => {
 		expect(rows.some((r) => (r.metadata as { notified?: number }).notified === 1)).toBe(true);
 	});
 
-	it('dritte Verknüpfung mit demselben Code scheitert (Link nicht mehr gültig)', async () => {
-		expect((await post(`/${token}/claim`, { code }, keys.Fremd)).status).toBe(404);
-		expect(
-			(
-				await post(`/${token}/register`, {
-					code,
-					name: 'Dritte Person',
-					email: 'dritte@example.test',
-					password: PW,
-					relation: null
-				})
-			).status
-		).toBe(404);
-		const l = await data<{ users: unknown[]; code: { exhausted: boolean } }>(
+	it('dritte Verknüpfung mit demselben Code klappt bis zum Ablauf (alle bisherigen informiert)', async () => {
+		await data(await post(`/${token}/claim`, { code }, keys.Fremd), 201);
+		await flush();
+		expect(mails.map((m) => m.to).sort()).toEqual(['mutter@example.test', 'vater@example.test']);
+		const l = await data<{ users: unknown[]; code: { uses: number; expired: boolean } }>(
 			await call(`/members/${kid}/links`)
 		);
-		expect(l.users).toHaveLength(2);
-		expect(l.code.exhausted).toBe(true);
+		expect(l.users).toHaveLength(3);
+		expect(l.code).toMatchObject({ uses: 3, expired: false });
 	});
 
-	it('der nächste Brief erzeugt für einen verbrauchten Code einen neuen', async () => {
+	it('der nächste Brief behält den gültigen Code', async () => {
 		const next = await letterOf(kid);
-		expect(next.token).not.toBe(token);
-	});
-
-	it('Einstellung „Konten je Code“ = 1 gilt für neu erzeugte Codes', async () => {
-		await setSetting(admin, 'members.link.maxUses', 1);
-		const kid2 = await mkMember('Ben');
-		const c = await letterOf(kid2);
-		expect(html).toContain('für ein Konto');
-		await data(await post(`/${c.token}/claim`, { code: c.code }, keys.Mutter), 201);
-		expect((await post(`/${c.token}/claim`, { code: c.code }, keys.Vater)).status).toBe(404);
-		await setSetting(admin, 'members.link.maxUses', 2);
+		expect(next.token).toBe(token);
 	});
 });
 
@@ -271,6 +249,41 @@ describe('Registrierung über den Brief: erst nach E-Mail-Bestätigung (#18)', (
 		const { rows } = await listAudit({ action: 'core.auth.email_verified', target: u!.id });
 		expect(rows).toHaveLength(1);
 		expect(rows[0]!.actorName).toBe('o***@example.test');
+	});
+
+	it('Verwaltung sieht unbestätigte Konten und kann sie von Hand bestätigen', async () => {
+		const kid = await mkMember('Paul');
+		const { token, code } = await letterOf(kid);
+		await data(
+			await post(`/${token}/register`, {
+				code,
+				name: 'Opa Paul',
+				email: 'opa.paul@example.test',
+				password: PW,
+				relation: 'Opa'
+			}),
+			201
+		);
+		await flush();
+		const [u] = await getDb()
+			.select()
+			.from(schema.user)
+			.where(eq(schema.user.email, 'opa.paul@example.test'));
+		expect((await getUser(admin, u!.id)).emailVerified).toBe(false);
+
+		const usersKey = (await createApiKey(admin, { name: 'u', scopes: [...admin.permissions] })).key;
+		const res = await api(`/users/${u!.id}/verify-email`, { token: usersKey, method: 'POST' });
+		expect((await data<{ emailVerified: boolean }>(res, 201)).emailVerified).toBe(true);
+		resetAllForTests();
+		const signIn = await getAuth().api.signInEmail({
+			body: { email: 'opa.paul@example.test', password: PW }
+		});
+		expect(signIn.user.id).toBe(u!.id);
+		const { rows } = await listAudit({ action: 'core.user.email_verified', target: u!.id });
+		expect(rows).toHaveLength(1);
+		// Wiederholen schadet nicht, unbekannte Konten → 404
+		await verifyUserEmail(admin, u!.id);
+		await expect(verifyUserEmail(admin, 'gibt-es-nicht')).rejects.toMatchObject({ status: 404 });
 	});
 });
 

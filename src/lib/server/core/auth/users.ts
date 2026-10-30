@@ -30,6 +30,8 @@ export interface UserListItem {
 	email: string;
 	active: boolean;
 	twoFactorEnabled: boolean;
+	/** E-Mail-Adresse bestätigt (Selbstregistrierung über den Verknüpfungsbrief startet mit `false`) */
+	emailVerified: boolean;
 	createdAt: Date;
 	roles: { id: string; name: string }[];
 	/** Einzelrechte, die direkt am Benutzer hängen (zusätzlich zu den Rollen) */
@@ -96,6 +98,7 @@ export async function listUsers(
 		email: u.email,
 		active: u.active,
 		twoFactorEnabled: u.twoFactorEnabled,
+		emailVerified: u.emailVerified,
 		createdAt: u.createdAt,
 		roles: roles.get(u.id) ?? [],
 		permissions: direct.get(u.id) ?? [],
@@ -116,6 +119,7 @@ export async function getUser(ctx: RequestContext, id: string): Promise<UserList
 		email: u.email,
 		active: u.active,
 		twoFactorEnabled: u.twoFactorEnabled,
+		emailVerified: u.emailVerified,
 		createdAt: u.createdAt,
 		roles: roles.get(id) ?? [],
 		permissions: direct.get(id) ?? [],
@@ -431,6 +435,22 @@ async function applyUserActive(
 		{ target: id },
 		tx
 	);
+}
+
+/**
+ * Bestätigt die E-Mail-Adresse eines Kontos von Hand (z. B. wenn der Bestätigungslink nicht ankam).
+ * Danach ist die Anmeldung möglich. Gleiche Schutzregeln wie andere Kontoänderungen.
+ */
+export async function verifyUserEmail(ctx: RequestContext, id: string): Promise<void> {
+	await requirePermission(ctx, 'core.users.edit');
+	await assertCanManageUser(ctx, id);
+	const res = await getDb()
+		.update(schema.user)
+		.set({ emailVerified: true, updatedAt: new Date() })
+		.where(eq(schema.user.id, id))
+		.returning({ id: schema.user.id });
+	if (!res.length) throw errors.notFound('Benutzer nicht gefunden');
+	await auditFromContext(ctx, 'core.user.email_verified', { target: id });
 }
 
 export async function setUserActive(

@@ -79,10 +79,11 @@ Die Selbstregistrierung ist weiterhin aus. Ausnahme: Wer **Link-Token und 6-stel
 `/p/members/verknuepfen/<token>` ein Konto (Rolle „Mitglied“, ohne Rechte) anlegen oder ein vorhandenes verknüpfen.
 Schutz: Token (128 Bit) identifiziert das Mitglied, Code (6 Ziffern, verschlüsselt gespeichert, zeitkonstanter Vergleich) belegt den Besitz;
 je Mitglied nach 10 Fehlversuchen 60 Minuten Sperre, dazu Rate-Limits je IP/Gesamt; Gültigkeit 90 Tage; „Code neu erzeugen“ macht Link und Code ungültig.
-Seit #18: Ein Code verknüpft höchstens `members.link.maxUses` Konten (Standard 2), danach ist der Link ungültig (neuer Brief); jede weitere
+Seit 2026-10-29 (Nutzerentscheidung, ersetzt die Höchstzahl aus #18): Ein Code bleibt bis zum Ablauf beliebig oft nutzbar; jede weitere
 Verknüpfung informiert die bereits verknüpften Konten per Mail. Über den Brief registrierte Konten sind **unbestätigt** (`emailVerified=false`):
 Bestätigungslink an die Adresse (1 h), Anmeldung erst danach (`databaseHooks.session.create` lehnt mit `EMAIL_NOT_VERIFIED` ab, ein
 Anmeldeversuch mit richtigem Passwort schickt höchstens alle 5 min einen neuen Link). Der Bestätigungslink selbst erzeugt keine Session.
+Die Verwaltung sieht unbestätigte Konten (Badge „Unbestätigt“ unter `/admin/users`) und kann sie von Hand bestätigen (`verifyUserEmail`, `core.users.edit` + `assertCanManageUser`, Audit `core.user.email_verified`).
 
 ## E-Mail-Wechsel, Profilbild und Kontaktänderung
 

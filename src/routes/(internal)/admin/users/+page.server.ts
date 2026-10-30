@@ -5,7 +5,8 @@ import {
 	deleteUser,
 	listUsers,
 	setUserActive,
-	updateUserFull
+	updateUserFull,
+	verifyUserEmail
 } from '$lib/server/core/auth/users';
 import { AVATAR_MAX_BYTES, removeUserAvatar, setUserAvatar } from '$lib/server/core/auth/profile';
 import { canManageUser } from '$lib/server/core/auth/manage-guard';
@@ -154,6 +155,18 @@ export const actions: Actions = {
 				success: true,
 				message: parsed.data.active === 'true' ? 'Benutzer aktiviert' : 'Benutzer deaktiviert'
 			};
+		} catch (e) {
+			return toFail(e);
+		}
+	},
+
+	verifyEmail: async ({ request, locals }) => {
+		const fd = await request.formData();
+		const parsed = z.object({ id: z.string().min(1) }).safeParse({ id: fd.get('id') });
+		if (!parsed.success) return invalid(parsed.error);
+		try {
+			await verifyUserEmail(locals.ctx, parsed.data.id);
+			return { success: true, message: 'E-Mail-Adresse bestätigt' };
 		} catch (e) {
 			return toFail(e);
 		}

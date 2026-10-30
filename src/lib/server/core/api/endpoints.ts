@@ -7,7 +7,14 @@ import { assistStreamResponse } from '../ai/assist/sse';
 import * as pdf from '../pdf';
 import * as storage from '../storage';
 import { createApiKey, listApiKeys, revokeApiKey } from './keys';
-import { createUser, deleteUser, getUser, listUsers, updateUserFull } from '../auth/users';
+import {
+	createUser,
+	deleteUser,
+	getUser,
+	listUsers,
+	updateUserFull,
+	verifyUserEmail
+} from '../auth/users';
 import { disableModule, enableModule, listModules } from '../modules/service';
 import { listJobs, runJobNow } from '../jobs';
 import { adoptDefaultRole } from '../permissions/default-roles';
@@ -128,6 +135,18 @@ export function registerCoreApi(): void {
 			handler: async ({ ctx, params, body }) => {
 				// atomar: alle Prüfungen vor der ersten Änderung, dann eine Transaktion (#72, 06-08)
 				await updateUserFull(ctx, params.id, body);
+				return getUser(ctx, params.id);
+			}
+		}),
+		defineEndpoint({
+			method: 'POST',
+			path: '/users/:id/verify-email',
+			summary: 'E-Mail-Adresse von Hand bestätigen',
+			tags: ['Benutzer'],
+			permission: 'core.users.edit',
+			params: id,
+			handler: async ({ ctx, params }) => {
+				await verifyUserEmail(ctx, params.id);
 				return getUser(ctx, params.id);
 			}
 		}),
