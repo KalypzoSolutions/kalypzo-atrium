@@ -71,6 +71,9 @@
 	type Phase = 'wizard' | 'running' | 'done' | 'failed' | 'loggedOut';
 
 	let phase = $state<Phase>('wizard');
+	/** Felder, die Schritt 2 selbst anzeigt; andere Fehler erscheinen als allgemeine Meldung */
+	const ANALYZE_FIELDS = ['backupPassword', 'password', 'totp'];
+
 	let step = $state(1);
 	let busy = $state(false);
 	let error = $state('');
@@ -243,7 +246,8 @@
 					return;
 				}
 				fieldErrors = r.fields;
-				if (!Object.keys(r.fields).length) {
+				// Formatfehler der Datei (Pfad `file`) haben in diesem Schritt kein eigenes Feld
+				if (!ANALYZE_FIELDS.some((f) => r.fields[f])) {
 					error = r.message;
 					toast.error(r.message);
 				}

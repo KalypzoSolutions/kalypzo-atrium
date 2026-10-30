@@ -179,7 +179,7 @@ function openArchive(path: string, header: EnvelopeHeader, key: Buffer) {
 }
 
 /** ndjson-Zeilen als Rohtext (leere Zeilen entfallen), Zeilenlänge begrenzt */
-async function* ndjsonLines(source: ByteSource): AsyncGenerator<string> {
+async function* ndjsonLines(source: ByteSource, table: string): AsyncGenerator<string> {
 	const dec = new TextDecoder('utf-8', { fatal: true });
 	let carry: Uint8Array[] = [];
 	let carryLen = 0;
@@ -191,7 +191,10 @@ async function* ndjsonLines(source: ByteSource): AsyncGenerator<string> {
 		}
 	};
 	const tooLong = () =>
-		new BackupFormatError('too_large', 'Eine Datenzeile der Sicherung ist zu groß.');
+		new BackupFormatError(
+			'too_large',
+			`Eine Datenzeile der Tabelle ${table} ist größer als ${BACKUP_LIMITS.maxLineBytes / 1024 ** 2} MB.`
+		);
 	for await (const chunk of source) {
 		let off = 0;
 		for (;;) {
@@ -219,6 +222,10 @@ async function* ndjsonLines(source: ByteSource): AsyncGenerator<string> {
 	}
 	if (carryLen > 0) yield text(Buffer.concat(carry, carryLen));
 }
+
+/** Einfüge-Batch voll: nach Zeilenzahl oder Textgröße (große Zeilen nicht zu Hunderten im Speicher). */
+const batchFull = (rows: number, bytes: number) =>
+	rows >= BACKUP_LIMITS.rowBatch || bytes >= BACKUP_LIMITS.insertBatchBytes;
 
 function parseLine(line: string): Row {
 	let v: unknown;
@@ -401,7 +408,10 @@ export async function analyzeBackup(
 						: [];
 					let rows = 0;
 					let info: HashInfo | null = null;
-					for await (const line of ndjsonLines(hashingSource(entry.stream(), (r) => (info = r)))) {
+					for await (const line of ndjsonLines(
+						hashingSource(entry.stream(), (r) => (info = r)),
+						table
+					)) {
 						rows++;
 						if (!isGuard && !split && !refCols.length && table !== 'public.user') continue;
 						const row = parseLine(line);
@@ -1175,7 +1185,10 @@ async function runRestore(a: RunArgs): Promise<void> {
 				};
 				let info: HashInfo | null = null;
 				let rows = 0;
-				const lines = ndjsonLines(hashingSource(entry.stream(), (r) => (info = r)));
+				const lines = ndjsonLines(
+					hashingSource(entry.stream(), (r) => (info = r)),
+					name
+				);
 				if (selfReference(t)) {
 					const byRow = new Map<Row, string>();
 					for await (const line of lines) {
@@ -1186,17 +1199,22 @@ async function runRestore(a: RunArgs): Promise<void> {
 						byRow.set(parseLine(line), line);
 					}
 					let batch: InsertRow[] = [];
+					let batchBytes = 0;
 					for (const row of sortRowsSelfRef([...byRow.keys()], t)) {
-						remember(byRow.get(row)!);
-						batch.push(await decodeLine(t, byRow.get(row)!));
-						if (batch.length >= BACKUP_LIMITS.rowBatch) {
+						const line = byRow.get(row)!;
+						remember(line);
+						batch.push(await decodeLine(t, line));
+						batchBytes += line.length;
+						if (batchFull(batch.length, batchBytes)) {
 							await flush(batch);
 							batch = [];
+							batchBytes = 0;
 						}
 					}
 					await flush(batch);
 				} else {
 					let batch: InsertRow[] = [];
+					let batchBytes = 0;
 					for await (const line of lines) {
 						rows++;
 						if (onlyNewUsers) {
@@ -1208,9 +1226,11 @@ async function runRestore(a: RunArgs): Promise<void> {
 						}
 						remember(line);
 						batch.push(await decodeLine(t, line));
-						if (batch.length >= BACKUP_LIMITS.rowBatch) {
+						batchBytes += line.length;
+						if (batchFull(batch.length, batchBytes)) {
 							await flush(batch);
 							batch = [];
+							batchBytes = 0;
 						}
 					}
 					await flush(batch);

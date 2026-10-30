@@ -24,8 +24,10 @@ export const BACKUP_LIMITS = {
 	envelopeChunkBytes: 1024 * 1024,
 	/** Zeilen je Export-/Insert-Batch */
 	rowBatch: 500,
-	/** größte einzelne ndjson-Zeile */
-	maxLineBytes: 16 * 1024 * 1024,
+	/** größte einzelne ndjson-Zeile (z. B. Notiz-Versionen als bytea, Whiteboard-Inhalte) */
+	maxLineBytes: 128 * 1024 ** 2,
+	/** Beim Einfügen spätestens nach so vielen Bytes Zeilentext in die Datenbank schreiben */
+	insertBatchBytes: 32 * 1024 ** 2,
 	maxEntries: 500_000,
 	/** entpackte Gesamtgröße (Zip-Bomb-Schutz) */
 	maxUnpackedBytes: 64 * 1024 ** 3,

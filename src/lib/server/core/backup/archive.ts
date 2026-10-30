@@ -508,7 +508,10 @@ export function readNdjson(source: ByteSource): AsyncIterable<unknown> {
 				}
 			};
 			const tooLong = () =>
-				new BackupFormatError('too_large', 'Eine Datenzeile der Sicherung ist zu groß.');
+				new BackupFormatError(
+					'too_large',
+					`Eine Datenzeile der Sicherung ist größer als ${BACKUP_LIMITS.maxLineBytes / 1024 ** 2} MB.`
+				);
 			for await (const chunk of source) {
 				let off = 0;
 				for (;;) {
