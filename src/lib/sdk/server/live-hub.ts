@@ -45,6 +45,7 @@ export async function refreshLiveContext(
 export interface LiveSubscriber<L extends string, P> {
 	client: string;
 	objectId: string;
+	/** Konto bzw. `subject` der Verbindung (Gäste ohne Konto) */
 	userId: string;
 	/** Kontext der letzten Prüfung (wird bei jeder Neuprüfung neu aufgelöst) */
 	ctx: RequestContext;
@@ -75,6 +76,15 @@ export interface LiveOpenInput<L extends string, P> {
 	client: string;
 	level: L;
 	peer: P;
+	/**
+	 * Identität statt `ctx.userId` (Gäste über öffentliche Links, z. B. `guest:<hash>`): gilt für die Kennungsprüfung
+	 * und `streamCount`. Ohne Angabe = Konto.
+	 */
+	subject?: string;
+	/**
+	 * Eigene Neuprüfung statt Sitzung + `resolveLevel` (Gäste: Link noch gültig?). `null` = Zugriff weg.
+	 */
+	recheck?: () => Promise<L | null>;
 	/** Nach dem Anmelden: Startereignisse schicken (Fehler schließen die Verbindung) */
 	onOpen(push: (event: unknown) => void, sub: LiveSubscriber<L, P>): Promise<void>;
 }
@@ -85,6 +95,8 @@ export interface LiveHub<L extends string, P> {
 	subscribers(objectId: string): LiveSubscriber<L, P>[];
 	get(objectId: string, client: string): LiveSubscriber<L, P> | undefined;
 	streamCount(userId: string): number;
+	/** Verbindungen, auf die `match` zutrifft (z. B. Gäste je IP) */
+	countWhere(match: (sub: LiveSubscriber<L, P>) => boolean): number;
 	/** Objekte mit offenen Verbindungen */
 	openObjects(): string[];
 	/** Alle Verbindungen eines Objekts sofort neu prüfen */
@@ -101,6 +113,7 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 	const recheckMs = options.recheckMs ?? 60_000;
 	const objects = new Map<string, Map<string, LiveSubscriber<L, P>>>();
 	const headersOf = new WeakMap<LiveSubscriber<L, P>, Headers>();
+	const customRecheck = new WeakMap<LiveSubscriber<L, P>, () => Promise<L | null>>();
 
 	function subscribersOf(objectId: string): Map<string, LiveSubscriber<L, P>> {
 		let map = objects.get(objectId);
@@ -128,10 +141,15 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 	async function recheckOne(sub: LiveSubscriber<L, P>): Promise<void> {
 		let level: L | null;
 		try {
-			// Sitzung, Konto und Rechte neu auflösen – Rollenentzug, Abmelden oder Deaktivieren wirken sofort
-			const fresh = await refreshLiveContext(sub.ctx, headersOf.get(sub) ?? new Headers());
-			if (fresh) sub.ctx = fresh;
-			level = fresh ? await options.resolveLevel(fresh, sub.objectId) : null;
+			const own = customRecheck.get(sub);
+			if (own) {
+				level = await own();
+			} else {
+				// Sitzung, Konto und Rechte neu auflösen – Rollenentzug, Abmelden oder Deaktivieren wirken sofort
+				const fresh = await refreshLiveContext(sub.ctx, headersOf.get(sub) ?? new Headers());
+				if (fresh) sub.ctx = fresh;
+				level = fresh ? await options.resolveLevel(fresh, sub.objectId) : null;
+			}
 		} catch (e) {
 			// Datenbank kurz nicht erreichbar: offen lassen, nächster Versuch beim nächsten Takt
 			console.warn(`[${options.name}] Zugriffsprüfung fehlgeschlagen`, e);
@@ -151,9 +169,10 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 
 	function open(input: LiveOpenInput<L, P>): Response {
 		const { ctx, objectId, client } = input;
+		const subject = input.subject ?? ctx.userId ?? '';
 		// fremde Kennung übernehmen (Kennungen stehen in `hello`) wäre ein Rauswurf anderer Personen
 		const existing = objects.get(objectId)?.get(client);
-		if (existing && existing.userId !== (ctx.userId ?? '')) {
+		if (existing && existing.userId !== subject) {
 			throw errors.conflict('Diese Verbindungskennung ist bereits vergeben');
 		}
 		const authHeaders = authHeadersOf(input.request);
@@ -182,7 +201,7 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 				const current: LiveSubscriber<L, P> = {
 					client,
 					objectId,
-					userId: ctx.userId ?? '',
+					userId: subject,
 					ctx,
 					level: input.level,
 					peer: input.peer,
@@ -198,6 +217,7 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 				};
 				sub = current;
 				headersOf.set(current, authHeaders);
+				if (input.recheck) customRecheck.set(current, input.recheck);
 				const map = subscribersOf(objectId);
 				// gleiche Kennung erneut verbunden (Wiederverbinden): alte Verbindung ablösen
 				map.get(client)?.close();
@@ -237,6 +257,13 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 			let n = 0;
 			for (const map of objects.values()) {
 				for (const s of map.values()) if (s.userId === userId) n++;
+			}
+			return n;
+		},
+		countWhere(match) {
+			let n = 0;
+			for (const map of objects.values()) {
+				for (const s of map.values()) if (match(s)) n++;
 			}
 			return n;
 		},

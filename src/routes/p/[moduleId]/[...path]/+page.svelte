@@ -16,17 +16,34 @@
 </svelte:head>
 <PageTitle title={data.moduleName} />
 
-<div class="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-4 py-8">
-	{#if systemName}
-		<p class="mb-6 text-sm font-medium text-muted-foreground">{systemName}</p>
-	{/if}
-	<div class="flex-1">
-		<Page params={data.params} path={data.path} />
+{#if data.wide}
+	<div class="flex min-h-dvh w-full flex-col">
+		{#if systemName}
+			<p class="px-4 py-3 text-sm font-medium text-muted-foreground">{systemName}</p>
+		{/if}
+		<div class="flex-1">
+			<Page params={data.params} path={data.path} />
+		</div>
+		<LegalLinks
+			privacyUrl={data.legal.privacyUrl}
+			imprintUrl={data.legal.imprintUrl}
+			notice
+			class="px-4 py-6"
+		/>
 	</div>
-	<LegalLinks
-		privacyUrl={data.legal.privacyUrl}
-		imprintUrl={data.legal.imprintUrl}
-		notice
-		class="mt-10 border-t pt-6"
-	/>
-</div>
+{:else}
+	<div class="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-4 py-8">
+		{#if systemName}
+			<p class="mb-6 text-sm font-medium text-muted-foreground">{systemName}</p>
+		{/if}
+		<div class="flex-1">
+			<Page params={data.params} path={data.path} />
+		</div>
+		<LegalLinks
+			privacyUrl={data.legal.privacyUrl}
+			imprintUrl={data.legal.imprintUrl}
+			notice
+			class="mt-10 border-t pt-6"
+		/>
+	</div>
+{/if}

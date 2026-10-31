@@ -90,6 +90,11 @@ export interface ModuleUi {
 	 * ohne Maximalbreite, Höhe = Fensterhöhe minus Kopfzeile), z. B. Editoren wie das Whiteboard.
 	 */
 	fullBleedRoutes?: string[];
+	/**
+	 * Schlüssel aus `publicRoutes`, die auf `/p/<id>/…` die volle Breite bekommen (statt der schmalen Spalte),
+	 * z. B. Editoren über öffentliche Links.
+	 */
+	publicWideRoutes?: string[];
 }
 
 /** Breite einer Dashboard-Kachel im Raster: `sm` = 1 Spalte, `md` = 2 Spalten, `lg` = volle Breite */

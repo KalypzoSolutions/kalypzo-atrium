@@ -374,7 +374,12 @@
   Fake-Client), Chat-Assistent (Phase 4) bewusst nicht umgesetzt, Absatz in der Datenschutzerklärung nötig.
 
 
+- **Notizen: öffentliche Links (2026-11-01, `notes` v1.3.0, Migr. 0003)**: Notiz samt Unterseiten per Link für Personen ohne Konto zum Ansehen oder
+  live Mitbearbeiten (nur Text), Ablauf/Passwort/Widerruf wie bei Dateien, Gäste mit optionalem Namen. Core: Live-Hub für Gäste (`subject`, `recheck`),
+  `publicWideRoutes`. Details: `module-notes.md` → „Öffentliche Links“.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Notizen-Links (2026-11-01): mit Unterseiten; Ablauf + Passwort wie Dateien; Gäste nach Namen fragen; Gäste nur Text (keine Uploads/Einbettungen).
 - KI-Schreibhilfe (2026-10-29): Anrede-Standard **„du“** (Einstellung `core.ai.style.address`, je Text umschaltbar); Nutzung **nur über Rechte**
   `<modul>.ai.use` je Modul (keine Standard-Vergabe an Rollen); eingegangene Mails und Galeriebilder dürfen an die KI **mit Schutz** (maskiert/ohne
   Metadaten), je Bereich abschaltbar, **Standard aus**; Vorschläge werden nie automatisch gesendet oder gespeichert.
