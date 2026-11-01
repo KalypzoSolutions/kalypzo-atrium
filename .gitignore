@@ -36,3 +36,7 @@ vite.config.ts.timestamp-*
 
 # Arbeitsdateien des taste-skill
 .taste-skill/
+
+# Installierte Module (Panel/Supervisor oder ATRIUM_MODULES_DIR); nur die Erklärung liegt im Repo
+/modules/*
+!/modules/README.md

@@ -1,23 +1,17 @@
-# EP Intern – modulare Verwaltungsplattform
+# Kalypzo Atrium – modulare Verwaltungsplattform (Core)
 
-Selbst gehostete, webbasierte Verwaltungsplattform für einen Pfadfinderstamm als **modularer Monolith**: ein kleiner **Core**
+Selbst gehostete, webbasierte Verwaltungsplattform als **modularer Monolith**: ein neutraler, zweisprachiger (de/en) **Core**
 (Authentifizierung mit 2FA, RBAC, Modulverwaltung, Einstellungen, REST-API mit API-Keys, PDF-, KI-, Bild- und S3-Storage-Service,
-Mail, Hintergrundjobs, globale Suche, Dashboard, Audit-Log, Datensicherung, Admin-Reset, Datenauskunft) plus **Fachmodule** unter
-`modules/<id>/`. Module werden unter Administration → Module einzeln aktiviert.
+Mail, Benachrichtigungen/Web Push, Hintergrundjobs, globale Suche, Dashboard, Audit-Log, Datensicherung, Admin-Reset, Datenauskunft)
+plus **Fachmodule**, die unter Administration → Module per **GitHub-Link oder ZIP** installiert werden (Neubau im Server über den
+Supervisor, siehe [Deployment](docs/deployment.md)).
 
-| Modul | Name | Inhalt |
-|---|---|---|
-| `members` | Mitglieder & Gruppen | Mitglieder, Gruppen, Zusatzfelder, Konto-Verknüpfung per Brief, Mitgliedschaft |
-| `actions` | Aktionen | Fahrten/Lager: Kalkulation, Zuschuss, Anmeldelink, Abrechnung, Rückzahlung, PDF-Bericht |
-| `treasury` | Kasse | Konten, Buchungen, Rechnungen (auch aus Aktionen/Bestellungen), Jahresbeitrag, CSV-Import, Berichte |
-| `events` | Termine | Termine und Serien, Tags, Gruppen, Freigabe, Website-API |
-| `galleries` | Galerien | Bilder mit Titelbild, Freigabe, öffentliche Galerien für die Website |
-| `offices` | Ämter | Ämter mit Inhaber*innen, Rollen aus Ämtern, Benachrichtigungen |
-| `orders` | Bestellungen | Artikel, Bestellungen mit Rechnung über die Kasse, Lager, Einkauf |
-| `files` | Dateien | Cloud-Ablage mit Freigaben, öffentlichen Links und Papierkorb |
-
-Dazu kommt die **Stammeswebsite** in `website/` (eigenes SvelteKit-Projekt), die Termine, Galerien und Gruppen serverseitig
-über die Website-Endpunkte lädt (`WEBSITE_API_URL`, `WEBSITE_API_KEY`; siehe [REST API](docs/api.md#stammeswebsite) und [Deployment](docs/deployment.md)).
+- Dieses Repo enthält **keine Fachmodule**. `modules/` ist leer (gitignored); Module kommen aus eigenen Repos, z. B.
+  [`ep-intern-modules`](../ep-intern-modules) (Fachmodule der Edelweißpiraten inkl. Profil-Modul `ep-stamm`).
+- Eigene Module entwickeln: [Modulentwicklung](docs/module-development.md); Paketformat `atrium-module.json`, Katalog `atrium-modules.json`.
+- Organisationsspezifisches Aussehen (Briefkopf, Mail-Kopf, Logo, Texte) liefern Profil-Module über Hooks
+  (`settingDefaults`, `pdfTemplates`, `mailBranding`, `brandingLogo`).
+- Tests des Core laufen mit Fixture-Modulen (`tests/fixtures/modules`): `npm run test:core`, `npm run check:core`.
 
 ## Techstack
 

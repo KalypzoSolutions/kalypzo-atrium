@@ -1,5 +1,5 @@
-# CI für EP Intern 2.0 (Issue #11). Dokploy deployt aus `staging`/`main` – Branch-Protection muss
-# die Jobs `verify` und `website` als Pflicht-Checks verlangen (Einstellung im GitHub-Repository).
+# CI für Kalypzo Atrium (Core). Branch-Protection: Job `verify` als Pflicht-Check.
+# Fachmodule und Stammeswebsite haben eigene Repos (ep-intern-modules, ep-website) mit eigener CI.
 name: CI
 
 on:
@@ -35,6 +35,9 @@ jobs:
     name: verify (Format, Typen, Lint, Tests, Build, Audit)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      # Der Core prüft sich mit den Fixture-Modulen (modules/ ist in diesem Repo leer)
+      ATRIUM_MODULES_DIR: tests/fixtures/modules
     steps:
       - uses: actions/checkout@v4
 
@@ -50,7 +53,7 @@ jobs:
         run: grep -q '"node_modules/@img/sharp-linux-x64"' package-lock.json
 
       - name: Format (prettier)
-        run: npx prettier --check src tests docs modules tools
+        run: npx prettier --check src tests docs tools
 
       - name: Typprüfung (svelte-check)
         # Standard-Heap (~2 GB) reicht für das ganze Projekt nicht mehr (OOM seit 2026-10-26)
@@ -72,63 +75,6 @@ jobs:
           path: coverage/
           if-no-files-found: ignore
           retention-days: 14
-
-      - name: Build
-        run: npm run build
-
-      # Kalypzo Atrium: der Core muss ohne Fachmodule laufen (Fixture-Module unter tests/fixtures/modules)
-      - name: Core ohne Fachmodule – Typprüfung
-        env:
-          ATRIUM_MODULES_DIR: tests/fixtures/modules
-          NODE_OPTIONS: --max-old-space-size=6144
-        run: npm run check
-
-      - name: Core ohne Fachmodule – Tests
-        env:
-          ATRIUM_MODULES_DIR: tests/fixtures/modules
-        run: npx vitest run
-
-      - name: Core ohne Fachmodule – Build
-        env:
-          ATRIUM_MODULES_DIR: tests/fixtures/modules
-        run: npm run build
-
-      - name: Audit Laufzeitabhängigkeiten (High/Critical blockieren)
-        run: npm audit --omit=dev --audit-level=high
-
-  website:
-    name: website (Check, Build, Audit)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: website
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: website/package-lock.json
-
-      - name: Abhängigkeiten installieren
-        run: npm ci
-
-      - name: Typprüfung (5 bekannte Altfehler, siehe .claude/rules/website.md)
-        # Altcode meldet bekannte Fehler; der Schritt bricht erst ab, wenn es MEHR werden.
-        run: |
-          set +e
-          npx svelte-kit sync
-          npx svelte-check --tsconfig ./tsconfig.json --output machine > svelte-check.log
-          tail -n 1 svelte-check.log
-          errors=$(grep -E '^[0-9]+ COMPLETED' svelte-check.log | sed -E 's/.* ([0-9]+) ERRORS.*/\1/')
-          if [ -z "$errors" ]; then echo "svelte-check lieferte kein Ergebnis"; exit 1; fi
-          if [ "$errors" -gt 5 ]; then
-            grep ' ERROR ' svelte-check.log
-            echo "Mehr als die 5 bekannten Fehler: $errors"
-            exit 1
-          fi
 
       - name: Build
         run: npm run build
@@ -170,20 +116,13 @@ jobs:
       - name: Abhängigkeiten installieren
         run: npm ci
 
-      - name: Nebenläufigkeit (Advisory-Sperren, Job-Claim, Migrationen, Treiber)
-        run: npx vitest run modules/_integration/tests/integration/pg-concurrency.test.ts
-
-      - name: Smoke-Suite gegen PostgreSQL (alle Core- und Modul-Migrationen, Restore)
+      - name: Smoke-Suite gegen PostgreSQL (Core-Migrationen, Module mit Fixtures)
         run: >-
           npx vitest run
           tests/integration/smoke.test.ts
           tests/integration/core.test.ts
           tests/integration/core-jobs.test.ts
           tests/integration/module-migration-isolation.test.ts
-          modules/treasury/tests/integration/treasury.test.ts
-          modules/orders/tests/integration/orders.test.ts
-          modules/files/tests/integration/files.test.ts
-          modules/_integration/tests/integration/backup-restore-smoke.test.ts
 
   e2e:
     name: e2e (Playwright)

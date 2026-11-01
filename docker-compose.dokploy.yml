@@ -4,16 +4,15 @@
 #   ./docker-compose.dokploy.yml, Compose-Typ "Docker Compose". Variablen im Reiter "Environment"
 #   setzen (Vorlage: .env.dokploy.example). Unter "Domains" die Domain auf Service `app`, Port 3000,
 #   HTTPS (Let's Encrypt) legen. Die App-Daten liegen in den Volumes `db-data` und `s3-data`.
-#   Stammeswebsite: zweite Domain auf Service `website`, Port 3001 (Variablen WEBSITE_ORIGIN, WEBSITE_API_KEY).
 #
 # Reihenfolge: db -> storage -> storage-init -> app. Migrationen und Modul-Sync laufen beim Start der App automatisch;
 # Storage/SMTP werden beim ersten Start aus S3_*/SMTP_* vorbelegt (spaeter in der Oberflaeche aenderbar).
 # Automatische Sicherung: Dienst `db-backup`, aktiv mit COMPOSE_PROFILES=backup (siehe docs/deployment.md).
 #
-# Umgebung: DEPLOY_ENV (z. B. prod, staging; Standard prod) – je Stack verschieden setzen. `app` und `website` hängen
+# Umgebung: DEPLOY_ENV (z. B. prod, staging; Standard prod) – je Stack verschieden setzen. `app` hängt
 # zusätzlich im gemeinsamen `dokploy-network`, in dem gleichnamige Dienste ANDERER Stacks (z. B. `app` von Staging) stecken;
 # dort würde ein Name wie `app` oder `db` reihum auf beide Stacks auflösen (sporadische 401 „API-Key wird nicht akzeptiert“).
-# Deshalb sprechen sich die Dienste über eindeutige Aliase im stackeigenen Netz `internal` an: ep-intern-<DEPLOY_ENV>-app|db|storage|website.
+# Deshalb sprechen sich die Dienste über eindeutige Aliase im stackeigenen Netz `internal` an: ep-intern-<DEPLOY_ENV>-app|db|storage.
 #
 # Ressourcen und Log-Rotation (Issue #39): Standardwerte für einen kleinen Server (ab 1 vCPU, 4 GB RAM), per
 # *_MEM_LIMIT/*_CPUS überschreibbar. Images mit fester Version + Digest (Issue #74).
@@ -213,46 +212,6 @@ services:
     cpu_shares: 768
     pids_limit: 1024
     stop_grace_period: 45s
-
-  # Öffentliche Stammeswebsite (website/). Domain in Dokploy auf Service `website`, Port 3001 legen.
-  # Holt Termine und Galerien serverseitig über das interne Netz (ep-intern-<env>-app:3000) mit WEBSITE_API_KEY; ohne Key
-  # laufen die statischen Seiten, Termine/Galerie zeigen eine Fehlerseite (Key im Intern-Bereich anlegen, eintragen, neu deployen).
-  website:
-    <<: [*logging, *hardening]
-    build:
-      context: ./website
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    depends_on: [app]
-    environment:
-      WEBSITE_API_URL: http://ep-intern-${DEPLOY_ENV:-prod}-app:3000
-      WEBSITE_API_KEY: ${WEBSITE_API_KEY:-}
-      ORIGIN: ${WEBSITE_ORIGIN:-https://edelweisspiraten-bremen.de}
-      # Client-IP hinter dem Proxy (Rate-Limit je Besucher*in) und Kontaktformular per SMTP (#20/#31)
-      ADDRESS_HEADER: X-Forwarded-For
-      XFF_DEPTH: '1'
-      CONTACT_TO: ${CONTACT_TO:-}
-      SMTP_HOST: ${WEBSITE_SMTP_HOST:-}
-      SMTP_PORT: ${WEBSITE_SMTP_PORT:-587}
-      SMTP_SECURE: ${WEBSITE_SMTP_SECURE:-false}
-      SMTP_USER: ${WEBSITE_SMTP_USER:-}
-      SMTP_PASS: ${WEBSITE_SMTP_PASS:-}
-      SMTP_FROM: ${WEBSITE_SMTP_FROM:-}
-    expose: ['3001']
-    read_only: true
-    tmpfs:
-      - /tmp:size=64m,mode=1777
-    cap_drop: [ALL]
-    networks:
-      internal:
-        aliases: ['ep-intern-${DEPLOY_ENV:-prod}-website']
-      dokploy-network:
-        aliases: ['ep-intern-${DEPLOY_ENV:-prod}-website']
-    mem_limit: ${WEBSITE_MEM_LIMIT:-256m}
-    cpus: ${WEBSITE_CPUS:-0.5}
-    cpu_shares: 256
-    pids_limit: 128
-    stop_grace_period: 15s
 
   # Tägliche, verschlüsselte Sicherung von PostgreSQL und Objektspeicher (Issue #40). Aktiv mit COMPOSE_PROFILES=backup.
   # Dokploy-eigene Datenbank-Backups gelten nur für von Dokploy verwaltete Datenbanken, nicht für `db` in diesem Stack.
