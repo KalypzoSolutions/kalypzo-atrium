@@ -7,7 +7,7 @@ plus **Fachmodule**, die unter Administration → Module per **GitHub-Link oder 
 Supervisor, siehe [Deployment](docs/deployment.md)).
 
 - Dieses Repo enthält **keine Fachmodule**. `modules/` ist leer (gitignored); Module kommen aus eigenen Repos, z. B.
-  [`ep-intern-modules`](../ep-intern-modules) (Fachmodule der Edelweißpiraten inkl. Profil-Modul `ep-stamm`).
+  [`ep-intern-modules`](https://github.com/Stamm-Edelweisspiraten/ep-intern-modules) (Fachmodule der Edelweißpiraten inkl. Profil-Modul `ep-stamm`).
 - Eigene Module entwickeln: [Modulentwicklung](docs/module-development.md); Paketformat `atrium-module.json`, Katalog `atrium-modules.json`.
 - Organisationsspezifisches Aussehen (Briefkopf, Mail-Kopf, Logo, Texte) liefern Profil-Module über Hooks
   (`settingDefaults`, `pdfTemplates`, `mailBranding`, `brandingLogo`).
