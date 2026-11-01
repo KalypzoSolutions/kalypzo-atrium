@@ -24,6 +24,8 @@ export interface ProfileData {
 		density?: string;
 		startPage?: string;
 		pageSize: number;
+		/** Eigene Sprache (`''` = wie das System) */
+		locale?: string;
 	};
 	themes: {
 		own: UserTheme[];

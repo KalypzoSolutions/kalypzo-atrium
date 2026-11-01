@@ -10,6 +10,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { eq, like, or, sql } from 'drizzle-orm';
+import { localized, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../../audit/service';
 import { systemContext } from '../../auth/context';
@@ -74,14 +75,14 @@ export async function checkUpdates(ctx: RequestContext): Promise<UpdateInfo[]> {
 	for (const r of rows.sort((a, b) => a.id.localeCompare(b.id))) {
 		const base: UpdateInfo = {
 			id: r.id,
-			name: getDefinition(r.id)?.manifest.name ?? r.id,
+			name: localized(getDefinition(r.id)?.manifest.name) || r.id,
 			installedVersion: r.version,
 			commit: r.commit,
 			source: null,
 			latestCommit: null,
 			latestVersion: null,
 			status: 'no-source',
-			message: r.sourceType === 'upload' ? 'Aus einer ZIP-Datei installiert' : null
+			message: r.sourceType === 'upload' ? t('install.manage.fromZip') : null
 		};
 		if (r.sourceType !== 'github') {
 			out.push(base);
@@ -112,7 +113,7 @@ export async function checkUpdates(ctx: RequestContext): Promise<UpdateInfo[]> {
 				...base,
 				status: found ? 'update' : 'error',
 				latestVersion: found?.pkg.version ?? null,
-				message: found ? null : 'Modul ist im neuen Stand der Quelle nicht mehr enthalten'
+				message: found ? null : t('install.manage.goneFromSource')
 			});
 		} catch (e) {
 			out.push({ ...base, status: 'error', message: e instanceof Error ? e.message : String(e) });
@@ -128,7 +129,7 @@ export async function checkUpdates(ctx: RequestContext): Promise<UpdateInfo[]> {
  * Rollen-Verleihungen, Einstellungen, Benachrichtigungs-Einstellungen, Job-Läufe und Dateien.
  */
 export async function deleteModuleData(id: string): Promise<{ files: number; warnings: string[] }> {
-	if (!MODULE_ID.test(id)) throw errors.badRequest('Ungültige Modul-ID');
+	if (!MODULE_ID.test(id)) throw errors.badRequest(t('install.manage.invalidId'));
 	const warnings: string[] = [];
 	const db = getDb();
 	// Dateien zuerst (Storage braucht die Metadaten); ohne Speicher nur die Einträge
@@ -147,7 +148,7 @@ export async function deleteModuleData(id: string): Promise<{ files: number; war
 			).removed;
 		} catch (e) {
 			warnings.push(
-				`Dateien im Speicher konnten nicht gelöscht werden (${e instanceof Error ? e.message : String(e)})`
+				t('install.manage.filesNotDeleted', { error: e instanceof Error ? e.message : String(e) })
 			);
 		}
 	}
@@ -183,22 +184,22 @@ export async function uninstallModule(
 ): Promise<UninstallResult> {
 	const userId = await assertInstaller(ctx);
 	const id = String(input.id ?? '');
-	if (!MODULE_ID.test(id)) throw errors.notFound('Modul nicht gefunden');
+	if (!MODULE_ID.test(id)) throw errors.notFound(t('install.manage.notFound'));
 	const db = getDb();
 	const [state] = await db.select().from(schema.moduleState).where(eq(schema.moduleState.id, id));
 	const [row] = await db.select().from(schema.moduleInstall).where(eq(schema.moduleInstall.id, id));
 	const def = getDefinition(id);
-	if (!def && !state && !row) throw errors.notFound('Modul nicht gefunden');
-	if (state?.enabled) throw errors.conflict('Das Modul ist aktiv – bitte zuerst deaktivieren');
+	if (!def && !state && !row) throw errors.notFound(t('install.manage.notFound'));
+	if (state?.enabled) throw errors.conflict(t('install.manage.active'));
 	const dependents = allDefinitions()
 		.filter((d) => d.manifest.id !== id && d.manifest.dependencies.includes(id))
 		.map((d) => d.manifest.id);
 	if (dependents.length) {
-		throw errors.conflict(`Andere Module brauchen dieses Modul: ${dependents.join(', ')}`);
+		throw errors.conflict(t('install.manage.dependents', { ids: dependents.join(', ') }));
 	}
 	if (input.deleteData && input.confirmId !== id) {
 		throw errors.validation([
-			{ path: ['confirmId'], message: `Zum Löschen der Daten bitte „${id}“ eingeben` }
+			{ path: ['confirmId'], message: t('install.manage.confirmId', { id }) }
 		]);
 	}
 	await verifyReauth(userId, { password: input.password, totp: input.totp }, 'module-install');
@@ -206,7 +207,7 @@ export async function uninstallModule(
 	// Nur Daten löschen geht immer; Code entfernen braucht copy/supervisor
 	const removeCode = !!def || existsSync(join(runtimeModulesDir(), id));
 	if (removeCode && !status.available) {
-		throw errors.unavailable(status.reason ?? 'Entfernen nicht möglich');
+		throw errors.unavailable(status.reason ?? t('install.manage.removeNotPossible'));
 	}
 
 	const warnings: string[] = [];
@@ -216,7 +217,7 @@ export async function uninstallModule(
 	if (removeCode && status.mode === 'copy') {
 		const root = resolve(runtimeModulesDir());
 		const dir = resolve(root, id);
-		if (!dir.startsWith(root + sep)) throw errors.badRequest('Ungültiges Modulverzeichnis');
+		if (!dir.startsWith(root + sep)) throw errors.badRequest(t('install.service.invalidModuleDir'));
 		await rm(dir, { recursive: true, force: true });
 	} else if (removeCode && status.mode === 'supervisor') {
 		planId = crypto.randomUUID().replace(/-/g, '');
@@ -245,7 +246,9 @@ export async function uninstallModule(
 		actorId: userId,
 		planId,
 		status: planId ? 'requested' : 'done',
-		detail: input.deleteData ? 'Entfernt, Daten gelöscht' : 'Entfernt, Daten behalten'
+		detail: input.deleteData
+			? 'install.detail.removedDataDeleted'
+			: 'install.detail.removedDataKept'
 	});
 	await auditFromContext(ctx, 'core.module.uninstalled', {
 		target: id,
@@ -320,10 +323,10 @@ export async function restoreFromDatabase(
 	await verifyReauth(userId, { password: input.password, totp: input.totp }, 'module-install');
 	const status = installStatus();
 	if (status.mode !== 'supervisor' || !status.available) {
-		throw errors.unavailable(status.reason ?? 'Wiederherstellen braucht den Supervisor');
+		throw errors.unavailable(status.reason ?? t('install.manage.restoreNeedsSupervisor'));
 	}
 	const drift = (await installDrift(ctx)).filter((d) => d.restorable);
-	if (!drift.length) throw errors.conflict('Es gibt nichts wiederherzustellen');
+	if (!drift.length) throw errors.conflict(t('install.manage.nothingToRestore'));
 	const rows = await getDb()
 		.select()
 		.from(schema.moduleInstall)
@@ -343,9 +346,9 @@ export async function restoreFromDatabase(
 			all = readModuleArchive(zip);
 		}
 		const found = discoverModules(all, String(src.path ?? '')).modules.find((m) => m.id === r.id);
-		if (!found) throw errors.conflict(`Modul ${r.id} ist in seiner Quelle nicht (mehr) enthalten`);
+		if (!found) throw errors.conflict(t('install.manage.notInSource', { id: r.id }));
 		if (contentHash(found.files) !== r.contentHash) {
-			throw errors.conflict(`Inhalt von ${r.id} weicht vom gespeicherten Stand ab`);
+			throw errors.conflict(t('install.manage.contentDiffers', { id: r.id }));
 		}
 		modules[r.id] = {
 			version: r.version,

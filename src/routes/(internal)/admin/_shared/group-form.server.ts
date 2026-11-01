@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { getDefinition, getPublicSettings, setSettings } from '$lib/server/core/settings/service';
 import { isCoreError } from '$lib/server/core/errors';
+import { LOCALE_LABELS, t } from '$lib/i18n';
 
 export type FieldKind = 'text' | 'number' | 'boolean' | 'list' | 'json' | 'select' | 'color';
 
@@ -14,14 +15,38 @@ export interface FieldDescriptor {
 	/** Aktueller Wert; bei Secrets immer null */
 	value: unknown;
 	options?: string[];
+	/** Anzeige je Option (übersetzt); fehlt eine, gilt der Wert selbst */
+	optionLabels?: Record<string, string>;
 	multiline?: boolean;
 }
 
 const SELECT_OPTIONS: Record<string, string[]> = {
 	'core.pdf.defaultFormat': ['A3', 'A4', 'A5', 'Letter', 'Legal'],
 	'core.pdf.defaultOrientation': ['portrait', 'landscape'],
-	'core.ai.style.address': ['du', 'ihr', 'Sie']
+	'core.ai.style.address': ['du', 'ihr', 'Sie'],
+	'core.system.locale': ['auto', 'de', 'en']
 };
+
+/** Übersetzte Anzeige der Auswahlwerte (beim Laden, in der Sprache des Requests) */
+function optionLabels(key: string): Record<string, string> | undefined {
+	switch (key) {
+		case 'core.system.locale':
+			return { auto: t('settings.options.locale.auto'), ...LOCALE_LABELS };
+		case 'core.pdf.defaultOrientation':
+			return {
+				portrait: t('settings.options.orientation.portrait'),
+				landscape: t('settings.options.orientation.landscape')
+			};
+		case 'core.ai.style.address':
+			return {
+				du: t('settings.options.address.du'),
+				ihr: t('settings.options.address.ihr'),
+				Sie: t('settings.options.address.Sie')
+			};
+		default:
+			return undefined;
+	}
+}
 
 /** Farbfelder (`#rrggbb`): Oberfläche mit ColorPicker und Kontrastanzeige */
 const COLOR_KEYS = new Set(['core.design.accentColor', 'core.design.iconBackground']);
@@ -68,6 +93,7 @@ export async function loadFields(
 				kind: kindOf(s.key),
 				value: s.value,
 				options: SELECT_OPTIONS[s.key],
+				optionLabels: optionLabels(s.key),
 				multiline: isMultiline(s.key, s.value)
 			});
 		}
@@ -92,12 +118,12 @@ export async function saveFields(
 	for (const k of [...fd.keys()].filter((k) => k.startsWith('has:'))) keys.push(k.slice(4));
 
 	for (const key of new Set(keys)) {
-		if (!allowed(key)) return fail(403, { message: `Einstellung nicht erlaubt: ${key}` });
+		if (!allowed(key)) return fail(403, { message: t('admin-settings.form.notAllowed', { key }) });
 		let def;
 		try {
 			def = getDefinition(key);
 		} catch {
-			return fail(400, { message: `Unbekannte Einstellung: ${key}` });
+			return fail(400, { message: t('admin-settings.form.unknown', { key }) });
 		}
 		if (def.scope !== 'global') continue;
 		if (def.secret && fd.get(`clear:${key}`) === 'on') {
@@ -123,7 +149,7 @@ export async function saveFields(
 			try {
 				value = JSON.parse(String(raw ?? '{}') || '{}');
 			} catch {
-				return fail(422, { message: `${def.label}: ungültiges JSON` });
+				return fail(422, { message: t('admin-settings.form.invalidJson', { label: def.label }) });
 			}
 		} else {
 			value = String(raw ?? '');
@@ -131,7 +157,10 @@ export async function saveFields(
 		const parsed = def.schema.safeParse(value);
 		if (!parsed.success) {
 			return fail(422, {
-				message: `${def.label}: ${parsed.error.issues.map((i) => i.message).join('; ')}`
+				message: t('admin-settings.form.invalidField', {
+					label: def.label,
+					issues: parsed.error.issues.map((i) => i.message).join('; ')
+				})
 			});
 		}
 		updates.push([key, value]);
@@ -149,8 +178,8 @@ export async function saveFields(
 		const labels = cleared.map((k) => getDefinition(k).label).join(', ');
 		return {
 			success: true,
-			message: `Einstellungen gespeichert. Weil sich das Ziel geändert hat, wurde Folgendes verworfen – bitte neu eingeben: ${labels}`
+			message: t('admin-settings.form.savedSecretsCleared', { labels })
 		};
 	}
-	return { success: true, message: 'Einstellungen gespeichert' };
+	return { success: true, message: t('admin-settings.form.saved') };
 }

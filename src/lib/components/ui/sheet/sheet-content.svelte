@@ -3,6 +3,7 @@
 </script>
 
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { Dialog as SheetPrimitive } from 'bits-ui';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -46,7 +47,7 @@
 				{#snippet child({ props })}
 					<Button variant="ghost" class="absolute top-3 right-3" size="icon-sm" {...props}>
 						<XIcon />
-						<span class="sr-only">Schließen</span>
+						<span class="sr-only">{t('ui.close')}</span>
 					</Button>
 				{/snippet}
 			</SheetPrimitive.Close>

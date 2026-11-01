@@ -6,6 +6,7 @@
 
 import { parseHex, readableOn, relativeLuminance } from '$lib/components/ui/color-picker/contrast';
 import { todayBerlin } from '$lib/sdk/dates';
+import { getLocale, intlLocale, t } from '$lib/i18n';
 
 export interface CalendarItem {
 	id: string;
@@ -55,9 +56,15 @@ export interface AgendaDay {
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MONTH_RE = /^(\d{4})-(\d{2})$/;
-const WEEKDAYS_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
 
-export const WEEKDAY_LABELS: readonly string[] = WEEKDAYS_SHORT;
+/** Kurze Wochentage ab Montag in der aktuellen Sprache („Mo“ … „So“ bzw. „Mon“ … „Sun“, ohne Punkt). */
+export function weekdayLabels(locale = intlLocale()): string[] {
+	const f = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' });
+	// 1. Januar 2024 ist ein Montag
+	return Array.from({ length: 7 }, (_, i) =>
+		f.format(new Date(Date.UTC(2024, 0, 1 + i))).replace(/\.$/, '')
+	);
+}
 export const MAX_LANES = 3;
 
 function pad(n: number): string {
@@ -149,7 +156,7 @@ export function compareItems(a: CalendarItem, b: CalendarItem): number {
 	const ta = a.startsTime ?? '';
 	const tb = b.startsTime ?? '';
 	if (ta !== tb) return ta < tb ? -1 : 1;
-	return a.title.localeCompare(b.title, 'de');
+	return a.title.localeCompare(b.title, getLocale());
 }
 
 /**
@@ -262,7 +269,7 @@ export function contrastTextColor(color: string | null | undefined): string | nu
 export function formatMonthLabel(month: string): string {
 	const m = MONTH_RE.exec(month);
 	if (!m) return month;
-	return new Intl.DateTimeFormat('de-DE', {
+	return new Intl.DateTimeFormat(intlLocale(), {
 		month: 'long',
 		year: 'numeric',
 		timeZone: 'UTC'
@@ -271,19 +278,25 @@ export function formatMonthLabel(month: string): string {
 
 /** „Mo, 19.10.“ */
 export function formatDayLabel(date: string): string {
-	return `${WEEKDAYS_SHORT[weekdayIndex(date)]}, ${date.slice(8, 10)}.${date.slice(5, 7)}.`;
+	return `${weekdayLabels()[weekdayIndex(date)]}, ${formatShortDate(date)}`;
 }
 
 /** „19.10.“ */
 export function formatShortDate(date: string): string {
-	return `${date.slice(8, 10)}.${date.slice(5, 7)}.`;
+	const d = toUtc(date);
+	if (!d) return date;
+	return new Intl.DateTimeFormat(intlLocale(), {
+		day: '2-digit',
+		month: '2-digit',
+		timeZone: 'UTC'
+	}).format(d);
 }
 
 /** „Montag, 19. Oktober 2026“ */
 export function formatLongDate(date: string): string {
 	const d = toUtc(date);
 	if (!d) return date;
-	return new Intl.DateTimeFormat('de-DE', {
+	return new Intl.DateTimeFormat(intlLocale(), {
 		weekday: 'long',
 		day: 'numeric',
 		month: 'long',
@@ -302,13 +315,19 @@ export function formatItemTime(item: CalendarItem): string {
 
 /** Barrierefreie Beschreibung eines Termins. */
 export function describeItem(item: CalendarItem): string {
-	const title = item.recurring ? `${item.title} (Serie)` : item.title;
+	const title = item.recurring ? t('calendar.seriesTitle', { title: item.title }) : item.title;
 	const r = itemRange(item);
 	if (!r) return title;
 	const startTime = item.startsTime ? ` ${item.startsTime.slice(0, 5)}` : '';
 	const endTime = item.endsTime ? ` ${item.endsTime.slice(0, 5)}` : '';
 	if (r.end !== r.start) {
-		return `${title}, ${formatLongDate(r.start)}${startTime} bis ${formatLongDate(r.end)}${endTime}`;
+		return t('calendar.describeRange', {
+			title,
+			start: formatLongDate(r.start),
+			startTime,
+			end: formatLongDate(r.end),
+			endTime
+		});
 	}
 	const time = formatItemTime(item);
 	return `${title}, ${formatLongDate(r.start)}${time ? `, ${time}` : ''}`;

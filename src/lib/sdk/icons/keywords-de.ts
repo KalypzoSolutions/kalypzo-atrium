@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Deutsche Suchbegriffe und Vorschlags-Gruppen für die Icon-Auswahl. Die Icon-Namen selbst sind englisch
  * (Lucide) und werden ebenfalls durchsucht; hier stehen nur deutsche Begriffe für häufige Icons.
@@ -139,9 +140,11 @@ export const ICON_KEYWORDS_DE: Record<string, string[]> = {
 };
 
 /** Vorschläge oben in der Auswahl (Reihenfolge = Anzeige) */
-export const ICON_SUGGESTIONS: { label: string; icons: string[] }[] = [
+export const ICON_SUGGESTIONS: { readonly label: string; icons: string[] }[] = [
 	{
-		label: 'Draußen & Fahrt',
+		get label() {
+			return t('icons.suggestions.outdoor');
+		},
 		icons: [
 			'tent',
 			'flame',
@@ -163,7 +166,9 @@ export const ICON_SUGGESTIONS: { label: string; icons: string[] }[] = [
 		]
 	},
 	{
-		label: 'Organisation',
+		get label() {
+			return t('icons.suggestions.organisation');
+		},
 		icons: [
 			'clipboard-list',
 			'list-checks',
@@ -185,11 +190,15 @@ export const ICON_SUGGESTIONS: { label: string; icons: string[] }[] = [
 		]
 	},
 	{
-		label: 'Medien',
+		get label() {
+			return t('icons.suggestions.media');
+		},
 		icons: ['image', 'images', 'camera', 'film', 'music', 'guitar', 'mic', 'book-open', 'library']
 	},
 	{
-		label: 'Gemeinschaft',
+		get label() {
+			return t('icons.suggestions.community');
+		},
 		icons: [
 			'users',
 			'user',

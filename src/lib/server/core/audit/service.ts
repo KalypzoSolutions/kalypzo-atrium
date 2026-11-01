@@ -3,6 +3,7 @@ import type { Actor, RequestContext } from '$lib/sdk/types';
 import { getDb, schema, type DbOrTx } from '../database/client';
 import { errors } from '../errors';
 import { newId } from '../util';
+import { t } from '$lib/i18n';
 
 const SENSITIVE_KEY = /pass(word)?|secret|token|api[-_]?key|authorization|cookie|credential|hash/i;
 const MAX_STRING = 500;
@@ -173,12 +174,12 @@ export async function listModuleAudit(
 	moduleId: string,
 	filter: { targets: string[]; limit?: number; offset?: number }
 ) {
-	if (!MODULE_ID_RE.test(moduleId)) throw errors.badRequest('Ungültige Modul-ID');
+	if (!MODULE_ID_RE.test(moduleId)) throw errors.badRequest(t('audit.invalidModuleId'));
 	if (ctx.actor.type !== 'system') {
 		if (!ctx.userId) throw errors.unauthenticated();
 		const prefix = `${moduleId}.`;
 		if (![...ctx.permissions].some((p) => p.startsWith(prefix))) {
-			throw errors.forbidden(`Berechtigung fehlt: ${moduleId}.*`);
+			throw errors.forbidden(t('audit.permissionMissing', { permission: `${moduleId}.*` }));
 		}
 	}
 	return listAudit({
@@ -195,6 +196,6 @@ export async function listModuleAudit(
  * @deprecated `core.audit.listForModule(ctx, moduleId, { targets })` verwenden.
  */
 export async function listAuditByTargets(filter: AuditFilter & { targets: string[] }) {
-	if (!Array.isArray(filter.targets)) throw errors.badRequest('targets fehlt');
+	if (!Array.isArray(filter.targets)) throw errors.badRequest(t('audit.targetsMissing'));
 	return listAudit({ ...filter, targets: filter.targets });
 }

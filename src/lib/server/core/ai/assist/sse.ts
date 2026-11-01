@@ -2,6 +2,7 @@
 import type { AssistEvent, AssistResult } from '$lib/sdk/types';
 import { logError } from '../../db-errors';
 import { isCoreError } from '../../errors';
+import { t } from '$lib/i18n';
 
 export function assistStreamResponse(
 	run: (onDelta: (text: string) => void, signal: AbortSignal) => Promise<AssistResult>,
@@ -45,7 +46,7 @@ export function assistStreamResponse(
 						send({ type: 'error', message: e.message, code: e.code });
 					} else {
 						logError('[ai.assist] Erzeugung fehlgeschlagen', e, { requestId: info.requestId });
-						send({ type: 'error', message: 'Die Schreibhilfe ist gerade nicht erreichbar' });
+						send({ type: 'error', message: t('ai.assist.unavailable') });
 					}
 				})
 				.finally(close);

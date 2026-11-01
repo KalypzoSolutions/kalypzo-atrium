@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
 	import Lock from '@lucide/svelte/icons/lock';
+	import { t } from '$lib/i18n';
 	import type { BackupScopeInfo } from '$lib/backup/contract';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -26,8 +27,16 @@
 	const implied = $derived(impliedOf(selected, byKey));
 
 	const groups = $derived([
-		{ key: 'core', title: 'Core', items: scopes.filter((s) => s.group === 'core') },
-		{ key: 'module', title: 'Module', items: scopes.filter((s) => s.group === 'module') }
+		{
+			key: 'core',
+			title: t('admin-backup.scopes.core'),
+			items: scopes.filter((s) => s.group === 'core')
+		},
+		{
+			key: 'module',
+			title: t('admin-backup.scopes.modules'),
+			items: scopes.filter((s) => s.group === 'module')
+		}
 	]);
 
 	const allChecked = $derived(scopes.length > 0 && scopes.every((s) => selected.includes(s.key)));
@@ -54,9 +63,12 @@
 			{disabled}
 			onCheckedChange={(v) => toggleAll(v === true)}
 		/>
-		<Label for="scope-all" class="font-medium">Alle auswählen</Label>
+		<Label for="scope-all" class="font-medium">{t('admin-backup.scopes.selectAll')}</Label>
 		<span class="ml-auto text-xs text-muted-foreground tabular-nums" aria-live="polite">
-			{selected.length + implied.size} von {scopes.length}
+			{t('admin-backup.scopes.count', {
+				count: selected.length + implied.size,
+				total: scopes.length
+			})}
 		</span>
 	</div>
 
@@ -84,9 +96,13 @@
 							<div class="min-w-0 flex-1 space-y-1">
 								<Label for={cid(s.key)} class="flex flex-wrap items-center gap-2 font-medium">
 									{s.label}
-									{#if !s.enabled}<Badge variant="outline">inaktiv</Badge>{/if}
+									{#if !s.enabled}<Badge variant="outline"
+											>{t('admin-backup.scopes.inactive')}</Badge
+										>{/if}
 									{#if imp}
-										<Badge variant="secondary"><Lock aria-hidden="true" />automatisch</Badge>
+										<Badge variant="secondary"
+											><Lock aria-hidden="true" />{t('admin-backup.scopes.automatic')}</Badge
+										>
 									{/if}
 								</Label>
 								<p id="{cid(s.key)}-desc" class="text-xs text-muted-foreground">
@@ -94,7 +110,10 @@
 								</p>
 								{#if imp}
 									<p class="text-xs text-warning">
-										Wird mitgesichert, weil „{labelOf(imp.by)}“ gewählt ist – {imp.reason}
+										{t('admin-backup.scopes.impliedBecause', {
+											by: labelOf(imp.by),
+											reason: imp.reason
+										})}
 									</p>
 								{/if}
 							</div>

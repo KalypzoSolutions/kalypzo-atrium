@@ -1,0 +1,10 @@
+{
+	"onlyMemberSource": "Only the members module may report deleted members",
+	"signedInOnly": "Data access requests are only possible for signed-in users",
+	"userAccount": "User account",
+	"deactivatedDetail": "{email} (deactivated)",
+	"chooseSubject": "Choose an account or member",
+	"invalidId": "Invalid ID",
+	"userNotFound": "User not found",
+	"error": "Error"
+}

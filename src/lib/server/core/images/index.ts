@@ -13,6 +13,7 @@
  */
 import sharp, { type Metadata, type OutputInfo, type SharpOptions } from 'sharp';
 import { CoreError, errors } from '../errors';
+import { t } from '$lib/i18n';
 
 /**
  * libvips-Loader, die erlaubt bleiben (Klassennamen; gelten inkl. Buffer-/File-/Source-Varianten).
@@ -83,7 +84,7 @@ export interface ProcessImageOptions {
 
 /**
  * Verarbeitet ein hochgeladenes Bild.
- * Fehler: leer/unlesbar/nicht unterstützt → `errors.badRequest` (ASCII-deutsch),
+ * Fehler: leer/unlesbar/nicht unterstützt → `errors.badRequest` (Text über `t()`),
  * zu groß (Bytes) → `errors.tooLarge`, zu viele Pixel → `errors.badRequest`.
  */
 export async function processImage(
@@ -92,11 +93,11 @@ export async function processImage(
 ): Promise<ProcessedImage> {
 	const maxBytes = options.maxInputBytes ?? MAX_INPUT_BYTES;
 	const maxPixels = options.maxInputPixels ?? MAX_INPUT_PIXELS;
-	if (!input || input.byteLength === 0) throw errors.badRequest('Die Datei ist leer');
-	if (input.byteLength > maxBytes) throw errors.tooLarge('Das Bild ist zu groß');
+	if (!input || input.byteLength === 0) throw errors.badRequest(t('images.empty'));
+	if (input.byteLength > maxBytes) throw errors.tooLarge(t('images.tooLarge'));
 	// Signatur VOR jedem Decoder-Aufruf prüfen
 	const sniffed = sniffImageFormat(input);
-	if (!sniffed) throw errors.badRequest(UNSUPPORTED);
+	if (!sniffed) throw errors.badRequest(t(UNSUPPORTED));
 
 	const sharpOptions: SharpOptions = {
 		failOn: 'error',
@@ -115,12 +116,12 @@ export async function processImage(
 
 	const format = normalizeFormat(meta);
 	// libvips muss dasselbe Format erkennen wie die Signaturprüfung
-	if (!format || format !== sniffed) throw errors.badRequest(UNSUPPORTED);
+	if (!format || format !== sniffed) throw errors.badRequest(t(UNSUPPORTED));
 	const rawWidth = meta.width ?? 0;
 	// Bei mehrseitigen Bildern (GIF) nur die erste Seite
 	const rawHeight = meta.pageHeight ?? meta.height ?? 0;
-	if (rawWidth <= 0 || rawHeight <= 0) throw errors.badRequest(UNREADABLE);
-	if (rawWidth * rawHeight > maxPixels) throw errors.badRequest(TOO_MANY_PIXELS);
+	if (rawWidth <= 0 || rawHeight <= 0) throw errors.badRequest(t(UNREADABLE));
+	if (rawWidth * rawHeight > maxPixels) throw errors.badRequest(t(TOO_MANY_PIXELS));
 
 	// EXIF-Ausrichtung 5–8 vertauscht Breite und Höhe
 	const swap = (meta.orientation ?? 1) >= 5 && (meta.orientation ?? 1) <= 8;
@@ -135,9 +136,10 @@ export async function processImage(
 	return { format, width, height, hasAlpha, variants };
 }
 
-const UNSUPPORTED = 'Dateityp nicht unterstützt (JPEG, PNG, WebP, AVIF oder GIF)';
-const UNREADABLE = 'Bild konnte nicht gelesen werden';
-const TOO_MANY_PIXELS = 'Das Bild hat zu viele Pixel';
+// Schlüssel statt Texte: übersetzt wird erst beim Werfen (Sprache des Requests)
+const UNSUPPORTED = 'images.unsupported';
+const UNREADABLE = 'images.unreadable';
+const TOO_MANY_PIXELS = 'images.tooManyPixels';
 
 const HEVC_BRANDS = new Set(['heic', 'heix', 'heim', 'heis', 'hevc', 'hevx', 'hevm', 'hevs']);
 const AVIF_BRANDS = new Set(['avif', 'avis']);
@@ -190,9 +192,9 @@ function normalizeFormat(meta: Metadata): ImageInputFormat | null {
 function translateSharpError(err: unknown): CoreError {
 	if (err instanceof CoreError) return err;
 	const message = err instanceof Error ? err.message : String(err);
-	if (/pixel limit/i.test(message)) return errors.badRequest(TOO_MANY_PIXELS);
-	if (/unsupported image format/i.test(message)) return errors.badRequest(UNSUPPORTED);
-	return errors.badRequest(UNREADABLE);
+	if (/pixel limit/i.test(message)) return errors.badRequest(t(TOO_MANY_PIXELS));
+	if (/unsupported image format/i.test(message)) return errors.badRequest(t(UNSUPPORTED));
+	return errors.badRequest(t(UNREADABLE));
 }
 
 function clampQuality(q: number | undefined): number {

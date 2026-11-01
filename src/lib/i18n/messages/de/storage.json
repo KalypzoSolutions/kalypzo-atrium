@@ -1,0 +1,19 @@
+{
+	"invalidModuleId": "Ungültige Modul-ID",
+	"invalidPath": "Ungültiger Dateipfad",
+	"permissionMissing": "Berechtigung fehlt: {permission}",
+	"notConfigured": "S3-Storage ist nicht konfiguriert",
+	"objectNotFound": "Datei nicht im Speicher gefunden",
+	"accessDenied": "Zugriff auf den S3-Storage wurde abgelehnt",
+	"unreachable": "S3-Storage ist nicht erreichbar",
+	"typeNotAllowed": "Dateityp nicht erlaubt: {type}",
+	"tooLarge": "Datei überschreitet das Limit von {mb} MB",
+	"fileNotFound": "Datei nicht gefunden",
+	"invalidSize": "Ungültige Dateigröße",
+	"pathExists": "Pfad existiert bereits; zuerst löschen oder direkt hochladen",
+	"uploadNotFound": "Upload wurde nicht gefunden",
+	"sizeMismatch": "Hochgeladene Datei entspricht nicht der angekündigten Größe",
+	"invalidObjectKey": "Ungültiger Objektschlüssel",
+	"purgeUnavailable": "Speicher für {module} nicht erreichbar/konfiguriert: nur Metadaten gelöscht ({count, plural, one {# Datei} other {# Dateien}})",
+	"purgeFailed": "{count, plural, one {# Objekt} other {# Objekte}} von {module} konnten nicht aus dem Speicher gelöscht werden"
+}

@@ -409,6 +409,14 @@
   Wunschzustand ↔ laufender Stand mit Wiederherstellung, Seed für frische Deployments. Details `architecture.md` → „Lebenszyklus der Module“,
   `docs/deployment.md`. Offen: Seed nur per Unit-Test (Archiv, Prüfung) geprüft, nicht mit echtem GitHub; Wartungsseite beim Core-Update nicht umgesetzt
   (Basis-Build läuft weiter).
+  **Docker-Probelauf (2026-11-01)**: Image mit `read_only`, `cap_drop ALL`, 1 CPU, 4 GB: Start 310 MiB, Neubau + Probelauf + Neustart 72 s, Spitze 3,49 GiB.
+  Dabei behoben: `TMPDIR` beim Image-Bau, `node_modules/.vite-temp` als Link ins Volume, `vite build --configLoader runner`.
+  **Phase N (2026-11-01)**: Core neutral und zweisprachig (de/en) – eigene i18n-Bibliothek `$lib/i18n` (keine Paraglide-Abhängigkeit: Modul-Texte
+  kommen über das Vite-Plugin dazu, auch bei Installation per Panel), Sprache je Konto/Cookie/System/Browser, Sprachwahl im Profil und auf der
+  Login-Seite, alle Core-Texte (≈ 3000 Schlüssel) über `t()`, Wächtertest. Neutral: Briefvorlagen/Mail-Kopf/Icons/KI-Prompt/„Stamm“ über
+  Profil-Hooks; das EP-Aussehen liefert das neue Modul **`ep-stamm`** (auf Staging nach dem Deploy aktivieren!). Etiketten-Logos (Wappen/Lilie)
+  liegen im Modul `material`. Details `architecture.md` → „Mehrsprachigkeit und Neutralität“. Offen: Fachmodule bleiben deutsch; englische
+  Texte nur per Screenshot-Stichprobe geprüft; Service Worker wählt Texte per `navigator.language`.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Core-Split (2026-11-01): Core heißt **Kalypzo Atrium** (Repo `kalypzo-atrium`, Präfix `atrium`), neutral + mehrsprachig (de/en) für andere

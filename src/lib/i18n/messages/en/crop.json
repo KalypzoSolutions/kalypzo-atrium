@@ -1,0 +1,17 @@
+{
+	"title": "Crop image",
+	"description": "Drag the image to choose the section and zoom with the slider – even beyond the image.",
+	"readFailed": "The image could not be read.",
+	"createFailed": "The cropped image could not be created.",
+	"stageLabel": "Image section. Move with the arrow keys, zoom with plus and minus, 0 resets.",
+	"zoomOut": "Zoom out",
+	"zoom": "Zoom",
+	"zoomIn": "Zoom in",
+	"reset": "Reset section",
+	"background": "Background",
+	"backgroundColor": "Background colour",
+	"transparent": "Transparent",
+	"backgroundHint": "for edges when zooming out and transparent images",
+	"cancel": "Cancel",
+	"apply": "Apply"
+}

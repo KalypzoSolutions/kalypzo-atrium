@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { Input } from '$lib/components/ui/input';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Switch } from '$lib/components/ui/switch';
@@ -71,9 +72,9 @@
 
 	const keyError = $derived(
 		!KEY_RE.test(field.key)
-			? 'Beginnt mit einem Buchstaben; nur Buchstaben, Ziffern und _ (max. 40 Zeichen).'
+			? t('form-builder.editor.keyInvalid')
 			: existingKeys.includes(field.key)
-				? 'Dieser Schlüssel wird bereits von einem anderen Feld verwendet.'
+				? t('form-builder.editor.keyTaken')
 				: undefined
 	);
 
@@ -205,10 +206,10 @@
 	<div class="space-y-1.5">
 		<label for="{uid}-label" class={rowLabel}
 			>{field.type === 'section'
-				? 'Überschrift'
+				? t('form-builder.editor.heading')
 				: field.type === 'info'
-					? 'Bezeichnung (nur im Editor sichtbar)'
-					: 'Beschriftung'}</label
+					? t('form-builder.editor.infoName')
+					: t('form-builder.editor.label')}</label
 		>
 		<div class="relative">
 			<Input
@@ -227,7 +228,7 @@
 					<AssistButton
 						config={labelAssist}
 						variant="icon"
-						label="Beschriftung vorschlagen"
+						label={t('form-builder.editor.suggestLabel')}
 						{disabled}
 						text={() => field.label}
 						onapply={(v) => (field.label = v.slice(0, 200))}
@@ -239,7 +240,7 @@
 
 	{#if hasValue}
 		<div class="space-y-1.5">
-			<label for="{uid}-help" class={rowLabel}>Hilfetext (optional)</label>
+			<label for="{uid}-help" class={rowLabel}>{t('form-builder.editor.help')}</label>
 			<Input
 				id="{uid}-help"
 				autocomplete="off"
@@ -261,7 +262,7 @@
 					onCheckedChange={(c) => (field.required = c)}
 					disabled={disabled || field.mandatory === true}
 				/>
-				<label for="{uid}-required" class="text-sm">Pflichtfeld</label>
+				<label for="{uid}-required" class="text-sm">{t('form-builder.editor.required')}</label>
 			</div>
 		{/if}
 		{#if field.locked && !field.mandatory}
@@ -272,7 +273,7 @@
 					onCheckedChange={(c) => (field.hidden = c)}
 					{disabled}
 				/>
-				<label for="{uid}-hidden" class="text-sm">Ausblenden</label>
+				<label for="{uid}-hidden" class="text-sm">{t('form-builder.editor.hide')}</label>
 			</div>
 		{/if}
 		{#if hasHealthFlag}
@@ -283,27 +284,26 @@
 					onCheckedChange={(c) => (field.health = c ? true : undefined)}
 					disabled={disabled || field.locked === true}
 				/>
-				<label for="{uid}-health" class="text-sm">Gesundheitsdaten</label>
+				<label for="{uid}-health" class="text-sm">{t('form-builder.editor.health')}</label>
 			</div>
 		{/if}
 	</div>
 	{#if field.mandatory}
 		<p class="text-xs text-muted-foreground">
-			Dieses Feld ist vorgeschrieben und lässt sich weder ausblenden noch als optional markieren.
+			{t('form-builder.editor.mandatoryHint')}
 		</p>
 	{:else if field.health && !field.locked}
 		<p class="text-xs text-muted-foreground">
-			Antworten werden als Gesundheitsdaten verschlüsselt gespeichert und nur Berechtigten
-			angezeigt.
+			{t('form-builder.editor.healthHint')}
 		</p>
 	{/if}
 
 	{#if !field.locked}
 		<div class="space-y-1.5">
-			<label for="{uid}-type" class={rowLabel}>Feldtyp</label>
+			<label for="{uid}-type" class={rowLabel}>{t('form-builder.editor.type')}</label>
 			<SelectField
 				id="{uid}-type"
-				label="Feldtyp"
+				label={t('form-builder.editor.type')}
 				options={typeOptions}
 				value={field.type}
 				onchange={changeType}
@@ -311,7 +311,7 @@
 				class="h-10 md:h-8 sm:max-w-xs"
 			/>
 			<p class="text-xs text-muted-foreground">
-				Beim Wechsel werden Einstellungen zurückgesetzt, die nicht zum neuen Typ passen.
+				{t('form-builder.editor.typeHint')}
 			</p>
 		</div>
 	{/if}
@@ -319,10 +319,10 @@
 	<!-- typspezifisch -->
 	{#if field.type === 'text' || field.type === 'textarea'}
 		<div class="space-y-1.5">
-			<span class={rowLabel} id="{uid}-maxlen">Maximale Länge</span>
+			<span class={rowLabel} id="{uid}-maxlen">{t('form-builder.editor.maxLength')}</span>
 			<div class="flex flex-wrap items-center gap-3">
 				<NumberStepper
-					label="Maximale Länge"
+					label={t('form-builder.editor.maxLength')}
 					min={0}
 					max={field.type === 'text' ? 500 : 5000}
 					step={field.type === 'text' ? 10 : 100}
@@ -330,13 +330,13 @@
 					onchange={(v) => patch({ maxLength: v > 0 ? v : undefined })}
 					{disabled}
 				/>
-				<span class="text-xs text-muted-foreground">Zeichen (0 = Standardgrenze)</span>
+				<span class="text-xs text-muted-foreground">{t('form-builder.editor.maxLengthHint')}</span>
 			</div>
 		</div>
 	{:else if field.type === 'number'}
 		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="space-y-1.5">
-				<label for="{uid}-min" class={rowLabel}>Minimum</label>
+				<label for="{uid}-min" class={rowLabel}>{t('form-builder.editor.min')}</label>
 				<Input
 					id="{uid}-min"
 					type="number"
@@ -349,7 +349,7 @@
 				/>
 			</div>
 			<div class="space-y-1.5">
-				<label for="{uid}-max" class={rowLabel}>Maximum</label>
+				<label for="{uid}-max" class={rowLabel}>{t('form-builder.editor.max')}</label>
 				<Input
 					id="{uid}-max"
 					type="number"
@@ -369,12 +369,12 @@
 				onCheckedChange={(c) => patch({ integer: c })}
 				{disabled}
 			/>
-			<label for="{uid}-integer" class="text-sm">Nur ganze Zahlen</label>
+			<label for="{uid}-integer" class="text-sm">{t('form-builder.editor.integer')}</label>
 		</div>
 	{:else if field.type === 'date'}
 		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="space-y-1.5">
-				<label for="{uid}-dmin" class={rowLabel}>Frühestens</label>
+				<label for="{uid}-dmin" class={rowLabel}>{t('form-builder.editor.dateMin')}</label>
 				<Input
 					id="{uid}-dmin"
 					type="date"
@@ -385,7 +385,7 @@
 				/>
 			</div>
 			<div class="space-y-1.5">
-				<label for="{uid}-dmax" class={rowLabel}>Spätestens</label>
+				<label for="{uid}-dmax" class={rowLabel}>{t('form-builder.editor.dateMax')}</label>
 				<Input
 					id="{uid}-dmax"
 					type="date"
@@ -398,18 +398,18 @@
 		</div>
 	{:else if field.type === 'select' || field.type === 'multiselect'}
 		<fieldset class="space-y-2" {disabled}>
-			<legend class={rowLabel}>Optionen</legend>
+			<legend class={rowLabel}>{t('form-builder.editor.options')}</legend>
 			{#if field.options.length === 0}
 				<p class="text-xs text-muted-foreground">
-					Noch keine Optionen. Füge mindestens eine Option hinzu.
+					{t('form-builder.editor.noOptions')}
 				</p>
 			{/if}
 			<ul class="space-y-2">
 				{#each field.options as o, i (i)}
 					<li class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
 						<Input
-							aria-label="Option {i + 1}: Beschriftung"
-							placeholder="Beschriftung"
+							aria-label={t('form-builder.editor.optionLabel', { n: i + 1 })}
+							placeholder={t('form-builder.editor.label')}
 							autocomplete="off"
 							maxlength={100}
 							value={o.label}
@@ -418,8 +418,8 @@
 							class="h-10 min-w-0 flex-1 basis-40 md:h-8"
 						/>
 						<Input
-							aria-label="Option {i + 1}: Wert"
-							placeholder="Wert"
+							aria-label={t('form-builder.editor.optionValue', { n: i + 1 })}
+							placeholder={t('form-builder.editor.value')}
 							autocomplete="off"
 							maxlength={100}
 							value={o.value}
@@ -433,7 +433,7 @@
 								variant="ghost"
 								size="icon"
 								class={iconBtn}
-								aria-label="Option {i + 1} nach oben"
+								aria-label={t('form-builder.editor.optionUp', { n: i + 1 })}
 								disabled={disabled || i === 0}
 								onclick={() => moveOption(i, -1)}><ArrowUp /></Button
 							>
@@ -442,7 +442,7 @@
 								variant="ghost"
 								size="icon"
 								class={iconBtn}
-								aria-label="Option {i + 1} nach unten"
+								aria-label={t('form-builder.editor.optionDown', { n: i + 1 })}
 								disabled={disabled || i === field.options.length - 1}
 								onclick={() => moveOption(i, 1)}><ArrowDown /></Button
 							>
@@ -451,7 +451,7 @@
 								variant="ghost"
 								size="icon"
 								class={iconBtn}
-								aria-label="Option {i + 1} entfernen"
+								aria-label={t('form-builder.editor.optionRemove', { n: i + 1 })}
 								{disabled}
 								onclick={() => removeOption(i)}><Minus /></Button
 							>
@@ -465,12 +465,14 @@
 				size="sm"
 				class="gap-1.5"
 				disabled={disabled || field.options.length >= MAX_OPTIONS}
-				onclick={addOption}><Plus />Option hinzufügen</Button
+				onclick={addOption}><Plus />{t('form-builder.editor.addOption')}</Button
 			>
 			<details class="rounded-lg border p-3">
-				<summary class="cursor-pointer text-sm font-medium">Mehrere Optionen einfügen</summary>
+				<summary class="cursor-pointer text-sm font-medium">{t('form-builder.editor.bulk')}</summary
+				>
 				<div class="mt-3 space-y-2">
-					<label for="{uid}-bulk" class="text-xs text-muted-foreground">Eine Option pro Zeile</label
+					<label for="{uid}-bulk" class="text-xs text-muted-foreground"
+						>{t('form-builder.editor.bulkHint')}</label
 					>
 					<Textarea id="{uid}-bulk" rows={4} bind:value={bulk} {disabled} />
 					<Button
@@ -478,7 +480,7 @@
 						variant="secondary"
 						size="sm"
 						disabled={disabled || bulk.trim() === ''}
-						onclick={addBulk}>Optionen übernehmen</Button
+						onclick={addBulk}>{t('form-builder.editor.bulkApply')}</Button
 					>
 				</div>
 			</details>
@@ -494,15 +496,15 @@
 					}}
 					{disabled}
 				/>
-				<label for="{uid}-other" class="text-sm">Freitext-Option „Andere …“ erlauben</label>
+				<label for="{uid}-other" class="text-sm">{t('form-builder.editor.allowOther')}</label>
 			</div>
 		{:else}
 			<div class="grid gap-3 sm:grid-cols-2">
 				<div class="space-y-1.5">
-					<span class={rowLabel}>Mindestens auswählen</span>
+					<span class={rowLabel}>{t('form-builder.editor.minSelect')}</span>
 					<div>
 						<NumberStepper
-							label="Mindestanzahl"
+							label={t('form-builder.editor.minCount')}
 							min={0}
 							max={field.options.length || 0}
 							value={field.min ?? 0}
@@ -514,10 +516,10 @@
 					</div>
 				</div>
 				<div class="space-y-1.5">
-					<span class={rowLabel}>Höchstens auswählen</span>
+					<span class={rowLabel}>{t('form-builder.editor.maxSelect')}</span>
 					<div class="flex flex-wrap items-center gap-2">
 						<NumberStepper
-							label="Höchstanzahl"
+							label={t('form-builder.editor.maxCount')}
 							min={0}
 							max={field.options.length || 0}
 							value={field.max ?? 0}
@@ -526,17 +528,17 @@
 							}}
 							{disabled}
 						/>
-						<span class="text-xs text-muted-foreground">0 = unbegrenzt</span>
+						<span class="text-xs text-muted-foreground">{t('form-builder.editor.unlimited')}</span>
 					</div>
 				</div>
 			</div>
 		{/if}
 	{:else if field.type === 'info'}
 		<div class="space-y-1.5">
-			<p class={rowLabel}>Text</p>
+			<p class={rowLabel}>{t('form-builder.editor.text')}</p>
 			<AssistRichTextEditor
 				id="{uid}-text"
-				label="Infotext"
+				label={t('form-builder.editor.infoText')}
 				{assist}
 				value={infoHtml}
 				minHeight="8rem"
@@ -549,12 +551,12 @@
 				}}
 			/>
 			<p class="text-xs text-muted-foreground">
-				Erscheint im Formular als Text ohne Eingabe, z. B. für Hinweise oder Erklärungen.
+				{t('form-builder.editor.infoHint')}
 			</p>
 		</div>
 	{:else if field.type === 'section'}
 		<div class="space-y-1.5">
-			<label for="{uid}-subtitle" class={rowLabel}>Untertitel (optional)</label>
+			<label for="{uid}-subtitle" class={rowLabel}>{t('form-builder.editor.subtitle')}</label>
 			<Textarea
 				id="{uid}-subtitle"
 				rows={2}
@@ -568,7 +570,7 @@
 		</div>
 	{:else if field.type === 'consent'}
 		<div class="space-y-1.5">
-			<label for="{uid}-ctext" class={rowLabel}>Zustimmungstext</label>
+			<label for="{uid}-ctext" class={rowLabel}>{t('form-builder.editor.consentText')}</label>
 			<Textarea
 				id="{uid}-ctext"
 				rows={3}
@@ -582,7 +584,7 @@
 		</div>
 		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="space-y-1.5">
-				<label for="{uid}-href" class={rowLabel}>Link-Adresse (optional)</label>
+				<label for="{uid}-href" class={rowLabel}>{t('form-builder.editor.href')}</label>
 				<Input
 					id="{uid}-href"
 					type="url"
@@ -598,12 +600,12 @@
 				/>
 			</div>
 			<div class="space-y-1.5">
-				<label for="{uid}-linklabel" class={rowLabel}>Link-Beschriftung</label>
+				<label for="{uid}-linklabel" class={rowLabel}>{t('form-builder.editor.linkLabel')}</label>
 				<Input
 					id="{uid}-linklabel"
 					autocomplete="off"
 					maxlength={100}
-					placeholder="Datenschutzerklärung"
+					placeholder={t('form-builder.editor.linkLabelPlaceholder')}
 					value={field.linkLabel ?? ''}
 					oninput={(e) => {
 						if (field.type === 'consent') field.linkLabel = strOrUndef(e.currentTarget.value);
@@ -625,11 +627,11 @@
 			onclick={() => (advanced = !advanced)}
 		>
 			{#if advanced}<ChevronDown class="size-4" />{:else}<ChevronRight class="size-4" />{/if}
-			Erweitert
+			{t('form-builder.editor.advanced')}
 		</button>
 		{#if advanced}
 			<div id="{uid}-adv" class="space-y-1.5 border-t p-3">
-				<label for="{uid}-key" class={rowLabel}>Technischer Schlüssel</label>
+				<label for="{uid}-key" class={rowLabel}>{t('form-builder.editor.key')}</label>
 				<Input
 					id="{uid}-key"
 					autocomplete="off"
@@ -643,13 +645,15 @@
 					class="h-10 font-mono text-xs md:h-8"
 				/>
 				<p id="{uid}-key-help" class="text-xs text-muted-foreground">
-					Unter diesem Namen werden die Antworten gespeichert.
-					{#if keyReadonly}Er kann nicht mehr geändert werden.{/if}
+					{t('form-builder.editor.keyHint')}
+					{#if keyReadonly}{t('form-builder.editor.keyLocked')}{/if}
 				</p>
 			</div>
 		{/if}
 	</div>
 	{#if keyError && !keyReadonly}
-		<p role="alert" class="text-xs text-destructive">Schlüssel: {keyError}</p>
+		<p role="alert" class="text-xs text-destructive">
+			{t('form-builder.editor.keyError', { error: keyError })}
+		</p>
 	{/if}
 </div>

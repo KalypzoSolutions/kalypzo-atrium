@@ -5,7 +5,9 @@
 	// Ab `md` sieben Spalten, darunter eine Liste ab heute.
 	import { onMount } from 'svelte';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
+	import { t } from '$lib/i18n';
 	import { DashboardCard } from '$lib/components/layout';
+	import { weekdayLabels } from '$lib/components/layout/month-calendar';
 	import { addDays } from '$lib/sdk/dates';
 	import type {
 		DashboardAgendaStyle,
@@ -29,7 +31,7 @@
 			feed = await loadDashboardFeed(fresh);
 			onstatus?.('ready');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Die Woche konnte nicht geladen werden.';
+			error = e instanceof Error ? e.message : t('widgets.week.loadFailed');
 			onstatus?.('error');
 		} finally {
 			loading = false;
@@ -40,7 +42,7 @@
 		void load();
 	});
 
-	const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+	const WEEKDAYS = weekdayLabels();
 	const STYLE_CLASS: Record<DashboardAgendaStyle, string> = {
 		muted: 'border-transparent bg-muted',
 		outline: 'border-border bg-card',
@@ -50,7 +52,7 @@
 	};
 	const kindInfo = $derived(new Map((feed?.kinds ?? []).map((k) => [k.key, k])));
 	const kindClass = (key: string) => STYLE_CLASS[kindInfo.get(key)?.style ?? 'outline'];
-	const kindLabel = (key: string) => kindInfo.get(key)?.label ?? 'Eintrag';
+	const kindLabel = (key: string) => kindInfo.get(key)?.label ?? t('widgets.week.entry');
 
 	const days = $derived.by(() => {
 		if (!feed) return [];
@@ -68,12 +70,14 @@
 
 	function timeLabel(a: DashboardFeedAgendaItem, date: string): string {
 		const multi = a.endDate && a.endDate !== a.date;
-		if (multi && date !== a.date && date !== a.endDate) return 'ganztägig';
-		if (multi && date === a.date) return a.startTime ? `ab ${a.startTime}` : 'Beginn';
-		if (multi && date === a.endDate) return a.endTime ? `bis ${a.endTime}` : 'Ende';
+		if (multi && date !== a.date && date !== a.endDate) return t('widgets.week.allDay');
+		if (multi && date === a.date)
+			return a.startTime ? t('widgets.week.from', { time: a.startTime }) : t('widgets.week.start');
+		if (multi && date === a.endDate)
+			return a.endTime ? t('widgets.week.until', { time: a.endTime }) : t('widgets.week.end');
 		if (a.startTime && a.endTime) return `${a.startTime}–${a.endTime}`;
 		if (a.startTime) return a.startTime;
-		return a.kind === 'deadline' ? 'Frist' : 'ganztägig';
+		return a.kind === 'deadline' ? t('widgets.week.deadline') : t('widgets.week.allDay');
 	}
 </script>
 
@@ -88,7 +92,7 @@
 		]}
 	>
 		<span class={['block tabular-nums', a.late ? 'text-destructive' : 'text-muted-foreground']}>
-			{timeLabel(a, date)}{a.late ? ' · überfällig' : ''}
+			{timeLabel(a, date)}{a.late ? ` · ${t('widgets.week.overdue')}` : ''}
 		</span>
 		<span class="block font-medium break-words hyphens-auto" lang="de">{a.title}</span>
 		{#if a.detail}<span class="block text-muted-foreground">{a.detail}</span>{/if}
@@ -96,7 +100,13 @@
 	</a>
 {/snippet}
 
-<DashboardCard title="Diese Woche" icon={CalendarDays} {loading} {error} onretry={() => load(true)}>
+<DashboardCard
+	title={t('widgets.week.title')}
+	icon={CalendarDays}
+	{loading}
+	{error}
+	onretry={() => load(true)}
+>
 	{#snippet actions()}
 		{#if feed}
 			<span class="text-xs text-muted-foreground tabular-nums">
@@ -139,7 +149,7 @@
 								d.today ? 'text-link' : d.past ? 'text-muted-foreground' : 'text-foreground'
 							]}>{Number(d.date.slice(8))}</span
 						>
-						{#if d.today}<span class="text-link">heute</span>{/if}
+						{#if d.today}<span class="text-link">{t('widgets.week.today')}</span>{/if}
 					</p>
 					{#each d.items as a (a.moduleId + a.id)}
 						{@render entry(a, d.date, d.past)}
@@ -152,7 +162,7 @@
 			{#each upcoming as d (d.date)}
 				<li class="grid grid-cols-[3.5rem_1fr] gap-3 py-2.5">
 					<p class={['text-xs', d.today ? 'text-link' : 'text-muted-foreground']}>
-						{d.wd}{d.today ? ' · heute' : ''}
+						{d.wd}{d.today ? ` · ${t('widgets.week.today')}` : ''}
 						<span
 							class={[
 								'block text-sm font-semibold tabular-nums',
@@ -164,14 +174,14 @@
 						{#each d.items as a (a.moduleId + a.id)}
 							{@render entry(a, d.date, false)}
 						{:else}
-							<p class="text-xs text-muted-foreground">Nichts geplant.</p>
+							<p class="text-xs text-muted-foreground">{t('widgets.week.nothingPlanned')}</p>
 						{/each}
 					</div>
 				</li>
 			{/each}
 		</ol>
 		{#if !feed.agenda.length}
-			<p class="pt-2 text-sm text-muted-foreground">Diese Woche steht nichts an.</p>
+			<p class="pt-2 text-sm text-muted-foreground">{t('widgets.week.empty')}</p>
 		{/if}
 	{/if}
 </DashboardCard>

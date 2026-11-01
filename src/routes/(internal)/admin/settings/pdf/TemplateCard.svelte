@@ -3,6 +3,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { LoadingState } from '$lib/components/layout';
+	import { t } from '$lib/i18n';
+	import { formatNumber } from '$lib/i18n/intl';
 
 	interface Part {
 		id: string;
@@ -22,6 +24,8 @@
 		letterhead: boolean;
 		orientation: 'portrait' | 'landscape';
 		parts: Part[];
+		origin: { type: 'core' } | { type: 'module'; moduleId: string; moduleName: string };
+		replacesCore: boolean;
 	}
 
 	let { info }: { info: Info } = $props();
@@ -65,15 +69,22 @@
 		};
 	}
 
-	const num = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
+	const num = (n: number) => formatNumber(Math.round(n * 10) / 10);
 </script>
 
 <Card.Root>
 	<Card.Header>
 		<Card.Title class="flex flex-wrap items-center gap-2">
 			{info.label}
-			{#if info.letterhead}<Badge variant="secondary">Brief</Badge>{/if}
-			{#if landscape}<Badge variant="outline">Quer</Badge>{/if}
+			{#if info.letterhead}<Badge variant="secondary">{t('admin-pdf.card.letter')}</Badge>{/if}
+			{#if landscape}<Badge variant="outline">{t('admin-pdf.card.landscape')}</Badge>{/if}
+			{#if info.origin.type === 'module'}
+				<Badge variant="outline">
+					{info.replacesCore
+						? t('admin-pdf.card.replacedBy', { module: info.origin.moduleName })
+						: t('admin-pdf.card.fromModule', { module: info.origin.moduleName })}
+				</Badge>
+			{/if}
 		</Card.Title>
 		<Card.Description>
 			<span class="font-mono text-xs">{info.id}</span>
@@ -94,7 +105,7 @@
 		>
 			{#if !loaded && !failed}
 				<LoadingState
-					label="Vorschau"
+					label={t('admin-pdf.card.preview')}
 					rows={1}
 					rowClass="h-full w-full rounded-none"
 					class="absolute inset-0"
@@ -104,15 +115,15 @@
 				<div
 					class="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-muted-foreground"
 				>
-					Vorschau nicht verfügbar (Chromium?)
+					{t('admin-pdf.card.previewUnavailable')}
 				</div>
 			{:else}
 				{#key src}
 					<img
 						{src}
 						alt={activePart
-							? `Vorschau der Vorlage „${info.label}“, nur ${activePart.label}`
-							: `Seitenvorschau der Vorlage „${info.label}“`}
+							? t('admin-pdf.card.previewPartAlt', { template: info.label, part: activePart.label })
+							: t('admin-pdf.card.previewAlt', { template: info.label })}
 						loading="lazy"
 						class="h-full w-full object-contain"
 						use:watchImage
@@ -124,9 +135,11 @@
 		{#if info.parts.length > 0}
 			<div class="space-y-2">
 				<div class="flex items-center justify-between gap-2">
-					<h3 class="text-sm font-semibold">Bestandteile</h3>
+					<h3 class="text-sm font-semibold">{t('admin-pdf.card.parts')}</h3>
 					{#if only}
-						<Button variant="ghost" size="sm" onclick={() => select(null)}>Gesamte Seite</Button>
+						<Button variant="ghost" size="sm" onclick={() => select(null)}
+							>{t('admin-pdf.card.wholePage')}</Button
+						>
 					{/if}
 				</div>
 				<ul class="divide-y rounded-md border">
@@ -135,11 +148,18 @@
 							<div class="min-w-0 space-y-0.5">
 								<div class="flex flex-wrap items-center gap-2">
 									<span class="font-medium">{part.label}</span>
-									{#if part.optional}<Badge variant="outline">optional</Badge>{/if}
+									{#if part.optional}<Badge variant="outline">{t('admin-pdf.card.optional')}</Badge
+										>{/if}
 								</div>
 								<p class="text-xs text-muted-foreground tabular-nums">
-									x {num(part.x)} mm, y {num(part.y)} mm{#if part.width != null && part.height != null}
-										· {num(part.width)} × {num(part.height)} mm{/if}
+									{t('admin-pdf.card.position', {
+										x: num(part.x),
+										y: num(part.y)
+									})}{#if part.width != null && part.height != null}
+										· {t('admin-pdf.card.size', {
+											width: num(part.width),
+											height: num(part.height)
+										})}{/if}
 								</p>
 								{#if part.description}
 									<p class="text-xs text-muted-foreground">{part.description}</p>
@@ -151,7 +171,7 @@
 								aria-pressed={only === part.id}
 								onclick={() => select(only === part.id ? null : part.id)}
 							>
-								Nur dieser Teil
+								{t('admin-pdf.card.onlyThisPart')}
 							</Button>
 						</li>
 					{/each}
@@ -164,7 +184,7 @@
 			href={`/admin/settings/pdf/test?template=${encodeURIComponent(info.id)}`}
 			data-sveltekit-reload
 		>
-			Beispiel-PDF herunterladen
+			{t('admin-pdf.card.downloadSample')}
 		</Button>
 	</Card.Content>
 </Card.Root>

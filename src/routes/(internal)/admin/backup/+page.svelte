@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { PageHeader, PageTitle } from '$lib/components/layout';
@@ -19,18 +20,15 @@
 	}
 </script>
 
-<PageTitle title="Datensicherung" />
+<PageTitle title={t('admin-backup.title')} />
 
 <div class="mx-auto max-w-4xl">
-	<PageHeader
-		title="Datensicherung"
-		description="Verschlüsselte Sicherung aller Daten und Dateien erstellen oder wieder einspielen."
-	/>
+	<PageHeader title={t('admin-backup.title')} description={t('admin-backup.description')} />
 
 	<Tabs.Root value={tab} onValueChange={setTab}>
 		<Tabs.List variant="line" class="mb-4">
-			<Tabs.Trigger value="export">Export</Tabs.Trigger>
-			<Tabs.Trigger value="import">Import</Tabs.Trigger>
+			<Tabs.Trigger value="export">{t('admin-backup.tabExport')}</Tabs.Trigger>
+			<Tabs.Trigger value="import">{t('admin-backup.tabImport')}</Tabs.Trigger>
 		</Tabs.List>
 	</Tabs.Root>
 

@@ -1,4 +1,5 @@
 import { and, eq, inArray } from 'drizzle-orm';
+import { localized, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { decryptSecret, encryptSecret, isEncrypted } from '../crypto';
@@ -8,6 +9,8 @@ import { allDefinitions } from '../modules/registry';
 import { has } from '../permissions/service';
 import { invalidateStorageConfigCache } from '../storage/config-cache';
 import { invalidateMailTransportCache } from '../mail-cache';
+import { invalidateUserLocale, setSystemLocaleCache } from '../i18n/locale';
+import { enabledModuleIds } from '../modules/state';
 import { CORE_SETTINGS, SECRET_BINDINGS, type SettingDefinition } from './catalog';
 
 /** Höchstzahl Schlüssel je Speichervorgang (`setSettings`, `PUT /api/v1/settings`) */
@@ -45,8 +48,8 @@ function definitionMap(): Map<string, SettingDefinition> {
 		for (const s of m.settings ?? []) {
 			map.set(s.key, {
 				key: s.key,
-				label: s.label,
-				description: s.description,
+				label: localized(s.label),
+				description: s.description === undefined ? undefined : localized(s.description),
 				schema: s.schema,
 				default: s.default,
 				secret: s.secret,
@@ -61,7 +64,7 @@ function definitionMap(): Map<string, SettingDefinition> {
 
 export function getDefinition(key: string): SettingDefinition {
 	const d = definitionMap().get(key);
-	if (!d) throw errors.badRequest(`Unbekannte Einstellung: ${key}`);
+	if (!d) throw errors.badRequest(t('settings.errors.unknown', { key }));
 	return d;
 }
 
@@ -71,8 +74,21 @@ export function listDefinitions(): SettingDefinition[] {
 
 function scopeIdFor(def: SettingDefinition, userId?: string | null): string {
 	if (def.scope === 'global') return '';
-	if (!userId) throw errors.badRequest('Benutzerspezifische Einstellung benötigt eine Benutzer-ID');
+	if (!userId) throw errors.badRequest(t('settings.errors.userIdRequired'));
 	return userId;
+}
+
+/**
+ * Vorgaben aktiver Module für globale Einstellungen (`ModuleDefinition.settingDefaults`, z. B. ein Profil-Modul,
+ * das Systemname, Bezeichnung für „alle“ und Schreibstil einer Organisation mitbringt). Gilt nur, solange nichts
+ * gespeichert ist; bei mehreren Modulen gewinnt das erste in Ladereihenfolge.
+ */
+export async function moduleSettingDefault(key: string): Promise<{ value: unknown } | null> {
+	const defs = allDefinitions().filter((m) => m.settingDefaults && key in m.settingDefaults);
+	if (!defs.length) return null;
+	const enabled = await enabledModuleIds();
+	const hit = defs.find((m) => enabled.has(m.manifest.id));
+	return hit ? { value: hit.settingDefaults![key] } : null;
 }
 
 /** Serverseitiges Lesen. Secrets werden entschlüsselt – niemals an Clients weiterreichen. */
@@ -82,7 +98,13 @@ export async function getSetting<T = unknown>(key: string, userId?: string | nul
 		.select()
 		.from(schema.setting)
 		.where(and(eq(schema.setting.key, key), eq(schema.setting.scopeId, scopeIdFor(def, userId))));
-	if (!row) return def.default as T;
+	if (!row) {
+		if (def.scope === 'global') {
+			const fromModule = await moduleSettingDefault(key);
+			if (fromModule) return fromModule.value as T;
+		}
+		return def.default as T;
+	}
 	if (def.secret && isEncrypted(row.value)) return decryptSecret(row.value) as T;
 	return row.value as T;
 }
@@ -120,7 +142,9 @@ export async function listPublicSettingsFor(
 ): Promise<PublicSettingValue[]> {
 	if (ctx.actor.type !== 'system' && !ctx.userId) throw errors.unauthenticated();
 	if (!has(ctx, 'core.settings.view')) {
-		throw errors.forbidden('Berechtigung fehlt: core.settings.view');
+		throw errors.forbidden(
+			t('settings.errors.permissionMissing', { permission: 'core.settings.view' })
+		);
 	}
 	return getPublicSettings({ ...filter, userId: ctx.userId });
 }
@@ -200,7 +224,7 @@ export async function setSettings(
 ): Promise<SetSettingsResult> {
 	const entries = Object.entries(values);
 	if (entries.length > MAX_SETTINGS_PER_WRITE) {
-		const message = `Höchstens ${MAX_SETTINGS_PER_WRITE} Einstellungen auf einmal`;
+		const message = t('settings.errors.tooMany', { max: MAX_SETTINGS_PER_WRITE });
 		throw errors.validation([{ path: ['values'], message }], message);
 	}
 	// 1) Existenz und Rechte – vor jeder Schemaprüfung
@@ -208,12 +232,13 @@ export async function setSettings(
 	const scopeIds = defs.map((def) => {
 		if (def.scope === 'global') {
 			const perm = writePermissionOf(def);
-			if (!has(ctx, perm)) throw errors.forbidden(`Berechtigung fehlt: ${perm}`);
+			if (!has(ctx, perm))
+				throw errors.forbidden(t('settings.errors.permissionMissing', { permission: perm }));
 			return '';
 		}
 		if (!ctx.userId) throw errors.unauthenticated();
 		const target = opts.userId ?? ctx.userId;
-		if (target !== ctx.userId) throw errors.forbidden('Nur eigene Einstellungen änderbar');
+		if (target !== ctx.userId) throw errors.forbidden(t('settings.errors.ownOnly'));
 		return target;
 	});
 
@@ -226,7 +251,7 @@ export async function setSettings(
 		if (def.secret && (value === undefined || value === '')) return;
 		if (value === null) {
 			if (!isClearable(def)) {
-				issues.push({ path: [key], message: 'Diese Einstellung kann nicht gelöscht werden' });
+				issues.push({ path: [key], message: t('settings.errors.notClearable') });
 				return;
 			}
 			ops.push({ key, def, scopeId, kind: 'delete' });
@@ -245,8 +270,8 @@ export async function setSettings(
 	if (issues.length) {
 		const message =
 			issues.length === 1
-				? `Ungültiger Wert für ${String(issues[0]!.path[0])}`
-				: 'Ungültige Einstellungen';
+				? t('settings.errors.invalidValue', { key: String(issues[0]!.path[0]) })
+				: t('settings.errors.invalidMany');
 		throw errors.validation(issues, message);
 	}
 
@@ -316,6 +341,11 @@ export async function setSettings(
 		if (ops.some((o) => o.key.startsWith('core.storage.'))) invalidateStorageConfigCache();
 		// SMTP-Einstellungen und gepoolter Transport ebenso (#24)
 		if (ops.some((o) => o.key.startsWith('core.smtp.'))) invalidateMailTransportCache();
+		for (const op of ops) {
+			if (op.key === 'core.system.locale')
+				setSystemLocaleCache(op.kind === 'upsert' ? op.value : 'auto');
+			if (op.key === 'core.user.locale' && op.scopeId) invalidateUserLocale(op.scopeId);
+		}
 	}
 
 	// 5) Audit danach (nur globale Einstellungen; Secrets ohne Wert)

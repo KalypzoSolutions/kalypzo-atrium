@@ -1,5 +1,6 @@
 import type { Actions } from '@sveltejs/kit';
 import { z } from 'zod';
+import { localized, t } from '$lib/i18n';
 import {
 	disableModule,
 	enableModule,
@@ -36,8 +37,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 						s.sourceType === 'github'
 							? `${String(s.source.owner)}/${String(s.source.repo)}${s.source.path ? `/${String(s.source.path)}` : ''}`
 							: s.sourceType === 'upload'
-								? `ZIP ${String(s.source.fileName ?? '')}`
-								: 'Build',
+								? t('admin-modules.origins.zip', { name: String(s.source.fileName ?? '') })
+								: t('admin-modules.origins.build'),
 					commit: s.commit
 				}
 			])
@@ -51,8 +52,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		problems,
 		modules: modules.map((m) => ({
 			id: m.manifest.id,
-			name: m.manifest.name,
-			description: m.manifest.description ?? '',
+			name: localized(m.manifest.name),
+			description: localized(m.manifest.description),
 			version: m.manifest.version,
 			installedVersion: m.installedVersion,
 			enabled: m.enabled,
@@ -78,7 +79,7 @@ export const actions: Actions = {
 		if (!parsed.success) return invalid(parsed.error);
 		try {
 			await enableModule(locals.ctx, parsed.data.id);
-			return { success: true, message: 'Modul aktiviert' };
+			return { success: true, message: t('admin-modules.server.enabled') };
 		} catch (e) {
 			return toFail(e);
 		}
@@ -105,8 +106,8 @@ export const actions: Actions = {
 			return {
 				uninstalled: result,
 				message: result.planId
-					? 'Modul wird entfernt – der Server baut neu und startet neu'
-					: 'Modul entfernt'
+					? t('admin-modules.server.removing')
+					: t('admin-modules.server.removed')
 			};
 		} catch (e) {
 			return failWithFields(e);
@@ -120,7 +121,7 @@ export const actions: Actions = {
 				password: String(form.get('password') ?? ''),
 				totp: String(form.get('totp') ?? '')
 			});
-			return { restored: result, message: 'Neubau angefordert' };
+			return { restored: result, message: t('admin-modules.server.buildRequested') };
 		} catch (e) {
 			return failWithFields(e);
 		}
@@ -131,7 +132,7 @@ export const actions: Actions = {
 		if (!parsed.success) return invalid(parsed.error);
 		try {
 			await disableModule(locals.ctx, parsed.data.id);
-			return { success: true, message: 'Modul deaktiviert' };
+			return { success: true, message: t('admin-modules.server.disabled') };
 		} catch (e) {
 			return toFail(e);
 		}

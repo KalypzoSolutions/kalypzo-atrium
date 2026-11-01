@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from 'nodemailer';
+import { t as translate } from '$lib/i18n';
 import { errors } from './errors';
 import { invalidateMailTransportCache, mailTransportGeneration } from './mail-cache';
 import { loadMailLayoutOptions, renderMailLayout, type MailAttachment } from './mail-layout';
@@ -10,7 +11,7 @@ export interface MailMessage {
 	text: string;
 	/** HTML-Fragment (Inhalt); ohne Angabe wird es aus `text` erzeugt */
 	html?: string;
-	/** `false`: ohne Stamm-Layout senden (Standard: Layout aus den Einstellungen) */
+	/** `false`: ohne Layout senden (Standard: Layout aus den Einstellungen) */
 	layout?: boolean;
 	/** Dateianhänge (z. B. Rechnung als PDF) */
 	files?: { filename: string; contentType: string; content: Buffer }[];
@@ -152,12 +153,12 @@ async function transport(): Promise<{ t: MailTransport; from: string; pooled: bo
 	const from = String(s['core.smtp.from'] || '');
 	// Benutzer ohne Passwort: z. B. nach Host-Wechsel verworfen (#15) – nicht ohne Anmeldung versuchen
 	if (s['core.smtp.user'] && !s['core.smtp.password']) {
-		throw errors.unavailable('SMTP ist nicht konfiguriert (Passwort fehlt)');
+		throw errors.unavailable(translate('mail.errors.smtpNoPassword'));
 	}
 	if (testTransport)
 		return { t: testTransport, from: from || 'test@example.invalid', pooled: false };
 	const host = String(s['core.smtp.host'] || '');
-	if (!host || !from) throw errors.unavailable('SMTP ist nicht konfiguriert');
+	if (!host || !from) throw errors.unavailable(translate('mail.errors.smtpNotConfigured'));
 	return { t: pooledTransport(s), from, pooled: true };
 }
 
@@ -174,7 +175,7 @@ async function deliver(
 	const limit = new Promise<never>((_, reject) => {
 		timer = setTimeout(() => {
 			if (pooled) closeTransport();
-			reject(errors.unavailable('Der Mailserver antwortet nicht (Zeitüberschreitung)'));
+			reject(errors.unavailable(translate('mail.errors.timeout')));
 		}, timeouts().sendTimeout);
 	});
 	try {
@@ -231,7 +232,7 @@ export function sendMail(msg: MailMessage): Promise<string | undefined> {
 }
 
 /**
- * HTML einer Mail, wie sie beim Versand aussähe (Stamm-Layout mit den gespeicherten Einstellungen,
+ * HTML einer Mail, wie sie beim Versand aussähe (Layout mit den gespeicherten Einstellungen,
  * Bilder als `data:`-URLs statt CID) – für Vorschauen, ohne etwas zu senden.
  */
 export async function previewMailHtml(msg: {
@@ -249,7 +250,7 @@ const SENDER_ADDRESS = /^[^\s@,;<>()"\x5c]+@[^\s@,;<>()"\x5c]+\.[^\s@,;<>()"\x5c
 /** Absender-Kopfzeile `"Name" <adresse>`; ungültige Adressen/Namen mit Steuerzeichen werden abgewiesen (Header-Injection). */
 export function formatSender(address: string, name?: string): string {
 	if (address.length > 254 || !SENDER_ADDRESS.test(address)) {
-		throw errors.badRequest('Ungültige Absenderadresse');
+		throw errors.badRequest(translate('mail.errors.invalidSender'));
 	}
 	const clean = (name ?? '')
 		// Steuerzeichen (Zeilenumbrüche!) und Anführungszeichen/Klammern entfernen
@@ -259,6 +260,20 @@ export function formatSender(address: string, name?: string): string {
 		.trim()
 		.slice(0, 100);
 	return clean ? `"${clean}" <${address}>` : address;
+}
+
+/** Kennzeichnung eigener Mails dieser App (Schleifenschutz beim Postfach-Abruf, `Auto-Submitted`) */
+export const OWN_MAIL_HEADER = 'X-Atrium';
+/** Früherer Name der Kopfzeile (bis Kalypzo Atrium Phase N); Postfach-Abruf erkennt beide */
+export const LEGACY_OWN_MAIL_HEADER = 'X-EP-Intern';
+
+/** Alte Kopfzeile `X-EP-Intern` (von Aufrufern noch gesetzt) unter dem neuen Namen `X-Atrium` senden */
+function ownHeaders(
+	headers: Record<string, string> | undefined
+): Record<string, string> | undefined {
+	if (!headers || !(LEGACY_OWN_MAIL_HEADER in headers)) return headers;
+	const { [LEGACY_OWN_MAIL_HEADER]: value, ...rest } = headers;
+	return { ...rest, [OWN_MAIL_HEADER]: rest[OWN_MAIL_HEADER] ?? value! };
 }
 
 async function sendMailNow(msg: MailMessage): Promise<string | undefined> {
@@ -274,19 +289,20 @@ async function sendMailNow(msg: MailMessage): Promise<string | undefined> {
 		...mail
 	} = msg;
 	if (givenId !== undefined && !MESSAGE_ID_RE.test(givenId)) {
-		throw errors.badRequest('Ungültige Message-ID');
+		throw errors.badRequest(translate('mail.errors.invalidMessageId'));
 	}
 	const from = fromAddress ? formatSender(fromAddress, fromName) : defaultFrom;
 	if (replyTo !== undefined && (replyTo.length > 254 || !SENDER_ADDRESS.test(replyTo))) {
-		throw errors.badRequest('Ungültige Antwortadresse');
+		throw errors.badRequest(translate('mail.errors.invalidReplyTo'));
 	}
 	const reply = replyTo ? { replyTo } : {};
 	// Message-ID mit der Domain der Absenderadresse (passt zu SPF/DKIM, weniger Spam-Punkte)
 	const domain = fromAddress?.split('@')[1];
 	const messageId = givenId ?? (domain ? `<${crypto.randomUUID()}@${domain}>` : undefined);
+	const own = ownHeaders(headers);
 	const extra = {
 		...(messageId ? { messageId } : {}),
-		...(headers && Object.keys(headers).length ? { headers } : {})
+		...(own && Object.keys(own).length ? { headers: own } : {})
 	};
 	const options = await loadMailLayoutOptions();
 	if (layout === false || !options.enabled) {

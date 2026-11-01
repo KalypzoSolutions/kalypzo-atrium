@@ -1,0 +1,10 @@
+{
+	"noLogo": "No logo",
+	"notFound": "Not found",
+	"errors": {
+		"types": "PNG, JPEG and WebP are allowed",
+		"empty": "Please choose an image file",
+		"tooLarge": "The logo must not be larger than 5 MB",
+		"invalid": "The file is not a valid PNG, JPEG or WebP image"
+	}
+}

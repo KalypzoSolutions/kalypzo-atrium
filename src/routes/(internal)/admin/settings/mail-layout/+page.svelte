@@ -2,6 +2,7 @@
 	import { PageTitle } from '$lib/components/layout';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
+	import { t } from '$lib/i18n';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
 	import TestMailCard from '../../_shared/TestMailCard.svelte';
 	import type { PageData } from './$types';
@@ -11,12 +12,12 @@
 	let previewKey = $state(0);
 </script>
 
-<PageTitle title="E-Mail-Layout · Einstellungen" />
+<PageTitle title={t('admin-mail.pageTitle')} />
 
 <Card.Root>
 	<Card.Header>
-		<Card.Title>Layout ausgehender E-Mails</Card.Title>
-		<Card.Description>Kopf, Signatur und Fußzeile aller E-Mails des Systems.</Card.Description>
+		<Card.Title>{t('admin-mail.layout.title')}</Card.Title>
+		<Card.Description>{t('admin-mail.layout.description')}</Card.Description>
 	</Card.Header>
 	<Card.Content>
 		<SettingsForm fields={data.fields} canEdit={data.canEdit} />
@@ -25,20 +26,18 @@
 
 <Card.Root>
 	<Card.Header>
-		<Card.Title>Vorschau</Card.Title>
-		<Card.Description>
-			So sehen ausgehende E-Mails aus. Speichere Änderungen zuerst, dann lade die Vorschau neu.
-		</Card.Description>
+		<Card.Title>{t('admin-mail.preview.title')}</Card.Title>
+		<Card.Description>{t('admin-mail.preview.description')}</Card.Description>
 	</Card.Header>
 	<Card.Content class="space-y-3">
 		<iframe
-			title="Vorschau des E-Mail-Layouts"
+			title={t('admin-mail.preview.frameTitle')}
 			src={`/admin/settings/mail-preview?v=${previewKey}`}
 			class="h-[640px] w-full rounded-md border bg-muted/30"
 			sandbox=""
 		></iframe>
 		<Button type="button" variant="outline" size="sm" onclick={() => (previewKey += 1)}>
-			Vorschau neu laden
+			{t('admin-mail.preview.reload')}
 		</Button>
 	</Card.Content>
 </Card.Root>

@@ -1,0 +1,49 @@
+{
+	"confirmWord": "RESET",
+	"rebuildReason": "The module is rebuilt from scratch",
+	"coreGroup": "Core",
+	"onlyUsers": "Reset is only available to signed-in users",
+	"previewExpired": "Preview expired, please start again",
+	"chooseArea": "Please choose at least one area",
+	"unknownAreas": "Unknown area: {areas}",
+	"backupPasswordMin": "Backup password: at least {count} characters",
+	"noData": "There is no data for the chosen areas",
+	"exportFirst": "Please export the data first",
+	"typeExactly": "Please type exactly \"{word}\"",
+	"lostAdmin": "Your own account no longer has administration rights after the reset",
+	"area": {
+		"apiKeys": {
+			"label": "API keys",
+			"description": "All API keys of all users (including your own)."
+		},
+		"users": {
+			"label": "Users",
+			"description": "All user accounts except your own, incl. sessions, sign-in data, role assignments and personal settings.",
+			"impliesApiKeys": "API keys belong to user accounts"
+		},
+		"roles": {
+			"label": "Roles",
+			"description": "All custom roles with permissions and assignments. System roles (administrator) remain."
+		},
+		"apiLog": {
+			"label": "API log",
+			"description": "Log of all API calls."
+		},
+		"jobs": {
+			"label": "Job runs",
+			"description": "Last runs of the background jobs (jobs run again on the next tick)."
+		},
+		"aiUsage": {
+			"label": "AI usage",
+			"description": "Recorded AI usage and costs."
+		},
+		"settings": {
+			"label": "Settings",
+			"description": "Global and personal settings (incl. module settings). Storage and SMTP access as well as secrets are kept."
+		},
+		"audit": {
+			"label": "Audit log",
+			"description": "All audit entries. Afterwards only the entry about this reset remains."
+		}
+	}
+}

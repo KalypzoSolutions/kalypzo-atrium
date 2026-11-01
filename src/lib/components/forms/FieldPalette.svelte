@@ -40,6 +40,7 @@
 </script>
 
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Button } from '$lib/components/ui/button';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -48,7 +49,7 @@
 	let {
 		types,
 		disabled = false,
-		label = 'Feld hinzufügen',
+		label = t('form-builder.palette.add'),
 		onadd
 	}: {
 		types: FieldTypeSpec[];
@@ -60,8 +61,8 @@
 	const off = $derived(disabled || types.length === 0);
 	/** Eingabefelder zuerst, dann Anzeige-Typen (Infotext, Abschnitt) */
 	const groups = $derived([
-		{ label: 'Eingabefelder', items: types.filter((t) => t.hasValue) },
-		{ label: 'Text & Gliederung', items: types.filter((t) => !t.hasValue) }
+		{ label: t('form-builder.palette.inputs'), items: types.filter((t) => t.hasValue) },
+		{ label: t('form-builder.palette.display'), items: types.filter((t) => !t.hasValue) }
 	]);
 </script>
 

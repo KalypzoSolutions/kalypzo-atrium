@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Etiketten: Formate (Bogen/Rolle), Layouts aus Elementen in mm und Platzierung auf Seiten.
  * Reine Typen – Client und Server.
@@ -6,16 +7,25 @@
 export const BARCODE_TYPES = ['qrcode', 'code128', 'datamatrix'] as const;
 export type BarcodeType = (typeof BARCODE_TYPES)[number];
 
-export const BARCODE_TYPE_LABELS: Record<BarcodeType, string> = {
-	qrcode: 'QR-Code',
-	code128: 'Strichcode (Code 128)',
-	datamatrix: 'DataMatrix'
+/** Anzeigenamen (beim Lesen übersetzt) */
+export const BARCODE_TYPE_LABELS: Readonly<Record<BarcodeType, string>> = {
+	get qrcode() {
+		return t('labels.barcodes.qrcode');
+	},
+	get code128() {
+		return t('labels.barcodes.code128');
+	},
+	get datamatrix() {
+		return t('labels.barcodes.datamatrix');
+	}
 };
 
-export const LABEL_LOGOS = ['wappen', 'lilie'] as const;
-export type LabelLogo = (typeof LABEL_LOGOS)[number];
-
-export const LABEL_LOGO_LABELS: Record<LabelLogo, string> = { wappen: 'Wappen', lilie: 'Lilie' };
+/**
+ * Kennung eines Logos (z. B. `wappen`). Welche Logos es gibt und wie sie aussehen, bestimmt das aufrufende Modul:
+ * Es übergibt die Bilder an `core.pdf.labels` (`logos`, Schlüssel über `logoKey`, farbig bzw. `-sw`).
+ */
+export const LABEL_LOGO_KEY = /^[a-z][a-z0-9-]{0,39}$/;
+export type LabelLogo = string;
 
 interface LabelElementBase {
 	id: string;
@@ -129,4 +139,6 @@ export interface LabelPdfInput {
 	startIndex?: number;
 	/** Dünne graue Umrisse der Etikettfelder (Probedruck auf Papier) */
 	outlines?: boolean;
+	/** Bilder der Logo-Elemente als `data:image/(png|jpeg|webp);base64,…` je Schlüssel (`logoKey`); fehlt eins, bleibt das Feld leer */
+	logos?: Record<string, string>;
 }

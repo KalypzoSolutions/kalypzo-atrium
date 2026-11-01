@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Zod-Eingabe für die Spaltenauswahl der PDF-Listen (gemeinsam für `members` und `actions`).
  */
@@ -10,8 +11,10 @@ export const listSelectionInput = z
 		preset: z.string().max(40).optional(),
 		columns: z
 			.array(z.string().min(1).max(60))
-			.min(1, 'Mindestens eine Spalte wählen')
-			.max(LIST_MAX_COLUMNS, `Höchstens ${LIST_MAX_COLUMNS} Spalten`),
+			.min(1, { error: () => t('pdf-lists.validation.minColumns') })
+			.max(LIST_MAX_COLUMNS, {
+				error: () => t('pdf-lists.validation.maxColumns', { max: String(LIST_MAX_COLUMNS) })
+			}),
 		hideEmpty: z.boolean().default(true)
 	})
 	.strict();

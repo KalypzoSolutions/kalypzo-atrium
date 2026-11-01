@@ -1,0 +1,106 @@
+{
+	"back": "Back",
+	"close": "Close",
+	"confirm": "Confirm",
+	"cancel": "Cancel",
+	"retry": "Try again",
+	"loadFailed": "Loading failed",
+	"loadingLabel": "Loading {label} …",
+	"noEntries": "No entries",
+	"nothingNew": "Nothing new.",
+	"showAll": "Show all",
+	"entriesCount": "{count, plural, one {# entry} other {# entries}}",
+	"unread": "{count} unread",
+	"busy": {
+		"save": "Saving …",
+		"load": "Loading …",
+		"delete": "Deleting …",
+		"send": "Sending …",
+		"upload": "Uploading …"
+	},
+	"contacts": {
+		"namePlaceholder": "Label, e.g. Mother",
+		"add": "Add",
+		"empty": "No entries.",
+		"nameFor": "Label for {label} {n}",
+		"remove": "Remove {label} {n}"
+	},
+	"cost": {
+		"summary": "Cost breakdown, total {total}: ",
+		"percent": "{value}%",
+		"lessThanOnePercent": "<1%"
+	},
+	"file": {
+		"typeNotAllowed": "File type not allowed",
+		"tooLarge": "File is too large (maximum {max})",
+		"croppedTooLarge": "Cropped image is too large (maximum {max})",
+		"remove": "Remove",
+		"clearSelection": "Clear selection",
+		"changeCrop": "Change crop",
+		"storageUnavailable": "Document storage is currently unavailable (storage not set up or not reachable).",
+		"notFound": "The document was not found.",
+		"openFailed": "The file could not be opened.",
+		"offline": "The file could not be loaded (no connection to the server)."
+	},
+	"legal": {
+		"notice": "You can find information on how your data is processed in the privacy policy.",
+		"label": "Legal information",
+		"privacy": "Privacy",
+		"imprint": "Legal notice"
+	},
+	"stepper": {
+		"decrease": "Decrease {label}",
+		"increase": "Increase {label}"
+	},
+	"pagination": {
+		"range": "{from} - {to} of {total}",
+		"prev": "Previous",
+		"next": "Next"
+	},
+	"pdf": {
+		"cannotEmbed": "Your device cannot display PDFs here. Open the file or download it.",
+		"open": "Open PDF",
+		"download": "Download",
+		"createFailed": "PDF could not be created"
+	},
+	"pdfList": {
+		"title": "Create PDF list",
+		"description": "Choose which details appear in the list – fewer columns mean fewer pages.",
+		"preset": "Preset",
+		"custom": "Custom selection",
+		"sensitive": "sensitive",
+		"hideEmpty": "Hide empty columns",
+		"estimate": "≈ {pages, plural, one {# page} other {# pages}} · {count, plural, one {# person} other {# people}} · {columns, plural, one {# column} other {# columns}}",
+		"sensitiveNote": "The list contains health information. Use it only for its intended purpose and destroy it afterwards.",
+		"creating": "Creating PDF …",
+		"create": "Create PDF"
+	},
+	"search": {
+		"placeholder": "Search …",
+		"label": "Search"
+	},
+	"selection": {
+		"close": "End selection",
+		"count": "{count} selected",
+		"none": "None",
+		"all": "All"
+	},
+	"summary": {
+		"showDetails": "Show details for {label}",
+		"hideDetails": "Hide details for {label}",
+		"hint": "Note on {label}",
+		"minus": "minus"
+	},
+	"typedConfirm": {
+		"before": "To confirm, enter",
+		"after": "below",
+		"confirmed": "Confirmed.",
+		"mismatch": "The input doesn’t match – check capital letters and special characters.",
+		"hint": "Case-sensitive."
+	},
+	"undo": {
+		"action": "Undo",
+		"done": "Undone",
+		"failed": "Undo failed"
+	}
+}

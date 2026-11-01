@@ -1,0 +1,27 @@
+{
+	"homeLabel": "{name} – Dashboard",
+	"expand": "Expand sidebar",
+	"collapse": "Collapse sidebar",
+	"collapseShort": "Collapse",
+	"expandGroup": "{label} (expand sidebar)",
+	"mainNav": "Main navigation",
+	"topbar": {
+		"light": "Light",
+		"dark": "Dark",
+		"system": "System",
+		"themeFailed": "The theme could not be changed.",
+		"openNav": "Open navigation",
+		"searchLabel": "Search (Ctrl+K)",
+		"search": "Search",
+		"searchKey": "Ctrl K",
+		"appearanceLabel": "Choose appearance (current: {current})",
+		"appearance": "Appearance",
+		"theme": "Theme",
+		"themeDefault": "Default",
+		"themesHint": "Star themes in your profile to show them here.",
+		"manageThemes": "Manage themes …",
+		"userMenu": "User menu",
+		"profile": "Profile",
+		"logout": "Sign out"
+	}
+}

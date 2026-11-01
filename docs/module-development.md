@@ -310,6 +310,13 @@ Ein Modul bietet Inhalte zum Einbetten an (erste Anbieterin: Whiteboard, eingebe
   (`x-frame-options: SAMEORIGIN`, CSP `frame-ancestors 'self'`). Links in die App mit `target="_top"`. Gespeichert wird beim Einbettenden nur
   `{ module, kind, refId }`.
 
+### Mehrsprachigkeit (`$lib/sdk/i18n`)
+
+Fachmodule dürfen deutsch bleiben. Wer übersetzen will: Texte in `modules/<id>/messages/de.json` und `en.json` (gleiche Schlüssel und
+Platzhalter), im Code `t('<id>.<schlüssel>', params)` aus `$lib/sdk/i18n` – nie auf Modulebene aufrufen (Sprache friert beim Import ein),
+Zod-Meldungen als `{ error: () => t(…) }`. Manifest-Texte (`name`, `navigation[].label`, `permissionDescriptions`) dürfen `{ de, en }` sein
+(`LocalizedText`). Formate je Sprache: `formatDate`, `formatDateTime`, `formatNumber`, `formatMoney` aus `$lib/sdk/i18n`.
+
 ### Hintergrundjobs und optionale Abhängigkeiten
 
 - Regelmäßige Aufgaben (Abgleich, Erinnerungs-Mails) als `jobs` im `defineModule` deklarieren (`schedule: 'hourly' | 'daily' | { everyMinutes }`,
@@ -523,6 +530,10 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 | `subjectExport` | Beitrag zur Datenauskunft `/admin/privacy` (`findSubjects?`, `resolve?`, `run`, siehe oben). | `members/subject-export.ts` |
 | `backup.adminOnlyRestore` (Grund) / `backup.afterRestoreJobs` (eigene Job-IDs) | Daten des Moduls verleihen Rechte → Wiederherstellen/Zusammenführen nur für Administrator*innen (#16); nach dem Wiederherstellen laufen die genannten Jobs (Systemkontext, nur bei aktivem Modul), z. B. um Rollen-Verleihungen neu zu bilden. | `offices` (`sync-grants`) |
 | `principals: { memberViewPermission }` | Das Modul ist die **Personenquelle** für Freigaben an Principals (Mitglieder/Gruppen, `provides` erfüllt `PrincipalProvider`) und darf gelöschte Mitglieder melden (`core.modules.memberDeleted`). Höchstens ein Modul; Mitglieder erscheinen in Freigabe-Suche/-Anzeige nur mit `memberViewPermission`. Module, die Freigaben nutzen, deklarieren die Quelle in `dependencies`/`optionalDependencies`. | `members` |
+| `settingDefaults: { <schlüssel>: wert }` | Vorgaben für globale Einstellungen (Core oder andere Module), solange das Modul aktiv ist und nichts gespeichert wurde – für Profil-Module einer Organisation (Systemname, Bezeichnung für „alle“, Sprache, KI-Ton). Gespeicherte Werte gewinnen. | `ep-stamm` |
+| `pdfTemplates: PdfTemplate[]` | Briefvorlagen; gleiche ID wie eine Core-Vorlage (`brief`, `briefkopf`, `briefkopf-quer`) ersetzt diese, solange das Modul aktiv ist. Bausteine `createLetterTemplate` aus `$lib/sdk/server`. | `ep-stamm` |
+| `mailBranding: { title, mark?, emblem? }` | Kopf des E-Mail-Layouts (Name, Bild links, Emblem rechts) statt Logo + Organisationsname des Core. | `ep-stamm` |
+| `brandingLogo: string` | Ersatz-Logo (Data-URL PNG) für Favicon, App-Icons, Seitenleiste und Login, solange kein Logo hochgeladen ist. | `ep-stamm` |
 | `backup.rehash(tx, { hash, decrypt })` | Nach Wiederherstellen/Zusammenführen einer Sicherung mit **anderem Schlüssel** (`APP_SECRET`): schlüsselgebundene Hashes mit dem Zielschlüssel neu berechnen; idempotent, Rückgabe `{ updated, unrecoverable }`, keine Core-Services. **Pflicht für jede neue `*_hash`-Spalte mit `core.crypto.forModule(id).hash(…)`.** Ohne Hook passen die Hashes nach dem Umzug auf einen anderen Server zu keiner Eingabe mehr: Lookups über den Hash (Link-Token, Verknüpfungscode, IBAN-Abgleich) finden nichts, Links/Codes sind tot, Zuordnungen fehlen still. Werte ohne entschlüsselbare Quelle als `unrecoverable` auf `NULL` setzen. | `treasury/backup.ts` (IBAN), `files/backup.ts`, `members`/`actions` (`link-tokens.ts`) |
 | `search` | Quelle für die globale Suche (Befehlspalette, `ModuleSearchProvider { permission?, anyPermission?, run(ctx, query, limit) }`): `run` filtert selbst objektbezogen (Freigaben, eigene Daten), liefert nur sichtbare Felder und relative Links; Fehler überspringen die Quelle. | `events/search.ts`, `members/search.ts` |
 | `embeds` | Einbettbare Inhalte (`ModuleEmbedProvider[]`: `kind`, `label`, `icon`, `permission?`, `search`, `describe`), Core-Endpunkte `/api/v1/embeds…` (siehe „Einbetten in andere Module“). | `whiteboard/embeds.ts` |

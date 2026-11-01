@@ -1,0 +1,21 @@
+{
+	"title": "Data export",
+	"description": "All stored data of a person (user account or member) from all active modules as a JSON file – for access requests (Art. 15 GDPR) and data portability (Art. 20).",
+	"warning": "The file contains all details about the person in plain text, including health data and – for children – the data of linked members. Only hand it to the person concerned or their legal guardians and do not send it unencrypted by email. Every export is recorded in the audit log.",
+	"searchLabel": "Search person",
+	"searchPlaceholder": "Name or email (at least 2 characters)",
+	"search": "Search",
+	"caption": "People found",
+	"emptyTitle": "Nobody found",
+	"emptyDescription": "Neither a user account nor a member matches the search.",
+	"person": "Person",
+	"source": "Source",
+	"export": "Export",
+	"exportButton": "Export (JSON)",
+	"footnote": "User account: account, roles, sessions, API keys, personal settings, own audit entries and all module data, including that of linked members. Member: member data and participations. File contents (documents, images) are not included, only their names.",
+	"server": {
+		"unauthenticated": "Not signed in",
+		"forbidden": "No permission",
+		"fileNamePrefix": "data-export"
+	}
+}

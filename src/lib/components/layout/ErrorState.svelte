@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import type { Snippet } from 'svelte';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
@@ -11,10 +12,10 @@
 	 * `compact` = einzeilig (Kacheln, Tabellenkarten), sonst Box mit Rahmen.
 	 */
 	let {
-		title = 'Laden fehlgeschlagen',
+		title = t('layout.loadFailed'),
 		message,
 		onretry,
-		retryLabel = 'Erneut versuchen',
+		retryLabel = t('layout.retry'),
 		busy = false,
 		compact = false,
 		details,
@@ -44,7 +45,7 @@
 		<span>{message || title}</span>
 		{#if onretry}
 			<Button size="sm" variant="link" class="h-auto p-0" disabled={busy} onclick={onretry}>
-				{busy ? 'Lädt …' : retryLabel}
+				{busy ? t('layout.busy.load') : retryLabel}
 			</Button>
 		{/if}
 		{#if details}<div class="w-full text-xs text-muted-foreground">{@render details()}</div>{/if}
@@ -65,7 +66,7 @@
 		{#if onretry}
 			<Button size="sm" variant="outline" class="mt-1" disabled={busy} onclick={onretry}>
 				<RotateCw aria-hidden="true" />
-				{busy ? 'Lädt …' : retryLabel}
+				{busy ? t('layout.busy.load') : retryLabel}
 			</Button>
 		{/if}
 	</div>

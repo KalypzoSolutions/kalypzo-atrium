@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { page } from '$app/state';
 	import { cn } from '$lib/utils';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -199,7 +200,7 @@
 				)}
 			>
 				<Icon class="size-4 shrink-0" aria-hidden="true" />
-				<span class="sr-only">{label} (Seitenleiste ausklappen)</span>
+				<span class="sr-only">{t('sidebar.expandGroup', { label })}</span>
 			</button>
 		{/snippet}
 		{@render railTip(label, railGroup)}
@@ -226,7 +227,7 @@
 
 <Tooltip.Provider delayDuration={200}>
 	<nav
-		aria-label="Hauptnavigation"
+		aria-label={t('sidebar.mainNav')}
 		class={cn('flex flex-col gap-0.5 p-2', collapsed && 'items-center')}
 	>
 		{#each entries as entry (entry.kind === 'link' ? entry.link.href : entry.id)}

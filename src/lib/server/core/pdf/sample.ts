@@ -1,10 +1,14 @@
 import type { PdfBlock } from '$lib/sdk/types';
+import { t } from '$lib/i18n';
 
-export const SAMPLE_RECIPIENT = ['Max Mustermann', 'Musterstraße 7', '28207 Bremen'];
-
-const LOREM =
-	'Dieser Beispieltext zeigt, wie der Inhalt eines Dokuments auf der Seite gesetzt wird. ' +
-	'Er prüft Schriftbild, Zeilenabstand und Seitenränder der Vorlage und enthält Umlaute wie äöüß.';
+/** Beispieladresse für Vorschau und Testdokument (in der Sprache der Anzeige) */
+export function sampleRecipient(): string[] {
+	return [
+		t('pdf.sample.recipientName'),
+		t('pdf.sample.recipientStreet'),
+		t('pdf.sample.recipientCity')
+	];
+}
 
 /**
  * Beispielinhalt für Vorschau und Testdokument. Ohne eigene Hauptüberschrift: den Titel setzt
@@ -12,20 +16,25 @@ const LOREM =
  * 140 mm hoch) mit Abstand zur Fußzeile auf eine Seite passt.
  */
 export function sampleContent(): PdfBlock[] {
+	const lorem = t('pdf.sample.lorem');
 	return [
-		{ type: 'paragraph', text: `${LOREM}\n${LOREM}` },
-		{ type: 'paragraph', text: LOREM },
-		{ type: 'heading', text: 'Beispieltabelle', level: 2 },
+		{ type: 'paragraph', text: `${lorem}\n${lorem}` },
+		{ type: 'paragraph', text: lorem },
+		{ type: 'heading', text: t('pdf.sample.tableHeading'), level: 2 },
 		{
 			type: 'table',
-			columns: ['Position', 'Bezeichnung', 'Status'],
+			columns: [t('pdf.sample.colPosition'), t('pdf.sample.colName'), t('pdf.sample.colStatus')],
 			rows: [
-				['1', 'Erster Eintrag', 'Aktiv'],
-				['2', 'Zweiter Eintrag', 'Inaktiv'],
-				['3', 'Dritter Eintrag', 'Aktiv']
+				['1', t('pdf.sample.row1'), t('pdf.sample.active')],
+				['2', t('pdf.sample.row2'), t('pdf.sample.inactive')],
+				['3', t('pdf.sample.row3'), t('pdf.sample.active')]
 			]
 		},
-		{ type: 'list', items: ['Umlaute: äöüß', 'Sonderzeichen: & < > "'], ordered: false },
-		{ type: 'paragraph', text: LOREM }
+		{
+			type: 'list',
+			items: [t('pdf.sample.listUmlauts'), t('pdf.sample.listSpecial')],
+			ordered: false
+		},
+		{ type: 'paragraph', text: lorem }
 	];
 }

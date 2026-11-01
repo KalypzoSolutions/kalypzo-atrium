@@ -1,11 +1,12 @@
 import { error, fail } from '@sveltejs/kit';
 import type { z } from 'zod';
 import { isCoreError } from '$lib/server/core/errors';
+import { t } from '$lib/i18n';
 
 /** 403, wenn dem Benutzer die Berechtigung fehlt (zusätzlich zur Prüfung in den Services). */
 export function requirePerm(locals: App.Locals, key: string): void {
-	if (!locals.user) throw error(401, 'Nicht angemeldet');
-	if (!locals.ctx.permissions.has(key)) throw error(403, 'Keine Berechtigung');
+	if (!locals.user) throw error(401, t('admin.errors.unauthenticated'));
+	if (!locals.ctx.permissions.has(key)) throw error(403, t('admin.errors.forbidden'));
 }
 
 export function toFail(e: unknown) {

@@ -20,6 +20,7 @@
 	import type { DashboardWidgetStatus } from '$lib/sdk/types/module-ui';
 	import { feedFinding, loadDashboardFeed } from '$lib/components/dashboard/feed-data';
 	import { onMount } from 'svelte';
+	import { intlLocale, t } from '$lib/i18n';
 
 	let { data } = $props();
 
@@ -58,19 +59,22 @@
 		loadDashboardFeed()
 			.then((feed) => {
 				const text = feedFinding(feed.todos, feed.today);
-				finding = text ? { text, overdue: feed.todos.some((t) => t.severity === 'overdue') } : null;
+				finding = text
+					? { text, overdue: feed.todos.some((todo) => todo.severity === 'overdue') }
+					: null;
 			})
 			.catch(() => (finding = null));
 	});
-	const today = new Intl.DateTimeFormat('de-DE', {
+	const today = new Intl.DateTimeFormat(intlLocale(), {
 		weekday: 'long',
 		day: 'numeric',
 		month: 'long',
-		year: 'numeric'
+		year: 'numeric',
+		timeZone: 'Europe/Berlin'
 	}).format(new Date());
 
 	const moduleLabels = $derived.by(() => {
-		const m = new Map<string, string>([['core', 'Allgemein']]);
+		const m = new Map<string, string>([['core', t('dashboard.coreModule')]]);
 		for (const n of (page.data.navigation ?? []) as ModuleNavEntry[]) {
 			if (!m.has(n.moduleId)) m.set(n.moduleId, n.moduleName ?? n.label);
 		}
@@ -91,7 +95,7 @@
 		});
 		if (!res.ok) {
 			const body = (await res.json().catch(() => null)) as { message?: string } | null;
-			throw new Error(body?.message ?? 'Die Anordnung konnte nicht gespeichert werden.');
+			throw new Error(body?.message ?? t('dashboard.saveLayoutFailed'));
 		}
 	}
 
@@ -107,7 +111,7 @@
 			} catch (e) {
 				pref = saved;
 				saveState = 'error';
-				toast.error(e instanceof Error ? e.message : 'Speichern fehlgeschlagen.');
+				toast.error(e instanceof Error ? e.message : t('dashboard.saveFailed'));
 			}
 		});
 	}
@@ -116,7 +120,9 @@
 		const hidden = new Set(arranged.hidden);
 		if (on) hidden.delete(w.key);
 		else hidden.add(w.key);
-		liveMessage = `${w.title} ${on ? 'eingeblendet' : 'ausgeblendet'}`;
+		liveMessage = on
+			? t('dashboard.live.shown', { title: w.title })
+			: t('dashboard.live.hidden', { title: w.title });
 		commit(toDashboardLayout(arranged.all, hidden));
 	}
 
@@ -130,7 +136,11 @@
 	function move(from: number, to: number, focusDir?: 'up' | 'down') {
 		if (to < 0 || to >= arranged.all.length || from === to) return;
 		const { next, item } = reordered(from, to);
-		liveMessage = `${item.title} jetzt an Position ${to + 1} von ${next.length}`;
+		liveMessage = t('dashboard.live.moved', {
+			title: item.title,
+			position: to + 1,
+			total: next.length
+		});
 		commit(toDashboardLayout(next, arranged.hidden));
 		if (focusDir) {
 			queueMicrotask(() => {
@@ -142,7 +152,7 @@
 	}
 
 	function resetLayout() {
-		liveMessage = 'Standard wiederhergestellt';
+		liveMessage = t('dashboard.live.reset');
 		commit(null);
 	}
 
@@ -175,7 +185,11 @@
 		if (dragMoved && dragIndex !== null) {
 			const w = arranged.all[dragIndex];
 			if (w)
-				liveMessage = `${w.title} jetzt an Position ${dragIndex + 1} von ${arranged.all.length}`;
+				liveMessage = t('dashboard.live.moved', {
+					title: w.title,
+					position: dragIndex + 1,
+					total: arranged.all.length
+				});
 			commit(pref);
 		}
 		dragIndex = null;
@@ -184,12 +198,13 @@
 	}
 </script>
 
-<PageTitle title="Dashboard" />
+<PageTitle title={t('dashboard.title')} />
 
-<PageHeader title="Dashboard" description={today}>
+<PageHeader title={t('dashboard.title')} description={today}>
 	{#snippet actions()}
 		<Button variant="outline" onclick={() => (customizing = true)}>
-			<Settings2 /> Anpassen
+			<Settings2 />
+			{t('dashboard.customize')}
 		</Button>
 	{/snippet}
 </PageHeader>
@@ -205,13 +220,11 @@
 {/if}
 
 {#if arranged.visible.length === 0}
-	<EmptyState
-		title="Noch keine Kacheln"
-		description="Über „Anpassen“ kannst du Kacheln einblenden und anordnen."
-	>
+	<EmptyState title={t('dashboard.emptyTitle')} description={t('dashboard.emptyDescription')}>
 		{#if arranged.all.length}
 			<Button variant="outline" onclick={() => (customizing = true)}>
-				<Settings2 /> Anpassen
+				<Settings2 />
+				{t('dashboard.customize')}
 			</Button>
 		{/if}
 	</EmptyState>
@@ -238,7 +251,7 @@
 				{:catch}
 					<DashboardCard
 						title={w.title}
-						error="Diese Kachel konnte nicht geladen werden."
+						error={t('dashboard.widgetError')}
 						onretry={() => location.reload()}
 					/>
 				{/await}
@@ -247,9 +260,9 @@
 	</div>
 	{#if emptyWidgets.length}
 		<p class="mt-4 text-sm text-muted-foreground" data-testid="dashboard-nothing-new">
-			{allEmpty ? 'Gerade gibt es nichts Neues' : 'Nichts Neues bei'}: {emptyWidgets
-				.map((w) => w.title)
-				.join(', ')}
+			{t(allEmpty ? 'dashboard.nothingNewAll' : 'dashboard.nothingNewAt', {
+				list: emptyWidgets.map((w) => w.title).join(', ')
+			})}
 		</p>
 	{/if}
 {/if}
@@ -257,17 +270,16 @@
 <Sheet.Root bind:open={customizing}>
 	<Sheet.Content side="right" class="w-full overflow-y-auto sm:max-w-md">
 		<Sheet.Header class="border-b">
-			<Sheet.Title>Dashboard anpassen</Sheet.Title>
+			<Sheet.Title>{t('dashboard.customizeTitle')}</Sheet.Title>
 			<Sheet.Description>
-				Kacheln ein- und ausblenden und die Reihenfolge ändern. Änderungen werden sofort
-				gespeichert.
+				{t('dashboard.customizeDescription')}
 			</Sheet.Description>
 		</Sheet.Header>
 		<div class="space-y-4 p-4">
 			{#if !arranged.all.length}
-				<p class="text-sm text-muted-foreground">Für dich sind keine Kacheln verfügbar.</p>
+				<p class="text-sm text-muted-foreground">{t('dashboard.noWidgets')}</p>
 			{:else}
-				<ul class="space-y-2" aria-label="Kacheln">
+				<ul class="space-y-2" aria-label={t('dashboard.widgets')}>
 					{#each arranged.all as w, i (w.key)}
 						{@const on = !arranged.hidden.has(w.key)}
 						<li
@@ -284,7 +296,7 @@
 						>
 							<div
 								class="hidden h-9 w-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground sm:flex"
-								title="Ziehen zum Verschieben"
+								title={t('dashboard.dragToMove')}
 								aria-hidden="true"
 								onpointerdown={() => (armedKey = w.key)}
 								onpointerup={() => (armedKey = null)}
@@ -308,7 +320,7 @@
 									size="icon"
 									class="size-8"
 									disabled={i === 0}
-									aria-label={`${w.title} nach oben`}
+									aria-label={t('dashboard.moveUp', { title: w.title })}
 									onclick={() => move(i, i - 1, 'up')}
 								>
 									<ArrowUp />
@@ -319,7 +331,7 @@
 									size="icon"
 									class="size-8"
 									disabled={i === arranged.all.length - 1}
-									aria-label={`${w.title} nach unten`}
+									aria-label={t('dashboard.moveDown', { title: w.title })}
 									onclick={() => move(i, i + 1, 'down')}
 								>
 									<ArrowDown />
@@ -329,7 +341,7 @@
 								id={`dash-switch-${i}`}
 								checked={on}
 								onCheckedChange={(v) => setVisible(w, v)}
-								aria-label={`${w.title} anzeigen`}
+								aria-label={t('dashboard.show', { title: w.title })}
 							/>
 						</li>
 					{/each}
@@ -337,15 +349,16 @@
 			{/if}
 			<div class="flex flex-wrap items-center justify-between gap-2">
 				<Button variant="outline" size="sm" onclick={resetLayout} disabled={pref === null}>
-					<RotateCcw /> Standard wiederherstellen
+					<RotateCcw />
+					{t('dashboard.resetLayout')}
 				</Button>
 				<span class="text-xs text-muted-foreground" aria-hidden="true">
 					{saveState === 'saving'
-						? 'Speichert …'
+						? t('dashboard.saving')
 						: saveState === 'saved'
-							? 'Gespeichert'
+							? t('dashboard.saved')
 							: saveState === 'error'
-								? 'Nicht gespeichert'
+								? t('dashboard.notSaved')
 								: ''}
 				</span>
 			</div>

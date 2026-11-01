@@ -1,13 +1,14 @@
+import { t } from '$lib/i18n';
 import { toast } from 'svelte-sonner';
 
 /** Fehlermeldung zu einer fehlgeschlagenen Datei-Antwort (Texte wie in der Mitglieder-Ansicht). */
 async function fileErrorMessage(res: Response): Promise<string> {
 	if (res.status === 503) {
-		return 'Die Dokumentenablage ist gerade nicht verfügbar (Speicher nicht eingerichtet oder nicht erreichbar).';
+		return t('layout.file.storageUnavailable');
 	}
-	if (res.status === 404) return 'Das Dokument wurde nicht gefunden.';
+	if (res.status === 404) return t('layout.file.notFound');
 	const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-	return body?.error?.message ?? 'Die Datei konnte nicht geöffnet werden.';
+	return body?.error?.message ?? t('layout.file.openFailed');
 }
 
 function fileNameFrom(res: Response, fallback: string): string {
@@ -58,10 +59,10 @@ export async function openProtectedFile(
 		win?.close();
 		toast.error(
 			e instanceof TypeError
-				? 'Die Datei konnte nicht geladen werden (keine Verbindung zum Server).'
+				? t('layout.file.offline')
 				: e instanceof Error
 					? e.message
-					: 'Die Datei konnte nicht geöffnet werden.'
+					: t('layout.file.openFailed')
 		);
 		return false;
 	}

@@ -4,6 +4,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Label } from '$lib/components/ui/label';
 	import { SelectField } from '$lib/components/ui/select-field';
+	import { t } from '$lib/i18n';
 	import TemplateCard from './TemplateCard.svelte';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
 	import type { PageData } from './$types';
@@ -13,22 +14,22 @@
 	let template = $state<string | null>('default');
 </script>
 
-<PageTitle title="PDF · Einstellungen" />
+<PageTitle title={t('admin-pdf.pageTitle')} />
 
 <div class="space-y-6">
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>PDF-Einstellungen</Card.Title>
+			<Card.Title>{t('admin-pdf.settings.title')}</Card.Title>
 			<Card.Description>
-				Einheitlicher Header, Footer, Seitenränder und Format für alle erzeugten Dokumente. Logo und
-				Organisationsdaten pflegst du unter <a
+				{t('admin-pdf.settings.descriptionBefore')}<a
 					href="/admin/settings/design"
-					class="underline underline-offset-2 hover:text-foreground">Design</a
-				>
-				bzw.
-				<a href="/admin/settings/general" class="underline underline-offset-2 hover:text-foreground"
-					>Allgemein</a
-				>.
+					class="underline underline-offset-2 hover:text-foreground"
+					>{t('admin-pdf.settings.designLink')}</a
+				>{t('admin-pdf.settings.descriptionMiddle')}<a
+					href="/admin/settings/general"
+					class="underline underline-offset-2 hover:text-foreground"
+					>{t('admin-pdf.settings.generalLink')}</a
+				>{t('admin-pdf.settings.descriptionAfter')}
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>
@@ -38,11 +39,11 @@
 
 	<section class="space-y-4">
 		<div>
-			<h2 class="text-section">Vorlagen</h2>
+			<h2 class="text-section">{t('admin-pdf.templates.title')}</h2>
 			<p class="text-sm text-muted-foreground">
-				Vorlagen sind fest im Code hinterlegt (<code class="font-mono text-xs"
+				{t('admin-pdf.templates.descriptionBefore')}<code class="font-mono text-xs"
 					>src/lib/server/core/pdf/templates/</code
-				>). Hier kannst du sie nur ansehen; neue Vorlagen werden als Datei im Code ergänzt.
+				>{t('admin-pdf.templates.descriptionAfter')}
 			</p>
 		</div>
 		<div class="grid gap-6 lg:grid-cols-2">
@@ -54,24 +55,22 @@
 
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>Test-PDF</Card.Title>
-			<Card.Description>
-				Erzeugt ein Beispieldokument mit den gespeicherten Einstellungen.
-			</Card.Description>
+			<Card.Title>{t('admin-pdf.test.title')}</Card.Title>
+			<Card.Description>{t('admin-pdf.test.description')}</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			<form method="GET" action="/admin/settings/pdf/test" class="flex flex-wrap items-end gap-3">
 				<div class="space-y-1.5">
-					<Label for="tpl">Vorlage</Label>
+					<Label for="tpl">{t('admin-pdf.test.template')}</Label>
 					<SelectField
 						id="tpl"
 						name="template"
-						label="Vorlage"
-						options={data.templates.map((t) => ({ value: t.id, label: t.label }))}
+						label={t('admin-pdf.test.template')}
+						options={data.templates.map((x) => ({ value: x.id, label: x.label }))}
 						bind:value={template}
 					/>
 				</div>
-				<Button type="submit">PDF herunterladen</Button>
+				<Button type="submit">{t('admin-pdf.test.download')}</Button>
 			</form>
 		</Card.Content>
 	</Card.Root>

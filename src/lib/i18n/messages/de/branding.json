@@ -1,0 +1,10 @@
+{
+	"noLogo": "Kein Logo",
+	"notFound": "Nicht gefunden",
+	"errors": {
+		"types": "Erlaubt sind PNG, JPEG und WebP",
+		"empty": "Bitte wähle eine Bilddatei aus",
+		"tooLarge": "Das Logo darf höchstens 5 MB groß sein",
+		"invalid": "Die Datei ist kein gültiges PNG-, JPEG- oder WebP-Bild"
+	}
+}

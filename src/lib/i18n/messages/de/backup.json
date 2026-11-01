@@ -1,0 +1,158 @@
+{
+	"access": {
+		"onlyUsers": "Datensicherung ist nur für angemeldete Benutzer möglich",
+		"adminOnlyCore": "Nur Administrator*innen dürfen Konten, Rollen und API-Keys wiederherstellen oder zusammenführen.",
+		"adminOnlyModule": "Nur Administrator*innen dürfen „{name}“ wiederherstellen oder zusammenführen ({reason})."
+	},
+	"account": {
+		"tooLarge": "Die Benutzerdaten der Sicherung sind zu umfangreich für die Prüfung des eigenen Kontos.",
+		"otherPassword": "Ihr Konto ist in der Sicherung mit einem anderen Passwort enthalten. Benutzer lassen sich nur wiederherstellen, wenn Ihr aktuelles Passwort auch in der Sicherung gilt.",
+		"inactive": "Ihr Konto ist in der Sicherung deaktiviert. Benutzer lassen sich so nicht wiederherstellen.",
+		"noRight": "Ihr Konto hat in der Sicherung kein Recht für die Datensicherung. Benutzer lassen sich so nicht wiederherstellen."
+	},
+	"format": {
+		"corrupt": "Die Sicherungsdatei ist beschädigt oder unvollständig.",
+		"tooLarge": "Die Sicherung überschreitet die erlaubte Größe.",
+		"wrongPassword": "Sicherungs-Passwort ist falsch oder die Datei ist beschädigt.",
+		"notBackup": "Die Datei ist keine gültige Sicherung.",
+		"unsupported": "Diese Sicherung verwendet nicht unterstützte Parameter.",
+		"versionUnsupported": "Diese Version des Sicherungsformats wird nicht unterstützt.",
+		"forbiddenEntry": "Die Sicherung enthält einen unerlaubten Eintrag.",
+		"duplicateEntry": "Doppelter Eintrag in der Sicherung.",
+		"invalidEntryName": "Ungültiger Eintragsname in der Sicherung.",
+		"encryptedZip": "Verschlüsselte ZIP-Einträge werden nicht unterstützt.",
+		"compression": "Nicht unterstützte Kompression in der Sicherung.",
+		"zip64": "ZIP64 wird nicht unterstützt.",
+		"lineTooLarge": "Eine Datenzeile der Sicherung ist größer als {mb} MB.",
+		"tableLineTooLarge": "Eine Datenzeile der Tabelle {table} ist größer als {mb} MB.",
+		"entryTooLarge": "Ein Eintrag der Sicherung ist zu groß.",
+		"unknownFormat": "Die Sicherung hat ein unbekanntes Format oder stammt aus einer anderen Version.",
+		"unknownFile": "Die Sicherung enthält eine unbekannte Datei.",
+		"unexpectedSecret": "Unerwarteter verschlüsselter Wert in {column}",
+		"wrongPurpose": "Verschlüsselter Wert in {column} hat einen falschen Zweck"
+	},
+	"compat": {
+		"tableMissing": "Tabelle {table} fehlt auf diesem Server",
+		"unknownColumns": "Unbekannte Spalten in {table}: {columns}",
+		"coreVersionUnknown": "Die Core-Version dieses Servers ließ sich nicht ermitteln; die Kompatibilität wurde nur anhand der Tabellen geprüft.",
+		"newerVersion": "Sicherung stammt aus einer neueren Version",
+		"unknownScope": "Unbekannter Bereich",
+		"moduleNotInstalledSource": "Modul ist auf diesem Server nicht installiert – zuerst {version} aus der gesicherten Quelle installieren",
+		"moduleNotInstalled": "Modul ist auf diesem Server nicht installiert",
+		"moduleDataMissing": "Moduldaten fehlen in der Sicherung",
+		"migrationMismatch": "Migration {name} passt nicht zu diesem Server",
+		"newerThanModule": "Sicherung ist neuer als dieses Modul",
+		"migrationDiffers": "Migration {name} weicht von diesem Server ab",
+		"unexpectedTable": "Unerwartete Tabelle {table} im Modul",
+		"olderState": "{name}: Die Sicherung hat einen älteren Stand; neuere Migrationen werden nach dem Einfügen angewendet."
+	},
+	"input": {
+		"invalidScope": "Ungültiger Bereich",
+		"totp": "Bitte den 6-stelligen Code eingeben",
+		"chooseScope": "Bitte mindestens einen Bereich wählen",
+		"minChars": "Mindestens {count} Zeichen",
+		"password": "Bitte das Passwort eingeben",
+		"backupPassword": "Bitte das Sicherungs-Passwort eingeben",
+		"typeExactly": "Bitte genau \"{word}\" eingeben"
+	},
+	"confirm": {
+		"restore": "WIEDERHERSTELLEN",
+		"merge": "ZUSAMMENFÜHREN"
+	},
+	"export": {
+		"tableTooLarge": "Tabelle {table} ist zu groß für die Sicherung",
+		"unknownScopes": "Unbekannter Bereich: {scopes}",
+		"fileNamePrefix": "atrium-sicherung",
+		"fileInvalidKey": "Datei {key} hat einen ungültigen Schlüssel und wurde ausgelassen",
+		"fileUnreadable": "Datei {key} konnte nicht gelesen werden und wurde ausgelassen",
+		"fileMissing": "Datei {key} fehlt im Speicher und wurde ausgelassen",
+		"fileCorrupt": "Datei {key} ist beschädigt (Prüfsumme) und wurde ausgelassen",
+		"undecryptable": "{count} verschlüsselte Werte konnten nicht entschlüsselt werden und wurden unverändert übernommen",
+		"downloadNotFound": "Download nicht gefunden oder abgelaufen"
+	},
+	"noSpace": "Zu wenig Speicherplatz für die Datensicherung",
+	"upload": {
+		"notFound": "Upload nicht gefunden oder abgelaufen",
+		"tooLarge": "Die Sicherungsdatei ist zu groß (höchstens {max})",
+		"chunkLarger": "Das Stück ist größer als angegeben",
+		"chunkIncomplete": "Das Stück ist unvollständig",
+		"busy": "Der Upload wird gerade verarbeitet",
+		"position": "Upload-Position stimmt nicht",
+		"chunkEmpty": "Leeres oder ungültiges Stück",
+		"chunkTooLarge": "Das Stück ist zu groß",
+		"chunkBeyond": "Das Stück geht über die angekündigte Dateigröße hinaus",
+		"incomplete": "Der Upload ist noch nicht vollständig"
+	},
+	"restore": {
+		"unexpected": "Unerwarteter Fehler",
+		"tooManyAttempts": "Zu viele Versuche. Bitte später erneut versuchen.",
+		"secretChanged": "Die Sicherung stammt von einem Server mit anderem Schlüssel: Geheimnisse werden neu verschlüsselt, schlüsselgebundene Prüfwerte neu berechnet.",
+		"noStorage": "Kein Dateispeicher konfiguriert: Dateien aus der Sicherung werden beim Wiederherstellen übersprungen.",
+		"filesMissingAtBackup": "{count} Dateien fehlten schon beim Erstellen der Sicherung.",
+		"previewExpired": "Vorschau abgelaufen, bitte neu starten",
+		"notInBackup": "Nicht in der Sicherung: {scopes}",
+		"notRestorable": "Nicht wiederherstellbar: {scopes}",
+		"notRestorableReason": "Nicht wiederherstellbar: {scopes} ({reason})",
+		"failed": "Die Wiederherstellung ist fehlgeschlagen, es wurden keine Daten geändert: {error}",
+		"reconcileFailed": "Abgleich {job} konnte nicht ausgeführt werden ({error}); er läuft beim nächsten Takt.",
+		"runNotFound": "Lauf nicht gefunden",
+		"cyclicFk": "Tabelle {table} hat zyklische Fremdschlüssel, die sich nicht auflösen lassen",
+		"noStorageSkipped": "Kein Dateispeicher konfiguriert: Dateien wurden übersprungen, die Datensätze sind trotzdem wiederhergestellt.",
+		"uploadFailed": "Datei {key} konnte nicht hochgeladen werden",
+		"tableMissingSkipped": "Tabelle {table} fehlt auf diesem Server und wurde übersprungen",
+		"columnsDropped": "{table}: Spalten {columns} wurden nicht übernommen",
+		"tableTooLarge": "Tabelle {table} ist zu groß für die Wiederherstellung",
+		"missingRefs": "{table}: {count} Verweise ließen sich nicht wiederherstellen (Ziel fehlt)",
+		"rehashUnrecoverable": "{count} Prüfwerte ließen sich mit dem neuen Schlüssel nicht wiederherstellen (z. B. alte Freigabelinks wurden widerrufen)",
+		"noBackupRight": "Dem eigenen Konto fehlt nach dem Wiederherstellen das Recht zur Datensicherung. Es wurden keine zusätzlichen Rechte vergeben – bitte eine*n Administrator*in um die passende Rolle bitten.",
+		"moduleStaysInactive": "Modul {id} bleibt inaktiv: Abhängigkeiten nicht aktiv ({modules})",
+		"moduleStaysActive": "Modul {id} bleibt aktiv: wird von aktiven Modulen benötigt ({modules})",
+		"oldFilesNotDeleted": "{count} alte Dateien konnten nicht aus dem Speicher gelöscht werden"
+	},
+	"phase": {
+		"prepare": "Vorbereiten",
+		"reconcile": "Abgleich",
+		"done": "Fertig",
+		"finish": "Abschluss",
+		"checkFiles": "Dateien prüfen",
+		"uploadFiles": "Dateien hochladen",
+		"deleteData": "Daten löschen",
+		"insertData": "Daten einfügen"
+	},
+	"scope": {
+		"users": {
+			"label": "Benutzer",
+			"description": "Benutzerkonten mit Anmeldedaten, Zwei-Faktor-Einstellungen, persönlichen Einstellungen, Rollenzuweisungen, Einzelrechten und Profilbildern.",
+			"impliesApiKeys": "API-Keys gehören zu Benutzerkonten"
+		},
+		"roles": {
+			"label": "Rollen",
+			"description": "Rollen mit ihren Rechten und Zuweisungen."
+		},
+		"apiKeys": {
+			"label": "API-Keys",
+			"description": "API-Keys aller Benutzer (nur gespeicherte Prüfsummen, keine Klartext-Schlüssel)."
+		},
+		"settings": {
+			"label": "Einstellungen",
+			"description": "Globale Einstellungen inkl. Modul-Einstellungen und Zugangsdaten sowie die Herkunft installierter Module (Quelle, Commit) mit Verlauf."
+		},
+		"audit": {
+			"label": "Audit-Log",
+			"description": "Alle Audit-Einträge."
+		},
+		"apiLog": {
+			"label": "API-Protokoll",
+			"description": "Protokoll der API-Aufrufe."
+		},
+		"jobs": {
+			"label": "Job-Läufe",
+			"description": "Letzte Läufe der Hintergrundjobs."
+		},
+		"aiUsage": {
+			"label": "KI-Nutzung",
+			"description": "Erfasste KI-Nutzung und Kosten."
+		},
+		"moduleDescription": "Alle Daten und Dateien des Moduls {name}."
+	}
+}

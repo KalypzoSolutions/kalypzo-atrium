@@ -1,0 +1,37 @@
+{
+	"upload": {
+		"invalidForm": "Ungültige Formulardaten",
+		"empty": "Die Datei ist leer",
+		"tooLarge": "Die Datei ist zu groß (höchstens {mb} MB).",
+		"typeNotAllowedList": "Dateityp nicht erlaubt ({types})",
+		"typeNotAllowed": "Dateityp nicht erlaubt",
+		"required": "Bitte eine Datei auswählen"
+	},
+	"file": {
+		"contentMismatch": "Der Dateiinhalt passt nicht zum Dateityp"
+	},
+	"live": {
+		"clientTaken": "Diese Verbindungskennung ist bereits vergeben"
+	},
+	"unknown": "Unbekannt",
+	"colors": {
+		"blue": "Blau",
+		"green": "Grün",
+		"teal": "Türkis",
+		"yellow": "Gelb",
+		"orange": "Orange",
+		"red": "Rot",
+		"pink": "Pink",
+		"purple": "Lila",
+		"brown": "Braun",
+		"gray": "Grau"
+	},
+	"style": {
+		"invalidColor": "Farbe im Format #RRGGBB",
+		"invalidIcon": "Ungültiges Icon"
+	},
+	"assist": {
+		"unavailable": "Die Schreibhilfe ist gerade nicht erreichbar",
+		"incomplete": "Die Antwort kam nicht vollständig an"
+	}
+}

@@ -16,6 +16,7 @@
 		type AdminEntry,
 		PageTitle
 	} from '$lib/components/layout';
+	import { t } from '$lib/i18n';
 
 	let { data } = $props();
 
@@ -82,12 +83,9 @@
 	});
 </script>
 
-<PageTitle title="Verwaltung" />
+<PageTitle title={t('admin.overview.title')} />
 
-<PageHeader
-	title="Verwaltung"
-	description="Benutzer, Rollen, Einstellungen, Module und Schnittstellen an einem Ort."
-/>
+<PageHeader title={t('admin.overview.title')} description={t('admin.overview.description')} />
 
 <div class="space-y-6">
 	<div class="relative">
@@ -100,14 +98,14 @@
 			bind:value={query}
 			type="search"
 			class="h-11 pl-10 text-base md:text-base"
-			placeholder="Einstellung suchen … (z. B. SMTP, Logo, IBAN)"
-			aria-label="Einstellung suchen"
+			placeholder={t('admin.overview.searchPlaceholder')}
+			aria-label={t('admin.overview.searchLabel')}
 			aria-describedby="admin-search-hint"
 			autocomplete="off"
 			{oninput}
 			{onkeydown}
 		/>
-		<p id="admin-search-hint" class="sr-only">Enter öffnet den ersten Treffer.</p>
+		<p id="admin-search-hint" class="sr-only">{t('admin.overview.searchHint')}</p>
 	</div>
 
 	{#if trimmed}
@@ -115,7 +113,7 @@
 			<Card>
 				<CardContent class="p-0">
 					<p class="px-4 pt-3 pb-1 text-xs text-muted-foreground" aria-live="polite">
-						{results.length} Treffer – Enter öffnet den ersten.
+						{t('admin.overview.hits', { count: results.length })}
 					</p>
 					<ul class="divide-y">
 						{#each results as r, i (r.id)}
@@ -150,10 +148,9 @@
 				aria-live="polite"
 			>
 				<SearchX class="mb-2 size-8 text-muted-foreground" aria-hidden="true" />
-				<p class="font-semibold">Nichts gefunden</p>
+				<p class="font-semibold">{t('admin.overview.nothingFound')}</p>
 				<p class="mt-1 max-w-sm text-sm text-muted-foreground">
-					Zu „{trimmed}“ gibt es keine Einstellung, auf die du Zugriff hast. Versuch einen anderen
-					Begriff, z. B. „Mail“, „Rolle“ oder „Speicher“.
+					{t('admin.overview.nothingFoundHint', { query: trimmed })}
 				</p>
 			</div>
 		{/if}
@@ -182,14 +179,16 @@
 									</a>
 									{#if p.tabs.length}
 										<ul class="mt-0.5 mb-1 ml-2 space-y-0.5 border-l pl-2">
-											{#each p.tabs as t (t.id)}
+											{#each p.tabs as tab (tab.id)}
 												<li>
 													<a
-														href={t.href}
+														href={tab.href}
 														class="block rounded-md px-2 py-1 hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:-outline-offset-2"
 													>
-														<span class="block text-sm">{t.label}</span>
-														<span class="block text-xs text-muted-foreground">{t.description}</span>
+														<span class="block text-sm">{tab.label}</span>
+														<span class="block text-xs text-muted-foreground"
+															>{tab.description}</span
+														>
 													</a>
 												</li>
 											{/each}

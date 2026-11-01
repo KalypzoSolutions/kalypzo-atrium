@@ -3,6 +3,7 @@
 	import DataTable from '$lib/components/layout/DataTable.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Table from '$lib/components/ui/table';
+	import { t } from '$lib/i18n';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -14,29 +15,34 @@
 	});
 </script>
 
-<PageTitle title="Berechtigungen" />
+<PageTitle title={t('admin-roles.permissions.title')} />
 
 <div class="space-y-6">
 	<div>
-		<h2 class="text-section">Berechtigungen</h2>
+		<h2 class="text-section">{t('admin-roles.permissions.title')}</h2>
 		<p class="text-sm text-muted-foreground">
-			Übersicht aller von Core und Modulen registrierten Berechtigungen (Schema
-			<code>modul.ressource.aktion</code>).
+			{t('admin-roles.permissions.introBefore')}
+			<code>{t('admin-roles.permissions.scheme')}</code>{t('admin-roles.permissions.introAfter')}
 		</p>
 	</div>
 
 	{#each groups as [moduleId, items] (moduleId)}
 		<DataTable
-			caption="Berechtigungen {data.moduleNames[moduleId] ?? moduleId}"
+			caption={t('admin-roles.permissions.caption', {
+				module: data.moduleNames[moduleId] ?? moduleId
+			})}
 			title={data.moduleNames[moduleId] ?? moduleId}
-			description="{items.length} Berechtigungen · Modul-ID {moduleId}"
+			description={t('admin-roles.permissions.groupDescription', {
+				count: items.length,
+				id: moduleId
+			})}
 			mobile="cards"
 		>
 			{#snippet head()}
 				<Table.Row>
-					<Table.Head>Schlüssel</Table.Head>
-					<Table.Head>Beschreibung</Table.Head>
-					<Table.Head>Rollen</Table.Head>
+					<Table.Head>{t('admin-roles.permissions.key')}</Table.Head>
+					<Table.Head>{t('admin-roles.permissions.description')}</Table.Head>
+					<Table.Head>{t('admin-roles.permissions.roles')}</Table.Head>
 				</Table.Row>
 			{/snippet}
 			{#each items as p (p.key)}
@@ -46,7 +52,9 @@
 					<Table.Cell>
 						<div class="flex flex-wrap gap-1">
 							{#each p.roles as r (r)}<Badge variant="secondary">{r}</Badge>{/each}
-							{#if !p.roles.length}<span class="text-muted-foreground">keine</span>{/if}
+							{#if !p.roles.length}<span class="text-muted-foreground"
+									>{t('admin-roles.permissions.none')}</span
+								>{/if}
 						</div>
 					</Table.Cell>
 				</Table.Row>

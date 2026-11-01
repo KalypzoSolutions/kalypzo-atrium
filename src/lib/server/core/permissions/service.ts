@@ -1,18 +1,21 @@
 import { eq, inArray, sql } from 'drizzle-orm';
+import { hasMessage, localized, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { getDb, schema, type DbOrTx } from '../database/client';
 import { errors } from '../errors';
+import { getDefinition } from '../modules/registry';
 import { enabledModuleIds } from '../modules/state';
 import {
 	ADMIN_ROLE_ID,
 	CORE_PERMISSIONS,
+	corePermissionDescription,
 	PERMISSION_PATTERN,
 	PRIVILEGED_PERMISSIONS
 } from './catalog';
 
 export function assertPermissionKey(key: string): void {
 	if (!PERMISSION_PATTERN.test(key)) {
-		throw errors.badRequest(`Ungültiger Berechtigungsschlüssel: ${key}`);
+		throw errors.badRequest(t('permissions.invalidKey', { key }));
 	}
 }
 
@@ -101,12 +104,13 @@ export function hasAny(ctx: RequestContext, keys: string[]): boolean {
 export async function requirePermission(ctx: RequestContext, key: string): Promise<void> {
 	assertPermissionKey(key);
 	if (ctx.actor.type !== 'system' && !ctx.userId) throw errors.unauthenticated();
-	if (!has(ctx, key)) throw errors.forbidden(`Berechtigung fehlt: ${key}`);
+	if (!has(ctx, key)) throw errors.forbidden(t('permissions.missing', { permission: key }));
 }
 
 export async function requireAny(ctx: RequestContext, keys: string[]): Promise<void> {
 	if (ctx.actor.type !== 'system' && !ctx.userId) throw errors.unauthenticated();
-	if (!hasAny(ctx, keys)) throw errors.forbidden(`Berechtigung fehlt: ${keys.join(' | ')}`);
+	if (!hasAny(ctx, keys))
+		throw errors.forbidden(t('permissions.missing', { permission: keys.join(' | ') }));
 }
 
 /**
@@ -142,21 +146,36 @@ export function assertCanGrant(ctx: RequestContext, keys: Iterable<string>): voi
 	const list = [...keys];
 	const missing = list.filter((k) => !ctx.permissions.has(k));
 	if (missing.length) {
-		throw errors.forbidden(
-			`Rechteausweitung nicht erlaubt: Sie besitzen diese Berechtigungen nicht (${missing.join(', ')})`
-		);
+		throw errors.forbidden(t('permissions.escalation', { keys: missing.join(', ') }));
 	}
 	const privileged = [...new Set(list.filter(isPrivilegedPermission))];
 	if (privileged.length && !isAdministrator(ctx)) {
-		throw errors.forbidden(
-			`Admin-gleiche Berechtigungen dürfen nur Administrator*innen vergeben (${privileged.join(', ')})`
-		);
+		throw errors.forbidden(t('permissions.privilegedOnly', { keys: privileged.join(', ') }));
 	}
 }
 
+/**
+ * Alle Rechte mit Beschreibung in der Sprache des Requests: Core-Rechte aus `permissions.core.<recht>`,
+ * Modulrechte aus `permissionDescriptions` des Manifests, sonst der (deutsche) Text aus der Datenbank.
+ */
 export async function listPermissions(tx?: DbOrTx) {
 	const db = tx ?? getDb();
-	return db.select().from(schema.permission).orderBy(schema.permission.key);
+	const rows = await db.select().from(schema.permission).orderBy(schema.permission.key);
+	return rows.map((r) => ({ ...r, description: permissionDescription(r) }));
+}
+
+function permissionDescription(r: {
+	key: string;
+	moduleId: string;
+	description: string | null;
+}): string | null {
+	if (r.moduleId === 'core') {
+		return hasMessage(`permissions.core.${r.key}`, 'de')
+			? corePermissionDescription(r.key)
+			: r.description;
+	}
+	const text = getDefinition(r.moduleId)?.manifest.permissionDescriptions?.[r.key];
+	return text === undefined ? r.description : localized(text);
 }
 
 /**
@@ -185,7 +204,7 @@ export async function syncPermissions(
 		.values({
 			id: ADMIN_ROLE_ID,
 			name: 'Administrator',
-			description: 'Vollzugriff auf alle Funktionen',
+			description: t('permissions.roles.adminDescription'),
 			isSystem: true
 		})
 		.onConflictDoNothing();

@@ -1,4 +1,5 @@
 import { inArray } from 'drizzle-orm';
+import { t } from '$lib/i18n';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { listInstallEvents, listInstalledSources } from '$lib/server/core/modules/install/service';
 import { reconcileInstallEvents } from '$lib/server/core/modules/install/supervisor-link';
@@ -24,7 +25,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		events: events.map((e) => ({
 			...e,
-			actor: e.actorId ? (names.get(e.actorId) ?? 'Unbekannt') : '–'
+			actor: e.actorId ? (names.get(e.actorId) ?? t('admin-modules.server.unknown')) : '–'
 		})),
 		installed
 	};

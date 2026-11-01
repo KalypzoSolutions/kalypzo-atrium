@@ -1,4 +1,5 @@
 import type { Actions } from '@sveltejs/kit';
+import { getLocale, intlLocale, localized } from '$lib/i18n';
 import { allDefinitions } from '$lib/server/core/modules/registry';
 import { enabledModuleIds } from '$lib/server/core/modules/state';
 import { loadFields, saveFields } from '../../_shared/group-form.server';
@@ -12,12 +13,12 @@ async function modulesWithSettings() {
 		.filter((d) => enabled.has(d.manifest.id) && (d.settings?.length ?? 0) > 0)
 		.map((d) => ({
 			id: d.manifest.id,
-			name: d.manifest.name,
-			description: d.manifest.description ?? null,
+			name: localized(d.manifest.name),
+			description: d.manifest.description ? localized(d.manifest.description) : null,
 			keys: (d.settings ?? []).map((s) => s.key),
 			ownPage: d.manifest.navigation.find((n) => n.admin && n.settingsPage) ?? null
 		}))
-		.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+		.sort((a, b) => a.name.localeCompare(b.name, intlLocale(getLocale())));
 }
 
 export const load: PageServerLoad = async ({ locals }) => {

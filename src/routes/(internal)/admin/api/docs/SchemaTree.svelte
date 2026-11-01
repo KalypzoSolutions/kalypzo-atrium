@@ -3,6 +3,7 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { Badge } from '$lib/components/ui/badge';
 	import type { JsonSchema } from '$lib/api-docs/types';
+	import { t } from '$lib/i18n';
 
 	let { schema, emptyText }: { schema: JsonSchema; emptyText?: string } = $props();
 
@@ -140,13 +141,13 @@
 			const types = typeList(s);
 			label = types.length
 				? types
-						.map((t) =>
-							t === 'array'
-								? `array<${s.items ? typeLabel(norm(s.items), guard + 1) : 'beliebig'}>`
-								: t
+						.map((ty) =>
+							ty === 'array'
+								? `array<${s.items ? typeLabel(norm(s.items), guard + 1) : t('api-docs.schema.any')}>`
+								: ty
 						)
 						.join(' | ')
-				: 'beliebig';
+				: t('api-docs.schema.any');
 		}
 		return n.nullable ? `${label} | null` : label;
 	}
@@ -164,27 +165,32 @@
 
 	function constraints(s: JsonSchema, withItems = true): Constraint[] {
 		const out: Constraint[] = [];
-		if (s.format) out.push({ label: `Format: ${s.format}` });
+		if (s.format) out.push({ label: t('api-docs.schema.format', { value: String(s.format) }) });
 		const len = range(num(s.minLength), num(s.maxLength));
-		if (len) out.push({ label: `Länge: ${len}` });
+		if (len) out.push({ label: t('api-docs.schema.length', { value: len }) });
 		const min = num(s.minimum);
 		const max = num(s.maximum);
 		const exMin = num(s.exclusiveMinimum);
 		const exMax = num(s.exclusiveMaximum);
-		if (min !== undefined && max !== undefined) out.push({ label: `Wert: ${min}–${max}` });
+		if (min !== undefined && max !== undefined)
+			out.push({ label: t('api-docs.schema.value', { min, max }) });
 		else if (min !== undefined) out.push({ label: `≥ ${min}` });
 		else if (max !== undefined) out.push({ label: `≤ ${max}` });
 		if (exMin !== undefined) out.push({ label: `> ${exMin}` });
 		if (exMax !== undefined) out.push({ label: `< ${exMax}` });
 		const items = range(num(s.minItems), num(s.maxItems));
-		if (items) out.push({ label: `Einträge: ${items}` });
+		if (items) out.push({ label: t('api-docs.schema.items', { value: items }) });
 		if (typeof s.pattern === 'string' && s.pattern) {
-			out.push({ label: `Muster: ${truncate(s.pattern, 24)}`, title: s.pattern });
+			out.push({
+				label: t('api-docs.schema.pattern', { value: truncate(s.pattern, 24) }),
+				title: s.pattern
+			});
 		}
-		if (s.default !== undefined) out.push({ label: `Standard: ${fmt(s.default)}` });
+		if (s.default !== undefined)
+			out.push({ label: t('api-docs.schema.default', { value: fmt(s.default) }) });
 		if (withItems && s.items && !hasNested(norm(s.items))) {
 			for (const c of constraints(norm(s.items).s, false)) {
-				out.push({ label: `Element ${c.label}`, title: c.title });
+				out.push({ label: t('api-docs.schema.element', { label: c.label }), title: c.title });
 			}
 		}
 		return out;
@@ -255,7 +261,9 @@
 					class="inline-flex size-5 shrink-0 items-center justify-center self-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 					aria-expanded={open}
 					aria-controls={domId(path)}
-					aria-label={open ? `${name} zuklappen` : `${name} aufklappen`}
+					aria-label={open
+						? t('api-docs.schema.collapse', { name })
+						: t('api-docs.schema.expand', { name })}
 					onclick={() => toggle(path)}
 				>
 					<ChevronRight class="size-4 transition-transform {open ? 'rotate-90' : ''}" />
@@ -266,9 +274,9 @@
 				>{typeLabel(n)}</span
 			>
 			{#if required === true}
-				<Badge variant="secondary">Pflicht</Badge>
+				<Badge variant="secondary">{t('api-docs.schema.required')}</Badge>
 			{:else if required === false}
-				<span class="text-xs text-muted-foreground">optional</span>
+				<span class="text-xs text-muted-foreground">{t('api-docs.schema.optional')}</span>
 			{/if}
 			{@render constraintList(constraints(n.s))}
 		</div>
@@ -276,7 +284,7 @@
 			<p class="mt-0.5 text-xs break-words text-muted-foreground">{desc}</p>
 		{/if}
 		{#if hasNested(n) && depth >= MAX_DEPTH}
-			<p class="mt-0.5 text-xs text-muted-foreground italic">… (maximale Tiefe erreicht)</p>
+			<p class="mt-0.5 text-xs text-muted-foreground italic">{t('api-docs.schema.maxDepth')}</p>
 		{:else if nested && open}
 			<div id={domId(path)} class="mt-1 ml-2 border-l border-border pl-3">
 				{@render children(n, depth + 1, path)}
@@ -293,17 +301,23 @@
 			{@render field(name, prop, req.has(name), depth, `${path}-${i}`)}
 		{/each}
 		{#if extra}
-			{@render field('[weitere Schlüssel]', extra, null, depth, `${path}-x`)}
+			{@render field(t('api-docs.schema.moreKeys'), extra, null, depth, `${path}-x`)}
 		{/if}
 	</ul>
 {/snippet}
 
 {#snippet children(n: Norm, depth: number, path: string)}
 	{#if n.variants.length}
-		<p class="pt-1 text-xs font-medium text-muted-foreground">eine von:</p>
+		<p class="pt-1 text-xs font-medium text-muted-foreground">{t('api-docs.schema.oneOf')}</p>
 		<ul>
 			{#each n.variants as variant, i (i)}
-				{@render field(`Variante ${i + 1}`, variant, null, depth, `${path}-v${i}`)}
+				{@render field(
+					t('api-docs.schema.variant', { n: i + 1 }),
+					variant,
+					null,
+					depth,
+					`${path}-v${i}`
+				)}
 			{/each}
 		</ul>
 	{:else if (n.s.properties && Object.keys(n.s.properties).length) || additional(n.s)}
@@ -311,7 +325,7 @@
 	{:else if n.s.items}
 		{@const item = norm(n.s.items)}
 		<p class="pt-1 text-xs font-medium text-muted-foreground">
-			Elemente: <span class="font-mono">{typeLabel(item)}</span>
+			{t('api-docs.schema.elements')} <span class="font-mono">{typeLabel(item)}</span>
 		</p>
 		{@render children(item, depth, `${path}-i`)}
 	{/if}
@@ -319,7 +333,7 @@
 
 <div class="min-w-0 text-sm">
 	{#if isEmpty}
-		<p class="text-sm text-muted-foreground">{emptyText ?? 'Keine Felder'}</p>
+		<p class="text-sm text-muted-foreground">{emptyText ?? t('api-docs.schema.noFields')}</p>
 	{:else if rootIsObject}
 		{@const desc = describe(root.s)}
 		{#if desc}

@@ -2,6 +2,7 @@
  * Zentrales Core-SDK (nur Server). Module importieren ausschließlich `$lib/sdk/server`.
  * Jede Operation arbeitet mit einem RequestContext; Berechtigungen werden hier erzwungen.
  */
+import { t } from '$lib/i18n';
 import * as ai from './ai';
 import { createApiKey, listApiKeys, revokeApiKey } from './api/keys';
 import { defineEndpoint } from './api/registry';
@@ -18,7 +19,7 @@ import { registerUserWithRole, searchUserDirectory, usersByIds } from './auth/us
 import { decryptSecret, encryptSecret, isEncrypted, keyedHash } from './crypto';
 import { forModule } from './database/module-db';
 import { findDefaultRoleId } from './permissions/default-roles';
-import { allDefinitions, principalSource } from './modules/registry';
+import { allDefinitions, principalSource, resolveManifest } from './modules/registry';
 import { notifyMembersDeleted } from './privacy/member-hooks';
 import {
 	assertModuleEnabled,
@@ -88,12 +89,12 @@ async function sendModuleMail(msg: {
 	attachments?: { filename: string; contentType: 'application/pdf'; data: Uint8Array }[];
 	/**
 	 * Automatische Benachrichtigung: setzt `Auto-Submitted: auto-generated` (RFC 3834, keine
-	 * Abwesenheitsnotizen) und `X-EP-Intern: notification` (Schleifenschutz beim Postfach-Abruf).
+	 * Abwesenheitsnotizen) und `X-Atrium: notification` (Schleifenschutz beim Postfach-Abruf).
 	 */
 	autoSubmitted?: boolean;
 }): Promise<void> {
 	if (typeof msg.to !== 'string' || msg.to.length > 254 || !EMAIL_RE.test(msg.to)) {
-		throw errors.validation([{ path: ['to'], message: 'Ungültige E-Mail-Adresse' }]);
+		throw errors.validation([{ path: ['to'], message: t('core-server.mail.invalidEmail') }]);
 	}
 	if (
 		typeof msg.subject !== 'string' ||
@@ -101,15 +102,13 @@ async function sendModuleMail(msg: {
 		msg.subject.length > 200 ||
 		/[\r\n]/.test(msg.subject)
 	) {
-		throw errors.validation([
-			{ path: ['subject'], message: 'Betreff ungültig (max. 200 Zeichen, keine Zeilenumbrüche)' }
-		]);
+		throw errors.validation([{ path: ['subject'], message: t('core-server.mail.invalidSubject') }]);
 	}
 	if (typeof msg.text !== 'string' || msg.text.length > 20000) {
-		throw errors.validation([{ path: ['text'], message: 'Text zu lang (max. 20000 Zeichen)' }]);
+		throw errors.validation([{ path: ['text'], message: t('core-server.mail.textTooLongMax') }]);
 	}
 	if (msg.html !== undefined && (typeof msg.html !== 'string' || msg.html.length > 100000)) {
-		throw errors.validation([{ path: ['html'], message: 'HTML zu lang (max. 100000 Zeichen)' }]);
+		throw errors.validation([{ path: ['html'], message: t('core-server.mail.htmlTooLongMax') }]);
 	}
 	const list = msg.attachments ?? [];
 	const total = list.reduce((s, a) => s + (a.data?.byteLength ?? 0), 0);
@@ -119,7 +118,7 @@ async function sendModuleMail(msg: {
 		list.some((a) => a.contentType !== 'application/pdf' || !(a.data instanceof Uint8Array))
 	) {
 		throw errors.validation([
-			{ path: ['attachments'], message: 'Nur bis zu 3 PDF-Anhänge mit zusammen max. 5 MB' }
+			{ path: ['attachments'], message: t('core-server.mail.pdfAttachments') }
 		]);
 	}
 	const files = list.map((a) => ({
@@ -141,7 +140,7 @@ async function sendModuleMail(msg: {
 	});
 }
 
-const AUTO_HEADERS = { 'Auto-Submitted': 'auto-generated', 'X-EP-Intern': 'notification' };
+const AUTO_HEADERS = { 'Auto-Submitted': 'auto-generated', 'X-Atrium': 'notification' };
 /** Höchstzahl Einträge in `References` (ältere werden verworfen) */
 const MAX_REFERENCES = 20;
 
@@ -164,7 +163,7 @@ async function sendModuleMessage(msg: {
 	from?: string;
 	fromName?: string;
 	replyTo?: string;
-	/** Kein Stamm-Layout (Kopf, Signatur, Fußzeile): einfache Mail */
+	/** Kein E-Mail-Layout (Kopf, Signatur, Fußzeile): einfache Mail */
 	layout?: boolean;
 	/** Adresse für den `List-Unsubscribe`-Header (`mailto:`) – senkt den Spam-Wert */
 	unsubscribe?: string;
@@ -182,7 +181,7 @@ async function sendModuleMessage(msg: {
 		['inReplyTo', msg.inReplyTo]
 	] as const) {
 		if (v !== undefined && (typeof v !== 'string' || !MESSAGE_ID_RE.test(v))) {
-			throw bad(k, 'Ungültige Message-ID');
+			throw bad(k, t('core-server.mail.invalidMessageId'));
 		}
 	}
 	if (
@@ -190,10 +189,10 @@ async function sendModuleMessage(msg: {
 		(!Array.isArray(msg.references) ||
 			msg.references.some((r) => typeof r !== 'string' || !MESSAGE_ID_RE.test(r)))
 	) {
-		throw bad('references', 'Ungültige Message-ID');
+		throw bad('references', t('core-server.mail.invalidMessageId'));
 	}
 	if (typeof msg.to !== 'string' || msg.to.length > 254 || !EMAIL_RE.test(msg.to)) {
-		throw bad('to', 'Ungültige E-Mail-Adresse');
+		throw bad('to', t('core-server.mail.invalidEmail'));
 	}
 	if (
 		typeof msg.subject !== 'string' ||
@@ -201,13 +200,13 @@ async function sendModuleMessage(msg: {
 		msg.subject.length > 200 ||
 		/[\r\n]/.test(msg.subject)
 	) {
-		throw bad('subject', 'Betreff ungültig (max. 200 Zeichen, keine Zeilenumbrüche)');
+		throw bad('subject', t('core-server.mail.invalidSubject'));
 	}
 	if (typeof msg.text !== 'string' || msg.text.length > 200_000) {
-		throw bad('text', 'Text zu lang');
+		throw bad('text', t('core-server.mail.textTooLong'));
 	}
 	if (msg.html !== undefined && (typeof msg.html !== 'string' || msg.html.length > 500_000)) {
-		throw bad('html', 'HTML zu lang');
+		throw bad('html', t('core-server.mail.htmlTooLong'));
 	}
 	for (const [k, v] of [
 		['from', msg.from],
@@ -215,7 +214,7 @@ async function sendModuleMessage(msg: {
 		['unsubscribe', msg.unsubscribe]
 	] as const) {
 		if (v !== undefined && (typeof v !== 'string' || v.length > 254 || !EMAIL_RE.test(v))) {
-			throw bad(k, 'Ungültige E-Mail-Adresse');
+			throw bad(k, t('core-server.mail.invalidEmail'));
 		}
 	}
 	const list = msg.attachments ?? [];
@@ -225,10 +224,7 @@ async function sendModuleMessage(msg: {
 		total > MESSAGE_MAX_BYTES ||
 		list.some((a) => !(a.data instanceof Uint8Array) || BLOCKED_ATTACHMENT.test(a.filename))
 	) {
-		throw bad(
-			'attachments',
-			'Höchstens 10 Anhänge mit zusammen 20 MB; ausführbare Dateien sind nicht erlaubt'
-		);
+		throw bad('attachments', t('core-server.mail.messageAttachments'));
 	}
 	const files = list.map((a) => ({
 		filename:
@@ -351,7 +347,7 @@ export const core = {
 		/** Personenquelle für Freigaben (Mitglieder/Gruppen), sonst `null` */
 		principalSource,
 		navigationFor,
-		registered: () => allDefinitions().map((d) => d.manifest)
+		registered: () => allDefinitions().map((d) => resolveManifest(d.manifest))
 	},
 	settings: {
 		get: getSetting,

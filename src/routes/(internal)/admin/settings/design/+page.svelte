@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import { t } from '$lib/i18n';
 	import { submitHandler } from '../../_shared/form-utils';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
 	import type { PageData } from './$types';
@@ -44,12 +45,12 @@
 	}
 </script>
 
-<PageTitle title="Design · Einstellungen" />
+<PageTitle title={t('admin-settings.design.pageTitle')} />
 
 <Card.Root>
 	<Card.Header>
-		<Card.Title>Erscheinungsbild</Card.Title>
-		<Card.Description>Akzentfarbe und Hintergrund der App-Icons.</Card.Description>
+		<Card.Title>{t('admin-settings.design.appearanceTitle')}</Card.Title>
+		<Card.Description>{t('admin-settings.design.appearanceDescription')}</Card.Description>
 	</Card.Header>
 	<Card.Content>
 		<SettingsForm fields={data.fields} canEdit={data.canEdit} />
@@ -58,11 +59,9 @@
 
 <Card.Root>
 	<Card.Header>
-		<Card.Title>Logo</Card.Title>
+		<Card.Title>{t('admin-settings.design.logoTitle')}</Card.Title>
 		<Card.Description>
-			Erscheint in PDF-Dokumenten, in der Seitenleiste, auf der Anmeldeseite, als Favicon im
-			Browser-Tab und als App-Icon (Home-Bildschirm, Push-Mitteilungen). Ohne Logo wird das Wappen
-			verwendet.
+			{t('admin-settings.design.logoDescription')}
 		</Card.Description>
 	</Card.Header>
 	<Card.Content class="space-y-4">
@@ -71,10 +70,14 @@
 			{#if data.canUploadLogo}
 				<div class="flex flex-wrap gap-2">
 					<Button variant="outline" size="sm" onclick={openDialog}>
-						{data.logoUrl ? 'Logo ändern' : 'Logo hochladen'}
+						{data.logoUrl
+							? t('admin-settings.design.logoChange')
+							: t('admin-settings.design.logoUpload')}
 					</Button>
 					{#if data.logoUrl}
-						<Button variant="ghost" size="sm" onclick={() => (removeOpen = true)}>Entfernen</Button>
+						<Button variant="ghost" size="sm" onclick={() => (removeOpen = true)}
+							>{t('admin-settings.design.remove')}</Button
+						>
 					{/if}
 				</div>
 			{/if}
@@ -85,7 +88,7 @@
 					<figure class="flex flex-col items-center gap-1">
 						<img
 							src="{icon.src}?v={data.logoUrl.split('v=')[1]}"
-							alt="Vorschau {icon.label}"
+							alt={t('admin-settings.design.iconPreview', { name: icon.label })}
 							class="border object-cover {icon.cls}"
 						/>
 						<figcaption class="text-xs text-muted-foreground">{icon.label}</figcaption>
@@ -95,7 +98,7 @@
 		{/if}
 		{#if !data.canUploadLogo && data.canEdit}
 			<p class="text-xs text-muted-foreground">
-				Zum Hochladen eines Logos brauchst du zusätzlich Schreibrechte für den Speicher.
+				{t('admin-settings.design.needStorage')}
 			</p>
 		{/if}
 	</Card.Content>
@@ -106,10 +109,10 @@
 		class="flex shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/40 {cls}"
 	>
 		{#if src}
-			<img {src} alt="Logo" class="size-full object-contain p-1" />
+			<img {src} alt={t('admin-settings.design.logoAlt')} class="size-full object-contain p-1" />
 		{:else}
 			<ImageIcon class="size-6 text-muted-foreground" aria-hidden="true" />
-			<span class="sr-only">Kein Logo</span>
+			<span class="sr-only">{t('admin-settings.design.noLogo')}</span>
 		{/if}
 	</div>
 {/snippet}
@@ -117,10 +120,13 @@
 <Dialog.Root bind:open={logoOpen}>
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
-			<Dialog.Title>{data.logoUrl ? 'Logo ändern' : 'Logo hochladen'}</Dialog.Title>
+			<Dialog.Title
+				>{data.logoUrl
+					? t('admin-settings.design.logoChange')
+					: t('admin-settings.design.logoUpload')}</Dialog.Title
+			>
 			<Dialog.Description>
-				PNG, JPEG oder WebP. Nach der Auswahl wählst du den Ausschnitt; quadratisch passt am besten
-				für Favicon und App-Icon.
+				{t('admin-settings.design.dialogDescription')}
 			</Dialog.Description>
 		</Dialog.Header>
 		<form
@@ -149,7 +155,7 @@
 							aspect: 1,
 							maxEdge: 1024,
 							background: 'transparent',
-							title: 'Logo zuschneiden'
+							title: t('admin-settings.design.cropTitle')
 						}}
 						disabled={logoBusy}
 					/>
@@ -157,10 +163,10 @@
 			</div>
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (logoOpen = false)}>
-					Abbrechen
+					{t('admin-settings.design.cancel')}
 				</Button>
 				<Button type="submit" disabled={!logoFile || logoBusy}>
-					{logoBusy ? 'Lädt hoch …' : 'Speichern'}
+					{logoBusy ? t('admin-settings.design.uploading') : t('admin-settings.design.save')}
 				</Button>
 			</Dialog.Footer>
 		</form>
@@ -177,9 +183,9 @@
 
 <ConfirmDialog
 	bind:open={removeOpen}
-	title="Logo entfernen?"
-	description="PDFs erscheinen ohne Logo; Favicon und App-Icon zeigen wieder das Wappen."
-	confirmLabel="Entfernen"
+	title={t('admin-settings.design.removeTitle')}
+	description={t('admin-settings.design.removeDescription')}
+	confirmLabel={t('admin-settings.design.remove')}
 	destructive
 	onconfirm={() => removeForm?.requestSubmit()}
 />

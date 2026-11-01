@@ -1,0 +1,46 @@
+{
+	"pageTitle": "PDF · Einstellungen",
+	"settings": {
+		"title": "PDF-Einstellungen",
+		"descriptionBefore": "Einheitlicher Header, Footer, Seitenränder und Format für alle erzeugten Dokumente. Logo und Organisationsdaten pflegst du unter ",
+		"designLink": "Design",
+		"descriptionMiddle": " bzw. ",
+		"generalLink": "Allgemein",
+		"descriptionAfter": "."
+	},
+	"templates": {
+		"title": "Vorlagen",
+		"descriptionBefore": "Vorlagen sind fest im Code hinterlegt (",
+		"descriptionAfter": ") oder kommen aus aktiven Modulen, die eine Vorlage gleicher ID ersetzen können. Hier kannst du sie nur ansehen; neue Vorlagen werden als Datei im Code ergänzt."
+	},
+	"test": {
+		"title": "Test-PDF",
+		"description": "Erzeugt ein Beispieldokument mit den gespeicherten Einstellungen.",
+		"template": "Vorlage",
+		"download": "PDF herunterladen"
+	},
+	"card": {
+		"letter": "Brief",
+		"landscape": "Quer",
+		"fromModule": "Aus Modul: {module}",
+		"replacedBy": "Ersetzt durch Modul: {module}",
+		"preview": "Vorschau",
+		"previewUnavailable": "Vorschau nicht verfügbar (Chromium?)",
+		"previewPartAlt": "Vorschau der Vorlage „{template}“, nur {part}",
+		"previewAlt": "Seitenvorschau der Vorlage „{template}“",
+		"parts": "Bestandteile",
+		"wholePage": "Gesamte Seite",
+		"optional": "optional",
+		"position": "x {x} mm, y {y} mm",
+		"size": "{width} × {height} mm",
+		"onlyThisPart": "Nur dieser Teil",
+		"downloadSample": "Beispiel-PDF herunterladen"
+	},
+	"testDocumentTitle": "Test-Dokument",
+	"errors": {
+		"unauthenticated": "Nicht angemeldet",
+		"forbidden": "Keine Berechtigung",
+		"invalidTemplate": "Ungültige Vorlage",
+		"invalidPart": "Ungültiger Bestandteil"
+	}
+}

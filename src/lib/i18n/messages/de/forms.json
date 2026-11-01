@@ -1,0 +1,78 @@
+{
+	"types": {
+		"text": { "label": "Kurztext", "description": "Einzeilige Texteingabe" },
+		"textarea": { "label": "Langtext", "description": "Mehrzeilige Texteingabe" },
+		"number": { "label": "Zahl", "description": "Numerische Eingabe, optional mit Grenzen" },
+		"email": { "label": "E-Mail", "description": "E-Mail-Adresse" },
+		"phone": { "label": "Telefon", "description": "Telefonnummer" },
+		"date": { "label": "Datum", "description": "Kalenderdatum" },
+		"select": { "label": "Auswahl (eine)", "description": "Genau eine Option auswählen" },
+		"multiselect": { "label": "Mehrfachauswahl", "description": "Mehrere Optionen auswählen" },
+		"boolean": { "label": "Ja/Nein", "description": "Ja-/Nein-Auswahl (Checkbox)" },
+		"info": {
+			"label": "Infotext",
+			"description": "Formatierter Text ohne Eingabe, z. B. Hinweise"
+		},
+		"section": { "label": "Abschnitt", "description": "Überschrift zum Gliedern, ohne Eingabe" },
+		"consent": {
+			"label": "Zustimmung",
+			"description": "Pflicht-Checkbox mit Text und optionalem Link"
+		}
+	},
+	"defaults": {
+		"newField": "Neues Feld",
+		"emailLabel": "E-Mail-Adresse",
+		"phoneLabel": "Telefonnummer",
+		"newSection": "Neuer Abschnitt",
+		"infoLabel": "Hinweis",
+		"infoText": "Infotext",
+		"consentLabel": "Zustimmung",
+		"consentText": "Ich stimme zu.",
+		"option": "Option {n}"
+	},
+	"validation": {
+		"textRequired": "Bitte Text eingeben",
+		"maxChars": "Höchstens {max} Zeichen",
+		"invalidChars": "Enthält ungültige Zeichen",
+		"dateRequired": "Bitte ein Datum angeben",
+		"dateInvalid": "Bitte ein gültiges Datum angeben",
+		"dateMin": "Frühestens {date}",
+		"dateMax": "Spätestens {date}",
+		"emailRequired": "Bitte eine E-Mail-Adresse eingeben",
+		"emailInvalid": "Bitte eine gültige E-Mail-Adresse eingeben",
+		"phoneInvalid": "Bitte eine gültige Telefonnummer eingeben",
+		"numberRequired": "Bitte eine Zahl eingeben",
+		"integerRequired": "Bitte eine ganze Zahl eingeben",
+		"numberMin": "Mindestens {min}",
+		"numberMax": "Höchstens {max}",
+		"booleanRequired": "Bitte Ja oder Nein wählen",
+		"confirm": "Bitte bestätigen",
+		"selectRequired": "Bitte eine Option wählen",
+		"selectInvalid": "Bitte eine gültige Option wählen",
+		"optionsRequired": "Bitte Optionen wählen",
+		"optionsInvalid": "Bitte nur gültige Optionen wählen",
+		"optionsDuplicate": "Optionen dürfen nicht doppelt vorkommen",
+		"optionsMin": "Bitte mindestens {min} wählen",
+		"optionsMax": "Bitte höchstens {max} wählen",
+		"required": "Pflichtfeld",
+		"invalid": "Ungültige Eingabe",
+		"unknownField": "Unbekanntes Feld"
+	},
+	"definition": {
+		"valueMissing": "Wert fehlt",
+		"labelMissing": "Bezeichnung fehlt",
+		"maxChars": "Höchstens {max} Zeichen",
+		"minOneOption": "Mindestens eine Option",
+		"maxOptions": "Höchstens {max} Optionen",
+		"valueDuplicate": "Wert doppelt",
+		"labelDuplicate": "Bezeichnung doppelt",
+		"idMissing": "ID fehlt",
+		"invalidKey": "Ungültiger Schlüssel",
+		"invalidDate": "Ungültiges Datum",
+		"minGreaterMax": "Minimum darf nicht größer als Maximum sein",
+		"invalidUrl": "Bitte eine gültige http(s)-Adresse angeben",
+		"maxFields": "Höchstens {max} Felder",
+		"idDuplicate": "ID doppelt",
+		"keyDuplicate": "Schlüssel doppelt"
+	}
+}

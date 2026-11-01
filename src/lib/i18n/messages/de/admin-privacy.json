@@ -1,0 +1,21 @@
+{
+	"title": "Datenauskunft",
+	"description": "Alle gespeicherten Daten einer Person (Benutzerkonto oder Mitglied) aus allen aktiven Modulen als JSON-Datei – für Auskunft (Art. 15 DSGVO) und Datenübertragbarkeit (Art. 20).",
+	"warning": "Die Datei enthält alle Angaben zur Person im Klartext, auch Gesundheitsdaten und – bei Kindern – die Daten der verknüpften Mitglieder. Nur an die betroffene Person bzw. die Erziehungsberechtigten herausgeben und nicht unverschlüsselt per E-Mail versenden. Jeder Export wird im Audit-Log vermerkt.",
+	"searchLabel": "Person suchen",
+	"searchPlaceholder": "Name oder E-Mail (mindestens 2 Zeichen)",
+	"search": "Suchen",
+	"caption": "Gefundene Personen",
+	"emptyTitle": "Niemand gefunden",
+	"emptyDescription": "Weder ein Benutzerkonto noch ein Mitglied passt zur Suche.",
+	"person": "Person",
+	"source": "Quelle",
+	"export": "Export",
+	"exportButton": "Auskunft (JSON)",
+	"footnote": "Benutzerkonto: Konto, Rollen, Sitzungen, API-Keys, persönliche Einstellungen, eigene Audit-Einträge und alle Moduldaten, auch der verknüpften Mitglieder. Mitglied: Mitgliedsdaten und Teilnahmen. Dateiinhalte (Dokumente, Bilder) sind nicht enthalten, nur ihre Namen.",
+	"server": {
+		"unauthenticated": "Nicht angemeldet",
+		"forbidden": "Keine Berechtigung",
+		"fileNamePrefix": "datenauskunft"
+	}
+}

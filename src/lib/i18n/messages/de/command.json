@@ -1,0 +1,18 @@
+{
+	"title": "Suchen",
+	"inputLabel": "Suchen: Seiten, Mitglieder, Aktionen, Termine …",
+	"inputPlaceholder": "Suchen: Seiten, Mitglieder, Aktionen …",
+	"searching": "Sucht …",
+	"results": "Suchergebnisse",
+	"nothingFound": "Nichts gefunden. Versuch einen anderen Begriff.",
+	"dataSearchFailed": "Datensuche gerade nicht möglich – es werden nur Seiten angezeigt.",
+	"hits": "{count} Treffer",
+	"keyboardHint": "↑ ↓ zum Auswählen, Enter zum Öffnen, Esc zum Schließen",
+	"touchHint": "Tippe, um zu suchen",
+	"headingPages": "Seiten",
+	"groupNavigation": "Navigation",
+	"groupModule": "Modul",
+	"groupAdmin": "Verwaltung",
+	"moduleContext": "Modul {name}",
+	"startPage": "Startseite"
+}

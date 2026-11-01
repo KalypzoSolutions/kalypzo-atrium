@@ -1,0 +1,19 @@
+{
+	"invalidModuleId": "Invalid module ID",
+	"invalidPath": "Invalid file path",
+	"permissionMissing": "Missing permission: {permission}",
+	"notConfigured": "S3 storage is not configured",
+	"objectNotFound": "File not found in storage",
+	"accessDenied": "Access to the S3 storage was denied",
+	"unreachable": "S3 storage is not reachable",
+	"typeNotAllowed": "File type not allowed: {type}",
+	"tooLarge": "File exceeds the limit of {mb} MB",
+	"fileNotFound": "File not found",
+	"invalidSize": "Invalid file size",
+	"pathExists": "Path already exists; delete it first or upload directly",
+	"uploadNotFound": "Upload not found",
+	"sizeMismatch": "Uploaded file does not match the announced size",
+	"invalidObjectKey": "Invalid object key",
+	"purgeUnavailable": "Storage for {module} not reachable/configured: only metadata deleted ({count, plural, one {# file} other {# files}})",
+	"purgeFailed": "{count, plural, one {# object} other {# objects}} of {module} could not be deleted from storage"
+}

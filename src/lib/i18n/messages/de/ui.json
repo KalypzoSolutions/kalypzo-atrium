@@ -1,0 +1,106 @@
+{
+	"close": "Schließen",
+	"select": {
+		"placeholder": "Auswählen …"
+	},
+	"multiSelect": {
+		"search": "Suchen …",
+		"empty": "Keine Treffer",
+		"remove": "{label} entfernen",
+		"selected": "{count} ausgewählt",
+		"clear": "Alle abwählen"
+	},
+	"tagInput": {
+		"placeholder": "Tag eingeben …",
+		"remove": "Tag {tag} entfernen",
+		"max": "Höchstens {max} Tags möglich.",
+		"suggestionsFor": "Vorschläge für {label}",
+		"suggestions": "Vorschläge",
+		"create": "„{tag}“ anlegen"
+	},
+	"colorPicker": {
+		"invalidHex": "Ungültiger Hex-Code, z. B. #2f855a oder #3a7",
+		"none": "Keine Farbe",
+		"area": "{label}: Sättigung und Helligkeit",
+		"areaValue": "Sättigung {s} %, Helligkeit {v} %",
+		"hue": "{label}: Farbton",
+		"hex": "{label}: Hex-Code",
+		"presets": "Vorgabefarben",
+		"preset": "Farbe {color}",
+		"clear": "Farbe entfernen"
+	},
+	"richText": {
+		"tools": {
+			"bold": "Fett",
+			"italic": "Kursiv",
+			"underline": "Unterstrichen",
+			"strike": "Durchgestrichen",
+			"heading": "Überschrift",
+			"subheading": "Zwischenüberschrift",
+			"bulletList": "Aufzählung",
+			"orderedList": "Nummerierte Liste",
+			"quote": "Zitat",
+			"rule": "Trennlinie",
+			"link": "Link einfügen oder ändern",
+			"unlink": "Link entfernen",
+			"image": "Bild einfügen",
+			"undo": "Rückgängig",
+			"redo": "Wiederholen"
+		},
+		"label": "Nachrichtentext",
+		"uploadFailed": "Bild konnte nicht hochgeladen werden.",
+		"toolbar": "Formatierung",
+		"address": "Adresse",
+		"addressPlaceholder": "https://… oder mailto:…",
+		"apply": "Übernehmen",
+		"cancel": "Abbrechen",
+		"alt": "Bildbeschreibung",
+		"altPlaceholder": "Was ist zu sehen? (für Screenreader)",
+		"uploading": "Bild wird hochgeladen …"
+	},
+	"gradient": {
+		"kind": {
+			"solid": "Einfarbig",
+			"linear": "Linear",
+			"radial": "Radial",
+			"mesh": "Farbflecken"
+		},
+		"kindLabel": "Art des Hintergrunds",
+		"moveSpot": "Farbfleck {n} verschieben ({x} % / {y} %)",
+		"color": "Farbe",
+		"backgroundColor": "Hintergrundfarbe",
+		"stops": "Farbpunkte",
+		"stopsHint": "{count} von {max} · Klick auf die Leiste fügt einen Punkt hinzu",
+		"stop": "Farbpunkt {n} ({color})",
+		"stopColor": "Farbe von Punkt {n}",
+		"position": "Position {pos} %",
+		"stopPosition": "Position von Punkt {n}",
+		"addStop": "Punkt",
+		"removeStop": "Punkt {n} entfernen",
+		"angle": "Richtung {a}°",
+		"direction": "Richtung",
+		"angleLabel": "Richtung in Grad",
+		"center": "Mittelpunkt",
+		"baseColor": "Grundfarbe",
+		"addSpot": "Farbfleck",
+		"spotsHint": "{count} von {max} · Punkte in der Vorschau verschieben",
+		"spotColor": "Farbe von Fleck {n}",
+		"size": "Größe",
+		"spotSize": "Größe von Fleck {n}",
+		"spot": "Fleck {n}",
+		"removeSpot": "Fleck {n} entfernen",
+		"positions": {
+			"topLeft": "oben links",
+			"top": "oben",
+			"topRight": "oben rechts",
+			"left": "links",
+			"center": "Mitte",
+			"right": "rechts",
+			"bottomLeft": "unten links",
+			"bottom": "unten",
+			"bottomRight": "unten rechts"
+		},
+		"sizeValue": "Größe {size} %",
+		"stopN": "Punkt {n}"
+	}
+}

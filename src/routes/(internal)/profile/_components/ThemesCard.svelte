@@ -30,6 +30,7 @@
 		DropdownMenuTrigger
 	} from '$lib/components/ui/dropdown-menu';
 	import { ConfirmDialog } from '$lib/components/layout';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils';
 	import { toast } from 'svelte-sonner';
 	import { callAction } from './actions';
@@ -65,8 +66,8 @@
 		editorOpen = true;
 	}
 
-	function copyOf(t: UserTheme, name: string): UserTheme {
-		return { ...structuredClone($state.snapshot(t) as UserTheme), id: crypto.randomUUID(), name };
+	function copyOf(th: UserTheme, name: string): UserTheme {
+		return { ...structuredClone($state.snapshot(th) as UserTheme), id: crypto.randomUUID(), name };
 	}
 
 	// Stern: sofort umschalten, bei Fehler zurück (der Toast/Fehler kommt aus `callAction`)
@@ -77,14 +78,14 @@
 			Object.entries(favOverride).filter(([id, on]) => on && !themes.favorites.includes(id)).length
 	);
 
-	async function toggleFavorite(t: UserTheme) {
-		const on = !isFavorite(t.id);
-		favOverride = { ...favOverride, [t.id]: on };
-		const o = await callAction('toggleFavorite', { id: t.id, on: on ? '1' : '' });
+	async function toggleFavorite(th: UserTheme) {
+		const on = !isFavorite(th.id);
+		favOverride = { ...favOverride, [th.id]: on };
+		const o = await callAction('toggleFavorite', { id: th.id, on: on ? '1' : '' });
 		const rest = { ...favOverride };
-		delete rest[t.id];
+		delete rest[th.id];
 		favOverride = rest;
-		if (!o.ok) toast.error(o.error ?? 'Favorit konnte nicht gespeichert werden.');
+		if (!o.ok) toast.error(o.error ?? t('profile.themes.favoriteFailed'));
 	}
 
 	async function remove() {
@@ -107,8 +108,8 @@
 	</span>
 {/snippet}
 
-{#snippet tile(t: UserTheme | null, own: boolean)}
-	{@const id = t?.id ?? ''}
+{#snippet tile(th: UserTheme | null, own: boolean)}
+	{@const id = th?.id ?? ''}
 	{@const active = activeId === id}
 	<div
 		class={cn(
@@ -122,15 +123,15 @@
 			aria-pressed={active}
 			onclick={() => activate(id)}
 		>
-			{@render swatch(t?.light ?? PLAIN.light, t?.dark ?? PLAIN.dark, t?.accent ?? '')}
+			{@render swatch(th?.light ?? PLAIN.light, th?.dark ?? PLAIN.dark, th?.accent ?? '')}
 			<span class="flex min-w-0 items-center gap-1 pr-7 text-sm">
 				{#if active}<Check class="size-4 shrink-0 text-link" aria-hidden="true" />{/if}
-				<span class="truncate">{t?.name ?? 'Standard'}</span>
-				{#if active}<span class="sr-only">(aktiv)</span>{/if}
+				<span class="truncate">{th?.name ?? t('profile.themes.default')}</span>
+				{#if active}<span class="sr-only">{t('profile.themes.activeSr')}</span>{/if}
 			</span>
 		</button>
-		{#if t}
-			{@const fav = isFavorite(t.id)}
+		{#if th}
+			{@const fav = isFavorite(th.id)}
 			<Button
 				variant="ghost"
 				size="icon-sm"
@@ -139,10 +140,12 @@
 					fav && 'text-warning hover:text-warning'
 				)}
 				aria-pressed={fav}
-				aria-label={fav ? `${t.name}: Favorit entfernen` : `${t.name} als Favorit markieren`}
-				title={fav ? 'In der Kopfzeile – Stern entfernen' : 'In der Kopfzeile zeigen'}
+				aria-label={fav
+					? t('profile.themes.unfavorite', { name: th.name })
+					: t('profile.themes.favorite', { name: th.name })}
+				title={fav ? t('profile.themes.unfavoriteTitle') : t('profile.themes.favoriteTitle')}
 				disabled={!fav && favCount >= FAVORITES_MAX}
-				onclick={() => toggleFavorite(t)}
+				onclick={() => toggleFavorite(th)}
 			>
 				<Star class={cn(fav && 'fill-current')} />
 			</Button>
@@ -154,7 +157,7 @@
 							variant="ghost"
 							size="icon-sm"
 							class="absolute right-1.5 bottom-1.5"
-							aria-label="Aktionen für {t.name}"
+							aria-label={t('profile.themes.actionsFor', { name: th.name })}
 						>
 							<Ellipsis />
 						</Button>
@@ -162,28 +165,39 @@
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end">
 					{#if own}
-						<DropdownMenuItem onSelect={() => openEditor(t, false)}>
-							<Pencil /> Bearbeiten
+						<DropdownMenuItem onSelect={() => openEditor(th, false)}>
+							<Pencil />
+							{t('profile.themes.edit')}
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							disabled={full}
-							onSelect={() => openEditor(copyOf(t, `${t.name} (Kopie)`.slice(0, 40)), true)}
+							onSelect={() =>
+								openEditor(
+									copyOf(th, t('profile.themes.copyName', { name: th.name }).slice(0, 40)),
+									true
+								)}
 						>
-							<Copy /> Duplizieren
+							<Copy />
+							{t('profile.themes.duplicate')}
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
 							variant="destructive"
 							onSelect={() => {
-								deleting = t;
+								deleting = th;
 								confirmOpen = true;
 							}}
 						>
-							<Trash2 /> Löschen
+							<Trash2 />
+							{t('profile.themes.delete')}
 						</DropdownMenuItem>
 					{:else}
-						<DropdownMenuItem disabled={full} onSelect={() => openEditor(copyOf(t, t.name), true)}>
-							<Pencil /> Anpassen (als eigenes Theme)
+						<DropdownMenuItem
+							disabled={full}
+							onSelect={() => openEditor(copyOf(th, th.name), true)}
+						>
+							<Pencil />
+							{t('profile.themes.customize')}
 						</DropdownMenuItem>
 					{/if}
 				</DropdownMenuContent>
@@ -194,27 +208,25 @@
 
 <Card>
 	<CardHeader>
-		<CardTitle class="font-semibold">Theme</CardTitle>
+		<CardTitle class="font-semibold">{t('profile.themes.title')}</CardTitle>
 		<CardDescription>
-			Hintergrund und Akzentfarbe für hell und dunkel. Mit dem Stern markierte Themes erscheinen zum
-			schnellen Wechseln im Darstellungs-Menü der Kopfzeile. Hell, Dunkel oder System wählst du
-			weiter unten.
+			{t('profile.themes.description')}
 		</CardDescription>
 	</CardHeader>
 	<CardContent class="space-y-6">
 		<section class="space-y-2" aria-labelledby="themes-presets">
-			<h3 id="themes-presets" class="text-sm font-medium">Vorschläge</h3>
+			<h3 id="themes-presets" class="text-sm font-medium">{t('profile.themes.presets')}</h3>
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
 				{@render tile(null, false)}
-				{#each themes.presets as t (t.id)}
-					{@render tile(t, false)}
+				{#each themes.presets as th (th.id)}
+					{@render tile(th, false)}
 				{/each}
 			</div>
 		</section>
 
 		<section class="space-y-2" aria-labelledby="themes-own">
 			<div class="flex flex-wrap items-center justify-between gap-2">
-				<h3 id="themes-own" class="text-sm font-medium">Meine Themes</h3>
+				<h3 id="themes-own" class="text-sm font-medium">{t('profile.themes.own')}</h3>
 				<Button
 					type="button"
 					variant="outline"
@@ -222,22 +234,25 @@
 					disabled={full}
 					onclick={() => openEditor(blankTheme(crypto.randomUUID()), true)}
 				>
-					<Plus /> Neues Theme
+					<Plus />
+					{t('profile.themes.new')}
 				</Button>
 			</div>
 			{#if themes.own.length}
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-					{#each themes.own as t (t.id)}
-						{@render tile(t, true)}
+					{#each themes.own as th (th.id)}
+						{@render tile(th, true)}
 					{/each}
 				</div>
 			{:else}
 				<p class="text-sm text-muted-foreground">
-					Noch keine eigenen Themes. Lege eines an oder passe einen Vorschlag über „…“ an.
+					{t('profile.themes.noneOwn')}
 				</p>
 			{/if}
 			{#if full}
-				<p class="text-xs text-muted-foreground">Höchstens {THEMES_MAX} eigene Themes.</p>
+				<p class="text-xs text-muted-foreground">
+					{t('profile.themes.max', { max: THEMES_MAX })}
+				</p>
 			{/if}
 		</section>
 	</CardContent>
@@ -251,9 +266,11 @@
 
 <ConfirmDialog
 	bind:open={confirmOpen}
-	title="Theme löschen?"
-	description={deleting ? `„${deleting.name}“ wird gelöscht.` : undefined}
-	confirmLabel="Löschen"
+	title={t('profile.themes.deleteTitle')}
+	description={deleting
+		? t('profile.themes.deleteDescription', { name: deleting.name })
+		: undefined}
+	confirmLabel={t('profile.themes.delete')}
 	destructive
 	onconfirm={remove}
 />

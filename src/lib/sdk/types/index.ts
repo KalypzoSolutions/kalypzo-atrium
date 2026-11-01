@@ -3,6 +3,9 @@
  * Darf sowohl von Server- als auch Client-Code importiert werden.
  */
 import type { z } from 'zod';
+import type { LocalizedText } from '$lib/i18n';
+
+export type { LocalizedText } from '$lib/i18n';
 
 export type ActorType = 'user' | 'api_key' | 'system';
 
@@ -24,7 +27,8 @@ export interface RequestContext {
 }
 
 export interface ModuleNavigationItem {
-	label: string;
+	/** Beschriftung; je Sprache möglich (`{ de: 'Termine', en: 'Events' }`), ausgeliefert wird der aufgelöste Text */
+	label: LocalizedText;
 	icon: string;
 	path: string;
 	/** Optional: nur sichtbar mit dieser Berechtigung */
@@ -72,7 +76,8 @@ export interface ModuleSettingDefinition {
 export interface ModuleManifest {
 	/** Kleinbuchstaben, Ziffern und Bindestriche; `core` ist reserviert */
 	id: string;
-	name: string;
+	/** Anzeigename; je Sprache möglich (`{ de: 'Termine', en: 'Events' }`), aufgelöst mit `localized()` */
+	name: LocalizedText;
 	description?: string;
 	version: string;
 	dependencies: string[];
@@ -84,9 +89,10 @@ export interface ModuleManifest {
 	permissions: string[];
 	/**
 	 * Beschreibung je Recht aus `permissions` (Anzeige unter Administration → Berechtigungen und bei
-	 * API-Key-Scopes). Wird bei jedem Start in die Datenbank übernommen.
+	 * API-Key-Scopes). Wird bei jedem Start in die Datenbank übernommen (Deutsch); je Sprache möglich,
+	 * dann liefert die Rechte-Liste den Text in der Sprache des Requests.
 	 */
-	permissionDescriptions?: Record<string, string>;
+	permissionDescriptions?: Record<string, LocalizedText>;
 	navigation: ModuleNavigationItem[];
 	/**
 	 * Standard-Rechte für Rollen (Rollenname -> Rechte aus `permissions`). Die Rolle wird per Name gesucht
@@ -102,6 +108,19 @@ export interface ModuleManifest {
 	 */
 	offices?: ModuleOfficeTemplate[];
 }
+
+/** Navigationseintrag mit aufgelöster Beschriftung (so liefert der Server ihn aus) */
+export type ResolvedNavigationItem = Omit<ModuleNavigationItem, 'label'> & { label: string };
+
+/** Manifest mit aufgelösten Texten in der Sprache des Requests (Modulliste, `core.modules.registered()`) */
+export type ResolvedModuleManifest = Omit<
+	ModuleManifest,
+	'name' | 'navigation' | 'permissionDescriptions'
+> & {
+	name: string;
+	navigation: ResolvedNavigationItem[];
+	permissionDescriptions?: Record<string, string>;
+};
 
 /** Benachrichtigung, die ein Modul-Amt erhalten kann (Modus je Person im Profil: sofort/täglich/aus) */
 export interface ModuleOfficeNotification {

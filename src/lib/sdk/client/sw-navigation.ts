@@ -5,10 +5,13 @@ import { goto } from '$app/navigation';
  * im **laufenden** App-Fenster per SvelteKit-Navigation – auch in der installierten App (PWA).
  *
  * Drei Wege, weil iOS sich je nach Zustand anders verhält:
- * - `ep:navigate` als Nachricht an dieses Fenster (mit Bestätigung per Port), wenn der SW das Fenster findet.
- * - `ep:navigate` über den `BroadcastChannel` `ep-navigation`: iOS meldet dem SW die laufende App oft nicht.
- * - `ep:pending-navigation` erfragen – beim Start und nach jedem Sichtbarwerden **mehrmals kurz nacheinander**:
+ * - `atrium:navigate` als Nachricht an dieses Fenster (mit Bestätigung per Port), wenn der SW das Fenster findet.
+ * - `atrium:navigate` über den `BroadcastChannel` `atrium-navigation`: iOS meldet dem SW die laufende App oft nicht.
+ * - `atrium:pending-navigation` erfragen – beim Start und nach jedem Sichtbarwerden **mehrmals kurz nacheinander**:
  *   iOS weckt die App, bevor der SW den Klick verarbeitet hat, und öffnet sie beim Kaltstart teils auf der Startseite.
+ *
+ * Ältere Service Worker (bis Kalypzo Atrium Phase N) senden `ep:navigate` über `ep-navigation`: beides wird weiter
+ * angenommen, bis alle Geräte den neuen Service Worker haben.
  *
  * Rückgabe: Aufräumfunktion.
  */
@@ -28,7 +31,7 @@ export function initServiceWorkerNavigation(): () => void {
 		if (last && last.url === url && Date.now() - last.at < 60_000) return;
 		last = { url, at: Date.now() };
 		void worker()
-			.then((w) => w?.postMessage({ type: 'ep:pending-clear' }))
+			.then((w) => w?.postMessage({ type: 'atrium:pending-clear' }))
 			.catch(() => undefined);
 		if (url === location.pathname + location.search + location.hash) return;
 		try {
@@ -40,7 +43,7 @@ export function initServiceWorkerNavigation(): () => void {
 
 	const handleNavigate = (data: unknown, port?: MessagePort) => {
 		const msg = data as { type?: string; url?: unknown } | null;
-		if (msg?.type !== 'ep:navigate') return;
+		if (msg?.type !== 'atrium:navigate' && msg?.type !== 'ep:navigate') return;
 		const url = appPath(msg.url);
 		port?.postMessage({ ok: url !== null });
 		if (url) void open(url);
@@ -49,12 +52,15 @@ export function initServiceWorkerNavigation(): () => void {
 	const onMessage = (event: MessageEvent) => handleNavigate(event.data, event.ports[0]);
 	container.addEventListener('message', onMessage);
 
-	let broadcast: BroadcastChannel | null = null;
-	try {
-		broadcast = new BroadcastChannel('ep-navigation');
-		broadcast.onmessage = (event) => handleNavigate(event.data);
-	} catch {
-		broadcast = null;
+	const broadcasts: BroadcastChannel[] = [];
+	for (const name of ['atrium-navigation', 'ep-navigation']) {
+		try {
+			const channel = new BroadcastChannel(name);
+			channel.onmessage = (event) => handleNavigate(event.data);
+			broadcasts.push(channel);
+		} catch {
+			// ohne BroadcastChannel bleiben Nachricht und Abfrage
+		}
 	}
 
 	const askPending = (replaceState: boolean) => {
@@ -67,7 +73,7 @@ export function initServiceWorkerNavigation(): () => void {
 					if (url) void open(url, replaceState);
 					channel.port1.close();
 				};
-				w.postMessage({ type: 'ep:pending-navigation' }, [channel.port2]);
+				w.postMessage({ type: 'atrium:pending-navigation' }, [channel.port2]);
 			})
 			.catch(() => undefined);
 	};
@@ -87,7 +93,7 @@ export function initServiceWorkerNavigation(): () => void {
 	return () => {
 		for (const t of timers) clearTimeout(t);
 		container.removeEventListener('message', onMessage);
-		broadcast?.close();
+		for (const channel of broadcasts) channel.close();
 		document.removeEventListener('visibilitychange', onVisible);
 		window.removeEventListener('pageshow', onVisible);
 		window.removeEventListener('focus', onVisible);
@@ -108,7 +114,7 @@ export async function serviceWorkerVersion(): Promise<string | null> {
 			const v = (e.data as { version?: unknown } | null)?.version;
 			resolve(typeof v === 'string' ? v : null);
 		};
-		w.postMessage({ type: 'ep:sw-version' }, [channel.port2]);
+		w.postMessage({ type: 'atrium:sw-version' }, [channel.port2]);
 	});
 }
 

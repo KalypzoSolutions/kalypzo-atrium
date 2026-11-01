@@ -22,6 +22,7 @@ import { getDb, schema } from '../database/client';
 import { logError } from '../db-errors';
 import { env } from '../env';
 import { errors } from '../errors';
+import { localesForUsers, withLocale } from '../i18n/locale';
 import { sendMail } from '../mail';
 import { isModuleEnabled } from '../modules/service';
 import { isSafeHref } from '../search/service';
@@ -43,6 +44,7 @@ import {
 	vapidKeys,
 	type PushPayload
 } from './push';
+import { t, type Locale } from '$lib/i18n';
 
 export interface NotificationItem {
 	/** Schlüssel des Typs ohne Modul (deklariert in `ModuleDefinition.notifications`) */
@@ -89,7 +91,7 @@ type CleanItem = ComposeItem & {
 const MAX_ITEMS = 200;
 const MAX_RECIPIENTS = 2000;
 
-const AUTO_HEADERS = { 'Auto-Submitted': 'auto-generated', 'X-EP-Intern': 'notification' };
+const AUTO_HEADERS = { 'Auto-Submitted': 'auto-generated', 'X-Atrium': 'notification' };
 
 function origin(): string {
 	return env().ORIGIN.replace(/\/+$/, '');
@@ -140,9 +142,14 @@ function routes(
 	return { email, push };
 }
 
-async function sendMailTo(r: Recipient, mail: { subject: string; text: string }): Promise<boolean> {
+/** Sendet in der Sprache der Person (auch das Mail-Layout) */
+async function sendMailTo(
+	r: Recipient,
+	mail: { subject: string; text: string },
+	locale: Locale
+): Promise<boolean> {
 	try {
-		await sendMail({ to: r.email, ...mail, headers: AUTO_HEADERS });
+		await withLocale(locale, () => sendMail({ to: r.email, ...mail, headers: AUTO_HEADERS }));
 		return true;
 	} catch (e) {
 		logError('[notifications] Mailversand fehlgeschlagen', e, { target: r.id });
@@ -213,6 +220,7 @@ export async function sendNotifications(
 		const ids = [...recipients.keys()];
 		const prefs = await loadPrefs(ids, [...new Set(clean.map((c) => c.fullKey))]);
 		const push = await pushState(ids);
+		const locales = await localesForUsers(ids);
 
 		// 3) Verteilen
 		const mailItems = new Map<string, CleanItem[]>();
@@ -265,7 +273,8 @@ export async function sendNotifications(
 		// 4) Push zuerst (schnell); Personen ohne zugestellten Push bekommen die Mail (Rückfall)
 		if (pushItems.size) {
 			const payloads = new Map<string, PushPayload[]>();
-			for (const [u, list] of pushItems) payloads.set(u, composePush(list, 'immediate'));
+			for (const [u, list] of pushItems)
+				payloads.set(u, composePush(list, 'immediate', locales.get(u)));
 			const delivered = await deliverPush(payloads);
 			result.push = delivered.size;
 			for (const [u, list] of pushItems) {
@@ -277,7 +286,9 @@ export async function sendNotifications(
 		}
 		for (const [u, list] of mailItems) {
 			const r = recipients.get(u)!;
-			if (await sendMailTo(r, composeMail(r.name, list, 'immediate', origin()))) result.email++;
+			const locale = locales.get(u)!;
+			const mail = composeMail(r.name, list, 'immediate', origin(), locale);
+			if (await sendMailTo(r, mail, locale)) result.email++;
 		}
 	} catch (e) {
 		logError('[notifications] send fehlgeschlagen', e, {
@@ -326,6 +337,7 @@ export async function runNotificationDigest(now = new Date()): Promise<DigestRes
 	for (const r of rows) byUser.set(r.userId, [...(byUser.get(r.userId) ?? []), r]);
 	const recipients = await activeRecipients([...byUser.keys()]);
 	const push = await pushState([...byUser.keys()]);
+	const locales = await localesForUsers([...recipients.keys()]);
 
 	for (const [userId, list] of byUser) {
 		const ids = list.map((r) => r.id);
@@ -335,6 +347,7 @@ export async function runNotificationDigest(now = new Date()): Promise<DigestRes
 			continue;
 		}
 		out.users++;
+		const locale = locales.get(userId)!;
 		const toItem = (r: (typeof list)[number]): ComposeItem => ({
 			title: r.title,
 			body: r.body,
@@ -352,7 +365,7 @@ export async function runNotificationDigest(now = new Date()): Promise<DigestRes
 		}
 		if (pushRows.length) {
 			const delivered = await deliverPush(
-				new Map([[userId, composePush(pushRows.map(toItem), 'daily')]])
+				new Map([[userId, composePush(pushRows.map(toItem), 'daily', locale)]])
 			);
 			if (delivered.size) out.push++;
 			else for (const r of pushRows) if (!findType(r.typeKey)?.pushOnly) mailRows.add(r);
@@ -360,7 +373,8 @@ export async function runNotificationDigest(now = new Date()): Promise<DigestRes
 		let ok = true;
 		if (mailRows.size) {
 			const mail = list.filter((r) => mailRows.has(r)).map(toItem);
-			ok = await sendMailTo(recipient, composeMail(recipient.name, mail, 'daily', origin()));
+			const composed = composeMail(recipient.name, mail, 'daily', origin(), locale);
+			ok = await sendMailTo(recipient, composed, locale);
 			if (ok) out.email++;
 		}
 		if (ok) {
@@ -401,14 +415,12 @@ export async function setMyPreference(
 ): Promise<{ channel: NotificationChannel; delivery: NotificationDelivery }> {
 	if (!ctx.userId) throw errors.unauthenticated();
 	const type = await findEditableRow(ctx, input.type, input.scope);
-	if (!type) throw errors.notFound('Benachrichtigung nicht gefunden');
+	if (!type) throw errors.notFound(t('notifications.typeNotFound'));
 	if (!allowedChannels(type).includes(input.channel)) {
 		throw errors.validation([
 			{
 				path: ['channel'],
-				message: type.mandatory
-					? 'Diese Benachrichtigung lässt sich nicht abschalten'
-					: 'Für diese Benachrichtigung gibt es nur Push'
+				message: type.mandatory ? t('notifications.mandatory') : t('notifications.pushOnly')
 			}
 		]);
 	}
@@ -426,16 +438,15 @@ export async function setMyPreference(
 /** Test-Push an alle eigenen Geräte */
 export async function sendTestPush(ctx: RequestContext): Promise<{ delivered: boolean }> {
 	if (!ctx.userId) throw errors.unauthenticated();
-	if (!(await pushEnabled()))
-		throw errors.unavailable('Push-Benachrichtigungen sind ausgeschaltet');
+	if (!(await pushEnabled())) throw errors.unavailable(t('notifications.pushDisabled'));
 	const delivered = await deliverPush(
 		new Map([
 			[
 				ctx.userId,
 				[
 					{
-						title: 'Test-Benachrichtigung',
-						body: 'Push-Benachrichtigungen funktionieren auf diesem Gerät.',
+						title: t('notifications.testTitle'),
+						body: t('notifications.testBody'),
 						url: '/profile?tab=notifications',
 						tag: 'test'
 					}

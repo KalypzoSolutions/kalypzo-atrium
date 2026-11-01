@@ -1,0 +1,24 @@
+{
+	"required": "Required",
+	"atMost": "At most {value}",
+	"atLeast": "At least {value}",
+	"lessThan": "Must be less than {value}",
+	"greaterThan": "Must be greater than {value}",
+	"invalidValue": "Invalid value",
+	"unknownKeys": "{count, plural, one {Unknown field: {keys}} other {Unknown fields: {keys}}}",
+	"unit": {
+		"chars": "{count, plural, one {# character} other {# characters}}",
+		"items": "{count, plural, one {# item} other {# items}}",
+		"bytes": "{count, plural, one {# byte} other {# bytes}}"
+	},
+	"format": {
+		"email": "Invalid email address",
+		"uuid": "Invalid ID",
+		"guid": "Invalid ID",
+		"url": "Invalid URL",
+		"date": "Invalid date (YYYY-MM-DD)",
+		"datetime": "Invalid timestamp",
+		"time": "Invalid time",
+		"regex": "Invalid format"
+	}
+}

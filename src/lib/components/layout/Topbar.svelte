@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { toast } from 'svelte-sonner';
@@ -45,9 +46,9 @@
 
 	let menuOpen = $state(false);
 	const THEME_LABELS: Record<ThemeChoice, string> = {
-		light: 'Hell',
-		dark: 'Dunkel',
-		system: 'System'
+		light: 'sidebar.topbar.light',
+		dark: 'sidebar.topbar.dark',
+		system: 'sidebar.topbar.system'
 	};
 	let paletteOpen = $state(false);
 
@@ -63,7 +64,7 @@
 			credentials: 'same-origin'
 		}).catch(() => null);
 		if (!res?.ok) {
-			toast.error('Theme konnte nicht gewechselt werden.');
+			toast.error(t('sidebar.topbar.themeFailed'));
 			return;
 		}
 		await invalidateAll();
@@ -95,7 +96,7 @@
 		variant="ghost"
 		size="icon"
 		class="lg:hidden"
-		aria-label="Navigation öffnen"
+		aria-label={t('sidebar.topbar.openNav')}
 		onclick={() => (menuOpen = true)}
 	>
 		<Menu />
@@ -124,15 +125,15 @@
 	<Button
 		variant="outline"
 		class="h-9 gap-2 px-2 text-muted-foreground sm:w-56 sm:justify-start sm:px-3"
-		aria-label="Suchen (Strg+K)"
+		aria-label={t('sidebar.topbar.searchLabel')}
 		aria-keyshortcuts="Control+K Meta+K"
 		onclick={() => (paletteOpen = true)}
 	>
 		<SearchIcon />
-		<span class="hidden flex-1 text-left sm:inline">Suchen</span>
+		<span class="hidden flex-1 text-left sm:inline">{t('sidebar.topbar.search')}</span>
 		<kbd
 			class="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-xs sm:inline"
-			aria-hidden="true">Strg K</kbd
+			aria-hidden="true">{t('sidebar.topbar.searchKey')}</kbd
 		>
 	</Button>
 	<CommandPalette {permissions} {navigation} bind:open={paletteOpen} />
@@ -144,46 +145,55 @@
 					{...props}
 					variant="ghost"
 					size="icon"
-					aria-label="Darstellung wählen (aktuell: {THEME_LABELS[theme.choice]})"
+					aria-label={t('sidebar.topbar.appearanceLabel', {
+						current: t(THEME_LABELS[theme.choice])
+					})}
 				>
 					{#if theme.dark}<Moon />{:else}<Sun />{/if}
 				</Button>
 			{/snippet}
 		</DropdownMenuTrigger>
 		<DropdownMenuContent align="end" class="w-52">
-			<DropdownMenuLabel>Darstellung</DropdownMenuLabel>
+			<DropdownMenuLabel>{t('sidebar.topbar.appearance')}</DropdownMenuLabel>
 			<DropdownMenuRadioGroup
 				value={theme.choice}
 				onValueChange={(v) => theme.set(v as ThemeChoice)}
 			>
-				<DropdownMenuRadioItem value="light" closeOnSelect><Sun /> Hell</DropdownMenuRadioItem>
-				<DropdownMenuRadioItem value="dark" closeOnSelect><Moon /> Dunkel</DropdownMenuRadioItem>
+				<DropdownMenuRadioItem value="light" closeOnSelect
+					><Sun /> {t('sidebar.topbar.light')}</DropdownMenuRadioItem
+				>
+				<DropdownMenuRadioItem value="dark" closeOnSelect
+					><Moon /> {t('sidebar.topbar.dark')}</DropdownMenuRadioItem
+				>
 				<DropdownMenuRadioItem value="system" closeOnSelect
-					><Monitor /> System</DropdownMenuRadioItem
+					><Monitor /> {t('sidebar.topbar.system')}</DropdownMenuRadioItem
 				>
 			</DropdownMenuRadioGroup>
 			<DropdownMenuSeparator />
-			<DropdownMenuLabel>Theme</DropdownMenuLabel>
+			<DropdownMenuLabel>{t('sidebar.topbar.theme')}</DropdownMenuLabel>
 			<DropdownMenuRadioGroup value={activeThemeId} onValueChange={(v) => void pickTheme(v)}>
-				<DropdownMenuRadioItem value="" closeOnSelect>Standard</DropdownMenuRadioItem>
-				{#each quickThemes as t (t.id)}
-					<DropdownMenuRadioItem value={t.id} closeOnSelect>
+				<DropdownMenuRadioItem value="" closeOnSelect
+					>{t('sidebar.topbar.themeDefault')}</DropdownMenuRadioItem
+				>
+				{#each quickThemes as qt (qt.id)}
+					<DropdownMenuRadioItem value={qt.id} closeOnSelect>
 						<span
 							class="size-4 shrink-0 rounded-full border"
-							style:background-image={theme.dark ? t.swatchDark : t.swatchLight}
+							style:background-image={theme.dark ? qt.swatchDark : qt.swatchLight}
 							aria-hidden="true"
 						></span>
-						<span class="truncate">{t.name}</span>
+						<span class="truncate">{qt.name}</span>
 					</DropdownMenuRadioItem>
 				{/each}
 			</DropdownMenuRadioGroup>
 			{#if !quickThemes.length}
 				<p class="px-2 py-1.5 text-xs text-muted-foreground">
-					Markiere Themes im Profil mit dem Stern, damit sie hier erscheinen.
+					{t('sidebar.topbar.themesHint')}
 				</p>
 			{/if}
 			<DropdownMenuItem onSelect={() => goto('/profile?tab=appearance')}>
-				<Palette /> Themes verwalten …
+				<Palette />
+				{t('sidebar.topbar.manageThemes')}
 			</DropdownMenuItem>
 		</DropdownMenuContent>
 	</DropdownMenu>
@@ -191,7 +201,12 @@
 	<DropdownMenu>
 		<DropdownMenuTrigger>
 			{#snippet child({ props })}
-				<Button {...props} variant="ghost" class="h-9 gap-2 px-2" aria-label="Benutzermenü">
+				<Button
+					{...props}
+					variant="ghost"
+					class="h-9 gap-2 px-2"
+					aria-label={t('sidebar.topbar.userMenu')}
+				>
 					<Avatar class="size-7">
 						{#if avatarSrc}<AvatarImage src={avatarSrc} alt="" />{/if}
 						<AvatarFallback>{initials}</AvatarFallback>
@@ -206,8 +221,10 @@
 				<div class="truncate text-xs font-normal text-muted-foreground">{user.email}</div>
 			</DropdownMenuLabel>
 			<DropdownMenuSeparator />
-			<DropdownMenuItem onSelect={() => goto('/profile')}><UserIcon /> Profil</DropdownMenuItem>
-			<DropdownMenuItem onSelect={logout}><LogOut /> Abmelden</DropdownMenuItem>
+			<DropdownMenuItem onSelect={() => goto('/profile')}
+				><UserIcon /> {t('sidebar.topbar.profile')}</DropdownMenuItem
+			>
+			<DropdownMenuItem onSelect={logout}><LogOut /> {t('sidebar.topbar.logout')}</DropdownMenuItem>
 		</DropdownMenuContent>
 	</DropdownMenu>
 </header>

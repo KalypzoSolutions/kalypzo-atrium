@@ -1,0 +1,280 @@
+{
+	"core.modules.githubToken": {
+		"label": "GitHub token",
+		"description": "Optional: for private repositories and higher rate limits (read access is enough)."
+	},
+	"core.modules.allowedSources": {
+		"label": "Allowed sources",
+		"description": "Optional: one `owner/repo` or `owner/*` per line. Empty = all GitHub sources and ZIP files allowed; otherwise no ZIP files."
+	},
+	"core.system.name": {
+		"label": "System name"
+	},
+	"core.system.locale": {
+		"label": "Language",
+		"description": "Language for everyone who hasn't chosen their own. “Automatic” follows the browser language (otherwise German)."
+	},
+	"core.org.everyoneLabel": {
+		"label": "Name for “everyone”",
+		"description": "What sharing with all people is called, e.g. “Everyone”, “Club” or “Team”. Empty = “Everyone” in the current language."
+	},
+	"core.organization.name": {
+		"label": "Organization"
+	},
+	"core.organization.address": {
+		"label": "Address"
+	},
+	"core.organization.email": {
+		"label": "Contact email"
+	},
+	"core.organization.phone": {
+		"label": "Phone"
+	},
+	"core.legal.privacyUrl": {
+		"label": "Privacy policy (URL)",
+		"description": "Link to your organization's privacy policy. Shown on the sign-in page and all public pages; registration forms without their own link use it."
+	},
+	"core.legal.imprintUrl": {
+		"label": "Legal notice (URL)",
+		"description": "Link to the legal notice (imprint). Shown on the sign-in page and all public pages."
+	},
+	"core.retention.apiLogDays": {
+		"label": "Keep API log (days)",
+		"description": "Entries in the API access log (path, IP address, actor) are deleted after this. 1–3650 days."
+	},
+	"core.retention.auditIpDays": {
+		"label": "Keep IP addresses in the audit log (days)",
+		"description": "After this, the IP address is removed from audit entries; the entry itself stays. 1–3650 days."
+	},
+	"core.retention.auditDays": {
+		"label": "Keep audit log (days)",
+		"description": "Audit entries are deleted after this. 0 = never delete, otherwise at least 30 days (at most 36500)."
+	},
+	"core.design.logoFileId": {
+		"label": "Logo (file ID in storage)"
+	},
+	"core.design.iconBackground": {
+		"label": "App icon background",
+		"description": "Fill color behind the logo for app icons on the home screen (iOS, Android). Favicon and logo stay transparent."
+	},
+	"core.design.accentColor": {
+		"label": "Accent color"
+	},
+	"core.smtp.host": {
+		"label": "SMTP host"
+	},
+	"core.smtp.port": {
+		"label": "SMTP port"
+	},
+	"core.smtp.secure": {
+		"label": "Direct TLS (port 465)"
+	},
+	"core.smtp.user": {
+		"label": "SMTP user"
+	},
+	"core.smtp.password": {
+		"label": "SMTP password"
+	},
+	"core.smtp.from": {
+		"label": "Sender address"
+	},
+	"core.mail.layoutEnabled": {
+		"label": "Use the organization layout for emails",
+		"description": "Header with logo and organization name, signature and footer for all outgoing emails."
+	},
+	"core.mail.showEmblem": {
+		"label": "Show emblem in the header"
+	},
+	"core.mail.signature": {
+		"label": "Signature",
+		"description": "Added below every message, e.g. “Best regards”. Empty = no signature."
+	},
+	"core.mail.footerText": {
+		"label": "Footer",
+		"description": "Small print below every email (e.g. registration details). Empty = no footer."
+	},
+	"core.storage.endpoint": {
+		"label": "S3 endpoint (empty = AWS)"
+	},
+	"core.storage.region": {
+		"label": "Region"
+	},
+	"core.storage.bucket": {
+		"label": "Bucket"
+	},
+	"core.storage.accessKeyId": {
+		"label": "Access key ID"
+	},
+	"core.storage.secretAccessKey": {
+		"label": "Secret access key"
+	},
+	"core.storage.forcePathStyle": {
+		"label": "Path-style URLs (MinIO)"
+	},
+	"core.storage.maxFileSizeMb": {
+		"label": "Max. file size (MB)"
+	},
+	"core.storage.allowedContentTypes": {
+		"label": "Allowed file types (empty = default list)"
+	},
+	"core.ai.apiKey": {
+		"label": "OpenAI API key"
+	},
+	"core.ai.baseUrl": {
+		"label": "API base URL (optional)"
+	},
+	"core.ai.defaultModel": {
+		"label": "Default model"
+	},
+	"core.ai.allowedModels": {
+		"label": "Allowed models (empty = all)"
+	},
+	"core.ai.allowedModules": {
+		"label": "Modules with AI access (empty = all)"
+	},
+	"core.ai.monthlyTokenLimit": {
+		"label": "Monthly token limit per module (0 = unlimited)"
+	},
+	"core.ai.monthlyCostLimitUsd": {
+		"label": "Monthly cost limit per module in USD (0 = unlimited)"
+	},
+	"core.ai.requestsPerMinute": {
+		"label": "Max. requests per minute (total)"
+	},
+	"core.ai.pricing": {
+		"label": "Prices per 1M tokens in USD (model -> input/output)"
+	},
+	"core.ai.userMonthlyTokenLimit": {
+		"label": "Writing assistant: token limit per person and month (0 = unlimited)"
+	},
+	"core.ai.style.address": {
+		"label": "Writing assistant: form of address (default, can be changed per text)"
+	},
+	"core.ai.style.tone": {
+		"label": "Writing assistant: tone",
+		"description": "How your organization's texts should sound, e.g. “friendly, relaxed, clear”."
+	},
+	"core.ai.style.greeting": {
+		"label": "Writing assistant: closing"
+	},
+	"core.ai.style.context": {
+		"label": "Writing assistant: who is writing?",
+		"description": "Short description of the organization and its readers, e.g. “a sports club, texts for members and parents”. Empty = general."
+	},
+	"core.ai.style.notes": {
+		"label": "Writing assistant: further style notes",
+		"description": "Applies to all suggestions, e.g. “Club name: …” or “no emojis”."
+	},
+	"core.ai.assist.allowInbox": {
+		"label": "Writing assistant: send received emails for reply drafts",
+		"description": "The email text is sent to the AI provider (email addresses, phone numbers and IBANs are masked first)."
+	},
+	"core.ai.assist.allowImages": {
+		"label": "Writing assistant: send gallery images for image descriptions",
+		"description": "The image is sent to the AI provider without metadata."
+	},
+	"core.pdf.defaultFormat": {
+		"label": "Default page size"
+	},
+	"core.pdf.defaultOrientation": {
+		"label": "Default orientation"
+	},
+	"core.pdf.marginTop": {
+		"label": "Top margin"
+	},
+	"core.pdf.marginRight": {
+		"label": "Right margin"
+	},
+	"core.pdf.marginBottom": {
+		"label": "Bottom margin"
+	},
+	"core.pdf.marginLeft": {
+		"label": "Left margin"
+	},
+	"core.pdf.headerText": {
+		"label": "Header (right)"
+	},
+	"core.pdf.footerText": {
+		"label": "Footer (center)"
+	},
+	"core.pdf.showLogo": {
+		"label": "Logo in the header"
+	},
+	"core.push.enabled": {
+		"label": "Push notifications",
+		"description": "Allows notifications directly on the device (Web Push, also as an app on the home screen). Off: everything goes by email."
+	},
+	"core.push.vapidPublicKey": {
+		"label": "Public push key (VAPID)",
+		"description": "Generated automatically."
+	},
+	"core.push.vapidPrivateKey": {
+		"label": "Private push key (VAPID)",
+		"description": "Generated automatically and stored encrypted."
+	},
+	"core.user.theme": {
+		"label": "Appearance"
+	},
+	"core.user.locale": {
+		"label": "Language",
+		"description": "Empty = system language."
+	},
+	"core.user.accentColor": {
+		"label": "Own accent color",
+		"description": "Empty = system accent color."
+	},
+	"core.user.themes": {
+		"label": "Own themes",
+		"description": "Personal themes (accent color and background per mode)."
+	},
+	"core.user.activeTheme": {
+		"label": "Active theme",
+		"description": "Empty = no theme, `preset:<name>` = suggestion, otherwise ID of an own theme."
+	},
+	"core.user.themeFavorites": {
+		"label": "Favorite themes",
+		"description": "Themes marked with a star; only these appear in the header."
+	},
+	"core.user.density": {
+		"label": "Density"
+	},
+	"core.user.startPage": {
+		"label": "Start page",
+		"description": "Page after signing in (only allowed pages are used)."
+	},
+	"core.user.pageSize": {
+		"label": "Entries per page"
+	},
+	"core.user.dashboard": {
+		"label": "Dashboard layout",
+		"description": "Order and hidden tiles (`<module>:<tile>`); empty = default."
+	},
+	"validation": {
+		"auditDays": "Please enter 0 (never) or at least 30 days"
+	},
+	"errors": {
+		"unknown": "Unknown setting: {key}",
+		"userIdRequired": "User-specific setting requires a user ID",
+		"permissionMissing": "Missing permission: {permission}",
+		"tooMany": "At most {max} settings at once",
+		"ownOnly": "Only your own settings can be changed",
+		"notClearable": "This setting cannot be cleared",
+		"invalidValue": "Invalid value for {key}",
+		"invalidMany": "Invalid settings"
+	},
+	"options": {
+		"locale": {
+			"auto": "Automatic (browser language)",
+			"system": "System language"
+		},
+		"orientation": {
+			"portrait": "Portrait",
+			"landscape": "Landscape"
+		},
+		"address": {
+			"du": "du (informal)",
+			"ihr": "ihr (informal, plural)",
+			"Sie": "Sie (formal)"
+		}
+	}
+}

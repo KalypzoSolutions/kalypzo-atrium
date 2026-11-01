@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import { t } from '$lib/i18n';
 	import SharePanel from './SharePanel.svelte';
 	import type { ShareCandidate, ShareEntry, ShareLevel, ShareOwner } from './share-types';
 
@@ -11,8 +12,8 @@
 	 */
 	let {
 		open = $bindable(false),
-		title = 'Freigeben',
-		description = 'Gib diesen Eintrag für weitere Benutzer frei.',
+		title = t('sharing.dialog.title'),
+		description = t('sharing.dialog.description'),
 		shares,
 		owner,
 		levels,
@@ -73,7 +74,9 @@
 		/>
 
 		<Dialog.Footer>
-			<Button type="button" variant="outline" onclick={() => (open = false)}>Schließen</Button>
+			<Button type="button" variant="outline" onclick={() => (open = false)}
+				>{t('sharing.dialog.close')}</Button
+			>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

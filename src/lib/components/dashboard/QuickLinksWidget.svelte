@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import Zap from '@lucide/svelte/icons/zap';
@@ -18,7 +19,12 @@
 	});
 </script>
 
-<DashboardCard title="Schnellzugriff" icon={Zap} empty={!links.length} emptyText="Keine Module.">
+<DashboardCard
+	title={t('widgets.quickLinks.title')}
+	icon={Zap}
+	empty={!links.length}
+	emptyText={t('widgets.quickLinks.empty')}
+>
 	<ul class="grid grid-cols-1 gap-1 min-[400px]:grid-cols-2 md:grid-cols-1">
 		{#each links as l (l.path)}
 			{@const Icon = iconFor(l.icon)}

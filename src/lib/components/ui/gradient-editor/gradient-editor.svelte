@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	/**
 	 * Verlaufseditor: einfarbig, linear, radial oder Mesh (Farbflecken). Farbpunkte auf der Leiste ziehen
 	 * (Tastatur: Pfeile verschieben, Umschalt = 10er-Schritte, Entf entfernt), Klick auf die Leiste fügt einen
@@ -41,22 +42,22 @@
 	} = $props();
 
 	const KINDS: { value: BackgroundKind; label: string }[] = [
-		{ value: 'solid', label: 'Einfarbig' },
-		{ value: 'linear', label: 'Linear' },
-		{ value: 'radial', label: 'Radial' },
-		{ value: 'mesh', label: 'Farbflecken' }
+		{ value: 'solid', label: t('ui.gradient.kind.solid') },
+		{ value: 'linear', label: t('ui.gradient.kind.linear') },
+		{ value: 'radial', label: t('ui.gradient.kind.radial') },
+		{ value: 'mesh', label: t('ui.gradient.kind.mesh') }
 	];
 	const ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 	const POSITION_LABELS: Record<RadialPosition, string> = {
-		'top-left': 'oben links',
-		top: 'oben',
-		'top-right': 'oben rechts',
-		left: 'links',
-		center: 'Mitte',
-		right: 'rechts',
-		'bottom-left': 'unten links',
-		bottom: 'unten',
-		'bottom-right': 'unten rechts'
+		'top-left': t('ui.gradient.positions.topLeft'),
+		top: t('ui.gradient.positions.top'),
+		'top-right': t('ui.gradient.positions.topRight'),
+		left: t('ui.gradient.positions.left'),
+		center: t('ui.gradient.positions.center'),
+		right: t('ui.gradient.positions.right'),
+		'bottom-left': t('ui.gradient.positions.bottomLeft'),
+		bottom: t('ui.gradient.positions.bottom'),
+		'bottom-right': t('ui.gradient.positions.bottomRight')
 	};
 
 	let selected = $state(0);
@@ -183,7 +184,7 @@
 	<SegmentedSlider
 		value={value.kind}
 		options={KINDS}
-		label="Art des Hintergrunds"
+		label={t('ui.gradient.kindLabel')}
 		onchange={changeKind}
 	/>
 
@@ -204,7 +205,11 @@
 					style:left="{s.x}%"
 					style:top="{s.y}%"
 					style:background-color={s.color}
-					aria-label="Farbfleck {i + 1} verschieben ({Math.round(s.x)} % / {Math.round(s.y)} %)"
+					aria-label={t('ui.gradient.moveSpot', {
+						n: i + 1,
+						x: Math.round(s.x),
+						y: Math.round(s.y)
+					})}
 					aria-pressed={i === current}
 					onpointerdown={(e) => startDrag(e, i, 'stage')}
 					onkeydown={(e) => spotKey(e, i)}
@@ -217,9 +222,9 @@
 	{#if value.kind === 'solid'}
 		{@const bg = value}
 		<div class="grid gap-1.5">
-			<span class="text-sm font-medium">Farbe</span>
+			<span class="text-sm font-medium">{t('ui.gradient.color')}</span>
 			<ColorPicker
-				label="Hintergrundfarbe"
+				label={t('ui.gradient.backgroundColor')}
 				value={bg.color}
 				{presets}
 				onchange={(c) => c && set({ ...bg, color: c })}
@@ -228,9 +233,9 @@
 	{:else if value.kind === 'linear' || value.kind === 'radial'}
 		<div class="grid gap-2">
 			<div class="flex items-center justify-between gap-2">
-				<span class="text-sm font-medium" id="gradient-stops-label">Farbpunkte</span>
+				<span class="text-sm font-medium" id="gradient-stops-label">{t('ui.gradient.stops')}</span>
 				<span class="text-xs text-muted-foreground">
-					{stops.length} von {STOPS_MAX} · Klick auf die Leiste fügt einen Punkt hinzu
+					{t('ui.gradient.stopsHint', { count: stops.length, max: STOPS_MAX })}
 				</span>
 			</div>
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Hinzufügen per Knopf unten) -->
@@ -244,7 +249,7 @@
 					<button
 						type="button"
 						role="slider"
-						aria-label="Farbpunkt {i + 1} ({s.color})"
+						aria-label={t('ui.gradient.stop', { n: i + 1, color: s.color })}
 						aria-valuemin={0}
 						aria-valuemax={100}
 						aria-valuenow={Math.round(s.pos)}
@@ -270,9 +275,11 @@
 		{#if stop}
 			<div class="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 p-3">
 				<div class="grid gap-1.5">
-					<span class="text-xs font-medium text-muted-foreground">Punkt {current + 1}</span>
+					<span class="text-xs font-medium text-muted-foreground"
+						>{t('ui.gradient.stopN', { n: current + 1 })}</span
+					>
 					<ColorPicker
-						label="Farbe von Punkt {current + 1}"
+						label={t('ui.gradient.stopColor', { n: current + 1 })}
 						value={stop.color}
 						{presets}
 						onchange={(c) =>
@@ -281,10 +288,10 @@
 				</div>
 				<div class="grid min-w-36 flex-1 gap-1.5">
 					<span class="text-xs font-medium text-muted-foreground">
-						Position {Math.round(stop.pos)} %
+						{t('ui.gradient.position', { pos: Math.round(stop.pos) })}
 					</span>
 					<Slider
-						label="Position von Punkt {current + 1}"
+						label={t('ui.gradient.stopPosition', { n: current + 1 })}
 						value={stop.pos}
 						min={0}
 						max={100}
@@ -303,13 +310,13 @@
 								setStops(res.stops);
 								selected = res.index;
 							}
-						}}><Plus /> Punkt</Button
+						}}><Plus /> {t('ui.gradient.addStop')}</Button
 					>
 					<Button
 						type="button"
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Punkt {current + 1} entfernen"
+						aria-label={t('ui.gradient.removeStop', { n: current + 1 })}
 						disabled={stops.length <= STOPS_MIN}
 						onclick={() => {
 							setStops(removeStop(stops, current));
@@ -323,7 +330,7 @@
 		{#if value.kind === 'linear'}
 			{@const bg = value}
 			<div class="grid gap-2">
-				<span class="text-sm font-medium">Richtung {bg.angle}°</span>
+				<span class="text-sm font-medium">{t('ui.gradient.angle', { a: bg.angle })}</span>
 				<div class="flex flex-wrap items-center gap-3">
 					<div class="flex flex-wrap gap-1">
 						{#each ANGLES as a (a)}
@@ -331,7 +338,7 @@
 								type="button"
 								variant={bg.angle === a ? 'default' : 'outline'}
 								size="icon-sm"
-								aria-label="Richtung {a}°"
+								aria-label={t('ui.gradient.angle', { a })}
 								aria-pressed={bg.angle === a}
 								onclick={() => set({ ...bg, angle: a })}
 							>
@@ -341,7 +348,7 @@
 					</div>
 					<Slider
 						class="min-w-36 flex-1"
-						label="Richtung in Grad"
+						label={t('ui.gradient.angleLabel')}
 						value={bg.angle}
 						min={0}
 						max={359}
@@ -352,7 +359,7 @@
 		{:else}
 			{@const bg = value}
 			<fieldset class="grid gap-2">
-				<legend class="mb-1 text-sm font-medium">Mittelpunkt</legend>
+				<legend class="mb-1 text-sm font-medium">{t('ui.gradient.center')}</legend>
 				<div class="grid w-fit grid-cols-3 gap-1">
 					{#each RADIAL_POSITIONS as pos (pos)}
 						<Button
@@ -373,9 +380,9 @@
 		{@const bg = value}
 		<div class="flex flex-wrap items-end gap-3">
 			<div class="grid gap-1.5">
-				<span class="text-sm font-medium">Grundfarbe</span>
+				<span class="text-sm font-medium">{t('ui.gradient.baseColor')}</span>
 				<ColorPicker
-					label="Grundfarbe"
+					label={t('ui.gradient.baseColor')}
 					value={bg.base}
 					{presets}
 					onchange={(c) => c && set({ ...bg, base: c })}
@@ -389,19 +396,21 @@
 				onclick={() => {
 					setSpots(addSpot(spots));
 					selected = spots.length;
-				}}><Plus /> Farbfleck</Button
+				}}><Plus /> {t('ui.gradient.addSpot')}</Button
 			>
 			<span class="text-xs text-muted-foreground">
-				{spots.length} von {SPOTS_MAX} · Punkte in der Vorschau verschieben
+				{t('ui.gradient.spotsHint', { count: spots.length, max: SPOTS_MAX })}
 			</span>
 		</div>
 		{@const spot = spots[current]}
 		{#if spot}
 			<div class="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 p-3">
 				<div class="grid gap-1.5">
-					<span class="text-xs font-medium text-muted-foreground">Fleck {current + 1}</span>
+					<span class="text-xs font-medium text-muted-foreground"
+						>{t('ui.gradient.spot', { n: current + 1 })}</span
+					>
 					<ColorPicker
-						label="Farbe von Fleck {current + 1}"
+						label={t('ui.gradient.spotColor', { n: current + 1 })}
 						value={spot.color}
 						{presets}
 						onchange={(c) =>
@@ -409,9 +418,11 @@
 					/>
 				</div>
 				<div class="grid min-w-36 flex-1 gap-1.5">
-					<span class="text-xs font-medium text-muted-foreground">Größe {spot.size} %</span>
+					<span class="text-xs font-medium text-muted-foreground"
+						>{t('ui.gradient.sizeValue', { size: spot.size })}</span
+					>
 					<Slider
-						label="Größe von Fleck {current + 1}"
+						label={t('ui.gradient.spotSize', { n: current + 1 })}
 						value={spot.size}
 						min={10}
 						max={100}
@@ -422,7 +433,7 @@
 					type="button"
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Fleck {current + 1} entfernen"
+					aria-label={t('ui.gradient.removeSpot', { n: current + 1 })}
 					disabled={spots.length <= 1}
 					onclick={() => {
 						setSpots(spots.filter((_, i) => i !== current));

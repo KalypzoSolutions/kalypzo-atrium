@@ -192,11 +192,13 @@ Vorlagen mit festem Seitenlayout (Briefkopf, Falzmarken, Adressfeld, Fußzeile) 
 - `src/lib/server/core/pdf/assets/` – Schriften (Carlito, OFL, metrisch kompatibel zu Calibri) und Bilder; alles wird eingebettet, keine externen Requests.
 - Neue `PdfTemplate`-Felder: `description`, `source` (Anzeige), `page` (Format/Ränder, schaltet Chromium-Kopf/-Fuß ab), `overlay` (absolut positionierte Seitenelemente), `parts` (Bestandteile mit Position/Größe in mm).
 - `core.pdf.generate` nimmt zusätzlich `recipient: string[]` (Adresszeilen für das Adressfeld; werden escaped).
-- Mitgelieferte Vorlagen: `stamm-briefkopf` (Briefkopf für Abrechnungen), `stamm-brief` (mit Adressfeld und Falzmarken) und `stamm-briefkopf-quer` (A4 quer, 297 × 210 mm, ohne Adressfeld/Falzmarken; für breite Tabellen und Listen).
+- Mitgelieferte Vorlagen (neutral): `briefkopf` (Briefkopf, z. B. für Abrechnungen), `brief` (mit Adressfeld und Falzmarken) und `briefkopf-quer` (A4 quer, 297 × 210 mm, ohne Adressfeld/Falzmarken; für breite Tabellen und Listen). Die früheren IDs `stamm-brief`, `stamm-briefkopf`, `stamm-briefkopf-quer` bleiben als Aliase gültig (`TEMPLATE_ALIASES`).
+- Neutraler Kopf: Name der Organisation (`core.organization.name`, sonst Systemname) an der Titelposition, Logo (`core.design.logoFileId` mit `core.pdf.showLogo`, sonst `brandingLogo` eines aktiven Moduls) rechts an der Emblem-Position; Fußzeile aus `core.pdf.footerText` (Zeilen), sonst Anschrift · E-Mail · Telefon der Organisation.
+- **Vorlagen aus Modulen** (`ModuleDefinition.pdfTemplates`): eine Modul-Vorlage mit der ID einer Core-Vorlage ersetzt diese, solange das Modul aktiv ist (`resolveTemplate(id)` in `pdf/resolve.ts`, erstes aktives Modul in Ladereihenfolge); eigene IDs gelten nur bei aktivem Modul. `core.pdf.listTemplates()` listet Core-Vorlagen plus Modul-Vorlagen mit eigener ID. Beispiel: `modules/ep-stamm` (Briefkopf der Edelweißpiraten).
 - Ausrichtung: `PdfTemplate.page.orientation?: 'portrait' | 'landscape'` (Standard hochkant). Bei Vorlagen mit festem Seitenlayout ignoriert `core.pdf.generate` die Ausrichtung des Aufrufers.
-- Stamm-Vorlagen entstehen über `createStammTemplate({ …, orientation })` in `parts/stamm.ts`; `landscape` mit `withAddress` wirft einen Fehler (Fensterumschlag nur hochkant). Exporte: `stammGeometry(orientation)`, `GEOMETRY_LANDSCAPE`, `PART_META_LANDSCAPE`, Typ `StammOrientation`.
-- Quer-Maße: Lilie und Vereinsname wie hochkant, Wappen bei x 263,7 mm (12,7 mm vom rechten Rand), Fußzeile mit Linie bei y 189,8 mm, x 25 mm, Breite 247 mm, Text als ein zentrierter Absatz; Textränder oben/rechts/unten/links 45/25/25/25 mm.
-- Admin-Ansicht „PDF-Vorlagen“: Vorlagen mit Seitenvorschau (`/admin/settings/pdf`, Bild über `GET /admin/settings/pdf/preview?template=<id>[&only=<teil>]`, Recht `core.pdf.manage`) – nur Ansicht. `describeTemplates()` liefert `orientation`; Quer-Vorlagen werden mit 1123 × 794 px gerendert und als Karte mit Badge „Quer“ im Seitenverhältnis 297/210 gezeigt. `PreviewRenderer` hat die Signatur `(html, size)`.
+- Briefvorlagen entstehen über `createLetterTemplate({ id, label, description, source, withAddress, orientation?, letterhead? })` in `parts/letter.ts` (über `$lib/sdk/server` auch für Module, dazu `letterGeometry`, `LETTER_GEOMETRY[_LANDSCAPE]`, `CARLITO_STACK`, `escapeHtml`, Typen `PdfTemplate`, `PdfLayoutData`, `LetterheadSpec`); `landscape` mit `withAddress` wirft einen Fehler (Fensterumschlag nur hochkant). `letterhead = { top(geo, data), footerLines?(data), headDescription?, footerDescription? }` ersetzt Kopf und Fußzeile; Falzmarken, Adressfeld, Textfluss und Maße bleiben vom Core. Texte der Core-Vorlagen sind Schlüssel (`pdf.templates.*`, `pdf.parts.*`), `describeTemplate` übersetzt sie.
+- Quer-Maße: Bildmarke und Name wie hochkant, Logo/Emblem bei x 263,7 mm (12,7 mm vom rechten Rand), Fußzeile mit Linie bei y 189,8 mm, x 25 mm, Breite 247 mm, Text als ein zentrierter Absatz; Textränder oben/rechts/unten/links 45/25/25/25 mm.
+- Admin-Ansicht „PDF-Vorlagen“: Vorlagen mit Seitenvorschau (`/admin/settings/pdf`, Bild über `GET /admin/settings/pdf/preview?template=<id>[&only=<teil>]`, Recht `core.pdf.manage`) – nur Ansicht. `describeTemplates()` (async) liefert die **wirksame** Vorlage je ID mit `orientation`, `origin` (Core oder Modul) und `replacesCore` (Badge „Ersetzt durch Modul: …“); Quer-Vorlagen werden mit 1123 × 794 px gerendert und als Karte mit Badge „Quer“ im Seitenverhältnis 297/210 gezeigt. `PreviewRenderer` hat die Signatur `(html, size)`.
 - Die Overlay-Elemente nutzen `position: fixed`; Chromium wiederholt sie im Druck auf jeder Seite.
 
 **Neue Vorlage hinzufügen**
@@ -249,12 +251,16 @@ Für `/profile` gibt es Funktionen in `core/auth/profile.ts` und `core/settings/
 ## core.mail und E-Mail-Layout
 
 `core.mail.send({ to, subject, text, html? })` sendet über SMTP. Jede Mail (auch Passwort-Reset, Test-Mail) bekommt das
-**Stamm-Layout** (`src/lib/server/core/mail-layout.ts`, abgeleitet vom Stamm-Briefkopf der PDF-Vorlagen):
-Kopf mit Lilie, Vereinsname und Wappen, Inhalt, Signatur, Fußzeile mit Vereinsnachweis.
+**E-Mail-Layout** (`src/lib/server/core/mail-layout.ts`): Kopf, Inhalt, Signatur, Fußzeile. Kopf neutral aus dem hochgeladenen Logo
+(Design-Einstellungen) und dem Namen der Organisation (sonst Systemname); ein aktives Modul mit `mailBranding = { title, mark?, emblem? }`
+(`MailBranding`, Data-URLs) ersetzt ihn, das Emblem nur mit `core.mail.showEmblem` (Beispiel `modules/ep-stamm`: Lilie, Vereinsname, Wappen).
+`<html lang>` folgt der Sprache; die Textfassung endet mit `--`, dem Namen aus dem Kopf und der Fußzeile.
 
 - `text` wird escaped zu Absätzen/Links; `html` (optional) ist ein **Inhaltsfragment** und wird ins Layout gesetzt.
   Die Textfassung enthält Signatur und Fußzeile ebenfalls.
-- Bilder (`mail-assets/`, verkleinert) gehen als CID-Anhänge mit, nicht als `data:`-URL.
+- Bilder gehen als CID-Anhänge (`brand-mark@atrium`, `brand-emblem@atrium`) mit, nicht als `data:`-URL; die Vorschau nutzt `data:`.
+- Eigene Benachrichtigungen tragen `X-Atrium: notification` + `Auto-Submitted` (Schleifenschutz beim Postfach-Abruf); die frühere Kopfzeile
+  `X-EP-Intern` setzt `sendMail` beim Versand auf `X-Atrium` um, `messages` erkennt beim Abruf beide.
 - Verwaltung unter **Einstellungen → E-Mail-Layout** (`/admin/settings/mail-layout`) (`core.mail.layoutEnabled`, `core.mail.showEmblem`,
   `core.mail.signature`, `core.mail.footerText`; Akzentfarbe aus `core.design.accentColor`) mit Live-Vorschau
   (`GET /admin/settings/mail-preview`, Recht `core.settings.view`; einzige Seite mit `x-frame-options: SAMEORIGIN`).
@@ -353,7 +359,9 @@ maxChars, tasks, placeholders?, extraKeys?, letter?, contexts? }`; `contexts`: A
   `core.ai.manage`, Schlüssel, `allowedModules`) → Limit je Person `core.ai.userMonthlyTokenLimit` (`ai_usage.actor_id`, 429) → Kontext nur aus
   `contexts` des Zwecks über den Provider des Zielmoduls (prüft selbst den Zugriff, `null` → 404) → `document`/`images` nur mit
   `core.ai.assist.allowInbox`/`allowImages` (sonst weggelassen; Bildbeschreibung → 403) → `extra` nur `extraKeys` → Maskieren (`redact.ts`) →
-  Prompt (`prompt.ts`: Stammeston `core.ai.style.address|tone|greeting|notes`, Inhalte der Person zwischen `<<<`/`>>>` als Daten) →
+  Prompt (`prompt.ts`, Texte `ai.prompt.*` in der **Sprache der Oberfläche**: Organisation (`core.organization.name`, sonst Systemname),
+  `core.ai.style.context` (wer schreibt für wen; leer = allgemein), `tone|greeting|notes`; Anrede `address` sowie Gendern/Umlaute nur auf Deutsch;
+  Inhalte der Person zwischen `<<<`/`>>>` als Daten) →
   `core.ai.stream` bzw. `generateJson` (Varianten/Listen) → Masken zurück, `normalizeOutput` (`sanitizeRichText` bzw. reiner Text), `verifyOutput`
   (Platzhalter erhalten/unbekannt, erfundene Zahlen, Überlänge) → Audit `core.ai.assist_used` (Modul, Zweck, Aufgabe, Kontextart, Zähler – kein Text).
 - Oberfläche (`$lib/components/layout`): `AssistRichTextEditor`, `AssistTextarea`, `AssistInput`, `AssistButton`, `WritingAssistant`

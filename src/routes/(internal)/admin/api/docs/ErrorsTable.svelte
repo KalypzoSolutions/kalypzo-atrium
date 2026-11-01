@@ -3,6 +3,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Table from '$lib/components/ui/table';
 	import { cn } from '$lib/utils.js';
+	import { t } from '$lib/i18n';
 
 	let { errors }: { errors: ApiErrorInfo[] } = $props();
 
@@ -16,25 +17,29 @@
 
 <div class="space-y-3">
 	<div class="space-y-2 text-sm text-muted-foreground">
-		<p>Fehlerantworten haben immer dieses Format:</p>
+		<p>{t('api-docs.errors.formatIntro')}</p>
 		<pre
 			class="overflow-x-auto rounded-md border bg-muted/50 p-3 font-mono text-xs text-foreground">{FORMAT}</pre>
 		<p>
-			Bei 422 enthält <code class="font-mono text-xs text-foreground">details</code> die Zod-Fehler
-			je Feld (<code class="font-mono text-xs text-foreground">path</code>,
-			<code class="font-mono text-xs text-foreground">message</code>).
+			{t('api-docs.errors.detailsBefore')}
+			<code class="font-mono text-xs text-foreground">details</code>
+			{t('api-docs.errors.detailsMiddle')}<code class="font-mono text-xs text-foreground">path</code
+			>,
+			<code class="font-mono text-xs text-foreground">message</code>{t(
+				'api-docs.errors.detailsAfter'
+			)}
 		</p>
 	</div>
 
 	{#if errors.length === 0}
-		<p class="text-sm text-muted-foreground">Keine Fehler dokumentiert.</p>
+		<p class="text-sm text-muted-foreground">{t('api-docs.errors.none')}</p>
 	{:else}
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					<Table.Head class="w-20">Status</Table.Head>
-					<Table.Head>Code</Table.Head>
-					<Table.Head>Wann</Table.Head>
+					<Table.Head class="w-20">{t('api-docs.errors.status')}</Table.Head>
+					<Table.Head>{t('api-docs.errors.code')}</Table.Head>
+					<Table.Head>{t('api-docs.errors.when')}</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>

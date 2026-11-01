@@ -1,0 +1,5 @@
+{
+	"invalidModuleId": "Invalid module ID",
+	"permissionMissing": "Missing permission: {permission}",
+	"targetsMissing": "targets missing"
+}

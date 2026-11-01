@@ -1,14 +1,18 @@
+import { t } from '$lib/i18n';
 /**
  * PDF-Blöcke für Listen (rein): eine Gitter-Tabelle je Abschnitt, Spaltenbreiten aus `weight`,
  * Kopfzeile wiederholt sich je Seite (Verhalten des Blocktyps `table`).
  */
 import type { PdfBlock } from '$lib/sdk/types';
+import { formatDate } from '$lib/i18n/intl';
 import type { ListColumn, ListRow } from './types';
 
 /** Nutzbare Breite der Vorlage `stamm-briefkopf-quer` in mm (297 − 25 − 25) */
 export const LIST_PAGE_WIDTH_MM = 247;
-export const LIST_CONFIDENTIAL_NOTE =
-	'Vertraulich: enthält personenbezogene Daten, teils Gesundheitsangaben. Nur für den vorgesehenen Zweck verwenden und danach vernichten.';
+/** Hinweis „Vertraulich“ (in der Sprache des Requests) */
+export function listConfidentialNote(): string {
+	return t('pdf-lists.confidential');
+}
 
 export interface ListBlockOptions {
 	columns: ListColumn[];
@@ -24,9 +28,8 @@ export interface ListSection {
 	rows: ListRow[];
 }
 
-function dateDe(iso: string): string {
-	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-	return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
+function dateText(iso: string): string {
+	return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? formatDate(iso) : iso;
 }
 
 /** Relative Gewichte → mm (Summe = Seitenbreite); ungültige Gewichte zählen als 1 */
@@ -40,17 +43,17 @@ function sectionBlocks(
 	s: ListSection,
 	o: Required<Pick<ListBlockOptions, 'generatedOn'>> & ListBlockOptions
 ): PdfBlock[] {
-	const count = `${s.rows.length} ${s.rows.length === 1 ? 'Person' : 'Personen'}`;
+	const count = t('pdf-lists.persons', { count: s.rows.length });
 	const info = [s.subtitle, count].filter(Boolean).join(' · ');
 	const blocks: PdfBlock[] = [
 		{ type: 'heading', level: 2, text: s.title },
 		{
 			type: 'paragraph',
-			text: `${info} · Stand ${dateDe(o.generatedOn)}${o.confidential ? `\n${LIST_CONFIDENTIAL_NOTE}` : ''}`
+			text: `${info} · ${t('pdf-lists.asOf', { date: dateText(o.generatedOn) })}${o.confidential ? `\n${listConfidentialNote()}` : ''}`
 		}
 	];
 	if (!s.rows.length) {
-		blocks.push({ type: 'paragraph', text: 'Keine Personen.' });
+		blocks.push({ type: 'paragraph', text: t('pdf-lists.empty') });
 		return blocks;
 	}
 	blocks.push({

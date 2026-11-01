@@ -4,6 +4,7 @@
  * iOS/iPadOS erlaubt Push nur für Web-Apps, die zum Home-Bildschirm hinzugefügt wurden (ab iOS 16.4), und
  * nur nach einem Tippen der Person – `enablePush` daher immer direkt aus einem Klick aufrufen.
  */
+import { t } from '$lib/i18n';
 import { apiFetch } from './index';
 import type { PushDevice } from '$lib/sdk/types/notifications';
 
@@ -85,7 +86,7 @@ export function deviceLabel(): string {
 					? 'Mac'
 					: /Linux/.test(ua)
 						? 'Linux'
-						: 'Unbekannt';
+						: t('pwa.unknownSystem');
 	const browser = /Edg\//.test(ua)
 		? 'Edge'
 		: /SamsungBrowser/.test(ua)
@@ -97,7 +98,7 @@ export function deviceLabel(): string {
 					: /Safari\//.test(ua)
 						? 'Safari'
 						: 'Browser';
-	return `${isStandalone() ? 'App' : browser} auf ${os}`;
+	return t('pwa.deviceLabel', { app: isStandalone() ? 'App' : browser, os });
 }
 
 export class PushPermissionError extends Error {}
@@ -107,10 +108,10 @@ export class PushPermissionError extends Error {}
  * Wirft `PushPermissionError`, wenn die Person ablehnt bzw. abgelehnt hat.
  */
 export async function enablePush(): Promise<PushDevice> {
-	if (pushSupport() !== 'supported') throw new Error('Push wird hier nicht unterstützt');
+	if (pushSupport() !== 'supported') throw new Error(t('pwa.pushUnsupported'));
 	const permission = await Notification.requestPermission();
 	if (permission !== 'granted') {
-		throw new PushPermissionError('Benachrichtigungen wurden im Browser nicht erlaubt');
+		throw new PushPermissionError(t('pwa.permissionDenied'));
 	}
 	const { publicKey } = await apiFetch<{ publicKey: string }>('/notifications/push/key');
 	const reg = await registration();

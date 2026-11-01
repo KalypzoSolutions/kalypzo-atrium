@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import * as Popover from '$lib/components/ui/popover/index.js';
 	import { cn } from '$lib/utils.js';
 	import { hexToHsv, hsvToHex, normalizeHex, type Hsv } from './color.js';
@@ -92,14 +93,14 @@
 	});
 
 	function onHexInput() {
-		const t = hexText.trim();
-		if (t === '') {
+		const raw = hexText.trim();
+		if (raw === '') {
 			hexError = null;
 			return;
 		}
-		const n = normalizeHex(t.startsWith('#') ? t : `#${t}`);
+		const n = normalizeHex(raw.startsWith('#') ? raw : `#${raw}`);
 		if (n) applyHex(n);
-		else hexError = 'Ungültiger Hex-Code, z. B. #2f855a oder #3a7';
+		else hexError = t('ui.colorPicker.invalidHex');
 	}
 
 	// --- Fläche (Sättigung / Helligkeit) ---
@@ -188,7 +189,7 @@
 		{#if current}
 			<span class="font-mono text-xs">{current}</span>
 		{:else}
-			<span class="text-muted-foreground text-xs">Keine Farbe</span>
+			<span class="text-muted-foreground text-xs">{t('ui.colorPicker.none')}</span>
 		{/if}
 	</Popover.Trigger>
 	<Popover.Content class="w-64 space-y-3 p-3">
@@ -196,11 +197,14 @@
 			bind:this={areaEl}
 			role="slider"
 			tabindex="0"
-			aria-label={`${label}: Sättigung und Helligkeit`}
+			aria-label={t('ui.colorPicker.area', { label })}
 			aria-valuemin={0}
 			aria-valuemax={100}
 			aria-valuenow={Math.round(hsv.s * 100)}
-			aria-valuetext={`Sättigung ${Math.round(hsv.s * 100)} %, Helligkeit ${Math.round(hsv.v * 100)} %`}
+			aria-valuetext={t('ui.colorPicker.areaValue', {
+				s: Math.round(hsv.s * 100),
+				v: Math.round(hsv.v * 100)
+			})}
 			class="focus-visible:ring-ring relative h-36 w-full cursor-crosshair touch-none rounded-md outline-none focus-visible:ring-3"
 			style:background-color={hueColor}
 			style:background-image={SV_GRADIENT}
@@ -220,7 +224,7 @@
 			bind:this={hueEl}
 			role="slider"
 			tabindex="0"
-			aria-label={`${label}: Farbton`}
+			aria-label={t('ui.colorPicker.hue', { label })}
 			aria-valuemin={0}
 			aria-valuemax={360}
 			aria-valuenow={Math.round(hsv.h)}
@@ -246,7 +250,7 @@
 				></span>
 				<input
 					type="text"
-					aria-label={`${label}: Hex-Code`}
+					aria-label={t('ui.colorPicker.hex', { label })}
 					aria-invalid={hexError ? 'true' : undefined}
 					autocomplete="off"
 					spellcheck="false"
@@ -266,13 +270,13 @@
 		</div>
 
 		{#if presets.length}
-			<div class="flex flex-wrap gap-1.5" role="group" aria-label="Vorgabefarben">
+			<div class="flex flex-wrap gap-1.5" role="group" aria-label={t('ui.colorPicker.presets')}>
 				{#each presets as p (p)}
 					{@const n = normalizeHex(p)}
 					{#if n}
 						<button
 							type="button"
-							aria-label={`Farbe ${n}`}
+							aria-label={t('ui.colorPicker.preset', { color: n })}
 							aria-pressed={n === current}
 							class={cn(
 								'border-border focus-visible:ring-ring size-6 rounded-md border outline-none focus-visible:ring-3',
@@ -297,7 +301,7 @@
 					commit(null);
 				}}
 			>
-				Farbe entfernen
+				{t('ui.colorPicker.clear')}
 			</button>
 		{/if}
 	</Popover.Content>

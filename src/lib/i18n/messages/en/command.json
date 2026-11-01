@@ -1,0 +1,18 @@
+{
+	"title": "Search",
+	"inputLabel": "Search: pages, members, actions, events …",
+	"inputPlaceholder": "Search: pages, members, actions …",
+	"searching": "Searching …",
+	"results": "Search results",
+	"nothingFound": "Nothing found. Try another term.",
+	"dataSearchFailed": "Data search is currently unavailable – only pages are shown.",
+	"hits": "{count, plural, one {# result} other {# results}}",
+	"keyboardHint": "↑ ↓ to select, Enter to open, Esc to close",
+	"touchHint": "Type to search",
+	"headingPages": "Pages",
+	"groupNavigation": "Navigation",
+	"groupModule": "Module",
+	"groupAdmin": "Administration",
+	"moduleContext": "Module {name}",
+	"startPage": "Home page"
+}

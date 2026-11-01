@@ -1,0 +1,7 @@
+{
+	"empty": "The file is empty",
+	"tooLarge": "The image is too large",
+	"unsupported": "File type not supported (JPEG, PNG, WebP, AVIF or GIF)",
+	"unreadable": "Image could not be read",
+	"tooManyPixels": "The image has too many pixels"
+}

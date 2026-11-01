@@ -12,24 +12,25 @@
 		CardTitle
 	} from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
+	import { t } from '$lib/i18n';
 
 	let { data, form } = $props();
 	let loading = $state(false);
 </script>
 
-<PageTitle title="Passwort zurücksetzen" />
+<PageTitle title={t('password.reset.pageTitle')} />
 
 <div class="flex min-h-dvh flex-col bg-muted/40">
 	<main class="flex flex-1 items-center justify-center p-4 py-10">
 		<Card class="w-full max-w-sm">
 			<CardHeader>
-				<CardTitle level={1} class="text-section">Neues Passwort</CardTitle>
-				<CardDescription>Mindestens 12 Zeichen.</CardDescription>
+				<CardTitle level={1} class="text-section">{t('password.reset.title')}</CardTitle>
+				<CardDescription>{t('password.reset.subtitle')}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{#if form?.done}
-					<Alert><AlertDescription>Dein Passwort wurde geändert.</AlertDescription></Alert>
-					<Button href="/login" class="mt-4 w-full">Zur Anmeldung</Button>
+					<Alert><AlertDescription>{t('password.reset.done')}</AlertDescription></Alert>
+					<Button href="/login" class="mt-4 w-full">{t('password.reset.toLogin')}</Button>
 				{:else}
 					{#if form?.error}
 						<Alert variant="destructive" class="mb-4"
@@ -48,7 +49,7 @@
 						}}
 					>
 						<input type="hidden" name="token" value={data.token} />
-						<FormField label="Neues Passwort" id="password">
+						<FormField label={t('password.reset.newPassword')} id="password">
 							<Input
 								id="password"
 								name="password"
@@ -58,7 +59,7 @@
 								required
 							/>
 						</FormField>
-						<FormField label="Passwort bestätigen" id="confirm">
+						<FormField label={t('password.reset.confirm')} id="confirm">
 							<Input
 								id="confirm"
 								name="confirm"
@@ -68,7 +69,7 @@
 								required
 							/>
 						</FormField>
-						<Button type="submit" disabled={loading}>Passwort speichern</Button>
+						<Button type="submit" disabled={loading}>{t('password.reset.submit')}</Button>
 					</form>
 				{/if}
 			</CardContent>

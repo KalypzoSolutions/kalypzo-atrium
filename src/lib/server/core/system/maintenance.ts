@@ -8,12 +8,19 @@ import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { hit, peek, reset as resetRateLimit } from '../rate-limit';
 import { verifyTotp } from './reset';
+import { t } from '$lib/i18n';
 
 let running: string | null = null;
 
-/** Sperre holen; läuft schon ein Vorgang → 409 mit dessen Bezeichnung. */
+/**
+ * Sperre holen; läuft schon ein Vorgang → 409 mit dessen Bezeichnung. `label` ist ein Textschlüssel
+ * (z. B. `maintenance.lock.backup`, übersetzt in der Sprache der anfragenden Person) oder ein fertiger Text.
+ */
 export function acquireMaintenanceLock(label: string): void {
-	if (running) throw errors.conflict(`Es läuft bereits ein Wartungsvorgang (${running})`);
+	if (running) {
+		const name = /^[a-z0-9-]+\.[A-Za-z0-9_.-]+$/.test(running) ? t(running) : running;
+		throw errors.conflict(t('maintenance.lockBusy', { name }));
+	}
 	running = label;
 }
 
@@ -36,11 +43,11 @@ export async function verifyReauth(
 ): Promise<void> {
 	const pwKey = `${rateKey}pw:${userId}`;
 	if (peek(pwKey, TOTP_WINDOW_SEC) >= PASSWORD_MAX_FAILURES) {
-		throw errors.badRequest('Zu viele Versuche. Bitte später erneut versuchen.');
+		throw errors.badRequest(t('maintenance.tooManyAttempts'));
 	}
 	if (!(await verifyUserPassword(userId, String(input.password ?? '')))) {
 		hit(pwKey, 1000, TOTP_WINDOW_SEC);
-		throw errors.validation([{ path: ['password'], message: 'Passwort ist nicht korrekt' }]);
+		throw errors.validation([{ path: ['password'], message: t('maintenance.wrongPassword') }]);
 	}
 	resetRateLimit(pwKey);
 	const [u] = await getDb()
@@ -50,14 +57,12 @@ export async function verifyReauth(
 	if (!u?.twoFactorEnabled) return;
 	const key = `${rateKey}totp:${userId}`;
 	if (peek(key, TOTP_WINDOW_SEC) >= TOTP_MAX_FAILURES) {
-		throw errors.badRequest('Zu viele Versuche. Bitte später erneut versuchen.');
+		throw errors.badRequest(t('maintenance.tooManyAttempts'));
 	}
 	const code = String(input.totp ?? '').replace(/\s+/g, '');
 	if (!(await verifyTotp(userId, code))) {
 		hit(key, 1000, TOTP_WINDOW_SEC);
-		throw errors.validation([
-			{ path: ['totp'], message: 'Bestätigungscode (2FA) fehlt oder ist ungültig' }
-		]);
+		throw errors.validation([{ path: ['totp'], message: t('maintenance.totpInvalid') }]);
 	}
 	resetRateLimit(key);
 }

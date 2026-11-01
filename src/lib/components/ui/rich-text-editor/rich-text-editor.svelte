@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { onMount, type Snippet } from 'svelte';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
@@ -24,7 +25,7 @@
 
 	let {
 		value = $bindable(''),
-		label = 'Nachrichtentext',
+		label = t('ui.richText.label'),
 		placeholder = '',
 		disabled = false,
 		invalid = false,
@@ -122,7 +123,7 @@
 					})
 					.run();
 			} catch (err) {
-				uploadError = err instanceof Error ? err.message : 'Bild konnte nicht hochgeladen werden.';
+				uploadError = err instanceof Error ? err.message : t('ui.richText.uploadFailed');
 			} finally {
 				uploading--;
 			}
@@ -250,25 +251,25 @@
 	const groups: Tool[][] = $derived([
 		[
 			{
-				label: 'Fett',
+				label: t('ui.richText.tools.bold'),
 				icon: BoldIcon,
 				run: (e) => e.chain().focus().toggleBold().run(),
 				isActive: () => active('bold')
 			},
 			{
-				label: 'Kursiv',
+				label: t('ui.richText.tools.italic'),
 				icon: ItalicIcon,
 				run: (e) => e.chain().focus().toggleItalic().run(),
 				isActive: () => active('italic')
 			},
 			{
-				label: 'Unterstrichen',
+				label: t('ui.richText.tools.underline'),
 				icon: UnderlineIcon,
 				run: (e) => e.chain().focus().toggleUnderline().run(),
 				isActive: () => active('underline')
 			},
 			{
-				label: 'Durchgestrichen',
+				label: t('ui.richText.tools.strike'),
 				icon: StrikeIcon,
 				run: (e) => e.chain().focus().toggleStrike().run(),
 				isActive: () => active('strike')
@@ -276,13 +277,13 @@
 		],
 		[
 			{
-				label: 'Überschrift',
+				label: t('ui.richText.tools.heading'),
 				icon: Heading2Icon,
 				run: (e) => e.chain().focus().toggleHeading({ level: 2 }).run(),
 				isActive: () => active('heading', { level: 2 })
 			},
 			{
-				label: 'Zwischenüberschrift',
+				label: t('ui.richText.tools.subheading'),
 				icon: Heading3Icon,
 				run: (e) => e.chain().focus().toggleHeading({ level: 3 }).run(),
 				isActive: () => active('heading', { level: 3 })
@@ -290,38 +291,38 @@
 		],
 		[
 			{
-				label: 'Aufzählung',
+				label: t('ui.richText.tools.bulletList'),
 				icon: ListIcon,
 				run: (e) => e.chain().focus().toggleBulletList().run(),
 				isActive: () => active('bulletList')
 			},
 			{
-				label: 'Nummerierte Liste',
+				label: t('ui.richText.tools.orderedList'),
 				icon: ListOrderedIcon,
 				run: (e) => e.chain().focus().toggleOrderedList().run(),
 				isActive: () => active('orderedList')
 			},
 			{
-				label: 'Zitat',
+				label: t('ui.richText.tools.quote'),
 				icon: QuoteIcon,
 				run: (e) => e.chain().focus().toggleBlockquote().run(),
 				isActive: () => active('blockquote')
 			},
 			{
-				label: 'Trennlinie',
+				label: t('ui.richText.tools.rule'),
 				icon: MinusIcon,
 				run: (e) => e.chain().focus().setHorizontalRule().run()
 			}
 		],
 		[
 			{
-				label: 'Link einfügen oder ändern',
+				label: t('ui.richText.tools.link'),
 				icon: LinkIcon,
 				run: () => openLink(),
 				isActive: () => active('link')
 			},
 			{
-				label: 'Link entfernen',
+				label: t('ui.richText.tools.unlink'),
 				icon: UnlinkIcon,
 				run: (e) => e.chain().focus().unsetLink().run(),
 				enabled: () => active('link')
@@ -331,7 +332,7 @@
 			? [
 					[
 						{
-							label: 'Bild einfügen',
+							label: t('ui.richText.tools.image'),
 							icon: ImageIcon,
 							run: () => fileInput?.click(),
 							enabled: () => uploading === 0
@@ -341,13 +342,13 @@
 			: []),
 		[
 			{
-				label: 'Rückgängig',
+				label: t('ui.richText.tools.undo'),
 				icon: UndoIcon,
 				run: (e) => e.chain().focus().undo().run(),
 				enabled: () => can((e) => e.can().undo())
 			},
 			{
-				label: 'Wiederholen',
+				label: t('ui.richText.tools.redo'),
 				icon: RedoIcon,
 				run: (e) => e.chain().focus().redo().run(),
 				enabled: () => can((e) => e.can().redo())
@@ -367,7 +368,7 @@
 	<div
 		class="flex flex-wrap items-center gap-x-1 gap-y-1 border-b p-1"
 		role="toolbar"
-		aria-label="Formatierung"
+		aria-label={t('ui.richText.toolbar')}
 	>
 		{#each groups as group, gi (gi)}
 			{#if gi > 0}<span class="mx-0.5 h-5 w-px bg-border" aria-hidden="true"></span>{/if}
@@ -399,17 +400,17 @@
 				applyLink();
 			}}
 		>
-			<label class="text-sm" for="{id ?? 'rte'}-link">Adresse</label>
+			<label class="text-sm" for="{id ?? 'rte'}-link">{t('ui.richText.address')}</label>
 			<Input
 				id="{id ?? 'rte'}-link"
 				class="h-8 min-w-48 flex-1"
-				placeholder="https://… oder mailto:…"
+				placeholder={t('ui.richText.addressPlaceholder')}
 				bind:value={linkUrl}
 				autocomplete="off"
 			/>
-			<Button type="submit" size="sm">Übernehmen</Button>
+			<Button type="submit" size="sm">{t('ui.richText.apply')}</Button>
 			<Button type="button" size="sm" variant="outline" onclick={() => (linkOpen = false)}>
-				Abbrechen
+				{t('ui.richText.cancel')}
 			</Button>
 		</form>
 	{/if}
@@ -421,16 +422,16 @@
 				applyAlt();
 			}}
 		>
-			<label class="text-sm" for="{id ?? 'rte'}-alt">Bildbeschreibung</label>
+			<label class="text-sm" for="{id ?? 'rte'}-alt">{t('ui.richText.alt')}</label>
 			<Input
 				id="{id ?? 'rte'}-alt"
 				class="h-8 min-w-48 flex-1"
-				placeholder="Was ist zu sehen? (für Screenreader)"
+				placeholder={t('ui.richText.altPlaceholder')}
 				maxlength={300}
 				bind:value={altText}
 				autocomplete="off"
 			/>
-			<Button type="submit" size="sm">Übernehmen</Button>
+			<Button type="submit" size="sm">{t('ui.richText.apply')}</Button>
 		</form>
 	{/if}
 	{#if uploading > 0 || uploadError}
@@ -441,7 +442,7 @@
 			)}
 			role="status"
 		>
-			{uploadError || 'Bild wird hochgeladen …'}
+			{uploadError || t('ui.richText.uploading')}
 		</p>
 	{/if}
 	{#if uploadImage}

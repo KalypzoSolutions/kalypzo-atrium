@@ -1,5 +1,6 @@
 import type { PdfBlock, PdfFormat, PdfMargins, PdfOrientation, PdfTableCell } from '$lib/sdk/types';
 import { sanitizeDocumentHtml } from '$lib/sdk/server/html';
+import { hasMessage, t } from '$lib/i18n';
 import { errors } from '../errors';
 
 export function escapeHtml(value: string): string {
@@ -42,7 +43,7 @@ export interface PdfTemplate {
 
 	/** Kurzbeschreibung für die Admin-Ansicht */
 	description?: string;
-	/** Quelldatei (nur Anzeige in der Admin-Ansicht), z. B. `templates/stamm-brief.ts` */
+	/** Quelldatei (nur Anzeige in der Admin-Ansicht), z. B. `templates/brief.ts` */
 	source?: string;
 	/**
 	 * Festes Seitenlayout: überschreibt Format, Ausrichtung (Standard hochkant) und Ränder der
@@ -82,22 +83,50 @@ export interface PdfTemplatePart {
 
 const registry = new Map<string, PdfTemplate>();
 
+/**
+ * Frühere IDs der Briefvorlagen (hießen bis Kalypzo Atrium Phase N nach dem Stamm); bleiben gültig und
+ * zeigen auf die neutralen Vorlagen bzw. deren Ersatz aus einem Modul.
+ */
+export const TEMPLATE_ALIASES: Readonly<Record<string, string>> = {
+	'stamm-brief': 'brief',
+	'stamm-briefkopf': 'briefkopf',
+	'stamm-briefkopf-quer': 'briefkopf-quer'
+};
+
+/** ID nach Auflösen eines Alias */
+export function canonicalTemplateId(id: string): string {
+	return TEMPLATE_ALIASES[id] ?? id;
+}
+
+/**
+ * Texte der Core-Vorlagen sind Textschlüssel (`pdf.…`), damit sie in der Sprache der Anzeige erscheinen;
+ * fertige Texte (z. B. aus Modulen) bleiben unverändert.
+ */
+export function localizeTemplateText(text: string): string;
+export function localizeTemplateText(text: string | undefined): string | undefined;
+export function localizeTemplateText(text: string | undefined): string | undefined {
+	if (text === undefined) return undefined;
+	return /^pdf\.[a-zA-Z0-9.-]+$/.test(text) && hasMessage(text, 'de') ? t(text) : text;
+}
+
 export function registerTemplate(template: PdfTemplate): void {
 	if (!/^[a-z][a-z0-9-]{0,40}$/.test(template.id))
 		throw new Error(`Ungültige Template-ID: ${template.id}`);
 	registry.set(template.id, template);
 }
 
+/** Vorlage des Core (Aliase aufgelöst, ohne Ersatz aus Modulen – dafür `resolveTemplate` in `pdf/resolve.ts`) */
 export function getTemplate(id: string): PdfTemplate | undefined {
-	return registry.get(id);
+	return registry.get(canonicalTemplateId(id));
 }
 
-export function listTemplates(): { id: string; label: string }[] {
-	return [...registry.values()].map((t) => ({ id: t.id, label: t.label }));
+/** Alle Vorlagen des Core */
+export function coreTemplates(): PdfTemplate[] {
+	return [...registry.values()];
 }
 
-/** Vorlagen mit Beschreibung und Bestandteilen (Admin-Ansicht, nur Anzeige). */
-export function describeTemplates(): {
+/** Eine Vorlage für die Admin-Ansicht (nur Anzeige, Texte übersetzt) */
+export interface TemplateDescription {
 	id: string;
 	label: string;
 	description: string | null;
@@ -105,16 +134,22 @@ export function describeTemplates(): {
 	letterhead: boolean;
 	orientation: PdfOrientation;
 	parts: PdfTemplatePart[];
-}[] {
-	return [...registry.values()].map((t) => ({
-		id: t.id,
-		label: t.label,
-		description: t.description ?? null,
-		source: t.source ?? null,
-		letterhead: !!t.overlay,
-		orientation: t.page?.orientation ?? 'portrait',
-		parts: t.parts ?? []
-	}));
+}
+
+export function describeTemplate(tpl: PdfTemplate): TemplateDescription {
+	return {
+		id: tpl.id,
+		label: localizeTemplateText(tpl.label),
+		description: localizeTemplateText(tpl.description) ?? null,
+		source: tpl.source ?? null,
+		letterhead: !!tpl.overlay,
+		orientation: tpl.page?.orientation ?? 'portrait',
+		parts: (tpl.parts ?? []).map((p) => ({
+			...p,
+			label: localizeTemplateText(p.label),
+			description: localizeTemplateText(p.description)
+		}))
+	};
 }
 
 type TableBlock = Extract<PdfBlock, { type: 'table' }>;
@@ -296,10 +331,10 @@ const MAX_IMAGE_DATA_URL = 2 * 1024 * 1024;
 /** Prüft eingebettete Bilder (nur PNG/JPEG-Data-URL, Breite 5–150 mm). */
 function assertImage(dataUrl: string, widthMm: number): void {
 	if (!IMAGE_DATA_URL.test(dataUrl) || dataUrl.length > MAX_IMAGE_DATA_URL) {
-		throw errors.badRequest('Ungültiges Bild im Dokument');
+		throw errors.badRequest(t('pdf.errors.invalidImage'));
 	}
 	if (!Number.isFinite(widthMm) || widthMm < 5 || widthMm > 150) {
-		throw errors.badRequest('Ungültige Bildbreite');
+		throw errors.badRequest(t('pdf.errors.invalidImageWidth'));
 	}
 }
 
@@ -309,7 +344,7 @@ const SAFE_HREF = /^https?:\/\/[^\s"<>]+$/;
 
 /** Link für das PDF (in Chromium-PDFs anklickbar); nur http(s). */
 function linkHtml(href: string, text: string): string {
-	if (!SAFE_HREF.test(href)) throw errors.badRequest('Ungültiger Link im Dokument');
+	if (!SAFE_HREF.test(href)) throw errors.badRequest(t('pdf.errors.invalidLink'));
 	return `<a href="${escapeHtml(href)}" style="color:inherit;text-decoration:underline;">${escapeHtml(text)}</a>`;
 }
 
@@ -404,14 +439,14 @@ export const RICH_TEXT_CSS = `
 
 /** HTML eines `richText`-Blocks: immer bereinigt (Allowlist), nie roh übernommen */
 export function renderRichText(html: string): string {
-	if (typeof html !== 'string') throw errors.badRequest('Ungültiger Textblock im Dokument');
-	if (html.length > MAX_RICH_TEXT_CHARS) throw errors.tooLarge('Dokument ist zu umfangreich');
+	if (typeof html !== 'string') throw errors.badRequest(t('pdf.errors.invalidTextBlock'));
+	if (html.length > MAX_RICH_TEXT_CHARS) throw errors.tooLarge(t('pdf.errors.documentTooLarge'));
 	return `<div class="rich-text">${sanitizeDocumentHtml(html)}</div>`;
 }
 
 export function renderBlocks(blocks: PdfBlock[]): string {
 	const rich = blocks.reduce((n, b) => n + (b.type === 'richText' ? b.html.length : 0), 0);
-	if (rich > MAX_RICH_TEXT_CHARS) throw errors.tooLarge('Dokument ist zu umfangreich');
+	if (rich > MAX_RICH_TEXT_CHARS) throw errors.tooLarge(t('pdf.errors.documentTooLarge'));
 	let richCss = false;
 	const out: string[] = [];
 	// Harte Seitenumbrüche: nie am Anfang oder Ende, aufeinanderfolgende werden zu einem
@@ -545,17 +580,25 @@ function headerHtml(data: PdfLayoutData, size: string): string {
 	</div>`;
 }
 
+/** „Seite X von Y“ mit den Chromium-Platzhaltern `pageNumber`/`totalPages` (Text übersetzt und escaped) */
+function pageOfTotal(): string {
+	const text = escapeHtml(t('pdf.page', { page: '[[page]]', total: '[[total]]' }));
+	return text
+		.replace('[[page]]', '<span class="pageNumber"></span>')
+		.replace('[[total]]', '<span class="totalPages"></span>');
+}
+
 function footerHtml(data: PdfLayoutData, size: string): string {
 	return `<div style="width:100%;font-size:${size};padding:0 18mm;display:flex;justify-content:space-between;color:#6b7280;font-family:Arial,sans-serif;">
 		<span>${escapeHtml(formatDate(data.createdAt, data.locale))}</span>
 		<span>${escapeHtml(data.footerText)}</span>
-		<span>Seite <span class="pageNumber"></span> von <span class="totalPages"></span></span>
+		<span>${pageOfTotal()}</span>
 	</div>`;
 }
 
 export const defaultTemplate: PdfTemplate = {
 	id: 'default',
-	label: 'Standard',
+	label: 'pdf.templates.default.label',
 	css: (d) => baseCss(d, '10.5pt'),
 	header: (d) => headerHtml(d, '9px'),
 	footer: (d) => footerHtml(d, '8px'),
@@ -564,7 +607,7 @@ export const defaultTemplate: PdfTemplate = {
 
 export const compactTemplate: PdfTemplate = {
 	id: 'compact',
-	label: 'Kompakt',
+	label: 'pdf.templates.compact.label',
 	css: (d) =>
 		baseCss(d, '9pt') +
 		' th, td { padding: 4px 6px; } p { margin-bottom: .5em; } table { margin: 12px 0; }',

@@ -1,0 +1,5 @@
+{
+	"invalidModuleId": "Ungültige Modul-ID",
+	"permissionMissing": "Berechtigung fehlt: {permission}",
+	"targetsMissing": "targets fehlt"
+}

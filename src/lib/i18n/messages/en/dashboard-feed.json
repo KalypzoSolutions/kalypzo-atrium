@@ -1,0 +1,12 @@
+{
+	"kinds": {
+		"meeting": "Group meeting",
+		"event": "Event",
+		"deadline": "Deadline"
+	},
+	"notSignedIn": "Not signed in",
+	"invalidOrigin": "Invalid request origin",
+	"expectedJson": "Expected application/json",
+	"invalidJson": "Invalid JSON",
+	"invalidLayout": "Invalid dashboard layout"
+}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { cn } from '$lib/utils';
 
@@ -23,7 +24,7 @@
 		class?: string;
 	} = $props();
 
-	const text = $derived(label ? `Lädt ${label} …` : 'Lädt …');
+	const text = $derived(label ? t('layout.loadingLabel', { label }) : t('layout.busy.load'));
 </script>
 
 <div

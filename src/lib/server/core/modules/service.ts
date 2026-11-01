@@ -1,10 +1,11 @@
 import { and, eq, sql } from 'drizzle-orm';
-import type { ModuleManifest, RequestContext } from '$lib/sdk/types';
+import { localized, t } from '$lib/i18n';
+import type { RequestContext, ResolvedModuleManifest } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getDb, schema, type DbOrTx } from '../database/client';
 import { MIGRATION_LOCK_KEY } from '../database/migrate';
 import { errors } from '../errors';
-import { CORE_PERMISSIONS } from '../permissions/catalog';
+import { CORE_PERMISSIONS, corePermissionDescription } from '../permissions/catalog';
 import { ensureDefaultRole } from '../permissions/default-roles';
 import { requirePermission, syncPermissions } from '../permissions/service';
 import {
@@ -12,7 +13,8 @@ import {
 	brokenModules,
 	excludeUnresolvableModules,
 	getDefinition,
-	requireDefinition
+	requireDefinition,
+	resolveManifest
 } from './registry';
 import { enabledModuleIds, invalidateModuleStateCache } from './state';
 import { canonicalChecksumFor, migrationChecksum } from './migration-checksum';
@@ -21,7 +23,8 @@ import { validateModuleReferences } from './validate';
 import { moduleSchemaName } from './types';
 
 export interface ModuleInfo {
-	manifest: ModuleManifest;
+	/** Texte (Name, Navigation, Rechte) in der Sprache des Requests */
+	manifest: ResolvedModuleManifest;
 	enabled: boolean;
 	installedVersion: string | null;
 	/** Aktive Module, die von diesem abhängen */
@@ -54,17 +57,21 @@ export async function syncModules(): Promise<void> {
 			});
 	}
 	await syncPermissions([
-		...Object.entries(CORE_PERMISSIONS).map(([key, description]) => ({
+		...Object.keys(CORE_PERMISSIONS).map((key) => ({
 			key,
 			moduleId: 'core',
-			description
+			description: corePermissionDescription(key, 'de')
 		})),
 		...defs.flatMap((d) =>
-			d.manifest.permissions.map((key) => ({
-				key,
-				moduleId: d.manifest.id,
-				description: d.manifest.permissionDescriptions?.[key]
-			}))
+			d.manifest.permissions.map((key) => {
+				// In der Datenbank steht der deutsche Text; andere Sprachen löst `listPermissions` beim Lesen auf
+				const text = d.manifest.permissionDescriptions?.[key];
+				return {
+					key,
+					moduleId: d.manifest.id,
+					description: text === undefined ? undefined : localized(text, 'de')
+				};
+			})
 		)
 	]);
 	await applyDefaultRoleGrants(defs);
@@ -123,7 +130,7 @@ export async function listModules(): Promise<ModuleInfo[]> {
 	return defs.map((d) => {
 		const id = d.manifest.id;
 		return {
-			manifest: d.manifest,
+			manifest: resolveManifest(d.manifest),
 			enabled: state.get(id)?.enabled ?? false,
 			installedVersion: state.get(id)?.installedVersion ?? null,
 			dependents: defs
@@ -164,7 +171,7 @@ export async function listModuleProblems(): Promise<ModuleProblem[]> {
 			name: r.id,
 			version: r.installedVersion,
 			kind: 'missing',
-			reason: 'Nicht installiert – Daten und Einstellungen sind noch vorhanden',
+			reason: t('modules.missingReason'),
 			enabled: r.enabled
 		});
 	}
@@ -287,7 +294,7 @@ export async function enableModule(ctx: RequestContext, id: string): Promise<voi
 		const enabled = await enabledModuleIds(tx);
 		const missing = def.manifest.dependencies.filter((d) => !enabled.has(d));
 		if (missing.length) {
-			throw errors.conflict(`Abhängigkeiten nicht aktiv: ${missing.join(', ')}`);
+			throw errors.conflict(t('modules.dependenciesInactive', { ids: missing.join(', ') }));
 		}
 		await runModuleMigrations(id, tx);
 		await tx
@@ -310,7 +317,7 @@ export async function disableModule(ctx: RequestContext, id: string): Promise<vo
 			.filter((d) => d.manifest.dependencies.includes(id) && enabled.has(d.manifest.id))
 			.map((d) => d.manifest.id);
 		if (dependents.length) {
-			throw errors.conflict(`Wird von aktiven Modulen benötigt: ${dependents.join(', ')}`);
+			throw errors.conflict(t('modules.requiredByActive', { ids: dependents.join(', ') }));
 		}
 		await tx
 			.update(schema.moduleState)
@@ -348,7 +355,12 @@ export async function navigationFor(ctx: RequestContext) {
 						d.manifest.permissions.length === 0 ||
 						d.manifest.permissions.some((p) => ctx.permissions.has(p))
 				)
-				.map((n) => ({ ...n, moduleId: d.manifest.id, moduleName: d.manifest.name }))
+				.map((n) => ({
+					...n,
+					label: localized(n.label),
+					moduleId: d.manifest.id,
+					moduleName: localized(d.manifest.name)
+				}))
 		);
 	return items.sort((a, b) => (a.order ?? DEFAULT_NAV_ORDER) - (b.order ?? DEFAULT_NAV_ORDER));
 }

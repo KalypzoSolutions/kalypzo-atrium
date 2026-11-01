@@ -1,5 +1,6 @@
 import { error, fail, type Actions } from '@sveltejs/kit';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import {
 	createUser,
 	deleteUser,
@@ -34,7 +35,8 @@ function invalid(err: z.ZodError) {
 }
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (!locals.ctx.permissions.has('core.users.view')) throw error(403, 'Keine Berechtigung');
+	if (!locals.ctx.permissions.has('core.users.view'))
+		throw error(403, t('admin-users.server.forbidden'));
 	const PAGE_SIZE = await resolvePageSize(locals, DEFAULT_PAGE_SIZE);
 	const search = url.searchParams.get('q')?.trim() ?? '';
 	const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1);
@@ -85,24 +87,27 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	};
 };
 
-const createSchema = z.object({
-	name: z.string().trim().min(1, 'Name ist erforderlich').max(100),
-	email: z.string().trim().email('Ungültige E-Mail-Adresse').max(255),
-	password: z.string().min(12, 'Passwort muss mindestens 12 Zeichen lang sein').max(128),
-	roleIds: z.array(z.string()).max(50),
-	permissionKeys: z.array(z.string()).max(500)
-});
+// Schemas je Aufruf bauen, damit die Fehlertexte in der Sprache des Requests erscheinen
+const createSchema = () =>
+	z.object({
+		name: z.string().trim().min(1, t('admin-users.server.nameRequired')).max(100),
+		email: z.string().trim().email(t('admin-users.server.invalidEmail')).max(255),
+		password: z.string().min(12, t('admin-users.server.passwordMin')).max(128),
+		roleIds: z.array(z.string()).max(50),
+		permissionKeys: z.array(z.string()).max(500)
+	});
 
-const updateSchema = z.object({
-	id: z.string().min(1),
-	name: z.string().trim().min(1, 'Name ist erforderlich').max(100),
-	email: z.string().trim().email('Ungültige E-Mail-Adresse').max(255)
-});
+const updateSchema = () =>
+	z.object({
+		id: z.string().min(1),
+		name: z.string().trim().min(1, t('admin-users.server.nameRequired')).max(100),
+		email: z.string().trim().email(t('admin-users.server.invalidEmail')).max(255)
+	});
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
 		const fd = await request.formData();
-		const parsed = createSchema.safeParse({
+		const parsed = createSchema().safeParse({
 			name: fd.get('name'),
 			email: fd.get('email'),
 			password: fd.get('password'),
@@ -112,7 +117,7 @@ export const actions: Actions = {
 		if (!parsed.success) return invalid(parsed.error);
 		try {
 			await createUser(locals.ctx, parsed.data);
-			return { success: true, message: 'Benutzer angelegt' };
+			return { success: true, message: t('admin-users.server.created') };
 		} catch (e) {
 			return toFail(e);
 		}
@@ -120,7 +125,7 @@ export const actions: Actions = {
 
 	update: async ({ request, locals }) => {
 		const fd = await request.formData();
-		const parsed = updateSchema.safeParse({
+		const parsed = updateSchema().safeParse({
 			id: fd.get('id'),
 			name: fd.get('name'),
 			email: fd.get('email')
@@ -137,7 +142,7 @@ export const actions: Actions = {
 						? fd.getAll('permissionKeys').map(String)
 						: undefined
 			});
-			return { success: true, message: 'Benutzer gespeichert' };
+			return { success: true, message: t('admin-users.server.saved') };
 		} catch (e) {
 			return toFail(e);
 		}
@@ -153,7 +158,10 @@ export const actions: Actions = {
 			await setUserActive(locals.ctx, parsed.data.id, parsed.data.active === 'true');
 			return {
 				success: true,
-				message: parsed.data.active === 'true' ? 'Benutzer aktiviert' : 'Benutzer deaktiviert'
+				message:
+					parsed.data.active === 'true'
+						? t('admin-users.server.activated')
+						: t('admin-users.server.deactivated')
 			};
 		} catch (e) {
 			return toFail(e);
@@ -166,7 +174,7 @@ export const actions: Actions = {
 		if (!parsed.success) return invalid(parsed.error);
 		try {
 			await verifyUserEmail(locals.ctx, parsed.data.id);
-			return { success: true, message: 'E-Mail-Adresse bestätigt' };
+			return { success: true, message: t('admin-users.server.emailVerified') };
 		} catch (e) {
 			return toFail(e);
 		}
@@ -176,20 +184,21 @@ export const actions: Actions = {
 		const fd = await request.formData();
 		const id = fd.get('id');
 		const file = fd.get('avatar');
-		if (typeof id !== 'string' || !id) return fail(422, { message: 'Benutzer fehlt' });
+		if (typeof id !== 'string' || !id)
+			return fail(422, { message: t('admin-users.server.userMissing') });
 		if (!(file instanceof File) || file.size === 0) {
-			return fail(400, { message: 'Bitte ein Bild auswählen.' });
+			return fail(400, { message: t('admin-users.server.chooseImage') });
 		}
 		// Größe vor dem Einlesen prüfen (kein Puffern überlanger Uploads)
 		if (file.size > AVATAR_MAX_BYTES) {
-			return fail(413, { message: 'Das Bild darf höchstens 2 MB groß sein' });
+			return fail(413, { message: t('admin-users.server.imageTooLarge') });
 		}
 		try {
 			await setUserAvatar(locals.ctx, id, {
 				data: new Uint8Array(await file.arrayBuffer()),
 				contentType: file.type
 			});
-			return { success: true, message: 'Profilbild gespeichert' };
+			return { success: true, message: t('admin-users.server.avatarSaved') };
 		} catch (e) {
 			return toFail(e);
 		}
@@ -201,7 +210,7 @@ export const actions: Actions = {
 		if (!parsed.success) return invalid(parsed.error);
 		try {
 			await removeUserAvatar(locals.ctx, parsed.data.id);
-			return { success: true, message: 'Profilbild entfernt' };
+			return { success: true, message: t('admin-users.server.avatarRemoved') };
 		} catch (e) {
 			return toFail(e);
 		}
@@ -213,7 +222,7 @@ export const actions: Actions = {
 		if (!parsed.success) return invalid(parsed.error);
 		try {
 			await deleteUser(locals.ctx, parsed.data.id);
-			return { success: true, message: 'Benutzer gelöscht' };
+			return { success: true, message: t('admin-users.server.deleted') };
 		} catch (e) {
 			return toFail(e);
 		}

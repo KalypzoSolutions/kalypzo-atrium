@@ -3,6 +3,7 @@
  * und `actions`): Datum/Alter/Feldwert formatieren, Quer-Vorlage wählen, Spalten auswählen und Blöcke bauen.
  * Voreinstellungen: `presets.ts` (Mitglieder-Spaltenkatalog liegt im Modul `members`, `sheet-columns.ts`); Layout (Tabelle, Seitenumbruch): `layout.ts`.
  */
+import { t } from '$lib/i18n';
 import type { FieldDefinition, FormValue } from '$lib/forms';
 import { ageFromBirthDate, formatDateDe, todayBerlin } from '$lib/sdk/dates';
 import { buildSectionedListBlocks, type ListSection } from './layout';
@@ -16,10 +17,10 @@ import type { ListCatalog, ListColumn, ListSelection } from './types';
 import type { PdfBlock } from '$lib/sdk/types';
 
 /** Briefkopf quer (A4 quer, 247 mm Textbreite); fehlt die Vorlage, dient `compact` in Querformat */
-export const LIST_TEMPLATE = 'stamm-briefkopf-quer';
+export const LIST_TEMPLATE = 'briefkopf-quer';
 export const LIST_TEMPLATE_FALLBACK = 'compact';
 
-/** Vorlage und Ausrichtung für `core.pdf.generate` (feste Stamm-Vorlagen bestimmen die Ausrichtung selbst) */
+/** Vorlage und Ausrichtung für `core.pdf.generate` (Briefvorlagen mit festem Layout bestimmen die Ausrichtung selbst) */
 export function listTemplateInput(availableIds: string[]): {
 	template: string;
 	orientation: 'landscape';
@@ -42,7 +43,7 @@ export function ageOn(birthDate: string | null | undefined, today: string): numb
 /** Wert eines Zusatzfelds lesbar machen (Auswahl → Beschriftung, Ja/Nein, Listen mit Komma); leer → '' */
 export function formatFieldValue(field: FieldDefinition | undefined, value: FormValue): string {
 	if (value === null || value === undefined || value === '') return '';
-	if (typeof value === 'boolean') return value ? 'Ja' : 'Nein';
+	if (typeof value === 'boolean') return value ? t('pdf.lists.yes') : t('pdf.lists.no');
 	const label = (v: string) => {
 		const options = field && 'options' in field ? field.options : [];
 		return options.find((o) => o.value === v)?.label ?? v;

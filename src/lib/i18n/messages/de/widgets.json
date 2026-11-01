@@ -1,0 +1,81 @@
+{
+	"loadFailed": "Die Übersicht konnte nicht geladen werden.",
+	"due": {
+		"overdueSince": "seit {date} überfällig",
+		"today": "heute fällig",
+		"tomorrow": "morgen fällig",
+		"until": "bis {date}"
+	},
+	"finding": {
+		"since": "{days, plural, =1 {seit gestern} other {seit # Tagen}}",
+		"oneOverdue": "{title}: überfällig.",
+		"oneOverdueSince": "{title}: {since} überfällig.",
+		"manyOverdue": "{count} Dinge sind überfällig.",
+		"manyOverdueSince": "{count} Dinge sind überfällig, das älteste {since}.",
+		"upcoming": "{count, plural, one {Eine Sache steht an, nichts ist überfällig.} other {# Dinge stehen an, nichts ist überfällig.}}"
+	},
+	"todos": {
+		"title": "Zu erledigen",
+		"description": "Offene Rechnungen, Fristen und Aufgaben aus allen Modulen.",
+		"loadFailed": "Die Liste konnte nicht geladen werden.",
+		"severity": {
+			"overdue": "Überfällig",
+			"due": "Bald fällig",
+			"info": "Hinweis"
+		},
+		"copied": "{label} kopiert",
+		"copyFailed": "Kopieren nicht möglich",
+		"openCount": "{count} offen",
+		"allDone": "Alles erledigt.",
+		"allDoneHint": "Neue Rechnungen, Fristen und Aufgaben erscheinen hier.",
+		"recipient": "Empfänger",
+		"iban": "IBAN",
+		"copyIban": "IBAN kopieren",
+		"bic": "BIC",
+		"amount": "Betrag",
+		"reference": "Zweck",
+		"referenceLong": "Verwendungszweck",
+		"copyReference": "Verwendungszweck kopieren",
+		"viewInvoice": "Rechnung ansehen",
+		"showLess": "Weniger anzeigen",
+		"showAll": "Alle {count} anzeigen",
+		"failed": "Nicht geladen: {names}. Bitte später erneut versuchen."
+	},
+	"week": {
+		"title": "Diese Woche",
+		"description": "Gruppenstunden, Termine, Aktionen und Fristen von Montag bis Sonntag.",
+		"loadFailed": "Die Woche konnte nicht geladen werden.",
+		"entry": "Eintrag",
+		"allDay": "ganztägig",
+		"from": "ab {time}",
+		"start": "Beginn",
+		"until": "bis {time}",
+		"end": "Ende",
+		"deadline": "Frist",
+		"overdue": "überfällig",
+		"today": "heute",
+		"nothingPlanned": "Nichts geplant.",
+		"empty": "Diese Woche steht nichts an."
+	},
+	"quickLinks": {
+		"title": "Schnellzugriff",
+		"description": "Direkte Links zu deinen Modulen.",
+		"empty": "Keine Module."
+	},
+	"stats": {
+		"title": "Kennzahlen",
+		"description": "Aktive Benutzer*innen, Module und API-Keys.",
+		"users": "Aktive Benutzer*innen",
+		"modules": "Aktive Module",
+		"apiKeys": "Aktive API-Keys",
+		"loadFailed": "Die Kennzahlen konnten nicht geladen werden.",
+		"empty": "Keine Kennzahlen verfügbar."
+	},
+	"activity": {
+		"title": "Letzte Aktivitäten",
+		"description": "Die neuesten Einträge im Audit-Log.",
+		"loadFailed": "Die Aktivitäten konnten nicht geladen werden.",
+		"empty": "Noch keine Einträge.",
+		"system": "System"
+	}
+}

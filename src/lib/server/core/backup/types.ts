@@ -9,7 +9,7 @@
  *   checksums.json                   → `Checksums` (immer der letzte Eintrag)
  */
 import { z } from 'zod';
-import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION } from '$lib/backup/contract';
+import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, LEGACY_BACKUP_FORMATS } from '$lib/backup/contract';
 
 export * from '$lib/backup/contract';
 
@@ -71,7 +71,8 @@ export type BackupTableMeta = z.infer<typeof backupTableMeta>;
 
 export const backupMeta = z
 	.object({
-		format: z.literal(BACKUP_FORMAT),
+		/** neue Sicherungen `atrium-backup`, ältere (EP Intern) `ep-intern-backup` */
+		format: z.enum([BACKUP_FORMAT, ...LEGACY_BACKUP_FORMATS]),
 		formatVersion: z.literal(BACKUP_FORMAT_VERSION),
 		createdAt: z.string(),
 		appVersion: z.string(),
@@ -115,7 +116,9 @@ export const backupMeta = z
 	.strict();
 export type BackupMeta = z.infer<typeof backupMeta>;
 
-export const KEY_CHECK_INPUT = 'ep-backup-key-check';
+export const KEY_CHECK_INPUT = 'atrium-backup-key-check';
+/** Prüfwert-Eingaben älterer Sicherungen (EP Intern) – beim Import weiter erkannt */
+export const LEGACY_KEY_CHECK_INPUTS: readonly string[] = ['ep-backup-key-check'];
 
 export const checksums = z
 	.object({

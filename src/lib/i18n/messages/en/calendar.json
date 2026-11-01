@@ -1,0 +1,16 @@
+{
+	"loading": "Loading …",
+	"today": "Today",
+	"prevMonth": "Previous month",
+	"nextMonth": "Next month",
+	"gridLabel": "Calendar {month}",
+	"agendaLabel": "Events {month}",
+	"createOn": "Create event on {date}",
+	"create": "Create event",
+	"moreOn": "{count, plural, one {# more event} other {# more events}} on {date}",
+	"more": "+{count} more",
+	"emptyMonth": "No events this month.",
+	"dayToday": "{date}, today",
+	"seriesTitle": "{title} (series)",
+	"describeRange": "{title}, {start}{startTime} to {end}{endTime}"
+}

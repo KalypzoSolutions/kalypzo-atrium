@@ -64,6 +64,7 @@ import {
 	type TableInfo
 } from './types';
 import { rowsOf, type Row } from '../database/rows';
+import { localized, t } from '$lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Uhr und Download-Speicher
@@ -231,7 +232,9 @@ async function* groupLines(
 	const lines = new Map<Row, string>();
 	for await (const line of cursorLines(tx, g, cursorName)) {
 		if (lines.size >= BACKUP_LIMITS.maxSelfRefRows) {
-			throw errors.badRequest(`Tabelle ${g.schema}.${g.table} ist zu groß für die Sicherung`);
+			throw errors.badRequest(
+				t('backup.export.tableTooLarge', { table: `${g.schema}.${g.table}` })
+			);
 		}
 		lines.set(JSON.parse(line) as Row, line);
 	}
@@ -279,13 +282,14 @@ export async function startBackupExport(
 	const resolved = resolveScopes(data.scopes, all);
 	if (resolved.unknown.length) {
 		throw errors.validation([
-			{ path: ['scopes'], message: `Unbekannter Bereich: ${resolved.unknown.join(', ')}` }
+			{
+				path: ['scopes'],
+				message: t('backup.export.unknownScopes', { scopes: resolved.unknown.join(', ') })
+			}
 		]);
 	}
 	if (!resolved.scopes.length) {
-		throw errors.validation([
-			{ path: ['scopes'], message: 'Bitte mindestens einen Bereich wählen' }
-		]);
+		throw errors.validation([{ path: ['scopes'], message: t('backup.input.chooseScope') }]);
 	}
 
 	const built = await writeBackupFile(userId, {
@@ -311,7 +315,7 @@ export interface BuiltBackup {
 export async function writeBackupFile(
 	userId: string,
 	data: { scopes: string[]; includeFiles: boolean; backupPassword: string },
-	lockLabel = 'Datensicherung'
+	lockLabel = 'maintenance.lock.backup'
 ): Promise<BuiltBackup> {
 	const resolved = { scopes: data.scopes };
 	acquireMaintenanceLock(lockLabel);
@@ -324,7 +328,7 @@ export async function writeBackupFile(
 		// Better-Auth-Kontext vorab laden (nicht erst in der Transaktion)
 		await getAuth().$context;
 		const startedAt = clock();
-		fileName = `ep-intern-sicherung-${stamp(startedAt)}${BACKUP_FILE_EXT}`;
+		fileName = `${t('backup.export.fileNamePrefix')}-${stamp(startedAt)}${BACKUP_FILE_EXT}`;
 		path = await newTempPath(BACKUP_FILE_EXT);
 		rawSink = await fileSink(path);
 		const envelope = await createEnvelopeWriter(rawSink, data.backupPassword);
@@ -425,7 +429,7 @@ export async function writeBackupFile(
 									}
 								}
 							: {}),
-						name: getDefinition(s)?.manifest.name ?? s,
+						name: localized(getDefinition(s)?.manifest.name) || s,
 						installedVersion: st?.installed_version == null ? null : String(st.installed_version),
 						enabled: st?.enabled === true || st?.enabled === 't',
 						migrations: migrations.map((m) => {
@@ -476,7 +480,7 @@ export async function writeBackupFile(
 		let fileCount = 0;
 		for (const f of files) {
 			if (!ENTRY_FILE.test(fileEntryName(f.objectKey))) {
-				warnings.push(`Datei ${f.objectKey} hat einen ungültigen Schlüssel und wurde ausgelassen`);
+				warnings.push(t('backup.export.fileInvalidKey', { key: f.objectKey }));
 				continue;
 			}
 			let bytes: Uint8Array | null;
@@ -484,17 +488,17 @@ export async function writeBackupFile(
 				bytes = await readObjectUnchecked(f.objectKey);
 			} catch (e) {
 				if (isCoreError(e) && e.code === 'unavailable') throw e;
-				warnings.push(`Datei ${f.objectKey} konnte nicht gelesen werden und wurde ausgelassen`);
+				warnings.push(t('backup.export.fileUnreadable', { key: f.objectKey }));
 				continue;
 			}
 			if (!bytes) {
-				warnings.push(`Datei ${f.objectKey} fehlt im Speicher und wurde ausgelassen`);
+				warnings.push(t('backup.export.fileMissing', { key: f.objectKey }));
 				continue;
 			}
 			if (f.checksum) {
 				const sum = createHash('sha256').update(bytes).digest('hex');
 				if (sum !== f.checksum.toLowerCase()) {
-					warnings.push(`Datei ${f.objectKey} ist beschädigt (Prüfsumme) und wurde ausgelassen`);
+					warnings.push(t('backup.export.fileCorrupt', { key: f.objectKey }));
 					continue;
 				}
 			}
@@ -502,9 +506,7 @@ export async function writeBackupFile(
 			fileCount++;
 		}
 		if (stats.undecryptable) {
-			warnings.push(
-				`${stats.undecryptable} verschlüsselte Werte konnten nicht entschlüsselt werden und wurden unverändert übernommen`
-			);
+			warnings.push(t('backup.export.undecryptable', { count: stats.undecryptable }));
 		}
 
 		// 3) Prüfsummen, abschließen
@@ -578,7 +580,7 @@ export async function takeBackupDownload(
 	const key = typeof downloadId === 'string' ? hashToken(downloadId) : '';
 	const entry = downloads.get(key);
 	if (!entry || entry.userId !== userId) {
-		throw errors.notFound('Download nicht gefunden oder abgelaufen');
+		throw errors.notFound(t('backup.export.downloadNotFound'));
 	}
 	downloads.delete(key);
 	return {

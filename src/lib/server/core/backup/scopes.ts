@@ -12,9 +12,11 @@ import { isModuleEnabled } from '../modules/service';
 import { MODULE_ID_PATTERN, moduleSchemaName } from '../modules/types';
 import { IDENTIFIER, loadTableInfo, sortTablesForInsert } from './introspect';
 import { CORE_SCOPE_KEYS, type BackupScopeInfo, type PlannedTable, type TableInfo } from './types';
+import { localized, t } from '$lib/i18n';
 
 type CoreScopeKey = (typeof CORE_SCOPE_KEYS)[number];
 
+/** `label`/`description`/`reason` sind Textschlüssel (Übersetzung beim Gebrauch) */
 interface CoreScopeDef {
 	label: string;
 	description: string;
@@ -25,10 +27,9 @@ interface CoreScopeDef {
 
 const CORE_SCOPES: Record<CoreScopeKey, CoreScopeDef> = {
 	'core:users': {
-		label: 'Benutzer',
-		description:
-			'Benutzerkonten mit Anmeldedaten, Zwei-Faktor-Einstellungen, persönlichen Einstellungen, Rollenzuweisungen, Einzelrechten und Profilbildern.',
-		implies: [{ scope: 'core:api-keys', reason: 'API-Keys gehören zu Benutzerkonten' }],
+		label: 'backup.scope.users.label',
+		description: 'backup.scope.users.description',
+		implies: [{ scope: 'core:api-keys', reason: 'backup.scope.users.impliesApiKeys' }],
 		tables: [
 			{ table: 'user' },
 			{ table: 'account' },
@@ -42,8 +43,8 @@ const CORE_SCOPES: Record<CoreScopeKey, CoreScopeDef> = {
 		]
 	},
 	'core:roles': {
-		label: 'Rollen',
-		description: 'Rollen mit ihren Rechten und Zuweisungen.',
+		label: 'backup.scope.roles.label',
+		description: 'backup.scope.roles.description',
 		tables: [
 			{ table: 'role' },
 			{ table: 'role_permission' },
@@ -53,14 +54,13 @@ const CORE_SCOPES: Record<CoreScopeKey, CoreScopeDef> = {
 		]
 	},
 	'core:api-keys': {
-		label: 'API-Keys',
-		description: 'API-Keys aller Benutzer (nur gespeicherte Prüfsummen, keine Klartext-Schlüssel).',
+		label: 'backup.scope.apiKeys.label',
+		description: 'backup.scope.apiKeys.description',
 		tables: [{ table: 'api_key' }]
 	},
 	'core:settings': {
-		label: 'Einstellungen',
-		description:
-			'Globale Einstellungen inkl. Modul-Einstellungen und Zugangsdaten sowie die Herkunft installierter Module (Quelle, Commit) mit Verlauf.',
+		label: 'backup.scope.settings.label',
+		description: 'backup.scope.settings.description',
 		tables: [
 			{ table: 'setting', where: `scope_id = ''` },
 			{ table: 'module_install' },
@@ -68,23 +68,23 @@ const CORE_SCOPES: Record<CoreScopeKey, CoreScopeDef> = {
 		]
 	},
 	'core:audit': {
-		label: 'Audit-Log',
-		description: 'Alle Audit-Einträge.',
+		label: 'backup.scope.audit.label',
+		description: 'backup.scope.audit.description',
 		tables: [{ table: 'audit_log' }]
 	},
 	'core:api-log': {
-		label: 'API-Protokoll',
-		description: 'Protokoll der API-Aufrufe.',
+		label: 'backup.scope.apiLog.label',
+		description: 'backup.scope.apiLog.description',
 		tables: [{ table: 'api_log' }]
 	},
 	'core:jobs': {
-		label: 'Job-Läufe',
-		description: 'Letzte Läufe der Hintergrundjobs.',
+		label: 'backup.scope.jobs.label',
+		description: 'backup.scope.jobs.description',
 		tables: [{ table: 'job_run' }]
 	},
 	'core:ai-usage': {
-		label: 'KI-Nutzung',
-		description: 'Erfasste KI-Nutzung und Kosten.',
+		label: 'backup.scope.aiUsage.label',
+		description: 'backup.scope.aiUsage.description',
 		tables: [{ table: 'ai_usage' }]
 	}
 };
@@ -134,9 +134,9 @@ export async function listBackupScopes(): Promise<BackupScopeInfo[]> {
 	const out: BackupScopeInfo[] = CORE_SCOPE_KEYS.map((key) => ({
 		key,
 		group: 'core',
-		label: CORE_SCOPES[key].label,
-		description: CORE_SCOPES[key].description,
-		implies: [...(CORE_SCOPES[key].implies ?? [])],
+		label: t(CORE_SCOPES[key].label),
+		description: t(CORE_SCOPES[key].description),
+		implies: (CORE_SCOPES[key].implies ?? []).map((i) => ({ scope: i.scope, reason: t(i.reason) })),
 		enabled: true
 	}));
 	const defs = allDefinitions().filter((d) => MODULE_ID_PATTERN.test(d.manifest.id));
@@ -154,9 +154,10 @@ export async function listBackupScopes(): Promise<BackupScopeInfo[]> {
 		out.push({
 			key: id,
 			group: 'module',
-			label: def.manifest.name,
-			description:
-				def.manifest.description ?? `Alle Daten und Dateien des Moduls ${def.manifest.name}.`,
+			label: localized(def.manifest.name),
+			description: def.manifest.description
+				? localized(def.manifest.description)
+				: t('backup.scope.moduleDescription', { name: localized(def.manifest.name) }),
 			// Modul-Abhängigkeiten werden bewusst nicht impliziert
 			implies: [],
 			enabled: await isModuleEnabled(id)

@@ -2,6 +2,7 @@
 	import { PageTitle } from '$lib/components/layout';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import * as Card from '$lib/components/ui/card';
+	import { t } from '$lib/i18n';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
 	import type { PageData } from './$types';
 
@@ -14,29 +15,29 @@
 	/** Fehlen beide Links, zeigen Login und öffentliche Seiten keine Fußzeile */
 	const missingLegal = $derived(
 		[
-			!filled('core.legal.imprintUrl') && 'Impressum',
-			!filled('core.legal.privacyUrl') && 'Datenschutzerklärung'
+			!filled('core.legal.imprintUrl') && t('admin-settings.general.imprint'),
+			!filled('core.legal.privacyUrl') && t('admin-settings.general.privacy')
 		].filter(Boolean) as string[]
 	);
 </script>
 
-<PageTitle title="Allgemein · Einstellungen" />
+<PageTitle title={t('admin-settings.general.pageTitle')} />
 
 <div class="space-y-6">
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>System & Organisation</Card.Title>
+			<Card.Title>{t('admin-settings.general.systemTitle')}</Card.Title>
 			<Card.Description>
-				Name des Systems sowie Name, Anschrift und Kontakt deiner Organisation (z. B. für Briefe und
-				PDF-Dokumente).
+				{t('admin-settings.general.systemDescription')}
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="space-y-4">
 			{#if missingLegal.length}
 				<Alert variant="info">
 					<AlertDescription>
-						Noch ohne Link: {missingLegal.join(' und ')}. Die Anmeldeseite und öffentliche Seiten
-						zeigen in der Fußzeile nur hinterlegte Links.
+						{t('admin-settings.general.missingLegal', {
+							links: missingLegal.join(t('admin-settings.general.and'))
+						})}
 					</AlertDescription>
 				</Alert>
 			{/if}
@@ -46,11 +47,9 @@
 
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>Aufbewahrungsfristen</Card.Title>
+			<Card.Title>{t('admin-settings.general.retentionTitle')}</Card.Title>
 			<Card.Description>
-				Protokolle mit IP-Adressen werden nur so lange aufbewahrt wie hier eingestellt. Der tägliche
-				Job „core.housekeeping“ löscht ältere Einträge bzw. entfernt die IP-Adressen. Die Fristen
-				legt der Verein fest (Verarbeitungsverzeichnis).
+				{t('admin-settings.general.retentionDescription')}
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>

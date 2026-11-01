@@ -9,6 +9,7 @@
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Smartphone from '@lucide/svelte/icons/smartphone';
 	import { Button } from '$lib/components/ui/button';
+	import { t } from '$lib/i18n';
 
 	let { redirectTo }: { redirectTo: string } = $props();
 
@@ -35,13 +36,13 @@
 		try {
 			const res = await fetch('/login/qr', { method: 'POST' });
 			const body = await res.json();
-			if (!res.ok) throw new Error(body?.message ?? 'QR-Code konnte nicht erzeugt werden.');
+			if (!res.ok) throw new Error(body?.message ?? t('login.qr.createFailed'));
 			qr = body.qr;
 			expiresAt = Date.parse(body.expiresAt);
 			phase = 'pending';
 		} catch (e) {
 			phase = 'error';
-			message = e instanceof Error ? e.message : 'QR-Code konnte nicht erzeugt werden.';
+			message = e instanceof Error ? e.message : t('login.qr.createFailed');
 		}
 	}
 
@@ -56,13 +57,13 @@
 				body: JSON.stringify({ redirectTo })
 			});
 			const body = await res.json();
-			if (!res.ok) throw new Error(body?.message ?? 'Anmeldung fehlgeschlagen.');
+			if (!res.ok) throw new Error(body?.message ?? t('login.errors.loginFailed'));
 			phase = 'done';
 			// Voller Seitenwechsel: das neue Sitzungs-Cookie gilt für alle weiteren Anfragen
 			window.location.assign(body.redirectTo ?? '/');
 		} catch (e) {
 			phase = 'error';
-			message = e instanceof Error ? e.message : 'Anmeldung fehlgeschlagen.';
+			message = e instanceof Error ? e.message : t('login.errors.loginFailed');
 		} finally {
 			claiming = false;
 		}
@@ -115,7 +116,7 @@
 		{#if qr && phase !== 'error'}
 			<img
 				src={qr}
-				alt="QR-Code zur Anmeldung mit dem Handy"
+				alt={t('login.qr.alt')}
 				class="size-full transition-opacity {phase === 'pending' || phase === 'scanned'
 					? ''
 					: 'opacity-15'}"
@@ -127,7 +128,8 @@
 			<CircleCheck class="absolute size-12 text-success" aria-hidden="true" />
 		{:else if phase === 'expired' || phase === 'denied' || phase === 'error'}
 			<Button variant="outline" size="sm" class="absolute" onclick={restart}>
-				<RefreshCw /> Neuer Code
+				<RefreshCw />
+				{t('login.qr.newCode')}
 			</Button>
 		{/if}
 	</div>
@@ -135,24 +137,25 @@
 	<div class="min-h-14 space-y-1 text-sm" aria-live="polite">
 		{#if phase === 'scanned'}
 			<p class="flex items-center justify-center gap-1.5 font-medium">
-				<Smartphone class="size-4" aria-hidden="true" /> Bitte auf dem Handy bestätigen
+				<Smartphone class="size-4" aria-hidden="true" />
+				{t('login.qr.confirmOnPhone')}
 			</p>
 		{:else if phase === 'approved' || phase === 'done'}
-			<p class="font-medium">Bestätigt – du wirst angemeldet …</p>
+			<p class="font-medium">{t('login.qr.approved')}</p>
 		{:else if phase === 'denied'}
-			<p class="font-medium">Auf dem Handy abgelehnt.</p>
+			<p class="font-medium">{t('login.qr.denied')}</p>
 		{:else if phase === 'expired'}
-			<p class="text-muted-foreground">Der Code ist abgelaufen.</p>
+			<p class="text-muted-foreground">{t('login.qr.expired')}</p>
 		{:else if phase === 'error'}
 			<p class="text-destructive" role="alert">{message}</p>
 		{:else}
 			<p class="text-muted-foreground">
-				Scanne den Code mit der Kamera deines Handys, auf dem du schon angemeldet bist.
+				{t('login.qr.scanHint')}
 			</p>
 		{/if}
 		{#if (phase === 'pending' || phase === 'scanned') && secondsLeft > 0}
 			<p class="text-xs text-muted-foreground tabular-nums">
-				Erneuert sich in {secondsLeft} s
+				{t('login.qr.renewsIn', { seconds: secondsLeft })}
 			</p>
 		{/if}
 	</div>

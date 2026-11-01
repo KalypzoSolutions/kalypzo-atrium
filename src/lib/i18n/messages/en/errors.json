@@ -1,0 +1,13 @@
+{
+	"badRequest": "Invalid request",
+	"validation": "Validation failed",
+	"unauthenticated": "Authentication required",
+	"forbidden": "Permission denied",
+	"notFound": "Not found",
+	"methodNotAllowed": "Method not allowed",
+	"conflict": "Conflict",
+	"rateLimited": "Too many requests",
+	"moduleDisabled": "Module \"{id}\" is not active",
+	"tooLarge": "File is too large",
+	"unavailable": "Service not configured or not reachable"
+}

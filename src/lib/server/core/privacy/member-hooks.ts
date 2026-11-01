@@ -10,6 +10,7 @@ import { forModule } from '../database/module-db';
 import { errors } from '../errors';
 import { allDefinitions, principalSource } from '../modules/registry';
 import { isModuleEnabled } from '../modules/service';
+import { t } from '$lib/i18n';
 
 /** Rückgabe = Modul-IDs, deren Aufräumen fehlgeschlagen ist (für das Audit des Aufrufers). */
 export async function notifyMembersDeleted(
@@ -19,7 +20,7 @@ export async function notifyMembersDeleted(
 	// Nur die Personenquelle darf das Ereignis auslösen
 	const source = principalSource()?.id;
 	if (!source || callerModuleId !== source) {
-		throw errors.forbidden('Nur das Mitgliedermodul darf gelöschte Mitglieder melden');
+		throw errors.forbidden(t('privacy.onlyMemberSource'));
 	}
 	const memberIds = [...new Set(info.memberIds)].filter(Boolean);
 	if (!memberIds.length) return [];

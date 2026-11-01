@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	// Auswahl eines Icons aus der ganzen Icon-Bibliothek (alle Lucide-Icons): Suche über englische Namen und
 	// deutsche Begriffe, Vorschläge nach Themen, „Alle Icons“ schrittweise. Tastatur: Pfeiltasten im Raster
 	// (ein Tab-Stopp), Enter/Leertaste wählt.
@@ -16,7 +17,7 @@
 	let {
 		value = $bindable(null),
 		onchange,
-		label = 'Icon suchen',
+		label = t('icons.picker.search'),
 		class: className
 	}: {
 		value?: string | null;
@@ -56,10 +57,10 @@
 		if (!set) return [];
 		const main = { id: searching ? 'treffer' : 'alle', label: '', icons: results.slice(0, shown) };
 		if (searching) {
-			main.label = `${results.length.toLocaleString('de-DE')} Treffer`;
+			main.label = t('icons.picker.results', { count: results.length });
 			return [main];
 		}
-		main.label = `Alle Icons (${set.names.length.toLocaleString('de-DE')})`;
+		main.label = t('icons.picker.all', { count: set.names.length });
 		return [
 			...suggestionGroups.map((g) => ({ id: `s-${g.label}`, label: g.label, icons: g.icons })),
 			main
@@ -136,7 +137,7 @@
 			id="{uid}-search"
 			type="search"
 			class="pl-8"
-			placeholder="Icon suchen, z. B. Zelt, Kasse, Foto …"
+			placeholder={t('icons.picker.placeholder')}
 			aria-label={label}
 			autocomplete="off"
 			bind:value={query}
@@ -146,14 +147,14 @@
 
 	{#if iconStore.failed}
 		<div class="flex flex-wrap items-center gap-2 text-sm text-destructive" role="alert">
-			Die Icons konnten nicht geladen werden.
+			{t('icons.picker.loadFailed')}
 			<Button variant="outline" size="sm" onclick={() => iconStore.ensure()}
-				>Erneut versuchen</Button
+				>{t('icons.picker.retry')}</Button
 			>
 		</div>
 	{:else if !set}
 		<div class="grid gap-2" role="status">
-			<span class="sr-only">Lädt Icons …</span>
+			<span class="sr-only">{t('icons.picker.loading')}</span>
 			{#each [0, 1, 2] as i (i)}<Skeleton class="h-10 w-full" />{/each}
 		</div>
 	{:else}
@@ -188,7 +189,7 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="text-sm text-muted-foreground">Keine Icons gefunden.</p>
+						<p class="text-sm text-muted-foreground">{t('icons.picker.none')}</p>
 					{/if}
 				</section>
 			{/each}
@@ -199,7 +200,7 @@
 					class="justify-self-center"
 					onclick={() => (shown += PAGE)}
 				>
-					Weitere anzeigen ({(results.length - shown).toLocaleString('de-DE')})
+					{t('icons.picker.more', { count: results.length - shown })}
 				</Button>
 			{/if}
 		</div>

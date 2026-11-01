@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { isAbsolute, join, normalize } from 'node:path';
 import { errors } from '../errors';
 import { BACKUP_LIMITS } from './types';
+import { t } from '$lib/i18n';
 
 const EXT = /^\.[a-z0-9]{1,16}$/;
 
@@ -81,6 +82,6 @@ export async function assertFreeSpace(bytes: number): Promise<void> {
 		return;
 	}
 	if (Number.isFinite(free) && free < bytes) {
-		throw errors.unavailable('Zu wenig Speicherplatz für die Datensicherung');
+		throw errors.unavailable(t('backup.noSpace'));
 	}
 }

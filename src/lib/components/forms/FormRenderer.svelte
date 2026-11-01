@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { Input } from '$lib/components/ui/input';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -122,7 +123,7 @@
 
 {#snippet req(f: FieldDefinition)}
 	{#if f.required}<span class="ml-0.5 text-destructive" aria-hidden="true">*</span><span
-			class="sr-only">(Pflichtfeld)</span
+			class="sr-only">{t('form-builder.renderer.requiredSr')}</span
 		>{/if}
 {/snippet}
 
@@ -190,8 +191,8 @@
 								target="_blank"
 								rel="noopener noreferrer"
 								class="text-link underline underline-offset-2"
-								>{f.linkLabel || 'Mehr erfahren'}<span class="sr-only">
-									(öffnet in neuem Tab)</span
+								>{f.linkLabel || t('form-builder.renderer.learnMore')}<span class="sr-only">
+									{t('form-builder.renderer.newTab')}</span
 								></a
 							>
 						{/if}
@@ -290,7 +291,9 @@
 					<SelectField
 						id={fid(f)}
 						label={f.label}
-						options={f.allowOther ? [...f.options, { value: OTHER, label: 'Andere …' }] : f.options}
+						options={f.allowOther
+							? [...f.options, { value: OTHER, label: t('form-builder.renderer.other') }]
+							: f.options}
 						value={selectValue(f)}
 						onchange={(v) => onSelect(f, v)}
 						disabled={ro}
@@ -302,8 +305,8 @@
 							id={fid(f, 'other')}
 							type="text"
 							autocomplete="off"
-							aria-label="{f.label}: eigene Angabe"
-							placeholder="Bitte angeben"
+							aria-label={t('form-builder.renderer.otherLabel', { label: f.label })}
+							placeholder={t('form-builder.renderer.otherPlaceholder')}
 							value={str(f)}
 							oninput={(e) => set(f, txt(e.currentTarget))}
 							maxlength={200}
@@ -335,7 +338,7 @@
 			aria-hidden="true"
 			class="pointer-events-none absolute top-auto -left-[10000px] h-px w-px overflow-hidden opacity-0"
 		>
-			<label for="{prefix}-website">Website (bitte leer lassen)</label>
+			<label for="{prefix}-website">{t('form-builder.renderer.honeypot')}</label>
 			<input
 				id="{prefix}-website"
 				type="text"

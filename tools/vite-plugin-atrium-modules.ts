@@ -5,6 +5,8 @@
  * - `virtual:atrium-modules/server` – statische Importe aller `module.ts` (nur SSR), Export `entries`
  *   (`folder`, `definition`, `migrationFiles` = Namen der `migrations/*.sql` für die Konventionsprüfung)
  * - `virtual:atrium-modules/ui` – Lazy-Loader aller `ui.ts`, Export `uiLoaders`, `moduleIds`
+ * - `virtual:atrium-modules/messages` – Texte der Module (`messages/<sprache>.json`), Export default
+ *   `{ <id>: { <sprache>: {…} } }` für `$lib/i18n`
  * - Tailwind: `@source "<modulesDir>"` in `src/app.css`, damit Klassen auch aus einem Ordner außerhalb
  *   des Projekts oder aus einem gitignorierten Ordner erzeugt werden
  * - Dev: neue/entfernte Module lösen ein volles Neuladen aus
@@ -18,6 +20,30 @@ const SERVER_ID = 'virtual:atrium-modules/server';
 const UI_ID = 'virtual:atrium-modules/ui';
 const RESOLVED_SERVER = '\0' + SERVER_ID;
 const RESOLVED_UI = '\0' + UI_ID;
+const MESSAGES_ID = 'virtual:atrium-modules/messages';
+const RESOLVED_MESSAGES = '\0' + MESSAGES_ID;
+const MESSAGE_FILE = /^([a-z]{2})\.json$/;
+
+/** Texte aller Module als JSON-Literal (ungültige Dateien brechen den Build mit klarer Meldung ab). */
+function messagesSource(dir: string): string {
+	const out: Record<string, Record<string, unknown>> = {};
+	for (const id of moduleIds(dir)) {
+		const msgDir = join(dir, id, 'messages');
+		if (!existsSync(msgDir)) continue;
+		for (const f of readdirSync(msgDir).sort()) {
+			const m = MESSAGE_FILE.exec(f);
+			if (!m) continue;
+			try {
+				(out[id] ??= {})[m[1]!] = JSON.parse(readFileSync(join(msgDir, f), 'utf8'));
+			} catch (e) {
+				throw new Error(`Modul ${id}: messages/${f} ist kein gültiges JSON (${String(e)})`, {
+					cause: e
+				});
+			}
+		}
+	}
+	return `export default ${JSON.stringify(out)};`;
+}
 
 function serverSource(dir: string): string {
 	const ids = moduleIds(dir);
@@ -81,7 +107,7 @@ export function atriumModules(): Plugin {
 
 	function invalidate() {
 		if (!server) return;
-		for (const id of [RESOLVED_SERVER, RESOLVED_UI]) {
+		for (const id of [RESOLVED_SERVER, RESOLVED_UI, RESOLVED_MESSAGES]) {
 			const mod = server.moduleGraph.getModuleById(id);
 			if (mod) server.moduleGraph.invalidateModule(mod);
 		}
@@ -103,6 +129,7 @@ export function atriumModules(): Plugin {
 		resolveId(id) {
 			if (id === SERVER_ID) return RESOLVED_SERVER;
 			if (id === UI_ID) return RESOLVED_UI;
+			if (id === MESSAGES_ID) return RESOLVED_MESSAGES;
 		},
 		load(id, opts) {
 			if (id === RESOLVED_SERVER) {
@@ -110,6 +137,7 @@ export function atriumModules(): Plugin {
 				return serverSource(dir);
 			}
 			if (id === RESOLVED_UI) return uiSource(dir);
+			if (id === RESOLVED_MESSAGES) return messagesSource(dir);
 		},
 		transform(code, id) {
 			if (!/[\\/]src[\\/]app\.css(\?|$)/.test(id)) return;
@@ -122,12 +150,17 @@ export function atriumModules(): Plugin {
 				const f = file.replace(/\\/g, '/');
 				if (
 					f.startsWith(dir + '/') &&
-					/\/[^/]+\/(module|ui)\.ts$|\/migrations\/[^/]+\.sql$/.test(f.slice(dir.length))
+					/\/[^/]+\/(module|ui)\.ts$|\/migrations\/[^/]+\.sql$|\/messages\/[a-z]{2}\.json$/.test(
+						f.slice(dir.length)
+					)
 				)
 					invalidate();
 			};
 			dev.watcher.on('add', onChange);
 			dev.watcher.on('unlink', onChange);
+			dev.watcher.on('change', (file) => {
+				if (/[\\/]messages[\\/][a-z]{2}\.json$/.test(file)) onChange(file);
+			});
 		}
 	};
 }

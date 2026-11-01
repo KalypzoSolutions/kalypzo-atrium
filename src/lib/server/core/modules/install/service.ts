@@ -11,6 +11,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { desc } from 'drizzle-orm';
+import { localized, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../../audit/service';
 import { getDb, schema } from '../../database/client';
@@ -63,8 +64,7 @@ export function installStatus(): InstallStatus {
 		return {
 			mode,
 			available: false,
-			reason:
-				'Installieren ist auf diesem Server ausgeschaltet (ATRIUM_MODULE_INSTALL). Die Vorschau funktioniert trotzdem.'
+			reason: t('install.service.off')
 		};
 	}
 	if (mode === 'supervisor') {
@@ -72,13 +72,12 @@ export function installStatus(): InstallStatus {
 			return {
 				mode,
 				available: false,
-				reason:
-					'Der Server läuft nicht unter dem Supervisor (scripts/supervisor.mjs) – Installieren mit Neubau ist nicht möglich. Die Vorschau funktioniert trotzdem.'
+				reason: t('install.service.noSupervisor')
 			};
 		}
 		const busy = readSupervisorStatus().state;
 		if (busy === 'queued' || busy === 'building' || busy === 'verifying' || busy === 'restarting') {
-			return { mode, available: false, reason: 'Es läuft bereits ein Neubau – bitte warten.' };
+			return { mode, available: false, reason: t('install.service.busy') };
 		}
 	}
 	return { mode, available: true, reason: null };
@@ -91,10 +90,10 @@ export { runtimeModulesDir } from './supervisor-link';
 export async function assertInstaller(ctx: RequestContext): Promise<string> {
 	await requirePermission(ctx, INSTALL_PERMISSION);
 	if (ctx.actor.type !== 'user' || !ctx.userId) {
-		throw errors.forbidden('Module installieren nur angemeldete Personen (kein API-Key)');
+		throw errors.forbidden(t('install.service.sessionOnly'));
 	}
 	if (!isAdministrator(ctx)) {
-		throw errors.forbidden('Module installieren dürfen nur Administrator*innen');
+		throw errors.forbidden(t('install.service.adminOnly'));
 	}
 	return ctx.userId;
 }
@@ -145,7 +144,7 @@ function take<K extends 'source' | 'plan'>(
 ): Extract<SourceSession | PlanSession, { kind: K }> {
 	const s = typeof token === 'string' ? sessions.get(token) : undefined;
 	if (!s || s.kind !== kind || s.userId !== userId || s.expires < Date.now()) {
-		throw errors.notFound('Vorschau abgelaufen – bitte die Quelle erneut laden');
+		throw errors.notFound(t('install.service.expired'));
 	}
 	return s as Extract<SourceSession | PlanSession, { kind: K }>;
 }
@@ -166,8 +165,7 @@ export function parseInstallInput(raw: string): { source: ModuleSource; pathAfte
 		throw errors.validation([
 			{
 				path: ['url'],
-				message:
-					'Bitte einen GitHub-Link angeben, z. B. https://github.com/org/repo oder github:org/repo/modules/x#main'
+				message: t('install.service.invalidUrl')
 			}
 		]);
 	}
@@ -190,13 +188,11 @@ async function assertSourceAllowed(owner: string | null, repo: string | null): P
 	const list = await allowedSources();
 	if (!list.length) return;
 	if (owner === null) {
-		throw errors.forbidden('ZIP-Dateien sind nicht erlaubt, weil erlaubte Quellen festgelegt sind');
+		throw errors.forbidden(t('install.service.zipNotAllowed'));
 	}
 	const full = `${owner}/${repo}`.toLowerCase();
 	if (!list.some((l) => l === full || l === `${owner.toLowerCase()}/*`)) {
-		throw errors.forbidden(
-			`Quelle ${owner}/${repo} ist nicht freigegeben (Einstellung „Erlaubte Quellen“)`
-		);
+		throw errors.forbidden(t('install.service.sourceNotAllowed', { source: `${owner}/${repo}` }));
 	}
 }
 
@@ -290,8 +286,8 @@ export async function inspectSource(
 		catalogName: repo.catalogName,
 		modules: repo.modules.map((m) => ({
 			id: m.id,
-			name: m.pkg.name,
-			description: m.pkg.description ?? '',
+			name: localized(m.pkg.name),
+			description: localized(m.pkg.description),
 			version: m.pkg.version,
 			installedVersion: getDefinition(m.id)?.manifest.version ?? null,
 			dependencies: Object.keys(m.pkg.dependencies),
@@ -368,9 +364,7 @@ export async function previewInstall(
 	const src = take(input.sourceToken, 'source', userId);
 	const selected = [...new Set(input.selected)].filter(Boolean);
 	if (!selected.length) {
-		throw errors.validation([
-			{ path: ['selected'], message: 'Bitte mindestens ein Modul auswählen' }
-		]);
+		throw errors.validation([{ path: ['selected'], message: t('install.service.selectOne') }]);
 	}
 	const repo: Candidate[] = src.repo.modules.map((m) => ({
 		mod: m,
@@ -391,7 +385,7 @@ export async function previewInstall(
 		...analyses.flatMap((a) => a.blockers.map((b) => `${a.id}: ${b}`))
 	];
 	if (plan.entries.length && plan.entries.every((_, i) => analyses[i]!.action === 'unchanged')) {
-		blockers.push('Die ausgewählten Module sind bereits in genau diesem Stand installiert');
+		blockers.push(t('install.service.alreadyInstalled'));
 	}
 	const token = store({
 		kind: 'plan',
@@ -429,11 +423,13 @@ export interface InstallResult {
 async function writeModule(id: string, files: ArchiveFiles): Promise<void> {
 	const root = runtimeModulesDir();
 	const dir = resolve(root, id);
-	if (!dir.startsWith(resolve(root) + sep)) throw errors.badRequest('Ungültiges Modulverzeichnis');
+	if (!dir.startsWith(resolve(root) + sep))
+		throw errors.badRequest(t('install.service.invalidModuleDir'));
 	await rm(dir, { recursive: true, force: true });
 	for (const [rel, data] of files) {
 		const target = resolve(dir, rel);
-		if (!target.startsWith(dir + sep)) throw errors.badRequest('Ungültiger Pfad im Modul');
+		if (!target.startsWith(dir + sep))
+			throw errors.badRequest(t('install.service.invalidModulePath'));
 		await mkdir(dirname(target), { recursive: true });
 		await writeFile(target, data);
 	}
@@ -446,14 +442,14 @@ export async function confirmInstall(
 	const userId = await assertInstaller(ctx);
 	const session = take(input.token, 'plan', userId);
 	await verifyReauth(userId, { password: input.password, totp: input.totp }, 'module-install');
-	if (session.blockers.length)
-		throw errors.conflict('Die Installation ist gesperrt (siehe Vorschau)');
+	if (session.blockers.length) throw errors.conflict(t('install.service.blocked'));
 	const status = installStatus();
-	if (!status.available) throw errors.unavailable(status.reason ?? 'Installieren nicht möglich');
+	if (!status.available)
+		throw errors.unavailable(status.reason ?? t('install.service.notPossible'));
 
 	if (status.mode === 'supervisor') return requestBuild(ctx, userId, session, input.token);
 
-	acquireMaintenanceLock('Modul-Installation');
+	acquireMaintenanceLock('install.lockLabel');
 	const installed: InstallResult['installed'] = [];
 	try {
 		for (const [i, entry] of session.plan.entries.entries()) {
@@ -511,9 +507,12 @@ export async function confirmInstall(
 						installedBy: userId
 					}
 				});
-			await db
-				.insert(schema.moduleInstallEvent)
-				.values({ id: crypto.randomUUID(), ...base, status: 'done', detail: 'Dateien kopiert' });
+			await db.insert(schema.moduleInstallEvent).values({
+				id: crypto.randomUUID(),
+				...base,
+				status: 'done',
+				detail: 'install.detail.copied'
+			});
 			installed.push({ id: a.id, version: a.version, action: a.action });
 			await auditFromContext(ctx, 'core.module.installed', {
 				target: a.id,
@@ -567,7 +566,7 @@ async function requestBuild(
 			actorId: userId,
 			planId,
 			status: 'requested',
-			detail: 'Neubau angefordert'
+			detail: 'install.detail.buildRequested'
 		});
 		installed.push({ id: a.id, version: a.version, action: a.action });
 		await auditFromContext(ctx, 'core.module.install_requested', {
@@ -591,6 +590,20 @@ async function requestBuild(
 
 // --- Verlauf ------------------------------------------------------------------------------------
 
+/** Gespeicherter Verlaufstext: Schlüssel `install.detail.*` (auch ältere deutsche Texte) in der Sprache des Requests */
+const LEGACY_DETAILS: Record<string, string> = {
+	'Dateien kopiert': 'install.detail.copied',
+	'Neubau angefordert': 'install.detail.buildRequested',
+	'Entfernt, Daten gelöscht': 'install.detail.removedDataDeleted',
+	'Entfernt, Daten behalten': 'install.detail.removedDataKept'
+};
+
+function eventDetail(detail: string | null): string | null {
+	if (!detail) return detail;
+	const key = LEGACY_DETAILS[detail] ?? detail;
+	return /^install\.detail\.[a-zA-Z]+$/.test(key) ? t(key) : detail;
+}
+
 export async function listInstallEvents(ctx: RequestContext, limit = 100) {
 	await requirePermission(ctx, 'core.modules.view');
 	const rows = await getDb()
@@ -608,7 +621,7 @@ export async function listInstallEvents(ctx: RequestContext, limit = 100) {
 		source: r.source,
 		commit: r.commit,
 		status: r.status,
-		detail: r.detail,
+		detail: eventDetail(r.detail),
 		actorId: r.actorId,
 		createdAt: r.createdAt.toISOString()
 	}));

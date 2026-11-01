@@ -66,13 +66,15 @@ import {
 } from './introspect';
 import { collect, hashingSource } from './io';
 import { listBackupScopes, moduleInsertOrder, planTables, resolveScopes } from './scopes';
-import { decodeRowSecrets, keyCheckValue } from './secrets';
+import { decodeRowSecrets, keyCheckMatches } from './secrets';
 import { dropUpload, holdUpload, uploadPath } from './uploads';
 import {
 	analyzeInput,
 	BACKUP_LIMITS,
 	BackupFormatError,
 	backupMeta,
+	confirmWord,
+	isConfirmWord,
 	checksums as checksumsSchema,
 	dataEntryName,
 	ENTRY_CHECKSUMS,
@@ -80,8 +82,6 @@ import {
 	ENTRY_FILE,
 	ENTRY_META,
 	executeInput,
-	MERGE_CONFIRM_WORD,
-	RESTORE_CONFIRM_WORD,
 	type AnalyzeInput,
 	type ArchiveEntry,
 	type BackupMeta,
@@ -98,6 +98,7 @@ import {
 	type TableInfo
 } from './types';
 import { rowsOf, type Row } from '../database/rows';
+import { localized, t } from '$lib/i18n';
 
 export { appendUpload, createUpload } from './uploads';
 
@@ -112,8 +113,8 @@ const q = (name: string) => {
 	if (!IDENTIFIER.test(name)) throw new Error(`Ungültiger Bezeichner: ${name}`);
 	return `"${name}"`;
 };
-const corrupt = (msg = 'Die Sicherungsdatei ist beschädigt oder unvollständig.') =>
-	new BackupFormatError('corrupt', msg);
+const corrupt = (msg?: string) =>
+	new BackupFormatError('corrupt', msg ?? t('backup.format.corrupt'));
 
 // ---------------------------------------------------------------------------
 // Uhr, Vorschau-Token, Läufe
@@ -193,7 +194,7 @@ async function* ndjsonLines(source: ByteSource, table: string): AsyncGenerator<s
 	const tooLong = () =>
 		new BackupFormatError(
 			'too_large',
-			`Eine Datenzeile der Tabelle ${table} ist größer als ${BACKUP_LIMITS.maxLineBytes / 1024 ** 2} MB.`
+			t('backup.format.tableLineTooLarge', { table, mb: BACKUP_LIMITS.maxLineBytes / 1024 ** 2 })
 		);
 	for await (const chunk of source) {
 		let off = 0;
@@ -301,7 +302,7 @@ function formatError(e: BackupFormatError): CoreError {
 
 function errorText(e: unknown): string {
 	if (isCoreError(e) || e instanceof BackupFormatError) return e.message;
-	return 'Unerwarteter Fehler';
+	return t('backup.restore.unexpected');
 }
 
 // ---------------------------------------------------------------------------
@@ -345,7 +346,7 @@ export async function analyzeBackup(
 
 	const pwKey = `backupfilepw:${userId}`;
 	if (peek(pwKey, BACKUP_PW_WINDOW_SEC) >= BACKUP_PW_MAX_FAILURES) {
-		throw errors.badRequest('Zu viele Versuche. Bitte später erneut versuchen.');
+		throw errors.badRequest(t('backup.restore.tooManyAttempts'));
 	}
 
 	holdUpload(data.uploadId, true);
@@ -379,10 +380,7 @@ export async function analyzeBackup(
 					const raw = await readJsonEntry(entry, (r) => seen.set(ENTRY_META, r));
 					const m = backupMeta.safeParse(raw);
 					if (!m.success) {
-						throw new BackupFormatError(
-							'unsupported',
-							'Die Sicherung hat ein unbekanntes Format oder stammt aus einer anderen Version.'
-						);
+						throw new BackupFormatError('unsupported', t('backup.format.unknownFormat'));
 					}
 					meta = m.data;
 					continue;
@@ -468,7 +466,7 @@ export async function analyzeBackup(
 			if (!seen.has(name)) throw formatError(corrupt());
 		}
 		for (const k of fileEntries) {
-			if (!files.has(k)) throw formatError(corrupt('Die Sicherung enthält eine unbekannte Datei.'));
+			if (!files.has(k)) throw formatError(corrupt(t('backup.format.unknownFile')));
 		}
 
 		// --- Kompatibilität ----------------------------------------------------
@@ -519,7 +517,7 @@ export async function analyzeBackup(
 				.map((s) => ({
 					key: s,
 					group: 'module' as const,
-					label: meta!.modules[s]?.name ?? getDefinition(s)?.manifest.name ?? s,
+					label: (meta!.modules[s]?.name ?? localized(getDefinition(s)?.manifest.name)) || s,
 					description: '',
 					implies: [],
 					enabled: true
@@ -535,7 +533,10 @@ export async function analyzeBackup(
 		}
 		const scopes: PreviewScope[] = [];
 		for (const s of meta.scopes) {
-			const avail = compat.scopes[s] ?? { available: false, reason: 'Unbekannter Bereich' };
+			const avail = compat.scopes[s] ?? {
+				available: false,
+				reason: t('backup.compat.unknownScope')
+			};
 			const info = scopeInfos.find((i) => i.key === s);
 			const current = new Map<string, number>();
 			if (avail.available) {
@@ -582,24 +583,20 @@ export async function analyzeBackup(
 			for (const v of userRefs) if (!target.has(v) && !backupUserIds.has(v)) missingUserRefs++;
 		}
 
-		const secretChanged = meta.keyCheck !== keyCheckValue();
+		const secretChanged = !keyCheckMatches(meta.keyCheck);
 		if (secretChanged) {
-			warnings.push(
-				'Die Sicherung stammt von einem Server mit anderem Schlüssel: Geheimnisse werden neu verschlüsselt, schlüsselgebundene Prüfwerte neu berechnet.'
-			);
+			warnings.push(t('backup.restore.secretChanged'));
 		}
 		if (fileEntries.length) {
 			try {
 				await objectExistsUnchecked('core/backup-probe');
 			} catch {
-				warnings.push(
-					'Kein Dateispeicher konfiguriert: Dateien aus der Sicherung werden beim Wiederherstellen übersprungen.'
-				);
+				warnings.push(t('backup.restore.noStorage'));
 			}
 		}
 		if (meta.includesFiles && fileEntries.length < meta.files.count) {
 			warnings.push(
-				`${meta.files.count - fileEntries.length} Dateien fehlten schon beim Erstellen der Sicherung.`
+				t('backup.restore.filesMissingAtBackup', { count: meta.files.count - fileEntries.length })
 			);
 		}
 
@@ -665,18 +662,25 @@ export async function executeRestore(
 	const tokenKey = hashToken(data.token);
 	const preview = previews.get(tokenKey);
 	if (!preview || preview.userId !== userId) {
-		throw errors.conflict('Vorschau abgelaufen, bitte neu starten');
+		throw errors.conflict(t('backup.restore.previewExpired'));
 	}
-	const word = data.mode === 'restore' ? RESTORE_CONFIRM_WORD : MERGE_CONFIRM_WORD;
-	if (data.confirmWord !== word) {
-		throw errors.validation([{ path: ['confirmWord'], message: `Bitte genau "${word}" eingeben` }]);
+	if (!isConfirmWord(data.mode, data.confirmWord)) {
+		throw errors.validation([
+			{
+				path: ['confirmWord'],
+				message: t('backup.input.typeExactly', { word: confirmWord(data.mode) })
+			}
+		]);
 	}
 	const resolved = resolveScopes(data.scopes, preview.scopeInfos);
 	const inBackup = new Set(preview.meta.scopes);
 	const unknown = [...resolved.unknown, ...data.scopes.filter((s) => !inBackup.has(s))];
 	if (unknown.length) {
 		throw errors.validation([
-			{ path: ['scopes'], message: `Nicht in der Sicherung: ${[...new Set(unknown)].join(', ')}` }
+			{
+				path: ['scopes'],
+				message: t('backup.restore.notInBackup', { scopes: [...new Set(unknown)].join(', ') })
+			}
 		]);
 	}
 	const chosen = resolved.scopes.filter((s) => inBackup.has(s));
@@ -686,14 +690,16 @@ export async function executeRestore(
 		throw errors.validation([
 			{
 				path: ['scopes'],
-				message: `Nicht wiederherstellbar: ${blocked.join(', ')}${reason ? ` (${reason})` : ''}`
+				message: reason
+					? t('backup.restore.notRestorableReason', { scopes: blocked.join(', '), reason })
+					: t('backup.restore.notRestorable', { scopes: blocked.join(', ') })
 			}
 		]);
 	}
 	// Datei noch vorhanden?
 	const path = uploadPath(ctx, preview.uploadId);
 
-	acquireMaintenanceLock('Wiederherstellung');
+	acquireMaintenanceLock('maintenance.lock.restore');
 	previews.delete(tokenKey);
 	holdUpload(preview.uploadId, true);
 
@@ -702,7 +708,7 @@ export async function executeRestore(
 	const status: RunStatus = {
 		runId,
 		state: 'running',
-		phase: 'Vorbereiten',
+		phase: t('backup.phase.prepare'),
 		progress: { done: 0, total: 1 }
 	};
 	const run: Run = {
@@ -735,7 +741,7 @@ export async function executeRestore(
 				console.error('Wiederherstellung fehlgeschlagen', e);
 			}
 			status.state = 'failed';
-			status.error = `Die Wiederherstellung ist fehlgeschlagen, es wurden keine Daten geändert: ${errorText(e)}`;
+			status.error = t('backup.restore.failed', { error: errorText(e) });
 			holdUpload(preview.uploadId, false);
 		} finally {
 			preview.key.fill(0);
@@ -743,10 +749,10 @@ export async function executeRestore(
 			releaseMaintenanceLock();
 		}
 		if (!failure) {
-			status.phase = 'Abgleich';
+			status.phase = t('backup.phase.reconcile');
 			await runPostRestoreJobs(chosen, result);
 			status.state = 'done';
-			status.phase = 'Fertig';
+			status.phase = t('backup.phase.done');
 			status.result = result;
 		}
 		try {
@@ -785,7 +791,7 @@ async function runPostRestoreJobs(chosen: string[], result: RestoreResult): Prom
 			await runJobNow(systemContext('backup-restore'), j.job);
 		} catch (e) {
 			result.warnings.push(
-				`Abgleich ${j.job} konnte nicht ausgeführt werden (${errorText(e)}); er läuft beim nächsten Takt.`
+				t('backup.restore.reconcileFailed', { job: j.job, error: errorText(e) })
 			);
 		}
 	}
@@ -794,7 +800,7 @@ async function runPostRestoreJobs(chosen: string[], result: RestoreResult): Prom
 export async function restoreStatus(ctx: RequestContext, runId: string): Promise<RunStatus> {
 	const run = typeof runId === 'string' ? runs.get(runId) : undefined;
 	if (!run || (run.userId !== ctx.userId && run.effectiveUserId !== ctx.userId)) {
-		throw errors.notFound('Lauf nicht gefunden');
+		throw errors.notFound(t('backup.restore.runNotFound'));
 	}
 	await requireBackupUser(ctx);
 	return structuredClone(run.status);
@@ -803,7 +809,7 @@ export async function restoreStatus(ctx: RequestContext, runId: string): Promise
 /** Nur für Tests: auf das Ende eines Laufs warten */
 export async function waitForRestore(runId: string): Promise<RunStatus> {
 	const run = runs.get(runId);
-	if (!run) throw errors.notFound('Lauf nicht gefunden');
+	if (!run) throw errors.notFound(t('backup.restore.runNotFound'));
 	await run.promise;
 	return structuredClone(run.status);
 }
@@ -886,23 +892,21 @@ interface PendingDeferred {
  * Müssen nullbar sein; die Tabelle braucht einen einspaltigen Primärschlüssel.
  */
 function deferredForeignKeys(
-	t: TableInfo,
+	tbl: TableInfo,
 	name: string,
 	archiveIndex: Map<string, number>
 ): ForeignKeyInfo[] {
 	const own = archiveIndex.get(name);
 	if (own === undefined) return [];
-	const out = t.foreignKeys.filter((fk) => {
+	const out = tbl.foreignKeys.filter((fk) => {
 		const ref = `${fk.refSchema}.${fk.refTable}`;
 		if (ref === name) return false;
 		const i = archiveIndex.get(ref);
 		return i !== undefined && i > own;
 	});
 	if (!out.length) return out;
-	if (out.some((fk) => !isNullableForeignKey(t, fk)) || t.primaryKey.length !== 1) {
-		throw errors.badRequest(
-			`Tabelle ${name} hat zyklische Fremdschlüssel, die sich nicht auflösen lassen`
-		);
+	if (out.some((fk) => !isNullableForeignKey(tbl, fk)) || tbl.primaryKey.length !== 1) {
+		throw errors.badRequest(t('backup.restore.cyclicFk', { table: name }));
 	}
 	return out;
 }
@@ -976,7 +980,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 	const uploaded: string[] = [];
 	try {
 		if (fileKeys.length) {
-			status.phase = 'Dateien prüfen';
+			status.phase = t('backup.phase.checkFiles');
 			let storageOk = true;
 			try {
 				await objectExistsUnchecked(fileKeys[0]!);
@@ -984,13 +988,11 @@ async function runRestore(a: RunArgs): Promise<void> {
 				if (!(isCoreError(e) && e.code === 'unavailable')) throw e;
 				storageOk = false;
 				result.files.skipped = fileKeys.length;
-				result.warnings.push(
-					'Kein Dateispeicher konfiguriert: Dateien wurden übersprungen, die Datensätze sind trotzdem wiederhergestellt.'
-				);
+				result.warnings.push(t('backup.restore.noStorageSkipped'));
 				status.progress.done += fileKeys.length;
 			}
 			if (storageOk) {
-				status.phase = 'Dateien hochladen';
+				status.phase = t('backup.phase.uploadFiles');
 				const wanted = new Set(fileKeys);
 				for await (const entry of openArchive(path, preview.header, preview.key)) {
 					const fm = ENTRY_FILE.exec(entry.name);
@@ -1014,7 +1016,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 					} catch (e) {
 						if (isCoreError(e) && e.code === 'unavailable') throw e;
 						result.files.failed++;
-						result.warnings.push(`Datei ${objectKey} konnte nicht hochgeladen werden`);
+						result.warnings.push(t('backup.restore.uploadFailed', { key: objectKey }));
 					}
 				}
 			}
@@ -1024,7 +1026,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 		await getAuth().$context;
 		const metaTables = new Map(preview.meta.tables.map((t) => [t.name, t]));
 		await getDb().transaction(async (tx) => {
-			status.phase = 'Daten löschen';
+			status.phase = t('backup.phase.deleteData');
 			const defaultPath = sql.raw('SET LOCAL search_path TO DEFAULT');
 			const backupMigrations = (id: string) =>
 				new Set((preview.meta.modules[id]?.migrations ?? []).map((m) => m.name));
@@ -1111,7 +1113,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 			}
 
 			// Einfügen
-			status.phase = 'Daten einfügen';
+			status.phase = t('backup.phase.insertData');
 			const newUserIds = new Set<string>();
 			const wantedEntries = new Set(
 				dataTables.map((t) => {
@@ -1132,14 +1134,16 @@ async function runRestore(a: RunArgs): Promise<void> {
 				const tp = plan.get(name);
 				const tm = metaTables.get(name)!;
 				if (!tp) {
-					result.warnings.push(`Tabelle ${name} fehlt auf diesem Server und wurde übersprungen`);
+					result.warnings.push(t('backup.restore.tableMissingSkipped', { table: name }));
 					continue;
 				}
-				const t = tp.info;
-				const targetCols = new Set(t.columns.map((c) => c.name));
+				const ti = tp.info;
+				const targetCols = new Set(ti.columns.map((c) => c.name));
 				const dropped = tm.columns.map((c) => c.name).filter((c) => !targetCols.has(c));
 				if (dropped.length) {
-					result.warnings.push(`${name}: Spalten ${dropped.join(', ')} wurden nicht übernommen`);
+					result.warnings.push(
+						t('backup.restore.columnsDropped', { table: name, columns: dropped.join(', ') })
+					);
 				}
 				const conds: string[] = [];
 				if (tp.where) conds.push(tp.where);
@@ -1151,9 +1155,9 @@ async function runRestore(a: RunArgs): Promise<void> {
 				}
 				const onlyNewUsers =
 					!restore && (name === 'public.account' || name === 'public.two_factor');
-				const deferred = deferredForeignKeys(t, name, archiveIndex);
+				const deferred = deferredForeignKeys(ti, name, archiveIndex);
 				const pending: PendingDeferred | null = deferred.length
-					? { table: t, name, fks: deferred, values: new Map(), inserted: new Set() }
+					? { table: ti, name, fks: deferred, values: new Map(), inserted: new Set() }
 					: null;
 				if (pending) pendingDeferred.push(pending);
 				const deferredCols = new Set(deferred.flatMap((fk) => fk.columns));
@@ -1161,12 +1165,12 @@ async function runRestore(a: RunArgs): Promise<void> {
 				const opts = {
 					where: conds.length ? conds.map((c) => `(${c})`).join(' AND ') : undefined,
 					sourceColumns: tm.columns.map((c) => c.name).filter((c) => !deferredCols.has(c)),
-					returnColumn: pending ? t.primaryKey[0]! : isMergeUser ? 'id' : undefined
+					returnColumn: pending ? ti.primaryKey[0]! : isMergeUser ? 'id' : undefined
 				};
 				const remember = (line: string) => {
 					if (!pending) return;
 					const row = parseLine(line);
-					const pk = t.primaryKey[0]!;
+					const pk = ti.primaryKey[0]!;
 					if (row[pk] === null || row[pk] === undefined) return;
 					if (![...deferredCols].some((c) => row[c] !== null && row[c] !== undefined)) return;
 					const v: Row = { [pk]: row[pk] };
@@ -1176,7 +1180,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 				let skipped = 0;
 				const flush = async (batch: InsertRow[]) => {
 					if (!batch.length) return;
-					const r = await insertRows(tx, t, batch, opts);
+					const r = await insertRows(tx, ti, batch, opts);
 					result.inserted += r.inserted;
 					skipped += r.skipped;
 					if (pending) for (const id of r.returned) pending.inserted.add(id);
@@ -1188,21 +1192,21 @@ async function runRestore(a: RunArgs): Promise<void> {
 					hashingSource(entry.stream(), (r) => (info = r)),
 					name
 				);
-				if (selfReference(t)) {
+				if (selfReference(ti)) {
 					const byRow = new Map<Row, string>();
 					for await (const line of lines) {
 						rows++;
 						if (byRow.size >= BACKUP_LIMITS.maxSelfRefRows) {
-							throw errors.badRequest(`Tabelle ${name} ist zu groß für die Wiederherstellung`);
+							throw errors.badRequest(t('backup.restore.tableTooLarge', { table: name }));
 						}
 						byRow.set(parseLine(line), line);
 					}
 					let batch: InsertRow[] = [];
 					let batchBytes = 0;
-					for (const row of sortRowsSelfRef([...byRow.keys()], t)) {
+					for (const row of sortRowsSelfRef([...byRow.keys()], ti)) {
 						const line = byRow.get(row)!;
 						remember(line);
-						batch.push(await decodeLine(t, line));
+						batch.push(await decodeLine(ti, line));
 						batchBytes += line.length;
 						if (batchFull(batch.length, batchBytes)) {
 							await flush(batch);
@@ -1224,7 +1228,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 							}
 						}
 						remember(line);
-						batch.push(await decodeLine(t, line));
+						batch.push(await decodeLine(ti, line));
 						batchBytes += line.length;
 						if (batchFull(batch.length, batchBytes)) {
 							await flush(batch);
@@ -1242,13 +1246,11 @@ async function runRestore(a: RunArgs): Promise<void> {
 			for (const p of pendingDeferred) {
 				const missing = await applyDeferred(tx, p);
 				if (missing) {
-					result.warnings.push(
-						`${p.name}: ${missing} Verweise ließen sich nicht wiederherstellen (Ziel fehlt)`
-					);
+					result.warnings.push(t('backup.restore.missingRefs', { table: p.name, count: missing }));
 				}
 			}
 
-			status.phase = 'Abschluss';
+			status.phase = t('backup.phase.finish');
 			// Neuere Modul-Migrationen
 			for (const id of moduleInsertOrder(moduleIds.map((m) => ({ id: m, deps: deps(m) })))) {
 				await runModuleMigrations(id, tx);
@@ -1273,7 +1275,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 				}
 				if (result.rehash.unrecoverable) {
 					result.warnings.push(
-						`${result.rehash.unrecoverable} Prüfwerte ließen sich mit dem neuen Schlüssel nicht wiederherstellen (z. B. alte Freigabelinks wurden widerrufen)`
+						t('backup.restore.rehashUnrecoverable', { count: result.rehash.unrecoverable })
 					);
 				}
 			}
@@ -1322,9 +1324,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 					}
 				}
 				if (!(await hasBackupRight())) {
-					result.warnings.push(
-						'Dem eigenen Konto fehlt nach dem Wiederherstellen das Recht zur Datensicherung. Es wurden keine zusätzlichen Rechte vergeben – bitte eine*n Administrator*in um die passende Rolle bitten.'
-					);
+					result.warnings.push(t('backup.restore.noBackupRight'));
 				}
 			}
 
@@ -1355,7 +1355,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 					);
 					if (missing.length) {
 						result.warnings.push(
-							`Modul ${id} bleibt inaktiv: Abhängigkeiten nicht aktiv (${missing.join(', ')})`
+							t('backup.restore.moduleStaysInactive', { id, modules: missing.join(', ') })
 						);
 						continue;
 					}
@@ -1369,7 +1369,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 						.map((d) => d.manifest.id);
 					if (dependents.length) {
 						result.warnings.push(
-							`Modul ${id} bleibt aktiv: wird von aktiven Modulen benötigt (${dependents.join(', ')})`
+							t('backup.restore.moduleStaysActive', { id, modules: dependents.join(', ') })
 						);
 						continue;
 					}
@@ -1427,7 +1427,7 @@ async function runRestore(a: RunArgs): Promise<void> {
 			if (!(await deleteObjectUnchecked(k).catch(() => false))) failed++;
 		}
 		if (failed) {
-			result.warnings.push(`${failed} alte Dateien konnten nicht aus dem Speicher gelöscht werden`);
+			result.warnings.push(t('backup.restore.oldFilesNotDeleted', { count: failed }));
 		}
 	}
 }

@@ -13,6 +13,7 @@ import {
 	requirePermission
 } from '../permissions/service';
 import { forModule } from '../database/module-db';
+import { withLocale } from '../i18n/locale';
 import { sendMail } from '../mail';
 import { allDefinitions } from '../modules/registry';
 import { isModuleEnabled } from '../modules/service';
@@ -20,9 +21,11 @@ import { getSetting } from '../settings/service';
 import { newId } from '../util';
 import { getAuth } from './index';
 import { requireUser } from './context';
+import { accountMailLocale } from './account-mail';
 import { assertCanManageUser } from './manage-guard';
 import { maskEmail } from './mask-email';
 import { removeAvatarObject } from './profile';
+import { t } from '$lib/i18n';
 
 export interface UserListItem {
 	id: string;
@@ -110,7 +113,7 @@ export async function listUsers(
 export async function getUser(ctx: RequestContext, id: string): Promise<UserListItem> {
 	await requirePermission(ctx, 'core.users.view');
 	const [u] = await getDb().select().from(schema.user).where(eq(schema.user.id, id));
-	if (!u) throw errors.notFound('Benutzer nicht gefunden');
+	if (!u) throw errors.notFound(t('auth.userNotFound'));
 	const roles = await rolesByUser([id]);
 	const direct = await permissionsByUser([id]);
 	return {
@@ -168,7 +171,7 @@ export async function createUserUnchecked(
 		.select({ id: schema.user.id })
 		.from(schema.user)
 		.where(eq(schema.user.email, email));
-	if (existing) throw errors.conflict('E-Mail-Adresse wird bereits verwendet');
+	if (existing) throw errors.conflict(t('auth.emailInUse'));
 	const hash = await authCtx.password.hash(input.password);
 	const id = newId();
 	await db.transaction(async (tx) => {
@@ -214,16 +217,14 @@ export async function registerUserWithRole(input: {
 	roleName: string;
 }): Promise<string> {
 	const name = input.name.trim();
-	if (!name || name.length > 120) throw errors.badRequest('Ungültiger Name');
+	if (!name || name.length > 120) throw errors.badRequest(t('auth.invalidName'));
 	if (input.password.length < 12 || input.password.length > 128) {
-		throw errors.badRequest('Passwort muss 12 bis 128 Zeichen lang sein');
+		throw errors.badRequest(t('auth.passwordLength', { min: 12, max: 128 }));
 	}
 	// Standardrolle über ihre Kennung `default:<Name>` – nie eine bloß gleichnamige Rolle (#67, 01a-07)
 	const roleId = await ensureDefaultRole(input.roleName);
 	if (!roleId) {
-		throw errors.unavailable(
-			'Die Registrierung ist gerade nicht möglich – bitte wende dich an die Administration'
-		);
+		throw errors.unavailable(t('auth.registrationUnavailable'));
 	}
 	const id = await createUserUnchecked({
 		name,
@@ -254,8 +255,7 @@ export async function createUser(ctx: RequestContext, input: CreateUserInput): P
 		await assertValidPermissionKeys(input.permissionKeys);
 		assertCanGrant(ctx, input.permissionKeys);
 	}
-	if (input.password.length < 12)
-		throw errors.badRequest('Passwort muss mindestens 12 Zeichen lang sein');
+	if (input.password.length < 12) throw errors.badRequest(t('auth.passwordMinLength', { min: 12 }));
 	const id = await createUserUnchecked(input);
 	await auditFromContext(ctx, 'core.user.created', {
 		target: id,
@@ -287,7 +287,7 @@ async function planUserUpdate(
 		.select({ email: schema.user.email, name: schema.user.name })
 		.from(schema.user)
 		.where(eq(schema.user.id, id));
-	if (!current) throw errors.notFound('Benutzer nicht gefunden');
+	if (!current) throw errors.notFound(t('auth.userNotFound'));
 	// Die E-Mail-Adresse steuert den Zugang (Passwort vergessen) – nur Konten mit höchstens eigenen Rechten
 	await assertCanManageUser(ctx, id);
 	const patch: Partial<typeof schema.user.$inferInsert> = { updatedAt: new Date() };
@@ -300,7 +300,7 @@ async function planUserUpdate(
 				.select({ id: schema.user.id })
 				.from(schema.user)
 				.where(eq(schema.user.email, email));
-			if (dup) throw errors.conflict('E-Mail-Adresse wird bereits verwendet');
+			if (dup) throw errors.conflict(t('auth.emailInUse'));
 			patch.email = email;
 			// Administrativ geänderte Adresse gilt als verifiziert
 			patch.emailVerified = true;
@@ -381,7 +381,12 @@ export async function updateUserFull(
 		if (permsPlan) await applyUserPermissions(tx, ctx, id, permsPlan);
 	});
 	if (profilePlan?.emailChanged) {
-		notifyOldAddress(profilePlan.current.email, profilePlan.current.name, profilePlan.patch.email!);
+		notifyOldAddress(
+			id,
+			profilePlan.current.email,
+			profilePlan.current.name,
+			profilePlan.patch.email!
+		);
 	}
 }
 
@@ -389,14 +394,21 @@ export async function updateUserFull(
  * Hinweis an die bisherige Adresse nach einem administrativen E-Mail-Wechsel (Fire-and-forget wie bei
  * `requestEmailChange`): Wer die Adresse nicht selbst geändert hat, merkt eine Übernahme sofort.
  */
-function notifyOldAddress(oldEmail: string, name: string, newEmail: string): void {
+function notifyOldAddress(userId: string, oldEmail: string, name: string, newEmail: string): void {
 	void (async () => {
-		const system = (await getSetting<string>('core.system.name')) || 'EP Intern';
-		await sendMail({
-			to: oldEmail,
-			subject: `${system}: Die E-Mail-Adresse deines Kontos wurde geändert`,
-			text: `Hallo ${name},\n\ndie E-Mail-Adresse deines Kontos wurde von der Administration auf ${maskEmail(newEmail)} geändert. An diese Adresse gehen ab sofort alle Nachrichten, auch Links zum Zurücksetzen des Passworts. Alle bisherigen Anmeldungen wurden beendet.\n\nWenn diese Änderung nicht mit dir abgesprochen war, melde dich bitte umgehend bei der Administration.`
-		});
+		const [system, locale] = await Promise.all([
+			getSetting<string>('core.system.name'),
+			accountMailLocale(userId, 'system')
+		]);
+		await withLocale(locale, () =>
+			sendMail({
+				to: oldEmail,
+				subject: t('account-mail.emailChangedByAdmin.subject', {
+					system: system || 'Kalypzo Atrium'
+				}),
+				text: t('account-mail.emailChangedByAdmin.text', { name, email: maskEmail(newEmail) })
+			})
+		);
 	})().catch((err) =>
 		console.error('[mail] Hinweis zum E-Mail-Wechsel fehlgeschlagen:', err?.message)
 	);
@@ -406,11 +418,11 @@ async function planUserActive(ctx: RequestContext, id: string, active: boolean):
 	await requirePermission(ctx, 'core.users.edit');
 	await assertCanManageUser(ctx, id);
 	if (!active) {
-		if (id === ctx.userId) throw errors.conflict('Du kannst dich nicht selbst deaktivieren');
+		if (id === ctx.userId) throw errors.conflict(t('auth.cannotDeactivateSelf'));
 		if ((await activeAdminCount(id)) === 0) {
 			const roles = await rolesByUser([id]);
 			if (roles.get(id)?.some((r) => r.id === ADMIN_ROLE_ID)) {
-				throw errors.conflict('Der letzte aktive Administrator kann nicht deaktiviert werden');
+				throw errors.conflict(t('auth.lastAdminDeactivate'));
 			}
 		}
 	}
@@ -427,7 +439,7 @@ async function applyUserActive(
 		.set({ active, updatedAt: new Date() })
 		.where(eq(schema.user.id, id))
 		.returning({ id: schema.user.id });
-	if (!res.length) throw errors.notFound('Benutzer nicht gefunden');
+	if (!res.length) throw errors.notFound(t('auth.userNotFound'));
 	if (!active) await tx.delete(schema.session).where(eq(schema.session.userId, id));
 	await auditFromContext(
 		ctx,
@@ -449,7 +461,7 @@ export async function verifyUserEmail(ctx: RequestContext, id: string): Promise<
 		.set({ emailVerified: true, updatedAt: new Date() })
 		.where(eq(schema.user.id, id))
 		.returning({ id: schema.user.id });
-	if (!res.length) throw errors.notFound('Benutzer nicht gefunden');
+	if (!res.length) throw errors.notFound(t('auth.userNotFound'));
 	await auditFromContext(ctx, 'core.user.email_verified', { target: id });
 }
 
@@ -463,17 +475,17 @@ export async function setUserActive(
 
 export async function deleteUser(ctx: RequestContext, id: string): Promise<void> {
 	await requirePermission(ctx, 'core.users.delete');
-	if (id === ctx.userId) throw errors.conflict('Du kannst dich nicht selbst löschen');
+	if (id === ctx.userId) throw errors.conflict(t('auth.cannotDeleteSelf'));
 	await assertCanManageUser(ctx, id);
 	const roles = await rolesByUser([id]);
 	if (roles.get(id)?.some((r) => r.id === ADMIN_ROLE_ID) && (await activeAdminCount(id)) === 0) {
-		throw errors.conflict('Der letzte Administrator kann nicht gelöscht werden');
+		throw errors.conflict(t('auth.lastAdminDelete'));
 	}
 	const res = await getDb()
 		.delete(schema.user)
 		.where(eq(schema.user.id, id))
 		.returning({ id: schema.user.id });
-	if (!res.length) throw errors.notFound('Benutzer nicht gefunden');
+	if (!res.length) throw errors.notFound(t('auth.userNotFound'));
 	// Nach dem Core-Löschen: Profilbild und Moduldaten der Person aufräumen (wirft nie)
 	await removeAvatarObject(id);
 	const failed = await cleanupModulesAfterUserDeletion(id, ctx.userId);
@@ -536,19 +548,17 @@ async function planUserRoles(
 				.from(schema.role)
 				.where(inArray(schema.role.id, unique))
 		: [];
-	if (existing.length !== unique.length) throw errors.badRequest('Unbekannte Rolle');
+	if (existing.length !== unique.length) throw errors.badRequest(t('auth.unknownRole'));
 	const current = (await rolesByUser([id])).get(id) ?? [];
 	const added = unique.filter((r) => !current.some((c) => c.id === r));
 	const removed = current.filter((c) => !unique.includes(c.id)).map((c) => c.id);
 	// Nur Rollen vergeben/entziehen, deren Rechte man selbst besitzt
 	await assertCanAssignRoles(ctx, [...added, ...removed]);
 	if (removed.includes(ADMIN_ROLE_ID) && (await activeAdminCount(id)) === 0) {
-		throw errors.conflict(
-			'Dem letzten Administrator kann die Administratorrolle nicht entzogen werden'
-		);
+		throw errors.conflict(t('auth.lastAdminRole'));
 	}
 	if (id === ctx.userId && removed.length) {
-		throw errors.conflict('Du kannst dir eigene Rollen nicht entziehen');
+		throw errors.conflict(t('auth.cannotRemoveOwnRoles'));
 	}
 	return { unique, added, removed };
 }
@@ -579,7 +589,7 @@ interface UserPermissionsPlan {
 async function assertValidPermissionKeys(keys: string[]): Promise<void> {
 	const unique = [...new Set(keys)];
 	const known = await existingKeys(unique);
-	if (unique.some((k) => !known.has(k))) throw errors.badRequest('Unbekannte Berechtigung');
+	if (unique.some((k) => !known.has(k))) throw errors.badRequest(t('auth.unknownPermission'));
 }
 
 /**
@@ -601,7 +611,7 @@ async function planUserPermissions(
 	const removed = current.filter((k) => !unique.includes(k));
 	assertCanGrant(ctx, [...added, ...removed]);
 	if (id === ctx.userId && removed.length) {
-		throw errors.conflict('Du kannst dir eigene Berechtigungen nicht entziehen');
+		throw errors.conflict(t('auth.cannotRemoveOwnPermissions'));
 	}
 	return { unique, added, removed };
 }

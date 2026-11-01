@@ -9,6 +9,7 @@ import { defineEndpoint } from '../api/registry';
 import { errors } from '../errors';
 import { addDevice, listDevices, pushEnabled, removeDevice, vapidKeys } from './push';
 import { getMyPreferences, sendTestPush, setMyPreference } from './service';
+import { t } from '$lib/i18n';
 
 const base64url = (max: number) =>
 	z
@@ -30,7 +31,8 @@ const preferenceInput = z.object({
 	delivery: z.enum(NOTIFICATION_DELIVERIES).optional()
 });
 
-const TAGS = ['Benachrichtigungen'];
+// Schlüssel; die API-Übersicht übersetzt sie beim Anzeigen (`api/text.ts`)
+const TAGS = ['notifications.endpoints.tag'];
 
 /** Eigene Benachrichtigungs-Einstellungen und Push-Geräte (nur angemeldete Personen, nur Session) */
 export function notificationEndpoints() {
@@ -38,7 +40,7 @@ export function notificationEndpoints() {
 		defineEndpoint({
 			method: 'GET',
 			path: '/notifications/preferences',
-			summary: 'Eigene Benachrichtigungen mit Kanalwahl und Push-Geräten',
+			summary: 'notifications.endpoints.preferencesGet',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,
@@ -49,7 +51,7 @@ export function notificationEndpoints() {
 		defineEndpoint({
 			method: 'PUT',
 			path: '/notifications/preferences',
-			summary: 'Kanal einer Benachrichtigung wählen (Aus, E-Mail, Beides, Push)',
+			summary: 'notifications.endpoints.preferencesPut',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,
@@ -61,14 +63,14 @@ export function notificationEndpoints() {
 		defineEndpoint({
 			method: 'GET',
 			path: '/notifications/push/key',
-			summary: 'Öffentlicher Push-Schlüssel (VAPID) zum Registrieren eines Geräts',
+			summary: 'notifications.endpoints.vapidKey',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,
 			sessionOnly: true,
 			handler: async () => {
 				if (!(await pushEnabled())) {
-					throw errors.unavailable('Push-Benachrichtigungen sind ausgeschaltet');
+					throw errors.unavailable(t('notifications.pushDisabled'));
 				}
 				return { publicKey: (await vapidKeys()).publicKey };
 			}
@@ -76,7 +78,7 @@ export function notificationEndpoints() {
 		defineEndpoint({
 			method: 'GET',
 			path: '/notifications/push/subscriptions',
-			summary: 'Eigene Push-Geräte',
+			summary: 'notifications.endpoints.devicesList',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,
@@ -86,7 +88,7 @@ export function notificationEndpoints() {
 		defineEndpoint({
 			method: 'POST',
 			path: '/notifications/push/subscriptions',
-			summary: 'Gerät für Push registrieren',
+			summary: 'notifications.endpoints.deviceAdd',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,
@@ -98,7 +100,7 @@ export function notificationEndpoints() {
 		defineEndpoint({
 			method: 'POST',
 			path: '/notifications/push/subscriptions/remove',
-			summary: 'Gerät über seinen Endpoint abmelden (Push im Browser ausgeschaltet)',
+			summary: 'notifications.endpoints.deviceUnsubscribe',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,
@@ -110,7 +112,7 @@ export function notificationEndpoints() {
 		defineEndpoint({
 			method: 'DELETE',
 			path: '/notifications/push/subscriptions/:id',
-			summary: 'Push-Gerät entfernen',
+			summary: 'notifications.endpoints.deviceRemove',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,
@@ -121,7 +123,7 @@ export function notificationEndpoints() {
 		defineEndpoint({
 			method: 'POST',
 			path: '/notifications/push/test',
-			summary: 'Test-Benachrichtigung an die eigenen Geräte',
+			summary: 'notifications.endpoints.testPush',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,

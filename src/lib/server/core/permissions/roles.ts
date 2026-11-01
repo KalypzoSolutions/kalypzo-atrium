@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { and, asc, count, eq, ilike, inArray } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
@@ -129,7 +130,8 @@ async function validateKeys(keys: string[]): Promise<string[]> {
 	const unique = [...new Set(keys)];
 	const known = await existingKeys(unique);
 	const unknown = unique.filter((k) => !known.has(k));
-	if (unknown.length) throw errors.badRequest(`Unbekannte Berechtigungen: ${unknown.join(', ')}`);
+	if (unknown.length)
+		throw errors.badRequest(t('permissions.unknown', { keys: unknown.join(', ') }));
 	return unique;
 }
 
@@ -163,7 +165,7 @@ export async function createRole(
 			);
 		});
 	} catch (e) {
-		if (isUniqueViolation(e)) throw errors.conflict('Rollenname bereits vergeben');
+		if (isUniqueViolation(e)) throw errors.conflict(t('permissions.roles.nameTaken'));
 		throw e;
 	}
 	return id;
@@ -177,9 +179,9 @@ export async function updateRole(
 	await requirePermission(ctx, 'core.roles.edit');
 	const db = getDb();
 	const [role] = await db.select().from(schema.role).where(eq(schema.role.id, id));
-	if (!role) throw errors.notFound('Rolle nicht gefunden');
+	if (!role) throw errors.notFound(t('permissions.roles.notFound'));
 	if (role.isSystem && (input.name !== undefined || input.permissions !== undefined)) {
-		throw errors.forbidden('Systemrollen können nicht verändert werden');
+		throw errors.forbidden(t('permissions.roles.systemReadonly'));
 	}
 	if (input.name !== undefined && input.name.trim() !== role.name) {
 		await assertRoleNameAllowed(input.name, id);
@@ -225,18 +227,18 @@ export async function updateRole(
 			);
 		});
 	} catch (e) {
-		if (isUniqueViolation(e)) throw errors.conflict('Rollenname bereits vergeben');
+		if (isUniqueViolation(e)) throw errors.conflict(t('permissions.roles.nameTaken'));
 		throw e;
 	}
 }
 
 export async function deleteRole(ctx: RequestContext, id: string): Promise<void> {
 	await requirePermission(ctx, 'core.roles.delete');
-	if (id === ADMIN_ROLE_ID) throw errors.forbidden('Systemrollen können nicht gelöscht werden');
+	if (id === ADMIN_ROLE_ID) throw errors.forbidden(t('permissions.roles.systemUndeletable'));
 	const db = getDb();
 	const [role] = await db.select().from(schema.role).where(eq(schema.role.id, id));
-	if (!role) throw errors.notFound('Rolle nicht gefunden');
-	if (role.isSystem) throw errors.forbidden('Systemrollen können nicht gelöscht werden');
+	if (!role) throw errors.notFound(t('permissions.roles.notFound'));
+	if (role.isSystem) throw errors.forbidden(t('permissions.roles.systemUndeletable'));
 	assertCanGrant(ctx, await permissionsOfRole(id));
 	await db.transaction(async (tx) => {
 		await tx.delete(schema.role).where(eq(schema.role.id, id));

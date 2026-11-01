@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { DASHBOARD_KEY_PATTERN, DASHBOARD_LAYOUT_MAX } from '$lib/sdk/client/dashboard-widgets';
@@ -28,21 +29,21 @@ function problem(status: number, message: string, details: unknown = null) {
  * JSON-Anfragen fallen nicht unter den Origin-Check von SvelteKit – daher eigener Same-Origin-Check.
  */
 export const PUT: RequestHandler = async ({ request, locals, url }) => {
-	if (!locals.user) return problem(401, 'Nicht angemeldet');
+	if (!locals.user) return problem(401, t('dashboard-feed.notSignedIn'));
 	const origin = request.headers.get('origin');
-	if (!origin || origin !== url.origin) return problem(403, 'Ungültige Herkunft der Anfrage');
+	if (!origin || origin !== url.origin) return problem(403, t('dashboard-feed.invalidOrigin'));
 	if (!(request.headers.get('content-type') ?? '').toLowerCase().startsWith('application/json')) {
-		return problem(415, 'Erwartet application/json');
+		return problem(415, t('dashboard-feed.expectedJson'));
 	}
 	let raw: unknown;
 	try {
 		raw = await request.json();
 	} catch {
-		return problem(400, 'Ungültiges JSON');
+		return problem(400, t('dashboard-feed.invalidJson'));
 	}
 	const parsed = bodySchema.safeParse(raw);
 	if (!parsed.success) {
-		return problem(422, 'Ungültige Dashboard-Anordnung', parsed.error.issues);
+		return problem(422, t('dashboard-feed.invalidLayout'), parsed.error.issues);
 	}
 	try {
 		await setSetting(locals.ctx, 'core.user.dashboard', parsed.data.layout);

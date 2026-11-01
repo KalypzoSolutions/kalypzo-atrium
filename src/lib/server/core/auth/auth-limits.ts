@@ -1,5 +1,6 @@
 import { env } from '../env';
 import { hit, type RateLimitResult } from '../rate-limit';
+import { t } from '$lib/i18n';
 
 /**
  * Gemeinsame Rate-Limits für alle Authentifizierungswege. Better Auth übernimmt sie als
@@ -44,8 +45,10 @@ export function limitAuthAction(
 	return hit(`auth:${kind}:target:${keys.target}`, max, rule.window);
 }
 
-/** Meldung bei überschrittenem Limit (Form-Actions). */
-export const TOO_MANY_ATTEMPTS = 'Zu viele Versuche. Bitte später erneut versuchen.';
+/** Meldung bei überschrittenem Limit (Form-Actions), in der Sprache des Requests. */
+export function tooManyAttempts(): string {
+	return t('auth.tooManyAttempts');
+}
 
 // --- Fehlversuchssperre beim Login ------------------------------------------
 

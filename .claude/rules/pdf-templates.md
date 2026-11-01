@@ -1,18 +1,23 @@
 ---
-paths: ["src/lib/server/core/pdf/**"]
+paths: ["src/lib/server/core/pdf/**", "modules/ep-stamm/**"]
 ---
 
 # PDF-/Briefvorlagen
 
 - Vorlagen sind Code: eine Datei je Vorlage in `src/lib/server/core/pdf/templates/` (`export default` ein
   `PdfTemplate`), Bausteine in `parts/`, Schriften/Bilder in `assets/` (Carlito, OFL, eingebettet).
+- Core ist **neutral** (Kalypzo Atrium Phase N): `brief`, `briefkopf`, `briefkopf-quer` aus `parts/letter.ts` (`createLetterTemplate`), Kopf =
+  Name der Organisation + Logo, Fußzeile = `core.pdf.footerText` bzw. Kontaktdaten. Alte IDs `stamm-*` sind Aliase (`TEMPLATE_ALIASES`).
+  Organisationsspezifisches Aussehen kommt aus Modulen (`ModuleDefinition.pdfTemplates`, gleiche ID ersetzt die Core-Vorlage bei aktivem
+  Modul, `resolveTemplate` in `pdf/resolve.ts`); der Stamm-Briefkopf (Lilie, Vereinsname, Wappen, Vereinsnachweis) liegt in `modules/ep-stamm`.
+- Texte der Core-Vorlagen und Bestandteile als Schlüssel `pdf.templates.*`/`pdf.parts.*` (übersetzt in `describeTemplate`); Fehler über `t('pdf.errors.*')`.
 - Alle Maße in **mm** von der oberen linken Seitenecke; Position/Größe der Bestandteile auch in `parts` eintragen
   (Anzeige in der Admin-Ansicht).
-- Referenzbild liegt unter `docs/reference/` (z. B. `briefkopf_stamm_adressfeld_page_1.png`); Vorlage dagegen abgleichen:
+- Referenzbild des Stamm-Briefkopfs liegt unter `docs/reference/` (`briefkopf_stamm_adressfeld_page_1.png`); `ep-stamm` dagegen abgleichen:
   Chromium-Screenshot und `pdftotext -bbox` für Textpositionen.
 - Chromium: Overlay per `position: fixed` (wiederholt sich je Seite); `page` setzt Format/Ränder und schaltet Kopf/Fuß ab.
-- Querformat: `page.orientation: 'landscape'` und `createStammTemplate({ …, orientation: 'landscape' })`; Maße aus
-  `stammGeometry('landscape')`/`GEOMETRY_LANDSCAPE`, Bestandteile aus `PART_META_LANDSCAPE`. Kein Adressfeld im
+- Querformat: `page.orientation: 'landscape'` und `createLetterTemplate({ …, orientation: 'landscape' })`; Maße aus
+  `letterGeometry('landscape')`/`GEOMETRY_LANDSCAPE` (`mark`, `title`, `emblem`, `footer`), Bestandteile aus `PART_META_LANDSCAPE`. Kein Adressfeld im
   Querformat (`withAddress` wirft). Vorlagen mit festem Layout bestimmen die Ausrichtung selbst.
 - Admin-Vorschau (`/admin/settings/pdf`, `/admin/settings/pdf/preview?template=<id>&only=<teil>`) nach jeder Änderung ansehen.
 - Tabellen (`renderGridTable`/`placeRows` in `templates.ts`): Linien nie als `border` unter 1 px (Chromium rundet auf 1 px auf),

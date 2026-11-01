@@ -1,11 +1,12 @@
+import { t } from '$lib/i18n';
 import { z } from 'zod';
 import { defineEndpoint } from '../api/registry';
 import { describeEmbeds, EMBED_DESCRIBE_MAX, listEmbedKinds, searchEmbeds } from './service';
 
-const TAGS = ['Einbetten'];
+const TAGS = ['api.tags.embeds'];
 const RATE = { limit: 120, windowSec: 60 };
 
-const key = z.string().regex(/^[a-z][a-z0-9-]{0,40}$/, 'Ungültiger Schlüssel');
+const key = z.string().regex(/^[a-z][a-z0-9-]{0,40}$/, { error: () => t('embeds.invalidKey') });
 
 const describeInput = z
 	.object({
@@ -18,11 +19,11 @@ const describeInput = z
 						refId: z
 							.string()
 							.trim()
-							.regex(/^[A-Za-z0-9_-]{1,64}$/, 'Ungültige ID')
+							.regex(/^[A-Za-z0-9_-]{1,64}$/, { error: () => t('embeds.invalidId') })
 					})
 					.strict()
 			)
-			.max(EMBED_DESCRIBE_MAX, `Höchstens ${EMBED_DESCRIBE_MAX} Einträge`)
+			.max(EMBED_DESCRIBE_MAX, { error: () => t('embeds.tooMany', { max: EMBED_DESCRIBE_MAX }) })
 	})
 	.strict();
 
@@ -32,7 +33,7 @@ export function embedEndpoints() {
 		defineEndpoint({
 			method: 'GET',
 			path: '/embeds',
-			summary: 'Einbettbare Inhalte suchen (ab 2 Zeichen, je Art höchstens 10)',
+			summary: 'embeds.endpoints.search',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,
@@ -43,7 +44,7 @@ export function embedEndpoints() {
 		defineEndpoint({
 			method: 'GET',
 			path: '/embeds/kinds',
-			summary: 'Arten einbettbarer Inhalte, die die Person nutzen darf',
+			summary: 'embeds.endpoints.kinds',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,
@@ -53,7 +54,7 @@ export function embedEndpoints() {
 		defineEndpoint({
 			method: 'POST',
 			path: '/embeds/describe',
-			summary: 'Eingebettete Inhalte je Betrachter*in auflösen (Titel, Zugriff, Pfade)',
+			summary: 'embeds.endpoints.describe',
 			tags: TAGS,
 			permission: null,
 			authenticated: true,

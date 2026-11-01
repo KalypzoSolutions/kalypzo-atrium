@@ -10,6 +10,7 @@
  *   `public.file` wird wie eine Core-Tabelle geprüft.
  */
 import { CORE_SCOPE_KEYS, type BackupMeta, type TableInfo } from './types';
+import { t } from '$lib/i18n';
 
 export interface CompatTarget {
 	/**
@@ -63,11 +64,13 @@ function columnProblem(
 	table: BackupMeta['tables'][number],
 	target: Map<string, TableInfo>
 ): string | null {
-	const t = target.get(table.name);
-	if (!t) return `Tabelle ${table.name} fehlt auf diesem Server`;
-	const have = new Set(t.columns.map((c) => c.name));
+	const info = target.get(table.name);
+	if (!info) return t('backup.compat.tableMissing', { table: table.name });
+	const have = new Set(info.columns.map((c) => c.name));
 	const unknown = table.columns.map((c) => c.name).filter((c) => !have.has(c));
-	if (unknown.length) return `Unbekannte Spalten in ${table.name}: ${unknown.join(', ')}`;
+	if (unknown.length) {
+		return t('backup.compat.unknownColumns', { table: table.name, columns: unknown.join(', ') });
+	}
 	return null;
 }
 
@@ -78,14 +81,12 @@ export function checkCompat(meta: BackupMeta, target: CompatTarget): CompatResul
 	let coreBlock: string | null = null;
 	if (!target.coreMigrations.length) {
 		if (meta.coreMigrations.length) {
-			warnings.push(
-				'Die Core-Version dieses Servers ließ sich nicht ermitteln; die Kompatibilität wurde nur anhand der Tabellen geprüft.'
-			);
+			warnings.push(t('backup.compat.coreVersionUnknown'));
 		}
 	} else {
 		const have = new Set(target.coreMigrations);
 		if (meta.coreMigrations.some((m) => !have.has(m))) {
-			coreBlock = 'Sicherung stammt aus einer neueren Version';
+			coreBlock = t('backup.compat.newerVersion');
 		}
 	}
 
@@ -94,22 +95,22 @@ export function checkCompat(meta: BackupMeta, target: CompatTarget): CompatResul
 			scopes[scope] = { available: false, reason: coreBlock };
 			continue;
 		}
-		const tables = meta.tables.filter((t) => tableScopes(t).includes(scope));
+		const tables = meta.tables.filter((tbl) => tableScopes(tbl).includes(scope));
 		if (scope.startsWith('core:')) {
 			if (!(CORE_SCOPE_KEYS as readonly string[]).includes(scope)) {
-				scopes[scope] = { available: false, reason: 'Unbekannter Bereich' };
+				scopes[scope] = { available: false, reason: t('backup.compat.unknownScope') };
 				continue;
 			}
 			const problem = tables
-				.filter((t) => t.name.startsWith('public.'))
-				.map((t) => columnProblem(t, target.tables))
+				.filter((tbl) => tbl.name.startsWith('public.'))
+				.map((tbl) => columnProblem(tbl, target.tables))
 				.find((p) => p !== null);
 			scopes[scope] = problem ? { available: false, reason: problem } : { available: true };
 			continue;
 		}
 
 		if (!MODULE_SCOPE.test(scope)) {
-			scopes[scope] = { available: false, reason: 'Unbekannter Bereich' };
+			scopes[scope] = { available: false, reason: t('backup.compat.unknownScope') };
 			continue;
 		}
 		const tgt = target.modules[scope];
@@ -123,15 +124,15 @@ export function checkCompat(meta: BackupMeta, target: CompatTarget): CompatResul
 			scopes[scope] = {
 				available: false,
 				reason: installSource
-					? `Modul ist auf diesem Server nicht installiert – zuerst ${origin!.version} aus der gesicherten Quelle installieren`
-					: 'Modul ist auf diesem Server nicht installiert',
+					? t('backup.compat.moduleNotInstalledSource', { version: origin!.version })
+					: t('backup.compat.moduleNotInstalled'),
 				...(installSource ? { installSource } : {})
 			};
 			continue;
 		}
 		const src = meta.modules[scope];
 		if (!src) {
-			scopes[scope] = { available: false, reason: 'Moduldaten fehlen in der Sicherung' };
+			scopes[scope] = { available: false, reason: t('backup.compat.moduleDataMissing') };
 			continue;
 		}
 		const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
@@ -140,27 +141,27 @@ export function checkCompat(meta: BackupMeta, target: CompatTarget): CompatResul
 		let reason: string | null = null;
 		for (let i = 0; i < backupMigs.length; i++) {
 			const b = backupMigs[i]!;
-			const t = targetMigs[i];
-			if (!t || t.name !== b.name) {
+			const mig = targetMigs[i];
+			if (!mig || mig.name !== b.name) {
 				reason = targetMigs.some((m) => m.name === b.name)
-					? `Migration ${b.name} passt nicht zu diesem Server`
-					: 'Sicherung ist neuer als dieses Modul';
+					? t('backup.compat.migrationMismatch', { name: b.name })
+					: t('backup.compat.newerThanModule');
 				break;
 			}
-			if (t.checksum !== b.checksum && !t.accepted?.includes(b.checksum)) {
-				reason = `Migration ${b.name} weicht von diesem Server ab`;
+			if (mig.checksum !== b.checksum && !mig.accepted?.includes(b.checksum)) {
+				reason = t('backup.compat.migrationDiffers', { name: b.name });
 				break;
 			}
 		}
 		if (!reason) {
 			const schemaName = moduleSchemaFor(scope);
 			const foreign = tables.find(
-				(t) => !t.name.startsWith(`${schemaName}.`) && t.name !== 'public.file'
+				(tbl) => !tbl.name.startsWith(`${schemaName}.`) && tbl.name !== 'public.file'
 			);
-			if (foreign) reason = `Unerwartete Tabelle ${foreign.name} im Modul`;
+			if (foreign) reason = t('backup.compat.unexpectedTable', { table: foreign.name });
 		}
 		if (!reason) {
-			const file = tables.find((t) => t.name === 'public.file');
+			const file = tables.find((tbl) => tbl.name === 'public.file');
 			if (file) reason = columnProblem(file, target.tables);
 		}
 		if (reason) {
@@ -169,9 +170,7 @@ export function checkCompat(meta: BackupMeta, target: CompatTarget): CompatResul
 		}
 		scopes[scope] = { available: true };
 		if (targetMigs.length > backupMigs.length) {
-			warnings.push(
-				`${src.name}: Die Sicherung hat einen älteren Stand; neuere Migrationen werden nach dem Einfügen angewendet.`
-			);
+			warnings.push(t('backup.compat.olderState', { name: src.name }));
 		}
 	}
 	return { scopes, warnings };

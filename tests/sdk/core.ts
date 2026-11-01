@@ -107,7 +107,14 @@ export type { ModuleDefinition, ResetArea } from '$lib/server/core/modules/types
 export { validateModuleReferences } from '$lib/server/core/modules/validate';
 export { navBadgeCounts } from '$lib/server/core/navigation/badges';
 export { getMyPreferences, setMyPreference } from '$lib/server/core/notifications/service';
-export { mergePdfs, setPdfRendererForTests } from '$lib/server/core/pdf';
+export {
+	describeTemplates,
+	mergePdfs,
+	resolveTemplate,
+	setPdfRendererForTests
+} from '$lib/server/core/pdf';
+export { brandIcon, brandLogo, brandingState, logoUrl } from '$lib/server/core/branding';
+export { loadMailLayoutOptions, renderMailLayout } from '$lib/server/core/mail-layout';
 export { renderPdfPage } from '$lib/server/core/pdf/raster';
 export { renderBlocks } from '$lib/server/core/pdf/templates';
 export { ADMIN_ROLE_ID, PRIVILEGED_PERMISSIONS } from '$lib/server/core/permissions/catalog';

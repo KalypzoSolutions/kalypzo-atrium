@@ -4,6 +4,7 @@
  * objektbezogen. Quellen laufen nacheinander (PGlite hat nur eine Sitzung), Fehler einer Quelle
  * überspringen nur diese.
  */
+import { localized, t } from '$lib/i18n';
 import { asc, ilike, or } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import {
@@ -80,10 +81,10 @@ async function searchUsers(q: string, limit: number): Promise<SearchHit[]> {
 	return rows.map((u) => ({
 		id: u.id,
 		title: u.name,
-		subtitle: u.active ? u.email : `${u.email} · deaktiviert`,
+		subtitle: u.active ? u.email : `${u.email} · ${t('search.deactivated')}`,
 		href: `/admin/users?q=${encodeURIComponent(u.email)}`,
 		icon: 'users',
-		type: 'Benutzer*in'
+		type: t('search.typeUser')
 	}));
 }
 
@@ -100,7 +101,7 @@ async function searchRoles(q: string, limit: number): Promise<SearchHit[]> {
 		subtitle: r.description ?? undefined,
 		href: '/admin/roles',
 		icon: 'shield',
-		type: 'Rolle'
+		type: t('search.typeRole')
 	}));
 }
 
@@ -118,7 +119,7 @@ export async function searchEverything(
 	if (ctx.permissions.has('core.users.view')) core.push(...(await searchUsers(query, limit)));
 	if (ctx.permissions.has('core.roles.view')) core.push(...(await searchRoles(query, limit)));
 	if (core.length)
-		groups.push({ source: 'core', label: 'Verwaltung', hits: clean(core, limit * 2) });
+		groups.push({ source: 'core', label: t('search.coreGroup'), hits: clean(core, limit * 2) });
 
 	const enabled = await enabledModuleIds();
 	const sources = allDefinitions().filter(
@@ -128,7 +129,7 @@ export async function searchEverything(
 		const id = def.manifest.id;
 		try {
 			const hits = clean(await def.search!.run(ctx, query, limit), limit);
-			return hits.length ? { source: id, label: def.manifest.name, hits } : null;
+			return hits.length ? { source: id, label: localized(def.manifest.name), hits } : null;
 		} catch (e) {
 			console.error(`[search] Quelle ${id} fehlgeschlagen:`, e);
 			return null;

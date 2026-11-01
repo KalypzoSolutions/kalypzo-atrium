@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	/**
 	 * Fußzeile mit Datenschutz- und Impressum-Link (Einstellungen `core.legal.privacyUrl` /
 	 * `core.legal.imprintUrl`). Für Login und öffentliche Seiten `/p/*`; `notice` ergänzt einen
@@ -42,18 +43,18 @@
 	<footer class="text-muted-foreground flex flex-col items-center gap-1 text-xs {className}">
 		{#if notice && privacy}
 			<p class="text-center">
-				Informationen zur Verarbeitung deiner Angaben findest du in der Datenschutzerklärung.
+				{t('layout.legal.notice')}
 			</p>
 		{/if}
-		<nav aria-label="Rechtliche Hinweise" class="flex flex-wrap justify-center gap-x-4 gap-y-1">
+		<nav aria-label={t('layout.legal.label')} class="flex flex-wrap justify-center gap-x-4 gap-y-1">
 			{#if privacy}
 				<a href={privacy} target="_blank" rel="noopener noreferrer" class="text-link underline">
-					Datenschutz
+					{t('layout.legal.privacy')}
 				</a>
 			{/if}
 			{#if imprint}
 				<a href={imprint} target="_blank" rel="noopener noreferrer" class="text-link underline">
-					Impressum
+					{t('layout.legal.imprint')}
 				</a>
 			{/if}
 		</nav>

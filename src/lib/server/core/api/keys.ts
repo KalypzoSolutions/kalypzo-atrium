@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { desc, eq } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
@@ -48,16 +49,16 @@ export async function createApiKey(
 ): Promise<{ key: string; item: ApiKeyItem }> {
 	await requirePermission(ctx, 'core.api.manage');
 	if (!ctx.userId) throw errors.unauthenticated();
-	if (ctx.actor.type === 'api_key')
-		throw errors.forbidden('API-Keys können keine API-Keys erzeugen');
+	if (ctx.actor.type === 'api_key') throw errors.forbidden(t('api.keys.noKeysFromKeys'));
 	const scopes = [...new Set(input.scopes)];
-	if (!scopes.length) throw errors.badRequest('Mindestens ein Scope ist erforderlich');
+	if (!scopes.length) throw errors.badRequest(t('api.keys.scopeRequired'));
 	const known = await existingKeys(scopes);
 	const unknown = scopes.filter((s) => !known.has(s));
-	if (unknown.length) throw errors.badRequest(`Unbekannte Scopes: ${unknown.join(', ')}`);
+	if (unknown.length)
+		throw errors.badRequest(t('api.keys.unknownScopes', { scopes: unknown.join(', ') }));
 	assertCanGrant(ctx, scopes);
 	if (input.expiresAt && input.expiresAt.getTime() <= Date.now()) {
-		throw errors.badRequest('Ablaufdatum muss in der Zukunft liegen');
+		throw errors.badRequest(t('api.keys.expiryInPast'));
 	}
 	const secret = randomToken(32);
 	const key = `${API_KEY_PREFIX}${secret}`;
@@ -88,6 +89,6 @@ export async function revokeApiKey(ctx: RequestContext, id: string): Promise<voi
 		.set({ revokedAt: new Date() })
 		.where(eq(schema.apiKey.id, id))
 		.returning({ id: schema.apiKey.id });
-	if (!res.length) throw errors.notFound('API-Key nicht gefunden');
+	if (!res.length) throw errors.notFound(t('api.keys.notFound'));
 	await auditFromContext(ctx, 'core.api_key.revoked', { target: id });
 }

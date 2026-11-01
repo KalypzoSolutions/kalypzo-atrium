@@ -1,4 +1,6 @@
 /** Client-Helfer der Seite „Datensicherung“: JSON-Aufrufe der Endpunkte und Formatierung. */
+import { intlLocale, t } from '$lib/i18n';
+import { formatDate, formatNumber, formatTime } from '$lib/i18n/intl';
 
 export type CallResult<T> =
 	| { ok: true; data: T }
@@ -32,7 +34,7 @@ async function parse<T>(res: Response): Promise<CallResult<T>> {
 	return {
 		ok: false,
 		status: res.status,
-		message: body?.message ?? `Anfrage fehlgeschlagen (${res.status})`,
+		message: body?.message ?? t('admin-backup.client.requestFailed', { status: res.status }),
 		fields: fieldErrors(body?.details)
 	};
 }
@@ -49,7 +51,7 @@ export async function postJson<T>(path: string, body: unknown): Promise<CallResu
 		});
 		return await parse<T>(res);
 	} catch {
-		return { ok: false, status: 0, message: 'Server nicht erreichbar', fields: {} };
+		return { ok: false, status: 0, message: t('admin-backup.client.unreachable'), fields: {} };
 	}
 }
 
@@ -58,7 +60,7 @@ export async function getJson<T>(path: string): Promise<CallResult<T>> {
 		const res = await fetch(BASE + path, { credentials: 'same-origin' });
 		return await parse<T>(res);
 	} catch {
-		return { ok: false, status: 0, message: 'Server nicht erreichbar', fields: {} };
+		return { ok: false, status: 0, message: t('admin-backup.client.unreachable'), fields: {} };
 	}
 }
 
@@ -72,11 +74,16 @@ export async function putChunk<T>(path: string, chunk: Blob): Promise<CallResult
 		});
 		return await parse<T>(res);
 	} catch {
-		return { ok: false, status: 0, message: 'Verbindung beim Hochladen unterbrochen', fields: {} };
+		return {
+			ok: false,
+			status: 0,
+			message: t('admin-backup.client.uploadInterrupted'),
+			fields: {}
+		};
 	}
 }
 
-export const fmt = (n: number) => n.toLocaleString('de-DE');
+export const fmt = (n: number) => formatNumber(n);
 
 export function fmtBytes(bytes: number): string {
 	if (bytes < 1024) return `${fmt(bytes)} B`;
@@ -87,18 +94,13 @@ export function fmtBytes(bytes: number): string {
 		v /= 1024;
 		i++;
 	}
-	return `${v.toLocaleString('de-DE', { maximumFractionDigits: 1 })} ${units[i]}`;
+	return `${v.toLocaleString(intlLocale(), { maximumFractionDigits: 1 })} ${units[i]}`;
 }
 
 export function fmtDateTime(iso: string): string {
 	const d = new Date(iso);
 	if (Number.isNaN(d.getTime())) return iso;
-	return (
-		d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
-		', ' +
-		d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) +
-		' Uhr'
-	);
+	return t('admin-backup.client.dateTime', { date: formatDate(d), time: formatTime(d) });
 }
 
 export const percent = (done: number, total: number) =>
@@ -114,8 +116,9 @@ export function passwordStrength(pw: string): { score: number; label: string } {
 	if (classes >= 3) score++;
 	if (pw.length >= 20 || (classes === 4 && pw.length >= 14)) score++;
 	if (/^(.)\1+$/.test(pw)) score = 0;
-	const labels = ['Sehr schwach', 'Schwach', 'Mittel', 'Gut', 'Stark'];
-	return { score, label: labels[score] ?? '' };
+	const labels = ['veryWeak', 'weak', 'medium', 'good', 'strong'] as const;
+	const key = labels[score];
+	return { score, label: key ? t(`admin-backup.strength.${key}`) : '' };
 }
 
 /** Automatisch mitgehende Bereiche (transitiv) mit Auslöser und Begründung. */

@@ -1,0 +1,24 @@
+{
+	"required": "Pflichtfeld",
+	"atMost": "Höchstens {value}",
+	"atLeast": "Mindestens {value}",
+	"lessThan": "Muss kleiner als {value} sein",
+	"greaterThan": "Muss größer als {value} sein",
+	"invalidValue": "Ungültiger Wert",
+	"unknownKeys": "{count, plural, one {Unbekanntes Feld: {keys}} other {Unbekannte Felder: {keys}}}",
+	"unit": {
+		"chars": "{count, plural, one {# Zeichen} other {# Zeichen}}",
+		"items": "{count, plural, one {# Eintrag} other {# Einträge}}",
+		"bytes": "{count, plural, one {# Byte} other {# Bytes}}"
+	},
+	"format": {
+		"email": "Ungültige E-Mail-Adresse",
+		"uuid": "Ungültige ID",
+		"guid": "Ungültige ID",
+		"url": "Ungültige URL",
+		"date": "Ungültiges Datum (JJJJ-MM-TT)",
+		"datetime": "Ungültiger Zeitpunkt",
+		"time": "Ungültige Uhrzeit",
+		"regex": "Ungültiges Format"
+	}
+}

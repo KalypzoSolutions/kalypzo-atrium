@@ -11,6 +11,7 @@
  *   Administration entscheidet: Rolle umbenennen/löschen (beim nächsten Start entsteht die Standardrolle) oder
  *   ausdrücklich übernehmen (`adoptDefaultRole`).
  */
+import { t } from '$lib/i18n';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
@@ -64,7 +65,7 @@ export async function ensureDefaultRole(
 		.values({
 			id: newId(),
 			name,
-			description: 'Automatisch angelegt',
+			description: t('permissions.roles.autoCreated'),
 			isSystem: false,
 			systemKey: defaultRoleKey(name)
 		})
@@ -89,16 +90,16 @@ export async function ensureDefaultRole(
 export async function adoptDefaultRole(ctx: RequestContext, roleId: string): Promise<void> {
 	await requirePermission(ctx, 'core.roles.edit');
 	if (!isAdministrator(ctx)) {
-		throw errors.forbidden('Nur Administrator*innen können eine Standardrolle übernehmen');
+		throw errors.forbidden(t('permissions.roles.adoptAdminOnly'));
 	}
 	const db = getDb();
 	const [role] = await db.select().from(schema.role).where(eq(schema.role.id, roleId));
-	if (!role) throw errors.notFound('Rolle nicht gefunden');
+	if (!role) throw errors.notFound(t('permissions.roles.notFound'));
 	if (role.isSystem || !reservedDefaultRoleNames().has(role.name)) {
-		throw errors.badRequest('Diese Rolle ist keine Standardrolle eines Moduls');
+		throw errors.badRequest(t('permissions.roles.notDefaultRole'));
 	}
 	if (await findDefaultRoleId(role.name, db)) {
-		throw errors.conflict('Es gibt bereits eine Standardrolle mit diesem Namen');
+		throw errors.conflict(t('permissions.roles.defaultExists'));
 	}
 	await db
 		.update(schema.role)
@@ -124,5 +125,5 @@ export async function assertRoleNameAllowed(name: string, roleId?: string): Prom
 			.where(eq(schema.role.id, roleId));
 		if (role?.systemKey === defaultRoleKey(trimmed)) return;
 	}
-	throw errors.conflict(`„${trimmed}“ ist für eine automatisch verwaltete Rolle reserviert`);
+	throw errors.conflict(t('permissions.roles.nameReserved', { name: trimmed }));
 }

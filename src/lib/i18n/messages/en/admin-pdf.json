@@ -1,0 +1,46 @@
+{
+	"pageTitle": "PDF · Settings",
+	"settings": {
+		"title": "PDF settings",
+		"descriptionBefore": "Consistent header, footer, page margins and format for all generated documents. You manage the logo and organisation details under ",
+		"designLink": "Design",
+		"descriptionMiddle": " and ",
+		"generalLink": "General",
+		"descriptionAfter": "."
+	},
+	"templates": {
+		"title": "Templates",
+		"descriptionBefore": "Templates are defined in code (",
+		"descriptionAfter": ") or come from active modules, which can replace a template with the same ID. You can only view them here; new templates are added as files in the code."
+	},
+	"test": {
+		"title": "Test PDF",
+		"description": "Creates a sample document with the saved settings.",
+		"template": "Template",
+		"download": "Download PDF"
+	},
+	"card": {
+		"letter": "Letter",
+		"landscape": "Landscape",
+		"fromModule": "From module: {module}",
+		"replacedBy": "Replaced by module: {module}",
+		"preview": "Preview",
+		"previewUnavailable": "Preview not available (Chromium?)",
+		"previewPartAlt": "Preview of the template “{template}”, only {part}",
+		"previewAlt": "Page preview of the template “{template}”",
+		"parts": "Components",
+		"wholePage": "Whole page",
+		"optional": "optional",
+		"position": "x {x} mm, y {y} mm",
+		"size": "{width} × {height} mm",
+		"onlyThisPart": "Only this part",
+		"downloadSample": "Download sample PDF"
+	},
+	"testDocumentTitle": "Test document",
+	"errors": {
+		"unauthenticated": "Not signed in",
+		"forbidden": "No permission",
+		"invalidTemplate": "Invalid template",
+		"invalidPart": "Invalid component"
+	}
+}

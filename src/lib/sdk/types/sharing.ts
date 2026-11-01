@@ -1,11 +1,12 @@
 /**
  * Gemeinsame Typen der Freigabe an „Principals“ (Server und Client).
  *
- * Ein Principal ist, wem ein Objekt freigegeben wird: der ganze Stamm (`everyone`), eine Gruppe
+ * Ein Principal ist, wem ein Objekt freigegeben wird: alle (`everyone`), eine Gruppe
  * aus `members` (`group`), eine Berechtigungsrolle (`role`), ein Benutzerkonto (`user`) oder ein
  * Mitglied aus `members` (`member`, wirkt über die mit ihm verknüpften Konten).
  */
 
+import { t } from '$lib/i18n';
 import type { RequestContext } from './index';
 
 export const PRINCIPAL_TYPES = ['everyone', 'group', 'role', 'user', 'member'] as const;
@@ -30,12 +31,41 @@ export interface PrincipalInfo extends Principal {
 	image?: string | null;
 }
 
-export const PRINCIPAL_TYPE_LABELS: Record<PrincipalType, string> = {
-	everyone: 'Stamm',
-	group: 'Gruppe',
-	role: 'Rolle',
-	user: 'Benutzer*in',
-	member: 'Mitglied'
+/** Textschlüssel der Typbezeichnungen (`sharing.types.*`) */
+const TYPE_LABEL_KEYS: Record<PrincipalType, string> = {
+	everyone: 'sharing.types.everyone',
+	group: 'sharing.types.group',
+	role: 'sharing.types.role',
+	user: 'sharing.types.user',
+	member: 'sharing.types.member'
+};
+
+/** Bezeichnung eines Principal-Typs in der Sprache der Anzeige */
+export function principalTypeLabel(type: PrincipalType): string {
+	return t(TYPE_LABEL_KEYS[type]);
+}
+
+/**
+ * Bezeichnungen der Principal-Typen; übersetzt beim Zugriff (Getter, keine eingefrorene Sprache).
+ * `everyone` ist die allgemeine Bezeichnung („Alle“) – die Bezeichnung der Organisation
+ * (`core.org.everyoneLabel`) liefert der Server mit den Freigaben (`name`).
+ */
+export const PRINCIPAL_TYPE_LABELS: Readonly<Record<PrincipalType, string>> = {
+	get everyone() {
+		return principalTypeLabel('everyone');
+	},
+	get group() {
+		return principalTypeLabel('group');
+	},
+	get role() {
+		return principalTypeLabel('role');
+	},
+	get user() {
+		return principalTypeLabel('user');
+	},
+	get member() {
+		return principalTypeLabel('member');
+	}
 };
 
 /** Eindeutiger Schlüssel `typ:id` (z. B. `group:abc`, `everyone:*`) */

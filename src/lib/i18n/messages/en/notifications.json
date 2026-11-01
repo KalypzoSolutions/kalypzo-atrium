@@ -1,0 +1,29 @@
+{
+	"digestSubject": "Daily summary: {count, plural, one {# notification} other {# notifications}}",
+	"newSubject": "{count, plural, one {# new notification} other {# new notifications}}",
+	"greeting": "Hello {name},",
+	"digestIntro": "here is your summary:",
+	"newIntro": "there are {count} new notifications:",
+	"settingsHint": "Whether you get notifications by email, as push on your phone or not at all is up to you in your profile: {url}",
+	"pushDisabled": "Push notifications are turned off",
+	"unknownDevice": "Unknown device",
+	"unknownPushService": "Unknown push service",
+	"tooManyDevices": "At most {max} devices – please remove an old device first",
+	"deviceNotFound": "Device not found",
+	"typeNotFound": "Notification not found",
+	"mandatory": "This notification cannot be turned off",
+	"pushOnly": "This notification is only available as push",
+	"testTitle": "Test notification",
+	"testBody": "Push notifications work on this device.",
+	"endpoints": {
+		"tag": "Notifications",
+		"preferencesGet": "Own notifications with channel choice and push devices",
+		"preferencesPut": "Choose the channel of a notification (off, email, both, push)",
+		"vapidKey": "Public push key (VAPID) for registering a device",
+		"devicesList": "Own push devices",
+		"deviceAdd": "Register a device for push",
+		"deviceUnsubscribe": "Unregister a device by its endpoint (push turned off in the browser)",
+		"deviceRemove": "Remove a push device",
+		"testPush": "Test notification to your own devices"
+	}
+}

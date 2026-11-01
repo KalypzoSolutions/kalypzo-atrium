@@ -6,12 +6,21 @@ import {
 	type MailLayoutOptions
 } from '$lib/server/core/mail-layout';
 
+/** 1×1-PNG (gültige Signatur) als Bildmarke/Emblem */
+const PNG =
+	'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+
 const options: MailLayoutOptions = {
 	enabled: true,
 	showEmblem: true,
-	signature: 'Gut Pfad!',
+	signature: 'Viele Grüße',
 	footerText: 'Vereinsnachweis <Test>',
-	accentColor: '#112233'
+	accentColor: '#112233',
+	branding: {
+		title: 'Musterverein\ne.V.',
+		mark: { dataUrl: PNG, alt: 'Bildmarke' },
+		emblem: { dataUrl: PNG, alt: 'Emblem' }
+	}
 };
 
 describe('E-Mail-Layout', () => {
@@ -28,14 +37,12 @@ describe('E-Mail-Layout', () => {
 
 	it('bindet Bilder als CID ein und liefert Anhänge', () => {
 		const r = renderMailLayout({ text: 'Hallo' }, options);
-		expect(r.html).toContain('cid:stamm-lilie@ep-intern');
-		expect(r.html).toContain('cid:stamm-wappen@ep-intern');
+		expect(r.html).toContain('cid:brand-mark@atrium');
+		expect(r.html).toContain('cid:brand-emblem@atrium');
 		expect(r.html).not.toContain('data:image');
-		expect(r.attachments.map((a) => a.cid)).toEqual([
-			'stamm-lilie@ep-intern',
-			'stamm-wappen@ep-intern'
-		]);
-		// gültige PNG-Dateien
+		expect(r.html).toContain('Musterverein<br/>e.V.');
+		expect(r.html).toContain('alt="Emblem"');
+		expect(r.attachments.map((a) => a.cid)).toEqual(['brand-mark@atrium', 'brand-emblem@atrium']);
 		for (const a of r.attachments) expect(a.content.subarray(1, 4).toString()).toBe('PNG');
 	});
 
@@ -45,22 +52,31 @@ describe('E-Mail-Layout', () => {
 		expect(r.attachments).toEqual([]);
 	});
 
-	it('ohne Wappen, Signatur und Fußzeile', () => {
+	it('ohne Emblem, Signatur und Fußzeile', () => {
 		const r = renderMailLayout(
 			{ text: 'Hallo' },
 			{ ...options, showEmblem: false, signature: '', footerText: '' }
 		);
-		expect(r.html).not.toContain('stamm-wappen');
+		expect(r.html).not.toContain('brand-emblem');
 		expect(r.attachments).toHaveLength(1);
-		expect(r.html).not.toContain('Gut Pfad');
+		expect(r.html).not.toContain('Viele Grüße');
 		expect(r.text).toBe('Hallo');
+	});
+
+	it('neutraler Kopf: nur Name, keine Bilder', () => {
+		const r = renderMailLayout(
+			{ text: 'Hallo' },
+			{ ...options, branding: { title: 'Kalypzo Atrium' } }
+		);
+		expect(r.html).toContain('Kalypzo Atrium');
+		expect(r.html).not.toContain('<img');
+		expect(r.attachments).toEqual([]);
+		expect(r.html).not.toMatch(/Pfadfind|Wappen|Lilie/);
 	});
 
 	it('Textfassung enthält Signatur und Fußzeile, HTML escaped sie', () => {
 		const r = renderMailLayout({ text: 'Hallo' }, options);
-		expect(r.text).toBe(
-			'Hallo\n\nGut Pfad!\n\n--\nChristliche Pfadfinderschaft Deutschlands e.V.\nVereinsnachweis <Test>'
-		);
+		expect(r.text).toBe('Hallo\n\nViele Grüße\n\n--\nMusterverein e.V.\nVereinsnachweis <Test>');
 		expect(r.html).toContain('Vereinsnachweis &lt;Test&gt;');
 		expect(r.html).toContain('border-top:4px solid #112233');
 	});
@@ -70,14 +86,20 @@ describe('E-Mail-Layout', () => {
 		expect(r.html).toContain('<p id="mod">Modul</p>');
 	});
 
-	it('Optionen: Standardwerte und ungültige Akzentfarbe', () => {
+	it('Optionen: Standardwerte, Name aus Organisation bzw. System', () => {
 		const o = mailLayoutOptions({
 			'core.design.accentColor': 'rot',
-			'core.mail.showEmblem': false
+			'core.mail.showEmblem': false,
+			'core.system.name': 'Atrium'
 		});
 		expect(o.enabled).toBe(true);
 		expect(o.showEmblem).toBe(false);
 		expect(o.accentColor).toBe('#2563eb');
-		expect(o.footerText).toContain('Vereinsregister');
+		expect(o.footerText).toBe('');
+		expect(o.branding).toEqual({ title: 'Atrium' });
+		expect(
+			mailLayoutOptions({ 'core.system.name': 'Atrium', 'core.organization.name': 'Verein' })
+				.branding
+		).toEqual({ title: 'Verein' });
 	});
 });

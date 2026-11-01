@@ -1,4 +1,5 @@
 import { entries } from 'virtual:atrium-modules/server';
+import { t, type MessageParams } from '$lib/i18n';
 import { getDefinition, markModuleBroken, registerModule } from './registry';
 import type { ModuleDefinition } from './types';
 
@@ -13,12 +14,26 @@ export function conventionProblem(
 	def: ModuleDefinition | undefined,
 	migrationFiles: string[]
 ): string | null {
-	if (!def?.manifest) return 'module.ts exportiert keine Moduldefinition';
-	if (def.manifest.id !== folder) return `Ordner „${folder}“ ≠ Modul-ID „${def.manifest.id}“`;
-	if (def.package === undefined) return 'atrium-module.json fehlt (`package` in defineModule)';
+	const p = conventionMessage(folder, def, migrationFiles);
+	return p ? t(p.key, p.params) : null;
+}
+
+/** Wie `conventionProblem`, aber als i18n-Schlüssel (Anzeige später in der Sprache des Requests) */
+function conventionMessage(
+	folder: string,
+	def: ModuleDefinition | undefined,
+	migrationFiles: string[]
+): { key: string; params?: MessageParams } | null {
+	if (!def?.manifest) return { key: 'modules.convention.noDefinition' };
+	if (def.manifest.id !== folder)
+		return { key: 'modules.convention.folderMismatch', params: { folder, id: def.manifest.id } };
+	if (def.package === undefined) return { key: 'modules.convention.noPackage' };
 	const names = (def.migrations ?? []).map((m) => m.name);
 	if (names.join('\n') !== migrationFiles.join('\n')) {
-		return `Migrationen in module.ts (${names.join(', ') || '–'}) ≠ Dateien in migrations/ (${migrationFiles.join(', ') || '–'})`;
+		return {
+			key: 'modules.convention.migrationsMismatch',
+			params: { declared: names.join(', ') || '–', files: migrationFiles.join(', ') || '–' }
+		};
 	}
 	return null;
 }
@@ -31,17 +46,20 @@ export function conventionProblem(
 export function loadBuiltInModules(): void {
 	for (const { folder, definition, migrationFiles } of entries) {
 		if (definition?.manifest && getDefinition(definition.manifest.id)) continue;
-		const problem = conventionProblem(folder, definition, migrationFiles);
+		const entry = {
+			id: definition?.manifest?.id ?? folder,
+			name: definition?.manifest?.name ?? folder,
+			version: definition?.manifest?.version ?? null
+		};
+		const problem = conventionMessage(folder, definition, migrationFiles);
+		if (problem) {
+			markModuleBroken({ ...entry, reason: problem });
+			continue;
+		}
 		try {
-			if (problem) throw new Error(problem);
 			registerModule(definition);
 		} catch (e) {
-			markModuleBroken({
-				id: definition?.manifest?.id ?? folder,
-				name: definition?.manifest?.name ?? folder,
-				version: definition?.manifest?.version ?? null,
-				reason: e instanceof Error ? e.message : String(e)
-			});
+			markModuleBroken({ ...entry, reason: e instanceof Error ? e.message : String(e) });
 		}
 	}
 }

@@ -15,7 +15,7 @@ export interface AiMock {
 export async function startAiMock(): Promise<AiMock> {
 	const mock: Omit<AiMock, 'baseUrl' | 'close'> = {
 		requests: [],
-		reply: '<p>Hallo ihr Lieben, die Herbstfahrt startet bald. Gut Pfad!</p>',
+		reply: '<p>Hallo ihr Lieben, die Herbstfahrt startet bald. Viele Grüße!</p>',
 		json: JSON.stringify({ variants: ['Herbstfahrt: alle Infos', 'Bald geht es los'] })
 	};
 	const server: Server = createServer((req, res) => {

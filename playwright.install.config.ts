@@ -13,7 +13,9 @@ export default defineConfig({
 	use: {
 		baseURL: 'http://localhost:4174',
 		trace: 'retain-on-failure',
-		timezoneId: 'Europe/Berlin'
+		timezoneId: 'Europe/Berlin',
+		// Oberfläche folgt sonst der Browsersprache (Playwright: en-US); Specs prüfen deutsche Texte
+		locale: 'de-DE'
 	},
 	webServer: {
 		command: 'node scripts/e2e-install-server.mjs',

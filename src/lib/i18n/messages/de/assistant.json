@@ -1,0 +1,23 @@
+{
+	"button": "Schreibhilfe",
+	"title": "Schreibhilfe",
+	"apply": "Übernehmen",
+	"unavailable": "Die Schreibhilfe ist gerade nicht erreichbar",
+	"taskLegend": "Was soll passieren?",
+	"moreWithText": "Weitere Aktionen gibt es, sobald im Feld Text steht.",
+	"address": "Anrede",
+	"instructionRequired": "Was soll sich ändern? *",
+	"instructionOptional": "Zusätzlicher Wunsch (optional)",
+	"placeholderDraft": "z. B. „Erinnere an Schlafsack und Taschenlampe“",
+	"placeholderOther": "z. B. „Etwas förmlicher“",
+	"writing": "Schreibt …",
+	"regenerate": "Neu erzeugen",
+	"generate": "Vorschlag erzeugen",
+	"suggestion": "Vorschlag",
+	"tapToApply": "Antippen übernimmt den Vorschlag.",
+	"diffLegend": "Grün = neu, rot durchgestrichen = entfällt.",
+	"facts": "Eckdaten, die die KI bekommen hat",
+	"discard": "Verwerfen",
+	"reviewNotice": "Vorschlag der KI – bitte vor dem Senden lesen.",
+	"sheetDescription": "Vorschläge der KI für dieses Textfeld"
+}

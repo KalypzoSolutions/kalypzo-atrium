@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { appliesTo, claimFieldContext, mergeIds } from '$lib/components/ui/field/context';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import XIcon from '@lucide/svelte/icons/x';
@@ -20,7 +21,7 @@
 		suggestions,
 		loadSuggestions,
 		label,
-		placeholder = 'Tag eingeben …',
+		placeholder = t('ui.tagInput.placeholder'),
 		max = DEFAULT_MAX_TAGS,
 		maxLength = DEFAULT_MAX_TAG_LENGTH,
 		disabled = false,
@@ -216,7 +217,7 @@
 				<button
 					type="button"
 					{disabled}
-					aria-label={`Tag ${tag} entfernen`}
+					aria-label={t('ui.tagInput.remove', { tag })}
 					class="hover:bg-foreground/10 focus-visible:ring-ring inline-flex size-5 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:ring-2 disabled:pointer-events-none [@media(pointer:coarse)]:size-7"
 					onclick={() => remove(i)}
 				>
@@ -255,13 +256,13 @@
 	</div>
 	{#if full && !disabled}
 		<p id={hintId} class="text-muted-foreground mt-1 text-xs" aria-live="polite">
-			Höchstens {max} Tags möglich.
+			{t('ui.tagInput.max', { max })}
 		</p>
 	{/if}
 	<div
 		id={listId}
 		role="listbox"
-		aria-label={label ? `Vorschläge für ${label}` : 'Vorschläge'}
+		aria-label={label ? t('ui.tagInput.suggestionsFor', { label }) : t('ui.tagInput.suggestions')}
 		hidden={!expanded}
 		class="bg-popover text-popover-foreground ring-foreground/10 absolute top-full left-0 z-50 mt-1 max-h-64 w-full min-w-48 overflow-y-auto rounded-lg p-1 shadow-md ring-1"
 	>
@@ -283,7 +284,7 @@
 				>
 					{#if o.kind === 'create'}
 						<PlusIcon class="text-muted-foreground size-4 shrink-0" />
-						<span class="min-w-0 truncate">„{o.value}“ anlegen</span>
+						<span class="min-w-0 truncate">{t('ui.tagInput.create', { tag: o.value })}</span>
 					{:else}
 						<span class="min-w-0 truncate">{o.value}</span>
 					{/if}

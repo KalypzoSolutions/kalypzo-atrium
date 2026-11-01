@@ -16,6 +16,7 @@ import { env } from '../env';
 import { errors } from '../errors';
 import { getSettings, setSettings } from '../settings/service';
 import { newId } from '../util';
+import { t } from '$lib/i18n';
 
 /** Hosts der Push-Dienste (Chrome/Android: FCM, Firefox: Mozilla, Safari/iOS: Apple, Edge: Windows) */
 const PUSH_HOSTS = [
@@ -119,7 +120,7 @@ function cleanLabel(label: string | undefined): string {
 			.replace(/[\u0000-\u001f\u007f]+/g, ' ')
 			.replace(/\s+/g, ' ')
 			.trim()
-			.slice(0, 100) || 'Unbekanntes Gerät'
+			.slice(0, 100) || t('notifications.unknownDevice')
 	);
 }
 
@@ -146,10 +147,11 @@ export async function addDevice(
 ): Promise<PushDevice> {
 	const userId = ctx.userId;
 	if (!userId) throw errors.unauthenticated();
-	if (!(await pushEnabled()))
-		throw errors.unavailable('Push-Benachrichtigungen sind ausgeschaltet');
+	if (!(await pushEnabled())) throw errors.unavailable(t('notifications.pushDisabled'));
 	if (!isAllowedPushEndpoint(input.endpoint)) {
-		throw errors.validation([{ path: ['endpoint'], message: 'Unbekannter Push-Dienst' }]);
+		throw errors.validation([
+			{ path: ['endpoint'], message: t('notifications.unknownPushService') }
+		]);
 	}
 	const db = getDb();
 	const label = cleanLabel(input.label);
@@ -171,9 +173,7 @@ export async function addDevice(
 			.from(schema.pushSubscription)
 			.where(eq(schema.pushSubscription.userId, userId));
 		if (Number(count?.n ?? 0) >= PUSH_DEVICES_MAX) {
-			throw errors.conflict(
-				`Höchstens ${PUSH_DEVICES_MAX} Geräte – bitte zuerst ein altes Gerät entfernen`
-			);
+			throw errors.conflict(t('notifications.tooManyDevices', { max: PUSH_DEVICES_MAX }));
 		}
 		const [row] = await tx
 			.insert(schema.pushSubscription)
@@ -208,7 +208,7 @@ export async function removeDevice(
 		.delete(schema.pushSubscription)
 		.where(and(match, eq(schema.pushSubscription.userId, userId)))
 		.returning({ id: schema.pushSubscription.id });
-	if (!rows.length) throw errors.notFound('Gerät nicht gefunden');
+	if (!rows.length) throw errors.notFound(t('notifications.deviceNotFound'));
 	await auditFromContext(ctx, 'core.notifications.device-removed', { target: rows[0]!.id });
 	return { removed: true };
 }

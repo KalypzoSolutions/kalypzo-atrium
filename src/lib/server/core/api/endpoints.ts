@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { z } from 'zod';
 import { listAudit } from '../audit/service';
 import * as ai from '../ai';
@@ -43,16 +44,16 @@ export function registerCoreApi(): void {
 			method: 'GET',
 			path: '/health',
 			// prüft die Datenbank (503 bei Ausfall), wird nicht im api_log protokolliert (router.ts)
-			summary: 'Health-Check',
-			tags: ['System'],
+			summary: 'api.endpoints.health',
+			tags: ['api.tags.system'],
 			permission: null,
 			handler: () => healthCheck()
 		}),
 		defineEndpoint({
 			method: 'GET',
 			path: '/openapi.json',
-			summary: 'OpenAPI-Spezifikation',
-			tags: ['System'],
+			summary: 'api.endpoints.openapi',
+			tags: ['api.tags.system'],
 			permission: null,
 			authenticated: true,
 			handler: () =>
@@ -63,8 +64,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/me',
-			summary: 'Eigene Identität und wirksame Berechtigungen',
-			tags: ['System'],
+			summary: 'api.endpoints.me',
+			tags: ['api.tags.system'],
 			permission: null,
 			authenticated: true,
 			handler: ({ ctx }) => ({
@@ -76,8 +77,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/nav/badges',
-			summary: 'Zähler der Seitenleiste (z. B. ungelesene Mails) je Navigationspfad',
-			tags: ['System'],
+			summary: 'api.endpoints.navBadges',
+			tags: ['api.tags.system'],
 			permission: null,
 			authenticated: true,
 			rateLimit: { limit: 120, windowSec: 60 },
@@ -88,8 +89,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/users',
-			summary: 'Benutzer auflisten',
-			tags: ['Benutzer'],
+			summary: 'api.endpoints.usersList',
+			tags: ['api.tags.users'],
 			permission: 'core.users.view',
 			query: paging,
 			handler: ({ ctx, query }) => listUsers(ctx, query)
@@ -97,8 +98,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/users/:id',
-			summary: 'Benutzer abrufen',
-			tags: ['Benutzer'],
+			summary: 'api.endpoints.usersGet',
+			tags: ['api.tags.users'],
 			permission: 'core.users.view',
 			params: id,
 			handler: ({ ctx, params }) => getUser(ctx, params.id)
@@ -106,8 +107,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/users',
-			summary: 'Benutzer anlegen',
-			tags: ['Benutzer'],
+			summary: 'api.endpoints.usersCreate',
+			tags: ['api.tags.users'],
 			permission: 'core.users.create',
 			body: z.object({
 				name: z.string().trim().min(1).max(100),
@@ -121,8 +122,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'PATCH',
 			path: '/users/:id',
-			summary: 'Benutzer bearbeiten',
-			tags: ['Benutzer'],
+			summary: 'api.endpoints.usersUpdate',
+			tags: ['api.tags.users'],
 			permission: 'core.users.edit',
 			params: id,
 			body: z.object({
@@ -141,8 +142,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/users/:id/verify-email',
-			summary: 'E-Mail-Adresse von Hand bestätigen',
-			tags: ['Benutzer'],
+			summary: 'api.endpoints.usersVerifyEmail',
+			tags: ['api.tags.users'],
 			permission: 'core.users.edit',
 			params: id,
 			handler: async ({ ctx, params }) => {
@@ -153,8 +154,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'DELETE',
 			path: '/users/:id',
-			summary: 'Benutzer löschen',
-			tags: ['Benutzer'],
+			summary: 'api.endpoints.usersDelete',
+			tags: ['api.tags.users'],
 			permission: 'core.users.delete',
 			params: id,
 			handler: async ({ ctx, params }) => {
@@ -167,16 +168,16 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/roles',
-			summary: 'Rollen auflisten',
-			tags: ['Rollen'],
+			summary: 'api.endpoints.rolesList',
+			tags: ['api.tags.roles'],
 			permission: 'core.roles.view',
 			handler: ({ ctx }) => listRoles(ctx)
 		}),
 		defineEndpoint({
 			method: 'POST',
 			path: '/roles',
-			summary: 'Rolle anlegen',
-			tags: ['Rollen'],
+			summary: 'api.endpoints.rolesCreate',
+			tags: ['api.tags.roles'],
 			permission: 'core.roles.create',
 			body: z.object({
 				name: z.string().trim().min(2).max(60),
@@ -188,8 +189,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'PATCH',
 			path: '/roles/:id',
-			summary: 'Rolle bearbeiten',
-			tags: ['Rollen'],
+			summary: 'api.endpoints.rolesUpdate',
+			tags: ['api.tags.roles'],
 			permission: 'core.roles.edit',
 			params: id,
 			body: z.object({
@@ -205,8 +206,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'DELETE',
 			path: '/roles/:id',
-			summary: 'Rolle löschen',
-			tags: ['Rollen'],
+			summary: 'api.endpoints.rolesDelete',
+			tags: ['api.tags.roles'],
 			permission: 'core.roles.delete',
 			params: id,
 			handler: async ({ ctx, params }) => {
@@ -217,10 +218,9 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/roles/:id/adopt-default',
-			summary: 'Gleichnamige Rolle ausdrücklich als Standardrolle eines Moduls übernehmen',
-			description:
-				'Admin-Bestätigung (#67, 01a-07): Die Rolle erhält danach automatisch die defaultRoleGrants der Module.',
-			tags: ['Rollen'],
+			summary: 'api.endpoints.rolesAdoptDefault',
+			description: 'api.endpoints.rolesAdoptDefaultDescription',
+			tags: ['api.tags.roles'],
 			permission: 'core.roles.edit',
 			params: id,
 			handler: async ({ ctx, params }) => {
@@ -231,8 +231,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/permissions',
-			summary: 'Registrierte Berechtigungen',
-			tags: ['Rollen'],
+			summary: 'api.endpoints.permissionsList',
+			tags: ['api.tags.roles'],
 			permission: 'core.roles.view',
 			handler: () => listPermissions()
 		}),
@@ -241,16 +241,16 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/modules',
-			summary: 'Module auflisten',
-			tags: ['Module'],
+			summary: 'api.endpoints.modulesList',
+			tags: ['api.tags.modules'],
 			permission: 'core.modules.view',
 			handler: () => listModules()
 		}),
 		defineEndpoint({
 			method: 'POST',
 			path: '/modules/:id/enable',
-			summary: 'Modul aktivieren',
-			tags: ['Module'],
+			summary: 'api.endpoints.modulesEnable',
+			tags: ['api.tags.modules'],
 			permission: 'core.modules.manage',
 			params: id,
 			handler: async ({ ctx, params }) => {
@@ -261,8 +261,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/modules/:id/disable',
-			summary: 'Modul deaktivieren',
-			tags: ['Module'],
+			summary: 'api.endpoints.modulesDisable',
+			tags: ['api.tags.modules'],
 			permission: 'core.modules.manage',
 			params: id,
 			handler: async ({ ctx, params }) => {
@@ -275,16 +275,16 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/jobs',
-			summary: 'Hintergrundjobs mit letztem Lauf',
-			tags: ['Module'],
+			summary: 'api.endpoints.jobsList',
+			tags: ['api.tags.modules'],
 			permission: 'core.jobs.manage',
 			handler: () => listJobs()
 		}),
 		defineEndpoint({
 			method: 'POST',
 			path: '/jobs/:key/run',
-			summary: 'Hintergrundjob sofort ausführen',
-			tags: ['Module'],
+			summary: 'api.endpoints.jobsRun',
+			tags: ['api.tags.modules'],
 			permission: 'core.jobs.manage',
 			params: z.object({ key: z.string().regex(/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/) }),
 			handler: ({ ctx, params }) => runJobNow(ctx, params.key)
@@ -294,8 +294,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/settings',
-			summary: 'Systemeinstellungen (ohne Secret-Werte)',
-			tags: ['Einstellungen'],
+			summary: 'api.endpoints.settingsGet',
+			tags: ['api.tags.settings'],
 			permission: 'core.settings.view',
 			query: z.object({ group: z.string().max(40).optional() }),
 			handler: ({ query }) => getPublicSettings({ group: query.group, scope: 'global' })
@@ -303,8 +303,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'PUT',
 			path: '/settings',
-			summary: 'Systemeinstellungen setzen',
-			tags: ['Einstellungen'],
+			summary: 'api.endpoints.settingsSet',
+			tags: ['api.tags.settings'],
 			permission: 'core.settings.manage',
 			// Alle Werte werden vorab geprüft und atomar gespeichert; Modul-Schlüssel verlangen zusätzlich
 			// ihr Schreibrecht (z. B. `treasury.settings.manage`), siehe `setSettings`
@@ -312,7 +312,7 @@ export function registerCoreApi(): void {
 				values: z
 					.record(z.string().max(200), z.unknown())
 					.refine((v) => Object.keys(v).length <= MAX_SETTINGS_PER_WRITE, {
-						message: `Höchstens ${MAX_SETTINGS_PER_WRITE} Einstellungen auf einmal`
+						error: () => t('api.settingsTooMany', { max: MAX_SETTINGS_PER_WRITE })
 					})
 			}),
 			handler: async ({ ctx, body }) => {
@@ -325,8 +325,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/api-keys',
-			summary: 'API-Keys auflisten',
-			tags: ['API-Keys'],
+			summary: 'api.endpoints.apiKeysList',
+			tags: ['api.tags.apiKeys'],
 			permission: 'core.api.view',
 			sessionOnly: true,
 			handler: ({ ctx }) => listApiKeys(ctx)
@@ -334,8 +334,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/api-keys',
-			summary: 'API-Key erzeugen (Klartext nur einmalig in der Antwort)',
-			tags: ['API-Keys'],
+			summary: 'api.endpoints.apiKeysCreate',
+			tags: ['api.tags.apiKeys'],
 			permission: 'core.api.manage',
 			sessionOnly: true,
 			body: z.object({
@@ -348,8 +348,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'DELETE',
 			path: '/api-keys/:id',
-			summary: 'API-Key widerrufen',
-			tags: ['API-Keys'],
+			summary: 'api.endpoints.apiKeysRevoke',
+			tags: ['api.tags.apiKeys'],
 			permission: 'core.api.manage',
 			sessionOnly: true,
 			params: id,
@@ -363,8 +363,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/pdf',
-			summary: 'PDF-Dokument erzeugen',
-			tags: ['PDF'],
+			summary: 'api.endpoints.pdf',
+			tags: ['api.tags.pdf'],
 			permission: 'core.pdf.generate',
 			body: z.object({
 				template: z.string().max(40).optional(),
@@ -396,9 +396,7 @@ export function registerCoreApi(): void {
 				orientation: z
 					.enum(['portrait', 'landscape'])
 					.optional()
-					.describe(
-						'Seitenausrichtung. Wird bei Vorlagen mit festem Seitenlayout (Briefvorlagen wie stamm-brief, stamm-briefkopf, stamm-briefkopf-quer) ignoriert; dort bestimmt die Vorlage die Ausrichtung.'
-					)
+					.describe('api.endpoints.pdfOrientation')
 			}),
 			rateLimit: { limit: 20, windowSec: 60 },
 			handler: async ({ ctx, body }) => {
@@ -418,8 +416,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/ai/generate',
-			summary: 'Text mit dem zentral konfigurierten KI-Modell erzeugen',
-			tags: ['KI'],
+			summary: 'api.endpoints.aiGenerate',
+			tags: ['api.tags.ai'],
 			permission: 'core.ai.use',
 			body: z.object({
 				prompt: z.string().min(1).max(100_000),
@@ -434,8 +432,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/ai/assist/status',
-			summary: 'Schreibhilfe: eingerichtet? In welchen Modulen darf ich sie nutzen?',
-			tags: ['KI'],
+			summary: 'api.endpoints.aiAssistStatus',
+			tags: ['api.tags.ai'],
 			permission: null,
 			authenticated: true,
 			handler: ({ ctx }) => assistStatus(ctx)
@@ -443,10 +441,9 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/ai/assist',
-			summary: 'Schreibhilfe: Vorschlag für eine Textstelle (Server-Sent Events)',
-			description:
-				'Antwort als `text/event-stream` mit `delta`-, `done`- und `error`-Ereignissen. Recht `<modul>.ai.use`; Kontext nur mit Zugriff auf das Objekt.',
-			tags: ['KI'],
+			summary: 'api.endpoints.aiAssist',
+			description: 'api.endpoints.aiAssistDescription',
+			tags: ['api.tags.ai'],
 			permission: null,
 			authenticated: true,
 			sessionOnly: true,
@@ -460,8 +457,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/ai/usage',
-			summary: 'KI-Verbrauch je Modul und Modell',
-			tags: ['KI'],
+			summary: 'api.endpoints.aiUsage',
+			tags: ['api.tags.ai'],
 			permission: 'core.ai.view',
 			query: z.object({ from: z.coerce.date().optional(), to: z.coerce.date().optional() }),
 			handler: ({ ctx, query }) => ai.usageSummary(ctx, query)
@@ -474,8 +471,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/storage/files',
-			summary: 'Dateien und virtuelle Ordner eines Modulbereichs',
-			tags: ['Storage'],
+			summary: 'api.endpoints.storageList',
+			tags: ['api.tags.storage'],
 			permission: 'core.storage.manage',
 			query: z.object({
 				module: z.string().min(2).max(40),
@@ -486,8 +483,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/storage/upload-url',
-			summary: 'Signierte Upload-URL erzeugen',
-			tags: ['Storage'],
+			summary: 'api.endpoints.storageUploadUrl',
+			tags: ['api.tags.storage'],
 			permission: 'core.storage.manage',
 			body: z.object({
 				module: z.string().min(2).max(40),
@@ -500,8 +497,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'POST',
 			path: '/storage/files/:id/confirm',
-			summary: 'Signierten Upload bestätigen',
-			tags: ['Storage'],
+			summary: 'api.endpoints.storageConfirm',
+			tags: ['api.tags.storage'],
 			permission: 'core.storage.manage',
 			params: id,
 			handler: ({ ctx, params }) => storage.confirmUpload(ctx, params.id)
@@ -509,8 +506,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/storage/download-url',
-			summary: 'Signierte Download-URL erzeugen',
-			tags: ['Storage'],
+			summary: 'api.endpoints.storageDownloadUrl',
+			tags: ['api.tags.storage'],
 			permission: 'core.storage.manage',
 			query: z.object({ module: z.string().min(2).max(40), path: z.string().min(1).max(300) }),
 			handler: ({ ctx, query }) => storage.createSignedDownloadUrl(ctx, query)
@@ -518,8 +515,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'DELETE',
 			path: '/storage/files',
-			summary: 'Datei löschen',
-			tags: ['Storage'],
+			summary: 'api.endpoints.storageDelete',
+			tags: ['api.tags.storage'],
 			permission: 'core.storage.manage',
 			query: z.object({ module: z.string().min(2).max(40), path: z.string().min(1).max(300) }),
 			handler: async ({ ctx, query }) => {
@@ -532,8 +529,8 @@ export function registerCoreApi(): void {
 		defineEndpoint({
 			method: 'GET',
 			path: '/audit-logs',
-			summary: 'Audit-Logs',
-			tags: ['Audit'],
+			summary: 'api.endpoints.auditLogs',
+			tags: ['api.tags.audit'],
 			permission: 'core.audit.view',
 			query: paging.extend({ action: z.string().max(100).optional() }),
 			handler: ({ query }) => listAudit(query)

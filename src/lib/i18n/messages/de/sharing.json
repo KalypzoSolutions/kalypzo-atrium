@@ -1,0 +1,49 @@
+{
+	"everyone": "Alle",
+	"hiddenMember": "Mitglied",
+	"unknown": "Unbekannt",
+	"invalidPrincipal": "Unbekannt oder nicht erlaubt",
+	"searchForbidden": "Die Freigabe-Suche steht nur Personen offen, die hier etwas teilen dürfen",
+	"types": {
+		"everyone": "Alle",
+		"group": "Gruppe",
+		"role": "Rolle",
+		"user": "Benutzer*in",
+		"member": "Mitglied"
+	},
+	"panel": {
+		"placeholder": "Name oder E-Mail suchen …",
+		"searchLabel": "Benutzer suchen",
+		"emptyResult": "Keine passenden Benutzer",
+		"searchFailed": "Suche fehlgeschlagen",
+		"shareFailed": "Freigabe fehlgeschlagen",
+		"changeFailed": "Änderung fehlgeschlagen",
+		"removeFailed": "Entfernen fehlgeschlagen",
+		"newLevel": "Stufe für neue Freigabe",
+		"shareWithEveryoneAria": "Für {label} (alle) freigeben",
+		"shareWithEveryone": "{label} (alle)",
+		"results": "Suchergebnisse",
+		"searching": "Suche …",
+		"addAria": "{name} hinzufügen",
+		"add": "Hinzufügen",
+		"minChars": "Mindestens {count} Zeichen eingeben.",
+		"access": "Zugriff ({count})",
+		"notShared": "Noch nicht freigegeben.",
+		"owner": "Besitzer*in",
+		"levelFor": "Stufe für {name}",
+		"removeAria": "Freigabe für {name} entfernen"
+	},
+	"menu": {
+		"title": "Zugriff",
+		"description": "Wer diese Aktion sehen oder bearbeiten darf.",
+		"label": "Teilen",
+		"onlyYou": "Nur du hast Zugriff",
+		"persons": "{count} Personen haben Zugriff: {names}",
+		"shares": "{count, plural, one {# Freigabe} other {# Freigaben}}: {names}"
+	},
+	"dialog": {
+		"title": "Freigeben",
+		"description": "Gib diesen Eintrag für weitere Benutzer frei.",
+		"close": "Schließen"
+	}
+}

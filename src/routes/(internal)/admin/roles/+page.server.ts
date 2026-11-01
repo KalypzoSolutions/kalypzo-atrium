@@ -1,5 +1,6 @@
 import type { Actions } from '@sveltejs/kit';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { createRole, deleteRole, listRoles, updateRole } from '$lib/server/core/permissions/roles';
 import {
 	canGrantPermission,
@@ -33,14 +34,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 	};
 };
 
-const base = z.object({
-	name: z.string().trim().min(2, 'Name muss mindestens 2 Zeichen lang sein').max(60),
-	description: z.string().trim().max(300),
-	permissions: z.array(z.string()).max(500)
-});
+// Je Aufruf gebaut, damit die Fehlertexte in der Sprache des Requests erscheinen
+const base = () =>
+	z.object({
+		name: z.string().trim().min(2, t('admin-roles.server.nameMin')).max(60),
+		description: z.string().trim().max(300),
+		permissions: z.array(z.string()).max(500)
+	});
 
 function readForm(fd: FormData) {
-	return base.safeParse({
+	return base().safeParse({
 		name: fd.get('name'),
 		description: fd.get('description') ?? '',
 		permissions: fd.getAll('permissions').map(String)
@@ -53,7 +56,7 @@ export const actions: Actions = {
 		if (!parsed.success) return invalid(parsed.error);
 		try {
 			await createRole(locals.ctx, parsed.data);
-			return { success: true, message: 'Rolle angelegt' };
+			return { success: true, message: t('admin-roles.server.created') };
 		} catch (e) {
 			return toFail(e);
 		}
@@ -66,7 +69,7 @@ export const actions: Actions = {
 		if (!parsed.success) return invalid(parsed.error);
 		try {
 			await updateRole(locals.ctx, id.data, parsed.data);
-			return { success: true, message: 'Rolle gespeichert' };
+			return { success: true, message: t('admin-roles.server.saved') };
 		} catch (e) {
 			return toFail(e);
 		}
@@ -79,7 +82,7 @@ export const actions: Actions = {
 		if (!id.success) return invalid(id.error);
 		try {
 			await deleteRole(locals.ctx, id.data);
-			return { success: true, message: 'Rolle gelöscht' };
+			return { success: true, message: t('admin-roles.server.deleted') };
 		} catch (e) {
 			return toFail(e);
 		}

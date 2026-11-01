@@ -4,6 +4,7 @@
 	import { toast } from 'svelte-sonner';
 	import { ErrorState, LoadingState, PageHeader, PageTitle } from '$lib/components/layout';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import { t } from '$lib/i18n';
 	import AccountTab from './_components/AccountTab.svelte';
 	import AppearanceTab from './_components/AppearanceTab.svelte';
 	import NotificationsTab from './_components/NotificationsTab.svelte';
@@ -16,15 +17,15 @@
 	const sections = $derived(data.sections);
 
 	const tabs = $derived([
-		{ value: 'account', label: 'Konto' },
-		{ value: 'security', label: 'Sicherheit' },
-		{ value: 'appearance', label: 'Darstellung' },
-		{ value: 'notifications', label: 'Benachrichtigungen' },
+		{ value: 'account', label: t('profile.tabs.account') },
+		{ value: 'security', label: t('profile.tabs.security') },
+		{ value: 'appearance', label: t('profile.tabs.appearance') },
+		{ value: 'notifications', label: t('profile.tabs.notifications') },
 		...sections.map((s) => ({ value: s.key, label: s.title }))
 	]);
 
 	const requested = $derived(page.url.searchParams.get('tab') ?? 'account');
-	const tab = $derived(tabs.some((t) => t.value === requested) ? requested : 'account');
+	const tab = $derived(tabs.some((x) => x.value === requested) ? requested : 'account');
 
 	// Modul-Komponenten je Schlüssel nur einmal laden: ein `invalidateAll` liefert neue Lader-Funktionen,
 	// ein neues Promise würde den Abschnitt neu aufbauen und ungespeicherte Entwürfe verwerfen.
@@ -41,7 +42,7 @@
 	// Rückkehr vom Bestätigungslink der E-Mail-Änderung (`?emailChanged=1`)
 	$effect(() => {
 		if (page.url.searchParams.get('emailChanged') !== '1') return;
-		toast.success('E-Mail-Adresse geändert.');
+		toast.success(t('profile.emailChanged'));
 		const url = new URL(page.url);
 		url.searchParams.delete('emailChanged');
 		void goto(url, { replaceState: true, noScroll: true, keepFocus: true });
@@ -55,14 +56,14 @@
 	}
 </script>
 
-<PageTitle title="Profil" />
+<PageTitle title={t('profile.title')} />
 
-<PageHeader title="Profil" description="Konto, Sicherheit und persönliche Einstellungen." />
+<PageHeader title={t('profile.title')} description={t('profile.description')} />
 
 <Tabs.Root value={tab} onValueChange={setTab}>
 	<Tabs.List variant="line" class="mb-4">
-		{#each tabs as t (t.value)}
-			<Tabs.Trigger value={t.value}>{t.label}</Tabs.Trigger>
+		{#each tabs as tabItem (tabItem.value)}
+			<Tabs.Trigger value={tabItem.value}>{tabItem.label}</Tabs.Trigger>
 		{/each}
 	</Tabs.List>
 
@@ -79,10 +80,7 @@
 				{@const Section = mod.default}
 				<Section userId={data.profile.id} />
 			{:catch}
-				<ErrorState
-					message="Dieser Bereich konnte nicht geladen werden."
-					onretry={() => location.reload()}
-				/>
+				<ErrorState message={t('profile.sectionError')} onretry={() => location.reload()} />
 			{/await}
 		</Tabs.Content>
 	{/each}

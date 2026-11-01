@@ -8,6 +8,7 @@ import { and, eq, ne } from 'drizzle-orm';
 import { logAudit } from '../audit/service';
 import { getDb, schema } from '../database/client';
 import { env } from '../env';
+import { withLocale } from '../i18n/locale';
 import { sendMail } from '../mail';
 import { maskEmail, maskEmailInput } from './mask-email';
 import { peek, reset, hit } from '../rate-limit';
@@ -20,8 +21,10 @@ import {
 	loginGlobalKey,
 	loginPairKey
 } from './auth-limits';
+import { accountMailLocale } from './account-mail';
 import { CLIENT_IP_HEADER, currentClientIp } from './client-ip';
 import { qrLoginPlugin } from './qr-login-plugin';
+import { t } from '$lib/i18n';
 
 /** Payload eines Bestätigungs-Tokens (JWT) lesen, ohne Prüfung – nur zur Unterscheidung der Abläufe. */
 function verificationPayload(token: string | null | undefined): {
@@ -46,16 +49,24 @@ async function notifyAccountLocked(email: string): Promise<void> {
 	if (!hit(`login-locked-notice:${email}`, 1, LOGIN_WINDOW_SEC).allowed) return;
 	try {
 		const [u] = await getDb()
-			.select({ name: schema.user.name, active: schema.user.active })
+			.select({ id: schema.user.id, name: schema.user.name, active: schema.user.active })
 			.from(schema.user)
 			.where(eq(schema.user.email, email));
 		if (!u?.active) return;
-		const name = await getSetting<string>('core.system.name');
-		await sendMail({
-			to: email,
-			subject: `${name}: Anmeldung vorübergehend gesperrt`,
-			text: `Hallo ${u.name},\n\nfür dein Konto gab es in kurzer Zeit sehr viele fehlgeschlagene Anmeldeversuche. Die Anmeldung ist deshalb für etwa ${LOGIN_WINDOW_SEC / 60} Minuten für alle gesperrt.\n\nWarst du das nicht, ändere nach Ablauf der Sperre bitte dein Passwort, aktiviere die Zwei-Faktor-Authentifizierung und melde dich bei der Administration.`
-		});
+		const [name, locale] = await Promise.all([
+			getSetting<string>('core.system.name'),
+			accountMailLocale(u.id, 'system')
+		]);
+		await withLocale(locale, () =>
+			sendMail({
+				to: email,
+				subject: t('account-mail.accountLocked.subject', { system: name }),
+				text: t('account-mail.accountLocked.text', {
+					name: u.name,
+					minutes: LOGIN_WINDOW_SEC / 60
+				})
+			})
+		);
 	} catch (err) {
 		console.error('[mail] Hinweis zur Kontosperre fehlgeschlagen:', (err as Error)?.message);
 	}
@@ -65,13 +76,14 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 	const e = env();
 	const secure = e.ORIGIN.startsWith('https://');
 	const plugins = [
-		twoFactor({ issuer: 'EP Intern' }),
+		// Nur Beschriftung in der Authenticator-App; das Profil kann je Aufruf `issuer` (Systemname) mitgeben
+		twoFactor({ issuer: 'Kalypzo Atrium' }),
 		qrLoginPlugin(),
 		...(opts.sveltekitCookies ? [sveltekitCookies(getRequestEvent)] : [])
 	];
 
 	return betterAuth({
-		appName: 'EP Intern',
+		appName: 'Kalypzo Atrium',
 		baseURL: e.ORIGIN,
 		secret: e.APP_SECRET,
 		database: drizzleAdapter(getDb(), {
@@ -91,13 +103,18 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 			maxPasswordLength: 128,
 			revokeSessionsOnPasswordReset: true,
 			sendResetPassword: async ({ user, url }) => {
-				const name = await getSetting<string>('core.system.name');
+				const [name, locale] = await Promise.all([
+					getSetting<string>('core.system.name'),
+					accountMailLocale(user.id)
+				]);
 				// Fire-and-forget (Timing-Angleich); Fehler werden nicht an den Client gegeben
-				void sendMail({
-					to: user.email,
-					subject: `${name}: Passwort zurücksetzen`,
-					text: `Hallo ${user.name},\n\nüber den folgenden Link kannst du dein Passwort zurücksetzen (1 Stunde gültig):\n${url}\n\nWenn du das nicht angefordert hast, ignoriere diese Nachricht einfach.`
-				}).catch((err) => console.error('[mail] Passwort-Reset fehlgeschlagen:', err?.message));
+				void withLocale(locale, () =>
+					sendMail({
+						to: user.email,
+						subject: t('account-mail.resetPassword.subject', { system: name }),
+						text: t('account-mail.resetPassword.text', { name: user.name, url })
+					})
+				).catch((err) => console.error('[mail] Passwort-Reset fehlgeschlagen:', err?.message));
 			},
 			resetPasswordTokenExpiresIn: 60 * 60
 		},
@@ -151,31 +168,28 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 				});
 			},
 			sendVerificationEmail: async ({ user, url, token }) => {
-				const name = await getSetting<string>('core.system.name');
+				const [name, locale] = await Promise.all([
+					getSetting<string>('core.system.name'),
+					accountMailLocale(user.id)
+				]);
 				if (!verificationPayload(token).updateTo) {
 					// Neues, selbst registriertes Konto: erst nach Bestätigung ist die Anmeldung möglich
-					void sendMail({
-						to: user.email,
-						subject: `${name}: E-Mail-Adresse bestätigen`,
-						text: `Hallo ${user.name},
-
-bitte bestätige mit dem folgenden Link deine E-Mail-Adresse (1 Stunde gültig). Erst danach kannst du dich anmelden:
-${url}
-
-Wenn du kein Konto angelegt hast, ignoriere diese Nachricht.`
-					}).catch((err) => console.error('[mail] Kontobestätigung fehlgeschlagen:', err?.message));
+					void withLocale(locale, () =>
+						sendMail({
+							to: user.email,
+							subject: t('account-mail.verifyAccount.subject', { system: name }),
+							text: t('account-mail.verifyAccount.text', { name: user.name, url })
+						})
+					).catch((err) => console.error('[mail] Kontobestätigung fehlgeschlagen:', err?.message));
 					return;
 				}
-				void sendMail({
-					to: user.email,
-					subject: `${name}: Neue E-Mail-Adresse bestätigen`,
-					text: `Hallo ${user.name},
-
-bitte bestätige mit dem folgenden Link, dass diese Adresse künftig für dein Konto gelten soll (1 Stunde gültig). Du musst dazu in diesem Browser angemeldet sein:
-${url}
-
-Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
-				}).catch((err) => console.error('[mail] E-Mail-Bestätigung fehlgeschlagen:', err?.message));
+				void withLocale(locale, () =>
+					sendMail({
+						to: user.email,
+						subject: t('account-mail.verifyNewEmail.subject', { system: name }),
+						text: t('account-mail.verifyNewEmail.text', { name: user.name, url })
+					})
+				).catch((err) => console.error('[mail] E-Mail-Bestätigung fehlgeschlagen:', err?.message));
 			}
 		},
 		user: {
@@ -215,7 +229,7 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 							.from(schema.user)
 							.where(eq(schema.user.id, session.userId));
 						if (!u?.active) {
-							throw new APIError('FORBIDDEN', { message: 'Konto ist deaktiviert' });
+							throw new APIError('FORBIDDEN', { message: t('auth.accountDeactivated') });
 						}
 						// Selbst registrierte Konten erst nach Bestätigung der Adresse (greift nach der Passwortprüfung)
 						if (!u.emailVerified) {
@@ -230,7 +244,7 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 									);
 							}
 							throw new APIError('FORBIDDEN', {
-								message: 'E-Mail-Adresse ist noch nicht bestätigt',
+								message: t('auth.emailNotVerified'),
 								code: 'EMAIL_NOT_VERIFIED'
 							});
 						}
@@ -245,7 +259,7 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 				// haben eigene Prüfungen. Der direkte HTTP-Weg würde das alles umgehen.
 				if ((ctx.path === '/change-email' || ctx.path === '/update-user') && ctx.request) {
 					throw new APIError('FORBIDDEN', {
-						message: 'Diese Änderung ist nur über das Profil möglich.'
+						message: t('auth.profileOnly')
 					});
 				}
 				// E-Mail-Wechsel-Link ohne gültige Session: keine Anmeldung über den Link (2FA-Umgehung).
@@ -277,7 +291,7 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 					});
 					if (global >= LOGIN_GLOBAL_MAX_FAILURES) await notifyAccountLocked(email);
 					throw new APIError('TOO_MANY_REQUESTS', {
-						message: 'Zu viele fehlgeschlagene Anmeldeversuche. Bitte später erneut versuchen.'
+						message: t('auth.tooManyFailedLogins')
 					});
 				}
 			}),
@@ -346,7 +360,7 @@ Wenn du das nicht angefordert hast, ignoriere diese Nachricht.`
 
 export type Auth = ReturnType<typeof createAuth>;
 
-const key = Symbol.for('ep-intern.auth');
+const key = Symbol.for('atrium.auth');
 type G = typeof globalThis & { [key]?: Auth };
 
 /** Better-Auth-Instanz (Singleton). In Tests ohne SvelteKit-Request-Kontext aufrufbar. */

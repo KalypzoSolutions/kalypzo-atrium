@@ -1,0 +1,11 @@
+{
+	"skipToContent": "Skip to content",
+	"moduleNoUi": "The module does not provide a user interface",
+	"pageNotFound": "Page not found",
+	"notSignedIn": "Not signed in",
+	"noAvatar": "No profile picture",
+	"userAgent": {
+		"unknown": "Unknown device",
+		"browserOnOs": "{browser} on {os}"
+	}
+}

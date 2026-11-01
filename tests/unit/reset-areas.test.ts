@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-	REBUILD_REASON,
+	rebuildReason,
 	areasFingerprint,
 	effectiveImplies,
 	moduleDeleteOrder,
@@ -50,7 +50,7 @@ describe('resolveAreas', () => {
 		expect(r.implied[0]).toEqual({
 			area: 'actions:accounting',
 			by: 'actions:all',
-			reason: REBUILD_REASON
+			reason: rebuildReason()
 		});
 	});
 

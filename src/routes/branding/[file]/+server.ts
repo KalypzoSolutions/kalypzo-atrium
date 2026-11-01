@@ -1,10 +1,11 @@
 import { error, redirect } from '@sveltejs/kit';
+import { t } from '$lib/i18n';
 import { BRAND_ICONS, brandIcon, brandLogo, brandingState } from '$lib/server/core/branding';
 import type { RequestHandler } from './$types';
 
 /**
- * Öffentlich (auch Login, Manifest, Push): Logo und daraus erzeugte Icons. Ohne Logo → Wappen aus
- * `static/icons/`. Das Logo ist kein Geheimnis; Inhalt kommt nur aus `core/branding/` (neu kodiertes PNG).
+ * Öffentlich (auch Login, Manifest, Push): Logo und daraus erzeugte Icons. Ohne Logo (weder hochgeladen noch aus
+ * einem aktiven Modul) → neutrale Icons aus `static/icons/`. Das Logo ist kein Geheimnis; Inhalt kommt nur aus `core/branding/` (neu kodiertes PNG).
  */
 export const GET: RequestHandler = async ({ params, url }) => {
 	const state = await brandingState();
@@ -19,11 +20,11 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	};
 	if (params.file === 'logo.png') {
 		const logo = await brandLogo(state);
-		if (!logo) throw error(404, 'Kein Logo');
+		if (!logo) throw error(404, t('branding.noLogo'));
 		return new Response(logo as BodyInit, { headers });
 	}
 	const icon = await brandIcon(params.file, state);
-	if (icon === undefined) throw error(404, 'Nicht gefunden');
+	if (icon === undefined) throw error(404, t('branding.notFound'));
 	if (icon === null) throw redirect(302, `/icons/${BRAND_ICONS[params.file]!.fallback}`);
 	return new Response(icon as BodyInit, { headers });
 };

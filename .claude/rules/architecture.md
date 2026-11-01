@@ -159,7 +159,7 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
 - `ApiEndpoint.multipart { maxBytes ≤ 12 MB, maxFiles ≤ 10 (Standard 1) }` nur für `public: true` + POST + `body`: Router verlangt
   `multipart/form-data` + `Content-Length` (413 bei Überschreitung), Textfelder → `body`-Zod (doppelte Felder/`__proto__` → 400), Dateien → `files`.
 - Reset (`core/system/reset.ts`, Recht `core.system.reset`, Seite `/admin/reset`): `listResetAreas` → `previewReset` (Token 15 min, im Prozessspeicher)
-  → `exportResetData` (Passwort + TOTP bei 2FA + Sicherungs-Passwort → verschlüsselte `.epbackup` über `writeBackupFile`, Modul-Teilbereiche → ganzes Modul) → `executeReset` (Wort `ZURÜCKSETZEN`). Bereiche: Core (`core:audit|api-log|jobs|
+  → `exportResetData` (Passwort + TOTP bei 2FA + Sicherungs-Passwort → verschlüsselte `.atriumbackup` über `writeBackupFile`, Modul-Teilbereiche → ganzes Modul) → `executeReset` (Wort `ZURÜCKSETZEN`). Bereiche: Core (`core:audit|api-log|jobs|
   ai-usage|api-keys|users|roles|settings`) + `ModuleDefinition.resetAreas` (`<modul>:<id>`, `implies` transitiv, `rebuild` = Schema neu inkl. Startdaten)
   + `resetUsers(tx, keepUserId)`. Jobs pausiert; Reihenfolge Module → Benutzer → Core → Dateien (`core.storage.purge`) → Einstellungen (Storage/SMTP/Secrets
   bleiben) → Audit (DELETE nur mit `SET LOCAL app.audit_reset = 'on'`, Migration 0005) → Eintrag `core.system.reset`.
@@ -201,6 +201,30 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
 - UI `/admin/modules`: Herkunft je Modul, „Nach Updates suchen“, „Entfernen …“ (Dialog, Bestätigung per ID), Hinweis + „Aus der Datenbank
   wiederherstellen“; `/admin/modules/install?url=…&select=…` belegt vor. Tests `module-lifecycle.test.ts`, `supervisor-seed.test.ts`,
   `backup-compat.test.ts`, E2E `tests/e2e-install` (installieren + entfernen).
+
+## Mehrsprachigkeit und Neutralität (Kalypzo Atrium Phase N, 2026-11-01)
+- `$lib/i18n` (Client + Server): `t(key, params)`, `tl(locale, …)`, `getLocale()`, `localized(LocalizedText)`, `ensureLocale`; Format `{name}`,
+  `{count, plural, =0 {…} one {# …} other {# …}}`, `{x, select, … other {…}}` (`format.ts`). Texte `src/lib/i18n/messages/<de|en>/<bereich>.json`
+  → Schlüssel `<bereich>.<pfad>`; Deutsch eager (Rückfall), weitere Sprachen lädt `+layout.ts` (`ensureLocale`) vor dem Rendern. Module:
+  `modules/<id>/messages/<sprache>.json` → Bereich `<id>` (Vite-Plugin `virtual:atrium-modules/messages`), Zugriff über `$lib/sdk/i18n`.
+  Formate je Sprache: `$lib/i18n/intl` (`formatDate`, `formatDateTime`, `formatNumber`, `formatMoney`, `formatBytes`, `formatRelative`).
+- Sprache je Request (`core/i18n/locale.ts`, AsyncLocalStorage in `hooks.server.ts` `init`): `core.user.locale` (10 s gecacht) → Cookie `locale`
+  (Login-Seite) → `core.system.locale` (`auto` = `Accept-Language`) → `de`. API-Router: Sprache des Kontos (Session/API-Key). Ohne Request (Jobs)
+  Systemsprache; Konto-Mails und Benachrichtigungen in der Sprache der empfangenden Person (`withLocale`, `localesForUsers`). `app.html`:
+  `%app.lang%`, `%app.name%`. Zod-Meldungen je Sprache (`zod-locale.ts`, Bereich `zod`).
+- **Regeln**: nie `t()` auf Modulebene (Sprache friert beim Import ein) → Schlüssel speichern, beim Gebrauch übersetzen (Getter/Funktion);
+  Zod-Meldungen `{ error: () => t(…) }`; Mehrzahl über `plural`; kein `{@html t(…)}`. Wächter `tests/unit/i18n-guard.test.ts` (Scanner
+  `i18n-scan.ts`, Ausnahmen mit Grund in `i18n-allowlist.ts`; Bereich prüfen: `I18N_GUARD_PATHS=src/routes/login npx vitest run …`) und
+  `i18n-messages.test.ts` (de = en: Dateien, Schlüssel, Platzhalter; jeder `t('…')`-Schlüssel existiert).
+- Manifest-Texte `name`, `navigation[].label`, `permissionDescriptions` dürfen `LocalizedText` sein (`{ de, en? }`); Core-Rechte, Einstellungen,
+  Verwaltungs-Registry und Endpunkt-Texte (`endpointText`) übersetzen beim Lesen. Bestätigungswörter: übersetzt angezeigt, deutsche Wörter gelten immer.
+- **Neutral**: keine Organisation im Core. Profil-Module liefern sie über Hooks: `settingDefaults` (Vorgaben für Einstellungen, nur aktiv + nichts
+  gespeichert), `pdfTemplates` (gleiche ID ersetzt `brief`/`briefkopf`/`briefkopf-quer`, `pdf/resolve.ts`; Aliase `stamm-*`), `mailBranding`,
+  `brandingLogo` (Ersatz für Favicon/App-Icons ohne Upload). EP: Modul `ep-stamm` (`module-ep-stamm.md`). Neue Einstellungen `core.system.locale`,
+  `core.org.everyoneLabel` (Freigabe „alle“, leer → „Alle“/„Everyone“), `core.ai.style.context`, `core.user.locale`; Systemname-Standard „Kalypzo Atrium“.
+- Umbenannt (Übergang beim Lesen): `.epbackup` → `.atriumbackup`, `X-EP-Intern` → `X-Atrium`, `x-ep-client-ip` → `x-atrium-client-ip`, Cookie `ep_qr` →
+  `atrium_qr`, SW `ep:*` → `atrium:*`; Datenauskunft `atrium-datenauskunft`. **Bleibt**: HKDF-Salz `'ep-intern'` (`crypto.ts`, sonst wären alle
+  Geheimnisse unlesbar), Backup-Header `EPBK`, Compose-Aliase/Volumes.
 
 ## Einzelrechte am Benutzer (2026-10-21)
 - Tabelle `user_permission` (Core-Migration 0009): Rechte direkt am Benutzer zusätzlich zu Rollen; `getUserPermissions` vereinigt sie
@@ -305,7 +329,9 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
 ## Datensicherung (2026-10-20)
 - Seite `/admin/backup` (Recht `core.system.backup`, Reiter Export | Import), Code in `src/lib/server/core/backup/`, Vertrag
   `src/lib/backup/contract.ts` (Client+Server: Zod-Eingaben, DTOs, Bestätigungswörter) + `core/backup/types.ts` (Format, Grenzen).
-- Datei `.epbackup` = `envelope.ts` (EPBK-Header, scrypt, AES-256-GCM in 1-MiB-Chunks mit Final-Flag) um ZIP (`archive.ts`, eigener
+- Datei `.atriumbackup` (Download `atrium-sicherung-…` bzw. `atrium-backup-…` je Sprache, Reset `atrium-reset-…`; Import nimmt auch alte
+  `.epbackup` an, `backup.json` `format` `atrium-backup` oder alt `ep-intern-backup`, `keyCheck` auch mit alter Eingabe `ep-backup-key-check` =
+  `LEGACY_*` in `contract.ts`/`types.ts`) = `envelope.ts` (EPBK-Header bleibt als Formatkennung, scrypt, AES-256-GCM in 1-MiB-Chunks mit Final-Flag) um ZIP (`archive.ts`, eigener
   Streaming-Leser, Pfad-Whitelist): `backup.json` (zuerst) → `data/<schema>.<tabelle>.ndjson` (`row_to_json`, je Tabelle EIN Eintrag, Bereiche
   zusammengelegt) → `files/<objectKey>` → `checksums.json`. Secrets als Marker `{"$secret":{p,v}}` (`secrets.ts`, Zwecke `settings`,
   `module:<id>`, `better-auth`), beim Import IMMER mit dem Ziel-Schlüssel neu verschlüsselt; Quell-`APP_SECRET` nie in der Datei.

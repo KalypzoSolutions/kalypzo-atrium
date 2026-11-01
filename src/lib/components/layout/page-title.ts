@@ -6,7 +6,7 @@ export function documentTitle(page?: string | null, systemName?: string | null):
 	const p = page?.trim();
 	const s = systemName?.trim();
 	if (p && s && p !== s) return `${p} – ${s}`;
-	return p || s || 'EP Intern';
+	return p || s || 'Kalypzo Atrium';
 }
 
 /**

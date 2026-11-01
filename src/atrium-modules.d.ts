@@ -19,3 +19,9 @@ declare module 'virtual:atrium-modules/ui' {
 	/** IDs der Module mit Oberfläche */
 	export const moduleIds: string[];
 }
+
+declare module 'virtual:atrium-modules/messages' {
+	/** Texte der Module: Modul-ID → Sprache → (verschachtelte) Nachrichten aus `messages/<sprache>.json` */
+	const messages: Record<string, Record<string, Record<string, unknown>>>;
+	export default messages;
+}

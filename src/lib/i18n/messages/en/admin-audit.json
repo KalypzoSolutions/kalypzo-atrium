@@ -1,0 +1,21 @@
+{
+	"title": "Audit log",
+	"description": "Immutable log of security-relevant events.",
+	"empty": "No entries found.",
+	"search": "Search",
+	"searchPlaceholder": "Actor, action, target …",
+	"actionPrefix": "Action (prefix)",
+	"from": "From",
+	"to": "To",
+	"filter": "Filter",
+	"reset": "Reset",
+	"time": "Time",
+	"action": "Action",
+	"actor": "Actor",
+	"target": "Target",
+	"ip": "IP",
+	"details": "Details",
+	"hide": "Hide",
+	"show": "Show",
+	"requestId": "Request ID: {id}"
+}

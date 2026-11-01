@@ -1,0 +1,57 @@
+{
+	"notInstalled": "Modul \"{id}\" ist nicht installiert",
+	"broken": {
+		"coreVersion": "Braucht Core {range}, installiert ist {version}",
+		"missingDependency": "Benötigtes Modul „{dep}“ fehlt",
+		"dependencyVersion": "Benötigt „{dep}“ {range}, vorhanden ist {version}",
+		"cycle": "Zyklische Abhängigkeit ({ids})"
+	},
+	"convention": {
+		"noDefinition": "module.ts exportiert keine Moduldefinition",
+		"folderMismatch": "Ordner „{folder}“ ≠ Modul-ID „{id}“",
+		"noPackage": "atrium-module.json fehlt (`package` in defineModule)",
+		"migrationsMismatch": "Migrationen in module.ts ({declared}) ≠ Dateien in migrations/ ({files})"
+	},
+	"missingReason": "Nicht installiert – Daten und Einstellungen sind noch vorhanden",
+	"dependenciesInactive": "Abhängigkeiten nicht aktiv: {ids}",
+	"requiredByActive": "Wird von aktiven Modulen benötigt: {ids}",
+	"assistTask": {
+		"draft": "Entwurf schreiben",
+		"rewrite": "Nach Wunsch ändern",
+		"friendly": "Freundlicher",
+		"shorter": "Kürzer",
+		"simple": "Einfache Sprache",
+		"spelling": "Rechtschreibung",
+		"english": "Englisch",
+		"subject": "Betreff vorschlagen",
+		"title": "Titel vorschlagen",
+		"teaser": "Kurztext vorschlagen",
+		"altText": "Bild beschreiben",
+		"split": "In Schritte zerlegen",
+		"packingList": "Packliste vorschlagen",
+		"summarize": "Zusammenfassen",
+		"continue": "Weiterschreiben",
+		"todos": "Aufgaben ableiten"
+	},
+	"notificationChannel": {
+		"off": "Aus",
+		"email": "E-Mail",
+		"both": "Beides",
+		"push": "Push"
+	},
+	"package": {
+		"invalidRange": "Ungültiger Versionsbereich",
+		"invalidSource": "Ungültige Quelle (github:owner/repo/pfad#ref)",
+		"invalidId": "Ungültige Modul-ID",
+		"versionSemver": "Version muss SemVer sein",
+		"invalidPermission": "Ungültiges Recht",
+		"invalidPackageName": "Ungültiger Paketname",
+		"exactVersion": "Exakte Version nötig",
+		"selfDependency": "Modul hängt von sich selbst ab",
+		"alsoHardDependency": "Zugleich harte Abhängigkeit",
+		"foreignPermission": "Recht „{permission}“ gehört nicht zum Modul",
+		"invalidPath": "Ungültiger Pfad",
+		"duplicateIds": "Modul-IDs doppelt",
+		"root": "(Wurzel)"
+	}
+}

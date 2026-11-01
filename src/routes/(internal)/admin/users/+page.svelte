@@ -9,7 +9,7 @@
 	import UserCheckIcon from '@lucide/svelte/icons/user-check';
 	import UserXIcon from '@lucide/svelte/icons/user-x';
 	import {
-		BUSY_SAVE,
+		busySave,
 		ConfirmDialog,
 		DataTable,
 		EntityAvatar,
@@ -30,6 +30,8 @@
 	import * as Table from '$lib/components/ui/table';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import PermissionPicker from '../_shared/PermissionPicker.svelte';
+	import { t } from '$lib/i18n';
+	import { formatDate } from '$lib/i18n/intl';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -37,8 +39,7 @@
 	type UserRow = PageData['users'][number];
 
 	/** Hinweis für Konten mit Rechten, die man selbst nicht besitzt (der Server lehnt Änderungen ab) */
-	const LOCKED_HINT =
-		'Dieses Konto hat Rechte, die du selbst nicht besitzt. Ändern, Deaktivieren und Löschen kann nur jemand mit mindestens denselben Rechten.';
+	const LOCKED_HINT = t('admin-users.lockedHint');
 
 	let createOpen = $state(false);
 	let editOpen = $state(false);
@@ -65,7 +66,7 @@
 	);
 
 	function fmt(d: Date) {
-		return new Date(d).toLocaleDateString('de-DE');
+		return formatDate(new Date(d));
 	}
 
 	const sameSet = (a: string[], b: string[]) =>
@@ -152,11 +153,11 @@
 			return async ({ result, update }) => {
 				busy = false;
 				if (result.type === 'success') {
-					toast.success((result.data?.message as string) ?? 'Gespeichert');
+					toast.success((result.data?.message as string) ?? t('admin-users.saved'));
 					close?.();
 					await invalidateAll();
 				} else if (result.type === 'failure') {
-					formError = (result.data?.message as string) ?? 'Aktion fehlgeschlagen';
+					formError = (result.data?.message as string) ?? t('admin-users.actionFailed');
 					toast.error(formError);
 				} else {
 					await update();
@@ -165,43 +166,40 @@
 		};
 </script>
 
-<PageTitle title="Benutzer" />
+<PageTitle title={t('admin-users.title')} />
 
 <div class="space-y-6">
-	<PageHeader
-		title="Benutzer"
-		description="Konten verwalten, Rollen zuweisen und Zugriffe sperren."
-	>
+	<PageHeader title={t('admin-users.title')} description={t('admin-users.description')}>
 		{#snippet actions()}
 			{#if data.can.create}
-				<Button onclick={openCreate}>Benutzer anlegen</Button>
+				<Button onclick={openCreate}>{t('admin-users.create')}</Button>
 			{/if}
 		{/snippet}
 	</PageHeader>
 
 	<DataTable
 		mobile="cards"
-		caption="Benutzer"
+		caption={t('admin-users.title')}
 		empty={data.users.length === 0}
-		emptyTitle="Keine Benutzer gefunden."
+		emptyTitle={t('admin-users.empty')}
 	>
 		{#snippet toolbar()}
 			<SearchInput
 				param="q"
 				resetParams={['page']}
-				placeholder="Name oder E-Mail suchen …"
-				label="Benutzer suchen"
+				placeholder={t('admin-users.searchPlaceholder')}
+				label={t('admin-users.searchLabel')}
 			/>
 		{/snippet}
 		{#snippet head()}
 			<Table.Row>
-				<Table.Head>Name</Table.Head>
-				<Table.Head>E-Mail</Table.Head>
-				<Table.Head>Rollen</Table.Head>
-				<Table.Head>Status</Table.Head>
-				<Table.Head>2FA</Table.Head>
-				<Table.Head>Erstellt</Table.Head>
-				<Table.Head class="text-right">Aktionen</Table.Head>
+				<Table.Head>{t('admin-users.col.name')}</Table.Head>
+				<Table.Head>{t('admin-users.col.email')}</Table.Head>
+				<Table.Head>{t('admin-users.col.roles')}</Table.Head>
+				<Table.Head>{t('admin-users.col.status')}</Table.Head>
+				<Table.Head>{t('admin-users.col.twoFactor')}</Table.Head>
+				<Table.Head>{t('admin-users.col.created')}</Table.Head>
+				<Table.Head class="text-right">{t('admin-users.col.actions')}</Table.Head>
 			</Table.Row>
 		{/snippet}
 		{#each data.users as u (u.id)}
@@ -219,7 +217,7 @@
 						{#each u.roles as r (r.id)}<Badge variant="secondary">{r.name}</Badge>{/each}
 						{#if u.permissions.length}
 							<Badge variant="outline" title={u.permissions.join(', ')}
-								>+{u.permissions.length} Einzelrecht{u.permissions.length === 1 ? '' : 'e'}</Badge
+								>{t('admin-users.extraPermissions', { count: u.permissions.length })}</Badge
 							>
 						{/if}
 						{#if !u.roles.length && !u.permissions.length}<span class="text-muted-foreground"
@@ -229,18 +227,17 @@
 				</Table.Cell>
 				<Table.Cell>
 					<div class="flex flex-wrap gap-1">
-						{#if u.active}<Badge>Aktiv</Badge>{:else}<Badge variant="destructive">Deaktiviert</Badge
+						{#if u.active}<Badge>{t('admin-users.active')}</Badge>{:else}<Badge
+								variant="destructive">{t('admin-users.inactive')}</Badge
 							>{/if}
 						{#if !u.emailVerified}
-							<Badge
-								variant="warning"
-								title="Die E-Mail-Adresse ist noch nicht bestätigt – Anmeldung erst nach Bestätigung möglich."
-								>Unbestätigt</Badge
+							<Badge variant="warning" title={t('admin-users.unverifiedHint')}
+								>{t('admin-users.unverified')}</Badge
 							>
 						{/if}
 					</div>
 				</Table.Cell>
-				<Table.Cell>{u.twoFactorEnabled ? 'Ja' : 'Nein'}</Table.Cell>
+				<Table.Cell>{u.twoFactorEnabled ? t('admin-users.yes') : t('admin-users.no')}</Table.Cell>
 				<Table.Cell>{fmt(u.createdAt)}</Table.Cell>
 				<Table.Cell class="text-right">
 					<div class="flex justify-end gap-1">
@@ -249,8 +246,8 @@
 								size="icon-sm"
 								variant="outline"
 								disabled={locked}
-								aria-label="Bearbeiten"
-								title={locked ? LOCKED_HINT : 'Bearbeiten'}
+								aria-label={t('admin-users.edit')}
+								title={locked ? LOCKED_HINT : t('admin-users.edit')}
 								onclick={() => openEdit(u)}><PencilIcon /></Button
 							>
 							{#if !u.emailVerified}
@@ -261,8 +258,8 @@
 										variant="outline"
 										type="submit"
 										disabled={busy || locked}
-										aria-label="E-Mail-Adresse bestätigen"
-										title={locked ? LOCKED_HINT : 'E-Mail-Adresse von Hand bestätigen'}
+										aria-label={t('admin-users.verifyEmail')}
+										title={locked ? LOCKED_HINT : t('admin-users.verifyEmailHint')}
 									>
 										<MailCheckIcon />
 									</Button>
@@ -277,8 +274,12 @@
 										variant="outline"
 										type="submit"
 										disabled={busy || locked}
-										aria-label={u.active ? 'Deaktivieren' : 'Aktivieren'}
-										title={locked ? LOCKED_HINT : u.active ? 'Deaktivieren' : 'Aktivieren'}
+										aria-label={u.active ? t('admin-users.deactivate') : t('admin-users.activate')}
+										title={locked
+											? LOCKED_HINT
+											: u.active
+												? t('admin-users.deactivate')
+												: t('admin-users.activate')}
 									>
 										{#if u.active}<UserXIcon />{:else}<UserCheckIcon />{/if}
 									</Button>
@@ -290,14 +291,14 @@
 								size="icon-sm"
 								variant="destructive"
 								disabled={locked}
-								aria-label="Löschen"
-								title={locked ? LOCKED_HINT : 'Löschen'}
+								aria-label={t('admin-users.delete')}
+								title={locked ? LOCKED_HINT : t('admin-users.delete')}
 								onclick={() => openDelete(u)}><Trash2Icon /></Button
 							>
 						{/if}
 					</div>
 					{#if locked && (data.can.edit || data.can.delete)}
-						<p class="mt-1 text-xs text-muted-foreground">Mehr Rechte als du – nicht änderbar</p>
+						<p class="mt-1 text-xs text-muted-foreground">{t('admin-users.lockedShort')}</p>
 					{/if}
 				</Table.Cell>
 			</Table.Row>
@@ -311,14 +312,14 @@
 <!-- Rollen-Auswahl (Anlegen und Bearbeiten); nicht vergebbare, bereits gesetzte Rollen bleiben erhalten -->
 {#snippet rolePicker(selected: string[], onchange: (ids: string[]) => void, prefix: string)}
 	<fieldset class="space-y-2">
-		<legend class="text-sm font-medium">Rollen</legend>
+		<legend class="text-sm font-medium">{t('admin-users.rolesLegend')}</legend>
 		<div class="grid gap-2 sm:grid-cols-2">
 			{#each data.roles as r (r.id)}
 				{@const checked = selected.includes(r.id)}
 				<label
 					class="flex min-w-0 items-center gap-2 rounded-md border px-3 py-2 text-sm has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-muted/60"
 					class:opacity-50={!r.assignable && !checked}
-					title={r.assignable ? undefined : 'Diese Rolle kannst du nicht vergeben.'}
+					title={r.assignable ? undefined : t('admin-users.roleNotAssignable')}
 				>
 					<Checkbox
 						id="{prefix}-role-{r.id}"
@@ -335,9 +336,9 @@
 
 {#snippet permissionSection(prefix: string, titleId: string)}
 	<section class="space-y-2" aria-labelledby={titleId}>
-		<h3 id={titleId} class="text-sm font-medium">Einzelne Berechtigungen</h3>
+		<h3 id={titleId} class="text-sm font-medium">{t('admin-users.permissionsTitle')}</h3>
 		<p class="text-xs text-muted-foreground">
-			Zusätzlich zu den Rollen. Du kannst nur Rechte vergeben, die du selbst besitzt.
+			{t('admin-users.permissionsHint')}
 		</p>
 		{#if prefix === 'c'}
 			<PermissionPicker
@@ -358,7 +359,7 @@
 {#snippet dirtyDot(show: boolean)}
 	{#if show}
 		<span class="size-1.5 rounded-full bg-primary" aria-hidden="true"></span>
-		<span class="sr-only">(ungespeichert)</span>
+		<span class="sr-only">{t('admin-users.unsaved')}</span>
 	{/if}
 {/snippet}
 
@@ -366,10 +367,8 @@
 <Dialog.Root bind:open={createOpen}>
 	<Dialog.Content class="flex flex-col sm:max-w-2xl">
 		<Dialog.Header>
-			<Dialog.Title>Benutzer anlegen</Dialog.Title>
-			<Dialog.Description
-				>Das Konto wird sofort aktiv. Das Passwort muss mindestens 12 Zeichen lang sein.</Dialog.Description
-			>
+			<Dialog.Title>{t('admin-users.create')}</Dialog.Title>
+			<Dialog.Description>{t('admin-users.createDescription')}</Dialog.Description>
 		</Dialog.Header>
 		<form
 			method="POST"
@@ -380,9 +379,11 @@
 			<Tabs.Root bind:value={createTab} class="flex min-h-0 flex-1 flex-col gap-3">
 				{#if showAccess}
 					<Tabs.List variant="line" class="w-full justify-start">
-						<Tabs.Trigger value="account" class="flex-none">Konto</Tabs.Trigger>
+						<Tabs.Trigger value="account" class="flex-none"
+							>{t('admin-users.tabAccount')}</Tabs.Trigger
+						>
 						<Tabs.Trigger value="access" class="flex-none">
-							Rollen & Rechte
+							{t('admin-users.tabAccess')}
 							{#if createRoleIds.length + createPermissionKeys.length}
 								<span class="text-muted-foreground tabular-nums"
 									>{createRoleIds.length + createPermissionKeys.length}</span
@@ -394,18 +395,18 @@
 				<div class="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 pb-1 sm:min-h-[20rem]">
 					<Tabs.Content value="account" class="space-y-4">
 						<div class="grid gap-4 sm:grid-cols-2">
-							<FormField label="Name" id="c-name" required>
+							<FormField label={t('admin-users.name')} id="c-name" required>
 								<Input id="c-name" name="name" required maxlength={100} autocomplete="off" />
 							</FormField>
-							<FormField label="E-Mail" id="c-email" required>
+							<FormField label={t('admin-users.email')} id="c-email" required>
 								<Input id="c-email" name="email" type="email" required autocomplete="off" />
 							</FormField>
 						</div>
 						<FormField
-							label="Passwort"
+							label={t('admin-users.password')}
 							id="c-pw"
 							required
-							hint="Mindestens 12 Zeichen. Die Person kann es danach im Profil ändern."
+							hint={t('admin-users.passwordHint')}
 						>
 							<Input
 								id="c-pw"
@@ -438,9 +439,11 @@
 			{#if formError}<p class="text-sm text-destructive" role="alert">{formError}</p>{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (createOpen = false)}
-					>Abbrechen</Button
+					>{t('admin-users.cancel')}</Button
 				>
-				<Button type="submit" disabled={busy}>{busy ? BUSY_SAVE : 'Anlegen'}</Button>
+				<Button type="submit" disabled={busy}
+					>{busy ? busySave() : t('admin-users.createSubmit')}</Button
+				>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>
@@ -455,16 +458,23 @@
 					<EntityAvatar name={editUser.name} src={preview ?? editUser.image} size={48} />
 					<div class="min-w-0 space-y-1">
 						<Dialog.Title class="truncate">
-							<span class="sr-only">Benutzer bearbeiten: </span>{editUser.name}
+							<span class="sr-only">{t('admin-users.editTitleSr')}</span>{editUser.name}
 						</Dialog.Title>
 						<Dialog.Description class="truncate">{editUser.email}</Dialog.Description>
 						<div class="flex flex-wrap gap-1">
-							{#if editUser.active}<Badge variant="success">Aktiv</Badge>{:else}<Badge
-									variant="destructive">Deaktiviert</Badge
+							{#if editUser.active}<Badge variant="success">{t('admin-users.active')}</Badge
+								>{:else}<Badge variant="destructive">{t('admin-users.inactive')}</Badge>{/if}
+							{#if !editUser.emailVerified}<Badge variant="warning"
+									>{t('admin-users.emailUnverified')}</Badge
 								>{/if}
-							{#if !editUser.emailVerified}<Badge variant="warning">E-Mail unbestätigt</Badge>{/if}
-							<Badge variant="outline">{editUser.twoFactorEnabled ? '2FA an' : 'Ohne 2FA'}</Badge>
-							<Badge variant="outline">seit {fmt(editUser.createdAt)}</Badge>
+							<Badge variant="outline"
+								>{editUser.twoFactorEnabled
+									? t('admin-users.twoFactorOn')
+									: t('admin-users.twoFactorOff')}</Badge
+							>
+							<Badge variant="outline"
+								>{t('admin-users.since', { date: fmt(editUser.createdAt) })}</Badge
+							>
 						</div>
 					</div>
 				</div>
@@ -473,12 +483,12 @@
 			<Tabs.Root bind:value={editTab} class="flex min-h-0 flex-1 flex-col gap-3">
 				<Tabs.List variant="line" class="w-full justify-start">
 					<Tabs.Trigger value="account" class="flex-none">
-						Konto
+						{t('admin-users.tabAccount')}
 						{@render dirtyDot(accountDirty)}
 					</Tabs.Trigger>
 					{#if showAccess}
 						<Tabs.Trigger value="access" class="flex-none">
-							Rollen & Rechte
+							{t('admin-users.tabAccess')}
 							{#if editRoleIds.length + editPermissionKeys.length}
 								<span class="text-muted-foreground tabular-nums"
 									>{editRoleIds.length + editPermissionKeys.length}</span
@@ -496,7 +506,7 @@
 				<div class="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 pb-1 sm:min-h-[24rem]">
 					<Tabs.Content value="account" class="space-y-6">
 						<div class="grid gap-4 sm:grid-cols-2">
-							<FormField label="Name" id="e-name" required>
+							<FormField label={t('admin-users.name')} id="e-name" required>
 								<Input
 									id="e-name"
 									name="name"
@@ -506,7 +516,7 @@
 									bind:value={editName}
 								/>
 							</FormField>
-							<FormField label="E-Mail" id="e-email" required>
+							<FormField label={t('admin-users.email')} id="e-email" required>
 								<Input
 									id="e-email"
 									name="email"
@@ -520,10 +530,9 @@
 
 						<section class="space-y-3 border-t pt-4" aria-labelledby="e-avatar-title">
 							<div>
-								<h3 id="e-avatar-title" class="text-sm font-medium">Profilbild</h3>
+								<h3 id="e-avatar-title" class="text-sm font-medium">{t('admin-users.avatar')}</h3>
 								<p class="text-xs text-muted-foreground">
-									PNG, JPEG oder WebP. Nach der Auswahl wählst du den Ausschnitt; wird sofort
-									gespeichert.
+									{t('admin-users.avatarHint')}
 								</p>
 							</div>
 							<form
@@ -541,13 +550,13 @@
 										bind:file={avatarFile}
 										accept="image/png,image/jpeg,image/webp"
 										maxBytes={2 * 1024 * 1024}
-										crop={{ shape: 'circle', maxEdge: 512, title: 'Profilbild zuschneiden' }}
+										crop={{ shape: 'circle', maxEdge: 512, title: t('admin-users.avatarCrop') }}
 										disabled={busy}
 									/>
 								</div>
 								<div class="flex flex-wrap gap-2">
 									<Button type="submit" size="sm" disabled={!avatarFile || busy}>
-										{busy && avatarFile ? 'Lädt hoch …' : 'Hochladen'}
+										{busy && avatarFile ? t('admin-users.uploading') : t('admin-users.upload')}
 									</Button>
 									{#if editUser.image && !avatarFile}
 										<Button
@@ -555,7 +564,7 @@
 											size="sm"
 											variant="outline"
 											disabled={busy}
-											onclick={() => (avatarRemoveOpen = true)}>Entfernen</Button
+											onclick={() => (avatarRemoveOpen = true)}>{t('admin-users.remove')}</Button
 										>
 									{/if}
 								</div>
@@ -593,7 +602,7 @@
 									<Section userId={editUser.id} userName={editUser.name} />
 								{/key}
 							{:catch}
-								<ErrorState compact message="Dieser Bereich konnte nicht geladen werden." />
+								<ErrorState compact message={t('admin-users.sectionError')} />
 							{/await}
 						</Tabs.Content>
 					{/each}
@@ -627,22 +636,24 @@
 			<Dialog.Footer class="sm:items-center">
 				{#if onModuleTab}
 					<p class="text-center text-xs text-muted-foreground sm:mr-auto sm:text-left">
-						Dieser Bereich speichert selbst.
+						{t('admin-users.sectionSavesItself')}
 					</p>
 					<Button type="button" variant="outline" onclick={() => (editOpen = false)}
-						>Schließen</Button
+						>{t('admin-users.close')}</Button
 					>
 				{:else}
 					{#if accountDirty || accessDirty}
 						<p class="text-center text-xs text-muted-foreground sm:mr-auto sm:text-left">
-							Ungespeicherte Änderungen{accountDirty && accessDirty ? ' in Konto und Rollen' : ''}
+							{accountDirty && accessDirty
+								? t('admin-users.unsavedChangesBoth')
+								: t('admin-users.unsavedChanges')}
 						</p>
 					{/if}
 					<Button type="button" variant="outline" onclick={() => (editOpen = false)}
-						>Abbrechen</Button
+						>{t('admin-users.cancel')}</Button
 					>
 					<Button type="submit" form="e-user-form" disabled={busy}
-						>{busy ? BUSY_SAVE : 'Speichern'}</Button
+						>{busy ? busySave() : t('admin-users.save')}</Button
 					>
 				{/if}
 			</Dialog.Footer>
@@ -652,9 +663,11 @@
 
 <ConfirmDialog
 	bind:open={avatarRemoveOpen}
-	title="Profilbild entfernen?"
-	description={editUser ? `${editUser.name} wird danach mit Initialen angezeigt.` : undefined}
-	confirmLabel="Entfernen"
+	title={t('admin-users.avatarRemoveTitle')}
+	description={editUser
+		? t('admin-users.avatarRemoveDescription', { name: editUser.name })
+		: undefined}
+	confirmLabel={t('admin-users.remove')}
 	destructive
 	onconfirm={() => avatarRemoveForm?.requestSubmit()}
 />
@@ -663,25 +676,27 @@
 <Dialog.Root bind:open={deleteOpen}>
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>Benutzer löschen?</Dialog.Title>
+			<Dialog.Title>{t('admin-users.deleteTitle')}</Dialog.Title>
 			<Dialog.Description>
-				„{deleteUser?.name}“ ({deleteUser?.email}) wird unwiderruflich gelöscht. Alternativ kannst
-				du das Konto deaktivieren.
+				{t('admin-users.deleteDescription', {
+					name: deleteUser?.name ?? '',
+					email: deleteUser?.email ?? ''
+				})}
 			</Dialog.Description>
 		</Dialog.Header>
 		<p class="text-sm text-muted-foreground">
-			Mit dem Konto werden auch die eigenen Dateien (samt öffentlicher Links), das Profilbild, Ämter
-			mit persönlicher Beschreibung und die Verknüpfungen zu Mitgliedern entfernt. Termine, Galerien
-			und Aktionen dieser Person gehen an dich über.
+			{t('admin-users.deleteDetails')}
 		</p>
 		<form method="POST" action="?/delete" use:enhance={submit(() => (deleteOpen = false))}>
 			<input type="hidden" name="id" value={deleteUser?.id ?? ''} />
 			{#if formError}<p class="mb-3 text-sm text-destructive" role="alert">{formError}</p>{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (deleteOpen = false)}
-					>Abbrechen</Button
+					>{t('admin-users.cancel')}</Button
 				>
-				<Button type="submit" variant="destructive" disabled={busy}>Endgültig löschen</Button>
+				<Button type="submit" variant="destructive" disabled={busy}
+					>{t('admin-users.deleteConfirm')}</Button
+				>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

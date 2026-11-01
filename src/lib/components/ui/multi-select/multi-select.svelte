@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
 	import * as Popover from '$lib/components/ui/popover/index.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -13,9 +14,9 @@
 		options,
 		value = $bindable([]),
 		onchange,
-		placeholder = 'Auswählen …',
-		searchPlaceholder = 'Suchen …',
-		emptyText = 'Keine Treffer',
+		placeholder = t('ui.select.placeholder'),
+		searchPlaceholder = t('ui.multiSelect.search'),
+		emptyText = t('ui.multiSelect.empty'),
 		label,
 		id,
 		disabled = false,
@@ -129,7 +130,7 @@
 					<button
 						type="button"
 						{disabled}
-						aria-label={`${chip.label} entfernen`}
+						aria-label={t('ui.multiSelect.remove', { label: chip.label })}
 						class="hover:bg-foreground/10 focus-visible:ring-ring inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:ring-2"
 						onclick={() => remove(chip.value)}
 					>
@@ -159,7 +160,7 @@
 			{#if selected.length === 0}
 				<span class="text-muted-foreground truncate">{placeholder}</span>
 			{:else}
-				<span class="sr-only">{selected.length} ausgewählt</span>
+				<span class="sr-only">{t('ui.multiSelect.selected', { count: selected.length })}</span>
 			{/if}
 			<ChevronDownIcon class="text-muted-foreground ml-auto size-4 shrink-0" />
 		</Popover.Trigger>
@@ -233,14 +234,16 @@
 				{/each}
 			</div>
 			<div class="flex items-center justify-between border-t px-2.5 py-1.5 text-xs">
-				<span class="text-muted-foreground" aria-live="polite">{value.length} ausgewählt</span>
+				<span class="text-muted-foreground" aria-live="polite"
+					>{t('ui.multiSelect.selected', { count: value.length })}</span
+				>
 				<button
 					type="button"
 					disabled={value.length === 0}
 					class="text-foreground focus-visible:ring-ring rounded-sm outline-none hover:underline focus-visible:ring-2 disabled:no-underline disabled:opacity-50"
 					onclick={() => commit([])}
 				>
-					Alle abwählen
+					{t('ui.multiSelect.clear')}
 				</button>
 			</div>
 		</Popover.Content>

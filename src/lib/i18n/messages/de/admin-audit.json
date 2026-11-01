@@ -1,0 +1,21 @@
+{
+	"title": "Audit-Log",
+	"description": "Unveränderliches Protokoll sicherheitsrelevanter Ereignisse.",
+	"empty": "Keine Einträge gefunden.",
+	"search": "Suche",
+	"searchPlaceholder": "Akteur, Aktion, Ziel …",
+	"actionPrefix": "Aktion (Präfix)",
+	"from": "Von",
+	"to": "Bis",
+	"filter": "Filtern",
+	"reset": "Zurücksetzen",
+	"time": "Zeitpunkt",
+	"action": "Aktion",
+	"actor": "Akteur",
+	"target": "Ziel",
+	"ip": "IP",
+	"details": "Details",
+	"hide": "Ausblenden",
+	"show": "Anzeigen",
+	"requestId": "Request-ID: {id}"
+}

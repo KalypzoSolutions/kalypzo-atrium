@@ -116,7 +116,7 @@ Es werden nur Straße/PLZ-Fragmente übertragen, keine Namen oder Kontodaten. Vo
 - **Rotation**: Ein neuer `APP_SECRET` macht gespeicherte Secrets unlesbar (auch Better-Auth-Signaturen ändern sich → Sessions ungültig). Vorgehen: Secrets notieren, `APP_SECRET` ändern, Werte in der Oberfläche neu eingeben. Eine automatische Re-Encryption ist nicht implementiert. Alternativ: Datensicherung erstellen und auf dem Server mit neuem
   `APP_SECRET` wiederherstellen – dabei werden alle Secrets, 2FA-Daten und Modul-Felder neu verschlüsselt und schlüsselgebundene Hashes
   (Modul-Hook `backup.rehash`) neu berechnet.
-- **Datensicherung** (`.epbackup`): enthält Secrets **im Klartext innerhalb der verschlüsselten Datei** (Passwort-Hashes, 2FA, IBANs,
+- **Datensicherung** (`.atriumbackup`, früher `.epbackup`): enthält Secrets **im Klartext innerhalb der verschlüsselten Datei** (Passwort-Hashes, 2FA, IBANs,
   SMTP-Zugang); das Quell-`APP_SECRET` ist nicht enthalten. Datei + Sicherungs-Passwort = Zugriff auf alle Daten. Export/Import nur mit
   Konto-Passwort + 2FA, Rate-Limits für Konto- und Sicherungs-Passwort, eigener Origin-Check (JSON/Octet-Stream), Pfad-Whitelist,
   Zip-Bomb-Grenzen, Prüfsummen je Eintrag, Kontoschutz der ausführenden Person, Audit `core.system.backup_exported|backup_restored`.
@@ -352,7 +352,7 @@ Test `tests/unit/website-security-headers.test.ts`.
 ## Pflicht-Export vor dem Zurücksetzen (verschlüsselt)
 
 - `exportResetData` (`core/system/reset.ts`) erzeugt seit 2026-10-20 **kein Klartext-JSON** mehr, sondern eine verschlüsselte Sicherung
-  im Format der Datensicherung (`.epbackup`, scrypt + AES-256-GCM, `writeBackupFile` aus `core/backup/export.ts`). Pflichtfeld
+  im Format der Datensicherung (`.atriumbackup`, scrypt + AES-256-GCM, `writeBackupFile` aus `core/backup/export.ts`). Pflichtfeld
   **Sicherungs-Passwort** (≥ 12 Zeichen, auf `/admin/reset` zweimal einzugeben); Passwort + ggf. TOTP wie bisher.
 - Umfang: Core-Reset-Bereiche = gleichnamige Sicherungsbereiche (`core:users` …), Modul-Bereiche (`<modul>:<teil>`) ⇒ **ganzes Modul**
   (Obermenge, damit die Datei mit dem normalen Import wiederherstellbar ist). Dateiinhalte sind nicht enthalten (wie zuvor). Secrets der

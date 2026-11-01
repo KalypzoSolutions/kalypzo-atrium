@@ -72,7 +72,7 @@ describe('Bild-Anlagen und Ausrichtung', () => {
 		const res = await pdf.generate(ctxWith(), {
 			title: 'Quer',
 			content: [],
-			template: 'stamm-briefkopf-quer',
+			template: 'briefkopf-quer',
 			attachments: [img('Beleg 1')]
 		});
 		expect(calls).toHaveLength(2);
@@ -87,7 +87,7 @@ describe('Bild-Anlagen und Ausrichtung', () => {
 		await pdf.generate(ctxWith(), {
 			title: 'Hoch',
 			content: [],
-			template: 'stamm-briefkopf',
+			template: 'briefkopf',
 			attachments: [img('Beleg 1')]
 		});
 		const att = calls[1]!;
@@ -101,7 +101,7 @@ describe('Bild-Anlagen und Ausrichtung', () => {
 		const res = await pdf.generate(ctxWith(), {
 			title: 'Quer',
 			content: [],
-			template: 'stamm-briefkopf-quer',
+			template: 'briefkopf-quer',
 			attachments: [
 				img('A'),
 				{ label: 'P', contentType: 'application/pdf', data: await makePdf(1, [200, 200]) },
@@ -125,7 +125,7 @@ describe('Bild-Anlagen und Ausrichtung', () => {
 		const res = await pdf.generate(ctxWith(), {
 			title: 'Quer',
 			content: [],
-			template: 'stamm-briefkopf-quer',
+			template: 'briefkopf-quer',
 			attachments: [img('A'), img('B')]
 		});
 		expect(calls).toHaveLength(2);

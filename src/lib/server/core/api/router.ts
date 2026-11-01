@@ -1,8 +1,10 @@
 import { ZodError } from 'zod';
+import { getLocale, t } from '$lib/i18n';
 import '$lib/zod-locale';
 import type { ApiErrorBody, RequestContext } from '$lib/sdk/types';
 import { anonymousContext, resolveApiKey, resolveSession } from '../auth/context';
 import { getDb, schema } from '../database/client';
+import { userLocale, withLocale } from '../i18n/locale';
 import { env } from '../env';
 import { isUniqueViolation, logError } from '../db-errors';
 import { errors, isCoreError } from '../errors';
@@ -42,7 +44,7 @@ function errorResponse(e: unknown, requestId: string): Response {
 	if (!isCoreError(e) && isUniqueViolation(e)) {
 		// Nicht abgefangene Unique-Verletzung: kein Serverfehler, sondern ein Konflikt (#55)
 		logError(`[api] ${requestId} unbehandelte Unique-Verletzung`, e, { requestId });
-		e = errors.conflict('Ein Eintrag mit diesen Angaben existiert bereits');
+		e = errors.conflict(t('api.conflictExists'));
 	}
 	if (isCoreError(e)) {
 		const body: ApiErrorBody = {
@@ -53,7 +55,7 @@ function errorResponse(e: unknown, requestId: string): Response {
 	// Nie `e.message` loggen: bei DB-Fehlern enthält sie alle SQL-Parameterwerte (#56)
 	logError(`[api] ${requestId}`, e, { requestId });
 	const body: ApiErrorBody = {
-		error: { code: 'internal_error', message: 'Interner Serverfehler', requestId }
+		error: { code: 'internal_error', message: t('api.internalError'), requestId }
 	};
 	return json(body, 500);
 }
@@ -100,7 +102,7 @@ export async function readLimitedBody(
 }
 
 async function readBody(request: Request): Promise<unknown> {
-	const tooLarge = () => errors.tooLarge('Anfrage ist zu groß');
+	const tooLarge = () => errors.tooLarge(t('api.tooLarge'));
 	const length = Number(request.headers.get('content-length') ?? 0);
 	if (length > MAX_BODY_BYTES) throw tooLarge();
 	const bytes = await readLimitedBody(request, MAX_BODY_BYTES, tooLarge);
@@ -109,7 +111,7 @@ async function readBody(request: Request): Promise<unknown> {
 	try {
 		return JSON.parse(text);
 	} catch {
-		throw errors.badRequest('Ungültiges JSON');
+		throw errors.badRequest(t('api.invalidJson'));
 	}
 }
 
@@ -126,12 +128,10 @@ async function readMultipart(
 ): Promise<{ fields: Record<string, string>; files: File[] }> {
 	const raw = request.headers.get('content-length');
 	if (raw === null || !/^\d+$/.test(raw.trim())) {
-		throw errors.badRequest('Content-Length erforderlich');
+		throw errors.badRequest(t('api.contentLengthRequired'));
 	}
 	const tooLarge = () =>
-		errors.tooLarge(
-			`Anfrage ist zu groß (höchstens ${Math.floor(limits.maxBytes / (1024 * 1024))} MB)`
-		);
+		errors.tooLarge(t('api.tooLargeMax', { mb: Math.floor(limits.maxBytes / (1024 * 1024)) }));
 	if (Number(raw) > limits.maxBytes) throw tooLarge();
 	const buffer = await readLimitedBody(request, limits.maxBytes, tooLarge);
 	let form: FormData;
@@ -140,18 +140,18 @@ async function readMultipart(
 			headers: { 'content-type': request.headers.get('content-type') ?? '' }
 		}).formData();
 	} catch {
-		throw errors.badRequest('Ungültige Formulardaten');
+		throw errors.badRequest(t('api.invalidFormData'));
 	}
 	const fields: Record<string, string> = {};
 	const files: File[] = [];
 	const maxFiles = limits.maxFiles ?? 1;
 	for (const [key, value] of form.entries()) {
 		if (typeof value === 'string') {
-			if (key === '__proto__') throw errors.badRequest('Ungültiger Feldname');
-			if (Object.hasOwn(fields, key)) throw errors.badRequest(`Feld "${key}" ist doppelt`);
+			if (key === '__proto__') throw errors.badRequest(t('api.invalidFieldName'));
+			if (Object.hasOwn(fields, key)) throw errors.badRequest(t('api.duplicateField', { key }));
 			fields[key] = value;
 		} else {
-			if (files.length >= maxFiles) throw errors.badRequest('Zu viele Dateien');
+			if (files.length >= maxFiles) throw errors.badRequest(t('api.tooManyFiles'));
 			files.push(value);
 		}
 	}
@@ -213,12 +213,12 @@ async function execute(
 		: url.pathname;
 	const { match, pathExists, allowed } = matchEndpoint(request.method, pathname);
 	if (!match) {
-		if (!pathExists) throw errors.notFound('Endpunkt nicht gefunden');
+		if (!pathExists) throw errors.notFound(t('api.endpointNotFound'));
 		const r = errorResponse(errors.methodNotAllowed(), requestId);
 		r.headers.set('allow', allowed.join(', '));
 		return r;
 	}
-	const { endpoint, params } = match;
+	const { endpoint } = match;
 	state.pattern = endpoint.fullPath;
 	state.skipLog = UNLOGGED.has(`${endpoint.method} ${endpoint.fullPath}`);
 
@@ -233,9 +233,9 @@ async function execute(
 	let viaSession = false;
 	if (authz) {
 		const m = /^Bearer\s+(\S+)$/i.exec(authz);
-		if (!m) throw errors.unauthenticated('Ungültiger Authorization-Header');
+		if (!m) throw errors.unauthenticated(t('api.invalidAuthHeader'));
 		const r = await resolveApiKey(m[1] as string, meta);
-		if (!r) throw errors.unauthenticated('Ungültiger, abgelaufener oder widerrufener API-Key');
+		if (!r) throw errors.unauthenticated(t('api.invalidApiKey'));
 		state.ctx = r.ctx;
 		state.apiKeyId = r.keyId;
 	} else {
@@ -247,12 +247,33 @@ async function execute(
 			state.ctx = { ...anonymousContext(ip), requestId };
 		}
 	}
+
+	// Ab hier in der Sprache des Kontos (Session oder Besitzer*in des API-Keys), sonst die des Requests
+	const own = state.ctx.userId ? await userLocale(state.ctx.userId) : null;
+	const run = () => authorized(request, url, ip, requestId, state, match, viaSession);
+	if (own && own !== getLocale()) {
+		return withLocale(own, () => run().catch((e: unknown) => errorResponse(e, requestId)));
+	}
+	return run();
+}
+
+async function authorized(
+	request: Request,
+	url: URL,
+	ip: string | null,
+	requestId: string,
+	state: State,
+	match: NonNullable<ReturnType<typeof matchEndpoint>['match']>,
+	viaSession: boolean
+): Promise<Response> {
+	const { endpoint } = match;
+	const params = match.params;
 	const ctx = state.ctx;
 
 	// CSRF: Session-Cookies nur mit gleicher Origin für schreibende Methoden
 	const mutating = request.method !== 'GET' && request.method !== 'HEAD';
 	if (viaSession && mutating && !sameOrigin(request)) {
-		throw errors.forbidden('Anfrage von fremder Origin abgelehnt');
+		throw errors.forbidden(t('api.foreignOrigin'));
 	}
 
 	// Rate Limiting
@@ -290,7 +311,7 @@ async function execute(
 		if (mutating && !endpoint.multipart) {
 			const ct = (request.headers.get('content-type') ?? '').toLowerCase();
 			if (!/^application\/json\s*(;|$)/.test(ct)) {
-				throw errors.badRequest('Content-Type application/json erforderlich');
+				throw errors.badRequest(t('api.jsonRequired'));
 			}
 		}
 	}
@@ -298,7 +319,7 @@ async function execute(
 	if (endpoint.multipart && mutating) {
 		const ct = (request.headers.get('content-type') ?? '').toLowerCase();
 		if (!MULTIPART_RE.test(ct)) {
-			throw errors.badRequest('Content-Type multipart/form-data erforderlich');
+			throw errors.badRequest(t('api.multipartRequired'));
 		}
 	}
 
@@ -306,15 +327,15 @@ async function execute(
 	if (endpoint.permission !== null) {
 		if (!ctx.userId) throw errors.unauthenticated();
 		if (endpoint.sessionOnly && state.apiKeyId) {
-			throw errors.forbidden('Dieser Endpunkt ist nicht per API-Key erreichbar');
+			throw errors.forbidden(t('api.sessionOnly'));
 		}
 		if (!has(ctx, endpoint.permission)) {
-			throw errors.forbidden(`Berechtigung fehlt: ${endpoint.permission}`);
+			throw errors.forbidden(t('api.missingPermission', { permission: endpoint.permission }));
 		}
 	} else if (endpoint.authenticated) {
 		if (!ctx.userId) throw errors.unauthenticated();
 		if (endpoint.sessionOnly && state.apiKeyId) {
-			throw errors.forbidden('Dieser Endpunkt ist nicht per API-Key erreichbar');
+			throw errors.forbidden(t('api.sessionOnly'));
 		}
 	}
 

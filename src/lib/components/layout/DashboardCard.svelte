@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import type { Component, Snippet } from 'svelte';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import { Button } from '$lib/components/ui/button';
@@ -16,12 +17,12 @@
 		description,
 		icon: Icon,
 		href,
-		hrefLabel = 'Alle anzeigen',
+		hrefLabel = t('layout.showAll'),
 		loading = false,
 		error = '',
 		onretry,
 		empty = false,
-		emptyText = 'Nichts Neues.',
+		emptyText = t('layout.nothingNew'),
 		skeletonRows = 3,
 		actions,
 		children

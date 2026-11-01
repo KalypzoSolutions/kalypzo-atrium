@@ -9,6 +9,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { and, eq } from 'drizzle-orm';
 import { getDb, schema } from '../../database/client';
+import { t } from '$lib/i18n';
 import { errors } from '../../errors';
 import type { ArchiveFiles } from './archive';
 
@@ -75,14 +76,17 @@ export async function requestSupervisorBuild(
 	files: Map<string, ArchiveFiles>
 ): Promise<void> {
 	const data = supervisorDataDir();
-	if (!data || !supervisorAvailable()) throw errors.unavailable('Kein Supervisor verfügbar');
-	if (!/^[A-Za-z0-9_-]{8,80}$/.test(request.planId)) throw errors.badRequest('Ungültiger Plan');
+	if (!data || !supervisorAvailable())
+		throw errors.unavailable(t('install.service.noSupervisorAvailable'));
+	if (!/^[A-Za-z0-9_-]{8,80}$/.test(request.planId))
+		throw errors.badRequest(t('install.service.invalidPlan'));
 	const root = join(data, 'staging', request.planId);
 	for (const [id, tree] of files) {
 		const dir = resolve(root, 'modules', id);
 		for (const [rel, bytes] of tree) {
 			const target = resolve(dir, rel);
-			if (!target.startsWith(dir + sep)) throw errors.badRequest('Ungültiger Pfad im Modul');
+			if (!target.startsWith(dir + sep))
+				throw errors.badRequest(t('install.service.invalidModulePath'));
 			await mkdir(dirname(target), { recursive: true });
 			await writeFile(target, bytes);
 		}

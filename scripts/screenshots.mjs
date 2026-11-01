@@ -9,6 +9,7 @@
 //           --click <Text> klickt danach einen Button mit diesem Namen (z. B. ein Menü öffnen)
 //           --mobile       zusätzlich 390×844 (iPhone-Breite); --full  ganze Seite statt Ausschnitt
 //           --wait <ms>    Wartezeit vor dem Screenshot (Standard 500)
+//           --locale <tag> Browsersprache (Standard de-DE; en-US zeigt die englische Oberfläche, wenn die Systemsprache „automatisch“ ist)
 // Voraussetzung: `node scripts/demo-server.mjs` läuft; Chromium via `npx playwright install chromium`.
 import { mkdirSync } from 'node:fs';
 import { parseArgs } from 'node:util';
@@ -19,6 +20,7 @@ const { values, positionals } = parseArgs({
 	options: {
 		out: { type: 'string' },
 		base: { type: 'string', default: 'http://localhost:4300' },
+		locale: { type: 'string', default: 'de-DE' },
 		user: { type: 'string', default: 'admin@demo.test' },
 		pass: { type: 'string', default: 'Demo-Admin-2026!' },
 		tab: { type: 'string' },
@@ -46,12 +48,16 @@ if (values.mobile) viewports.push({ name: 'mobile', width: 390, height: 844 });
 const browser = await chromium.launch();
 try {
 	for (const vp of viewports) {
-		const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
+		const context = await browser.newContext({
+			viewport: { width: vp.width, height: vp.height },
+			locale: values.locale
+		});
 		const page = await context.newPage();
 		await page.goto(`${values.base}/login`);
-		await page.getByLabel('E-Mail').fill(values.user);
-		await page.getByLabel('Passwort').fill(values.pass);
-		await page.getByRole('button', { name: /anmelden/i }).click();
+		// sprachunabhängig (Oberfläche de/en)
+		await page.locator('input[name="email"]').fill(values.user);
+		await page.locator('input[name="password"]').fill(values.pass);
+		await page.locator('form button[type="submit"]').first().click();
 		await page.waitForURL(/dashboard/);
 
 		for (const path of positionals) {

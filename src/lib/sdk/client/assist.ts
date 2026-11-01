@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Client der KI-Schreibhilfe: Status (einmal je Seitenladung) und Anfrage als Server-Sent Events.
  * Oberfläche: `WritingAssistant` & Co. in `$lib/components/layout`.
@@ -78,7 +79,7 @@ export async function requestAssist(
 		throw new ApiClientError(
 			res.status,
 			body?.error.code ?? 'unknown',
-			body?.error.message ?? 'Die Schreibhilfe ist gerade nicht erreichbar',
+			body?.error.message ?? t('sdk.assist.unavailable'),
 			body?.error.details
 		);
 	}
@@ -106,7 +107,6 @@ export async function requestAssist(
 	}
 	parseSseChunk(buffer + '\n\n', onEvent);
 	if (failure) throw failure;
-	if (!result)
-		throw new ApiClientError(503, 'assist_incomplete', 'Die Antwort kam nicht vollständig an');
+	if (!result) throw new ApiClientError(503, 'assist_incomplete', t('sdk.assist.incomplete'));
 	return result;
 }

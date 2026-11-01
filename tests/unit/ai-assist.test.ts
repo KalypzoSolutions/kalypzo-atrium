@@ -8,6 +8,7 @@ import {
 	verifyOutput
 } from '$lib/server/core/ai/assist/verify';
 import { systemPrompt, userPrompt, type PromptInput } from '$lib/server/core/ai/assist/prompt';
+import { ensureLocale } from '$lib/i18n';
 import { textOfHtml, wordDiff } from '$lib/components/layout/writing-assistant/diff';
 import { parseSseChunk } from '$lib/sdk/client/assist';
 import type { AssistEvent } from '$lib/sdk/types';
@@ -161,6 +162,35 @@ describe('Schreibhilfe: Prompt', () => {
 		});
 		expect(sys).not.toContain('Gut Pfad!');
 		expect(sys).not.toContain('Antworte nur mit HTML');
+	});
+
+	it('neutral ohne Kontext, mit Kontext und Organisation aus den Einstellungen', () => {
+		const neutral = systemPrompt(input);
+		expect(neutral).toContain('Du bist eine Schreibhilfe. Du schreibst deutsche Texte.');
+		expect(neutral).not.toMatch(/Pfadfind|Stamm/);
+		const own = systemPrompt({
+			...input,
+			style: {
+				...input.style,
+				notes: 'keine Emojis',
+				context: 'ein Sportverein; Texte für Mitglieder',
+				organization: 'TSV Muster'
+			}
+		});
+		expect(own).toContain('Schreibhilfe von „TSV Muster“');
+		expect(own).toContain('Wer schreibt und für wen: ein Sportverein; Texte für Mitglieder.');
+		expect(own).toContain('Weitere Hinweise zum Stil: keine Emojis');
+		expect(own).toContain('{name} oder {{aktion}}');
+	});
+
+	it('englische Oberfläche: Prompt auf Englisch, ohne deutsche Schreibregeln', async () => {
+		await ensureLocale('en');
+		const sys = systemPrompt(input, 'en');
+		expect(sys).toContain('You write English texts.');
+		expect(sys).toContain('Tone: locker.');
+		expect(sys).not.toContain('Gendere');
+		expect(sys).not.toContain('„du“');
+		expect(userPrompt(input, 'en')).toContain('Key facts:');
 	});
 });
 

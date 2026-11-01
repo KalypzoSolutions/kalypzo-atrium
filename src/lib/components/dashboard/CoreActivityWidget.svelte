@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { intlLocale, t } from '$lib/i18n';
 	import { onMount } from 'svelte';
 	import ScrollText from '@lucide/svelte/icons/scroll-text';
 	import { DashboardCard } from '$lib/components/layout';
@@ -10,7 +11,11 @@
 	let loading = $state(true);
 	let error = $state('');
 	let entries = $state<CoreActivityEntry[]>([]);
-	const fmt = new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+	const fmt = new Intl.DateTimeFormat(intlLocale(), {
+		dateStyle: 'short',
+		timeStyle: 'short',
+		timeZone: 'Europe/Berlin'
+	});
 
 	async function load(fresh = false) {
 		loading = true;
@@ -20,7 +25,7 @@
 			entries = (await loadCoreDashboard(fresh)).recent ?? [];
 			onstatus?.(entries.length ? 'ready' : 'empty');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Die Aktivitäten konnten nicht geladen werden.';
+			error = e instanceof Error ? e.message : t('widgets.activity.loadFailed');
 			onstatus?.('error');
 		} finally {
 			loading = false;
@@ -33,14 +38,14 @@
 </script>
 
 <DashboardCard
-	title="Letzte Aktivitäten"
+	title={t('widgets.activity.title')}
 	icon={ScrollText}
 	href="/admin/audit"
 	{loading}
 	{error}
 	onretry={() => load(true)}
 	empty={!entries.length}
-	emptyText="Noch keine Einträge."
+	emptyText={t('widgets.activity.empty')}
 >
 	<ul class="divide-y">
 		{#each entries as e (e.id)}
@@ -48,7 +53,7 @@
 				<div class="min-w-0">
 					<p class="truncate font-mono text-xs">{e.action}</p>
 					<p class="truncate text-xs text-muted-foreground">
-						{e.actorName ?? 'System'}{e.target ? ` · ${e.target}` : ''}
+						{e.actorName ?? t('widgets.activity.system')}{e.target ? ` · ${e.target}` : ''}
 					</p>
 				</div>
 				<time

@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { t } from '$lib/i18n';
 import { clientAddress } from '$lib/server/core/auth/client-ip';
 import { createQrLogin, qrLoginStatus, QR_TTL_SEC } from '$lib/server/core/auth/qr-login';
 import { isCoreError } from '$lib/server/core/errors';
@@ -8,7 +9,7 @@ import type { RequestHandler } from './$types';
 
 /** Neuen QR-Code für diesen Browser anlegen (öffentlich, Login-Seite) */
 export const POST: RequestHandler = async (event) => {
-	if (event.locals.user) return json({ message: 'Bereits angemeldet' }, { status: 409 });
+	if (event.locals.user) return json({ message: t('login.qr.alreadySignedIn') }, { status: 409 });
 	try {
 		const req = await createQrLogin({
 			ip: clientAddress(event),

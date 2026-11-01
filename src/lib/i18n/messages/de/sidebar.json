@@ -1,0 +1,27 @@
+{
+	"homeLabel": "{name} – Dashboard",
+	"expand": "Seitenleiste ausklappen",
+	"collapse": "Seitenleiste einklappen",
+	"collapseShort": "Einklappen",
+	"expandGroup": "{label} (Seitenleiste ausklappen)",
+	"mainNav": "Hauptnavigation",
+	"topbar": {
+		"light": "Hell",
+		"dark": "Dunkel",
+		"system": "System",
+		"themeFailed": "Theme konnte nicht gewechselt werden.",
+		"openNav": "Navigation öffnen",
+		"searchLabel": "Suchen (Strg+K)",
+		"search": "Suchen",
+		"searchKey": "Strg K",
+		"appearanceLabel": "Darstellung wählen (aktuell: {current})",
+		"appearance": "Darstellung",
+		"theme": "Theme",
+		"themeDefault": "Standard",
+		"themesHint": "Markiere Themes im Profil mit dem Stern, damit sie hier erscheinen.",
+		"manageThemes": "Themes verwalten …",
+		"userMenu": "Benutzermenü",
+		"profile": "Profil",
+		"logout": "Abmelden"
+	}
+}

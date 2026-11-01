@@ -19,14 +19,18 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { ConfirmDialog, EmptyState, FormField } from '$lib/components/layout';
+	import { intlLocale, t } from '$lib/i18n';
 	import { callAction, submitter } from './actions';
 	import type { ProfileData } from './types';
 	import { describeUserAgent } from '$lib/user-agent';
 
 	let { data }: { data: ProfileData } = $props();
 
-	const dateTime = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
-	const dateOnly = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' });
+	const dateTime = new Intl.DateTimeFormat(intlLocale(), {
+		dateStyle: 'medium',
+		timeStyle: 'short'
+	});
+	const dateOnly = new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'medium' });
 
 	// --- Passwort
 	let pwBusy = $state(false);
@@ -45,9 +49,9 @@
 		if (!setup) return;
 		try {
 			await navigator.clipboard.writeText(setup.backupCodes.join('\n'));
-			toast.success('Codes kopiert.');
+			toast.success(t('profile.security.codesCopied'));
 		} catch {
-			toast.error('Kopieren war nicht möglich. Markiere die Codes bitte von Hand.');
+			toast.error(t('profile.security.copyFailed'));
 		}
 	}
 
@@ -77,7 +81,9 @@
 
 <div class="space-y-6">
 	<Card>
-		<CardHeader><CardTitle class="font-semibold">Passwort</CardTitle></CardHeader>
+		<CardHeader
+			><CardTitle class="font-semibold">{t('profile.security.password')}</CardTitle></CardHeader
+		>
 		<CardContent>
 			{#if pwError}
 				<Alert variant="destructive" class="mb-4"
@@ -95,7 +101,7 @@
 					{ setBusy: (b) => (pwBusy = b), reset: true }
 				)}
 			>
-				<FormField label="Aktuelles Passwort" id="currentPassword">
+				<FormField label={t('profile.security.currentPassword')} id="currentPassword">
 					<Input
 						id="currentPassword"
 						name="currentPassword"
@@ -104,7 +110,11 @@
 						required
 					/>
 				</FormField>
-				<FormField label="Neues Passwort" id="newPassword" hint="Mindestens 12 Zeichen.">
+				<FormField
+					label={t('profile.security.newPassword')}
+					id="newPassword"
+					hint={t('profile.security.newPasswordHint')}
+				>
 					<Input
 						id="newPassword"
 						name="newPassword"
@@ -114,7 +124,7 @@
 						required
 					/>
 				</FormField>
-				<FormField label="Neues Passwort bestätigen" id="confirm">
+				<FormField label={t('profile.security.confirmPassword')} id="confirm">
 					<Input
 						id="confirm"
 						name="confirm"
@@ -131,10 +141,12 @@
 						bind:checked={revokeOthersOnChange}
 						value="on"
 					/>
-					<Label for="revokeOthers" class="font-normal">Alle anderen Sitzungen beenden</Label>
+					<Label for="revokeOthers" class="font-normal"
+						>{t('profile.security.revokeOthersOnChange')}</Label
+					>
 				</div>
 				<Button type="submit" class="w-fit" disabled={pwBusy}>
-					{pwBusy ? 'Speichert …' : 'Passwort ändern'}
+					{pwBusy ? t('profile.saving') : t('profile.security.changePassword')}
 				</Button>
 			</form>
 		</CardContent>
@@ -142,14 +154,16 @@
 
 	<Card>
 		<CardHeader>
-			<CardTitle class="font-semibold">Zwei-Faktor-Authentifizierung</CardTitle>
+			<CardTitle class="font-semibold">{t('profile.security.twoFactor')}</CardTitle>
 			<CardDescription>
-				Schützt dein Konto zusätzlich mit einem Code aus einer Authenticator-App.
+				{t('profile.security.twoFactorDescription')}
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="flex flex-wrap items-center justify-between gap-3">
 			<Badge variant={data.profile.twoFactorEnabled ? 'default' : 'secondary'}>
-				{data.profile.twoFactorEnabled ? 'Aktiv' : 'Inaktiv'}
+				{data.profile.twoFactorEnabled
+					? t('profile.security.active')
+					: t('profile.security.inactive')}
 			</Badge>
 			{#if data.profile.twoFactorEnabled}
 				<Button
@@ -157,7 +171,7 @@
 					onclick={() => {
 						tfError = null;
 						disableOpen = true;
-					}}>Deaktivieren</Button
+					}}>{t('profile.security.disable')}</Button
 				>
 			{:else}
 				<Button
@@ -166,7 +180,7 @@
 						setup = null;
 						saved = false;
 						enableOpen = true;
-					}}>Aktivieren</Button
+					}}>{t('profile.security.enable')}</Button
 				>
 			{/if}
 		</CardContent>
@@ -175,10 +189,10 @@
 	<Card>
 		<CardHeader>
 			<div class="flex flex-wrap items-center justify-between gap-2">
-				<CardTitle class="font-semibold">Sitzungen</CardTitle>
+				<CardTitle class="font-semibold">{t('profile.security.sessions')}</CardTitle>
 				{#if others.length > 0}
 					<Button variant="outline" size="sm" onclick={() => (revokeAllOpen = true)}>
-						Alle anderen beenden
+						{t('profile.security.revokeAllOthers')}
 					</Button>
 				{/if}
 			</div>
@@ -200,17 +214,20 @@
 									<span class="truncate" title={s.userAgent ?? undefined}>
 										{describeUserAgent(s.userAgent)}
 									</span>
-									{#if s.current}<Badge>Diese Sitzung</Badge>{/if}
+									{#if s.current}<Badge>{t('profile.security.thisSession')}</Badge>{/if}
 								</p>
 								<p class="text-xs text-muted-foreground">
-									{s.ipAddress ?? 'IP unbekannt'} · angemeldet {dateTime.format(
-										new Date(s.createdAt)
-									)}
+									{t('profile.security.sessionInfo', {
+										ip: s.ipAddress ?? t('profile.security.ipUnknown'),
+										date: dateTime.format(new Date(s.createdAt))
+									})}
 								</p>
 							</div>
 						</div>
 						{#if !s.current}
-							<Button variant="outline" size="sm" onclick={() => revokeOne(s.id)}>Beenden</Button>
+							<Button variant="outline" size="sm" onclick={() => revokeOne(s.id)}
+								>{t('profile.security.revoke')}</Button
+							>
 						{/if}
 					</li>
 				{/each}
@@ -222,20 +239,20 @@
 		<Card>
 			<CardHeader>
 				<div class="flex flex-wrap items-center justify-between gap-2">
-					<CardTitle class="font-semibold">API-Schlüssel</CardTitle>
+					<CardTitle class="font-semibold">{t('profile.security.apiKeys')}</CardTitle>
 					<a
 						href="/admin/api"
 						class="touch-link text-sm text-link underline-offset-4 hover:underline"
 					>
-						Alle verwalten →
+						{t('profile.security.manageAll')}
 					</a>
 				</div>
 			</CardHeader>
 			<CardContent>
 				{#if keys.length === 0}
 					<EmptyState
-						title="Noch keine API-Schlüssel"
-						description="Mit API-Schlüsseln greifen andere Programme auf deine Daten zu."
+						title={t('profile.security.noApiKeys')}
+						description={t('profile.security.noApiKeysDescription')}
 					/>
 				{:else}
 					<ul class="divide-y">
@@ -247,8 +264,10 @@
 								</div>
 								<span class="text-xs text-muted-foreground">
 									{k.lastUsedAt
-										? `zuletzt genutzt am ${dateOnly.format(new Date(k.lastUsedAt))}`
-										: 'noch nie genutzt'}
+										? t('profile.security.lastUsed', {
+												date: dateOnly.format(new Date(k.lastUsedAt))
+											})
+										: t('profile.security.neverUsed')}
 								</span>
 							</li>
 						{/each}
@@ -262,11 +281,9 @@
 <Dialog.Root bind:open={enableOpen}>
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
-			<Dialog.Title>Zwei-Faktor-Authentifizierung aktivieren</Dialog.Title>
+			<Dialog.Title>{t('profile.security.enableTitle')}</Dialog.Title>
 			<Dialog.Description>
-				{setup
-					? 'Scanne den QR-Code mit deiner Authenticator-App und gib den angezeigten Code ein.'
-					: 'Bestätige zuerst mit deinem Passwort.'}
+				{setup ? t('profile.security.enableScan') : t('profile.security.enableConfirmPassword')}
 			</Dialog.Description>
 		</Dialog.Header>
 
@@ -290,7 +307,7 @@
 					{ setBusy: (b) => (tfBusy = b), reload: false }
 				)}
 			>
-				<FormField label="Passwort" id="pw-enable">
+				<FormField label={t('profile.security.password')} id="pw-enable">
 					<Input
 						id="pw-enable"
 						name="password"
@@ -301,35 +318,37 @@
 				</FormField>
 				<Dialog.Footer>
 					<Button type="button" variant="outline" onclick={() => (enableOpen = false)}>
-						Abbrechen
+						{t('profile.cancel')}
 					</Button>
-					<Button type="submit" disabled={tfBusy}>{tfBusy ? 'Prüft …' : 'Weiter'}</Button>
+					<Button type="submit" disabled={tfBusy}
+						>{tfBusy ? t('profile.security.checking') : t('profile.security.next')}</Button
+					>
 				</Dialog.Footer>
 			</form>
 		{:else}
 			<div class="grid gap-4">
 				<img
 					src={setup.qr}
-					alt="QR-Code für die Authenticator-App"
+					alt={t('profile.security.qrAlt')}
 					class="mx-auto size-48 rounded border bg-white p-2"
 				/>
 				<div class="grid gap-2">
 					<div class="flex flex-wrap items-center justify-between gap-2">
-						<p class="text-sm font-medium">Backup-Codes</p>
+						<p class="text-sm font-medium">{t('profile.security.backupCodes')}</p>
 						<Button type="button" variant="outline" size="sm" onclick={copyCodes}>
 							<Copy />
-							Codes kopieren
+							{t('profile.security.copyCodes')}
 						</Button>
 					</div>
 					<ul class="grid grid-cols-2 gap-1 rounded border bg-muted p-3 font-mono text-xs">
 						{#each setup.backupCodes as c (c)}<li>{c}</li>{/each}
 					</ul>
 					<p class="text-xs text-muted-foreground">
-						Jeder Code gilt nur einmal. Du siehst sie nur jetzt – bewahre sie sicher auf.
+						{t('profile.security.backupCodesHint')}
 					</p>
 					<div class="flex items-center gap-2">
 						<Checkbox id="codes-saved" bind:checked={saved} />
-						<Label for="codes-saved" class="font-normal">Ich habe die Codes gesichert</Label>
+						<Label for="codes-saved" class="font-normal">{t('profile.security.codesSaved')}</Label>
 					</div>
 				</div>
 				<form
@@ -346,7 +365,7 @@
 						{ setBusy: (b) => (tfBusy = b) }
 					)}
 				>
-					<FormField label="Bestätigungscode" id="tf-code">
+					<FormField label={t('profile.security.verificationCode')} id="tf-code">
 						<Input
 							id="tf-code"
 							name="code"
@@ -357,10 +376,10 @@
 					</FormField>
 					<Dialog.Footer>
 						<Button type="button" variant="outline" onclick={() => (enableOpen = false)}>
-							Abbrechen
+							{t('profile.cancel')}
 						</Button>
 						<Button type="submit" disabled={!saved || tfBusy}>
-							{tfBusy ? 'Prüft …' : 'Aktivierung abschließen'}
+							{tfBusy ? t('profile.security.checking') : t('profile.security.finishEnable')}
 						</Button>
 					</Dialog.Footer>
 				</form>
@@ -372,9 +391,9 @@
 <Dialog.Root bind:open={disableOpen}>
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
-			<Dialog.Title>Zwei-Faktor-Authentifizierung deaktivieren</Dialog.Title>
+			<Dialog.Title>{t('profile.security.disableTitle')}</Dialog.Title>
 			<Dialog.Description>
-				Danach reicht dein Passwort zum Anmelden. Bestätige mit deinem Passwort.
+				{t('profile.security.disableDescription')}
 			</Dialog.Description>
 		</Dialog.Header>
 		<form
@@ -394,7 +413,7 @@
 					><AlertDescription role="alert">{tfError}</AlertDescription></Alert
 				>
 			{/if}
-			<FormField label="Passwort" id="pw-disable">
+			<FormField label={t('profile.security.password')} id="pw-disable">
 				<Input
 					id="pw-disable"
 					name="password"
@@ -405,10 +424,10 @@
 			</FormField>
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (disableOpen = false)}>
-					Abbrechen
+					{t('profile.cancel')}
 				</Button>
 				<Button type="submit" variant="destructive" disabled={tfBusy}>
-					{tfBusy ? 'Deaktiviert …' : 'Deaktivieren'}
+					{tfBusy ? t('profile.security.disabling') : t('profile.security.disable')}
 				</Button>
 			</Dialog.Footer>
 		</form>
@@ -417,9 +436,9 @@
 
 <ConfirmDialog
 	bind:open={revokeAllOpen}
-	title="Alle anderen Sitzungen beenden?"
-	description="Auf allen anderen Geräten wirst du abgemeldet. Diese Sitzung bleibt bestehen."
-	confirmLabel="Alle beenden"
+	title={t('profile.security.revokeAllTitle')}
+	description={t('profile.security.revokeAllDescription')}
+	confirmLabel={t('profile.security.revokeAllConfirm')}
 	destructive
 	onconfirm={revokeOthers}
 />

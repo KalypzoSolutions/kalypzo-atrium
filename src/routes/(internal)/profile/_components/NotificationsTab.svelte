@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { t } from '$lib/i18n';
+	import { formatDateTime } from '$lib/i18n/intl';
 	import { toast } from 'svelte-sonner';
 	import BellRing from '@lucide/svelte/icons/bell-ring';
 	import Share from '@lucide/svelte/icons/share';
@@ -17,7 +20,7 @@
 		CardTitle
 	} from '$lib/components/ui/card';
 	import { SegmentedSlider, type SegmentedOption } from '$lib/components/ui/segmented-slider';
-	import { ApiClientError, apiFetch, formatDateTimeDe } from '$lib/sdk/client';
+	import { ApiClientError, apiFetch } from '$lib/sdk/client';
 	import {
 		PushPermissionError,
 		currentSubscription,
@@ -41,6 +44,10 @@
 	} from '$lib/sdk/types/notifications';
 
 	let data = $state<NotificationPrefsResponse | null>(null);
+	/** Name des Systems für die Hinweise („… auch wenn <Name> gerade nicht geöffnet ist“) */
+	const appName = $derived(
+		(page.data as { systemName?: string }).systemName || t('profile.notifications.appFallback')
+	);
 	let loadError = $state(false);
 	let support = $state<PushSupport>('unsupported');
 	let permission = $state<ReturnType<typeof pushPermission>>('default');
@@ -89,10 +96,10 @@
 		busy = true;
 		try {
 			await enablePush();
-			toast.success('Push ist auf diesem Gerät aktiv.');
+			toast.success(t('profile.notifications.pushEnabled'));
 		} catch (e) {
 			if (e instanceof PushPermissionError) permission = pushPermission();
-			toast.error(errorText(e, 'Push konnte nicht aktiviert werden'));
+			toast.error(errorText(e, t('profile.notifications.pushEnableFailed')));
 		} finally {
 			busy = false;
 			await refreshDevice();
@@ -104,9 +111,9 @@
 		busy = true;
 		try {
 			await disablePush();
-			toast.success('Push auf diesem Gerät abgeschaltet.');
+			toast.success(t('profile.notifications.pushDisabled'));
 		} catch (e) {
-			toast.error(errorText(e, 'Push konnte nicht abgeschaltet werden'));
+			toast.error(errorText(e, t('profile.notifications.pushDisableFailed')));
 		} finally {
 			busy = false;
 			await refreshDevice();
@@ -120,10 +127,10 @@
 			const r = await apiFetch<{ delivered: boolean }>('/notifications/push/test', {
 				method: 'POST'
 			});
-			if (r.delivered) toast.success('Test-Benachrichtigung verschickt.');
-			else toast.error('Kein Gerät hat die Test-Benachrichtigung angenommen.');
+			if (r.delivered) toast.success(t('profile.notifications.testSent'));
+			else toast.error(t('profile.notifications.testNotDelivered'));
 		} catch (e) {
-			toast.error(errorText(e, 'Test fehlgeschlagen'));
+			toast.error(errorText(e, t('profile.notifications.testFailed')));
 		} finally {
 			busy = false;
 			await load();
@@ -133,9 +140,9 @@
 	async function removeDevice(id: string) {
 		try {
 			await apiFetch(`/notifications/push/subscriptions/${id}`, { method: 'DELETE' });
-			toast.success('Gerät entfernt.');
+			toast.success(t('profile.notifications.deviceRemoved'));
 		} catch (e) {
-			toast.error(errorText(e, 'Gerät konnte nicht entfernt werden'));
+			toast.error(errorText(e, t('profile.notifications.deviceRemoveFailed')));
 		}
 		await refreshDevice();
 		await load();
@@ -149,15 +156,15 @@
 			disabled: !allowed.includes(c),
 			hint: !allowed.includes(c)
 				? item.mandatory
-					? 'Diese Benachrichtigung lässt sich nicht abschalten'
-					: 'Die E-Mail dazu kommt unabhängig von dieser Einstellung'
+					? t('profile.notifications.mandatoryHint')
+					: t('profile.notifications.emailIndependentHint')
 				: undefined
 		}));
 	}
 
 	const DELIVERY_OPTIONS: SegmentedOption<NotificationDelivery>[] = [
-		{ value: 'immediate', label: 'Sofort' },
-		{ value: 'daily', label: 'Täglich' }
+		{ value: 'immediate', label: t('profile.notifications.immediate') },
+		{ value: 'daily', label: t('profile.notifications.daily') }
 	];
 
 	async function save(
@@ -180,10 +187,10 @@
 				})
 			});
 			Object.assign(item, saved);
-			toast.success('Gespeichert', { duration: 1500 });
+			toast.success(t('profile.notifications.saved'), { duration: 1500 });
 		} catch (e) {
 			Object.assign(item, before);
-			toast.error(errorText(e, 'Einstellung konnte nicht gespeichert werden'));
+			toast.error(errorText(e, t('profile.notifications.saveFailed')));
 		}
 	}
 
@@ -202,106 +209,122 @@
 	<Card>
 		<CardHeader>
 			<CardTitle class="flex items-center gap-2"
-				><Smartphone class="size-5" /> Dieses Gerät</CardTitle
+				><Smartphone class="size-5" />
+				{t('profile.notifications.thisDevice')}</CardTitle
 			>
 			<CardDescription>
-				Push-Benachrichtigungen erscheinen direkt auf dem Handy oder Computer – auch wenn EP Intern
-				gerade nicht geöffnet ist.
+				{t('profile.notifications.intro', { app: appName })}
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="space-y-4">
 			{#if !data && !loadError}
-				<LoadingState label="Geräte" rows={1} rowClass="h-12 w-full" />
+				<LoadingState label={t('profile.notifications.devices')} rows={1} rowClass="h-12 w-full" />
 			{:else if data && !data.pushAvailable}
 				<Alert variant="info">
 					<AlertDescription>
-						Push-Benachrichtigungen sind in diesem System ausgeschaltet. Alles kommt per E-Mail.
+						{t('profile.notifications.pushOff')}
 					</AlertDescription>
 				</Alert>
 			{:else if support === 'ios-install'}
 				<Alert variant="info">
 					<Share />
-					<AlertTitle>Erst zum Home-Bildschirm hinzufügen</AlertTitle>
+					<AlertTitle>{t('profile.notifications.ios.title')}</AlertTitle>
 					<AlertDescription>
 						<ol class="list-decimal space-y-1 pl-4">
-							<li>In Safari unten auf <strong>Teilen</strong> tippen.</li>
-							<li><strong>„Zum Home-Bildschirm“</strong> wählen und bestätigen.</li>
-							<li>EP Intern über das neue Symbol öffnen und hier Push aktivieren.</li>
+							<li>
+								{t('profile.notifications.ios.step1Before')}
+								<strong>{t('profile.notifications.ios.step1Strong')}</strong>
+								{t('profile.notifications.ios.step1After')}
+							</li>
+							<li>
+								<strong>{t('profile.notifications.ios.step2Strong')}</strong>
+								{t('profile.notifications.ios.step2After')}
+							</li>
+							<li>{t('profile.notifications.ios.step3', { app: appName })}</li>
 						</ol>
-						<p class="mt-2">Push auf dem iPhone/iPad braucht iOS 16.4 oder neuer.</p>
+						<p class="mt-2">{t('profile.notifications.ios.version')}</p>
 					</AlertDescription>
 				</Alert>
 			{:else if support === 'insecure'}
 				<Alert variant="info">
-					<AlertDescription
-						>Push funktioniert nur über eine sichere Verbindung (HTTPS).</AlertDescription
-					>
+					<AlertDescription>{t('profile.notifications.insecure')}</AlertDescription>
 				</Alert>
 			{:else if support === 'unsupported'}
 				<Alert variant="info">
 					<AlertDescription>
-						Dieser Browser unterstützt keine Push-Benachrichtigungen. Aktuelle Versionen von Chrome,
-						Edge, Firefox und Safari können es.
+						{t('profile.notifications.unsupported')}
 					</AlertDescription>
 				</Alert>
 			{:else if permission === 'denied' && !thisActive}
 				<Alert variant="warning">
-					<AlertTitle>Im Browser blockiert</AlertTitle>
+					<AlertTitle>{t('profile.notifications.blockedTitle')}</AlertTitle>
 					<AlertDescription>
-						Benachrichtigungen für diese Seite wurden abgelehnt. Erlaube sie in den
-						Website-Einstellungen des Browsers (Schloss-Symbol neben der Adresse) und lade die Seite
-						neu.
+						{t('profile.notifications.blockedText')}
 					</AlertDescription>
 				</Alert>
 			{:else}
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div class="flex items-center gap-2 text-sm">
 						{#if thisActive}
-							<Badge variant="secondary"><BellRing class="size-3.5" /> Aktiv</Badge>
+							<Badge variant="secondary"
+								><BellRing class="size-3.5" /> {t('profile.notifications.active')}</Badge
+							>
 							<span class="text-muted-foreground"
-								>Dieses Gerät bekommt Push-Benachrichtigungen.</span
+								>{t('profile.notifications.thisDeviceActive')}</span
 							>
 						{:else}
-							<span class="text-muted-foreground">Push ist auf diesem Gerät nicht aktiv.</span>
+							<span class="text-muted-foreground"
+								>{t('profile.notifications.thisDeviceInactive')}</span
+							>
 						{/if}
 					</div>
 					<div class="flex flex-wrap gap-2">
 						{#if thisActive}
-							<Button variant="outline" disabled={busy} onclick={sendTest}>Test senden</Button>
-							<Button variant="ghost" disabled={busy} onclick={deactivate}>Abschalten</Button>
+							<Button variant="outline" disabled={busy} onclick={sendTest}
+								>{t('profile.notifications.sendTest')}</Button
+							>
+							<Button variant="ghost" disabled={busy} onclick={deactivate}
+								>{t('profile.notifications.disable')}</Button
+							>
 						{:else}
 							<Button disabled={busy} onclick={activate}>
-								<BellRing /> Push aktivieren
+								<BellRing />
+								{t('profile.notifications.enable')}
 							</Button>
 						{/if}
 					</div>
 				</div>
 				{#if android}
 					<p class="text-muted-foreground text-sm">
-						Tipp: Über das Browser-Menü (⋮) → <strong>„Zum Startbildschirm hinzufügen“</strong> öffnet
-						sich EP Intern wie eine App.
+						{t('profile.notifications.androidBefore')}
+						<strong>{t('profile.notifications.androidStrong')}</strong>
+						{t('profile.notifications.androidAfter', { app: appName })}
 					</p>
 				{/if}
 			{/if}
 
 			{#if data && data.devices.length}
 				<div class="space-y-2">
-					<h3 class="text-sm font-medium">Registrierte Geräte</h3>
+					<h3 class="text-sm font-medium">{t('profile.notifications.registeredDevices')}</h3>
 					<ul class="divide-y rounded-md border">
 						{#each data.devices as d (d.id)}
 							<li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
 								<div class="min-w-0">
 									<div class="truncate font-medium">{d.label}</div>
 									<div class="text-muted-foreground text-xs">
-										seit {formatDateTimeDe(d.createdAt)}{d.lastSuccessAt
-											? ` · zuletzt erreicht ${formatDateTimeDe(d.lastSuccessAt)}`
+										{t('profile.notifications.deviceSince', {
+											date: formatDateTime(d.createdAt)
+										})}{d.lastSuccessAt
+											? t('profile.notifications.deviceLastReached', {
+													date: formatDateTime(d.lastSuccessAt)
+												})
 											: ''}
 									</div>
 								</div>
 								<Button
 									variant="ghost"
 									size="icon"
-									aria-label="Gerät {d.label} entfernen"
+									aria-label={t('profile.notifications.removeDevice', { label: d.label })}
 									onclick={() => removeDevice(d.id)}
 								>
 									<Trash2 />
@@ -313,8 +336,8 @@
 			{/if}
 			{#if swVersion}
 				<p class="text-muted-foreground text-xs">
-					App-Version auf diesem Gerät: {swVersion}{swVersion !== appVersion
-						? ' (veraltet – App einmal schließen und neu öffnen)'
+					{t('profile.notifications.appVersion', { version: swVersion })}{swVersion !== appVersion
+						? t('profile.notifications.appVersionOutdated')
 						: ''}
 				</p>
 			{/if}
@@ -323,26 +346,34 @@
 
 	<Card>
 		<CardHeader>
-			<CardTitle>Was bekomme ich wie?</CardTitle>
+			<CardTitle>{t('profile.notifications.prefsTitle')}</CardTitle>
 			<CardDescription>
-				Wähle je Benachrichtigung: <strong>Aus</strong>, <strong>E-Mail</strong>,
-				<strong>Beides</strong> oder nur <strong>Push</strong>. Änderungen gelten sofort.
+				{t('profile.notifications.prefsBefore')}
+				<strong>{t('profile.notifications.prefsOff')}</strong>{t('profile.notifications.prefsSep')}
+				<strong>{t('profile.notifications.prefsEmail')}</strong>{t(
+					'profile.notifications.prefsSep'
+				)}
+				<strong>{t('profile.notifications.prefsBoth')}</strong>
+				{t('profile.notifications.prefsOr')}
+				<strong>{t('profile.notifications.prefsPush')}</strong>{t(
+					'profile.notifications.prefsAfter'
+				)}
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="space-y-6">
 			{#if loadError}
-				<ErrorState message="Einstellungen konnten nicht geladen werden." onretry={load} />
+				<ErrorState message={t('profile.notifications.loadFailed')} onretry={load} />
 			{:else if !data}
-				<LoadingState label="Benachrichtigungen" rows={3} rowClass="h-10 w-full" />
+				<LoadingState label={t('profile.notifications.title')} rows={3} rowClass="h-10 w-full" />
 			{:else if !data.groups.length}
 				<p class="text-muted-foreground text-sm">
-					Für dich gibt es derzeit keine Benachrichtigungen.
+					{t('profile.notifications.none')}
 				</p>
 			{:else}
 				{#if wantsPush && (!hasDevices || !data.pushAvailable)}
 					<Alert variant="info">
 						<AlertDescription>
-							Solange kein Gerät für Push aktiv ist, kommen Push-Benachrichtigungen per E-Mail.
+							{t('profile.notifications.noDeviceFallback')}
 						</AlertDescription>
 					</Alert>
 				{/if}
@@ -368,7 +399,7 @@
 										</div>
 										<div class="flex w-full shrink-0 flex-col gap-2 sm:w-80">
 											<SegmentedSlider
-												label="Kanal für {item.label}"
+												label={t('profile.notifications.channelFor', { label: item.label })}
 												value={item.channel}
 												options={channelOptions(item)}
 												onchange={(v) => save(item, { channel: v })}
@@ -376,7 +407,7 @@
 											{#if item.digest && item.channel !== 'off'}
 												<SegmentedSlider
 													class="h-8 max-w-48"
-													label="Zeitpunkt für {item.label}"
+													label={t('profile.notifications.deliveryFor', { label: item.label })}
 													value={item.delivery}
 													options={DELIVERY_OPTIONS}
 													onchange={(v) => save(item, { delivery: v })}

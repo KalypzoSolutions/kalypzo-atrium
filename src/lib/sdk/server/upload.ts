@@ -1,3 +1,5 @@
+import { t } from '$lib/i18n';
+import { formatNumber } from '$lib/i18n/intl';
 /**
  * Einheitliches Lesen von Datei-Uploads (multipart) für Modul-Endpoints (#33).
  *
@@ -55,7 +57,7 @@ const baseType = (t: string | null | undefined) => (t ?? '').split(';')[0]!.trim
 
 function formatMb(bytes: number): string {
 	const mb = bytes / (1024 * 1024);
-	return Number.isInteger(mb) ? String(mb) : mb.toFixed(1).replace('.', ',');
+	return Number.isInteger(mb) ? String(mb) : formatNumber(mb, 1);
 }
 
 const fieldError = (field: string, message: string) =>
@@ -64,7 +66,7 @@ const fieldError = (field: string, message: string) =>
 /** Formulardaten lesen; kaputter Body → 400 „Ungültige Formulardaten“. */
 export async function readFormData(request: Request): Promise<FormData> {
 	return request.formData().catch(() => {
-		throw errors.badRequest('Ungültige Formulardaten');
+		throw errors.badRequest(t('sdk.upload.invalidForm'));
 	});
 }
 
@@ -75,16 +77,18 @@ export function checkUploadBytes(
 ): UploadedFile {
 	const field = rules.field ?? 'file';
 	const size = input.bytes.byteLength;
-	if (size === 0) throw fieldError(field, 'Die Datei ist leer');
+	if (size === 0) throw fieldError(field, t('sdk.upload.empty'));
 	if (size > rules.maxBytes) {
-		throw errors.tooLarge(`Die Datei ist zu groß (höchstens ${formatMb(rules.maxBytes)} MB).`);
+		throw errors.tooLarge(t('sdk.upload.tooLarge', { mb: formatMb(rules.maxBytes) }));
 	}
 	let contentType = baseType(input.contentType);
 	if (!contentType && rules.detectMissingType) contentType = detectContentType(input.bytes) ?? '';
 	if (rules.allowedTypes && !rules.allowedTypes.includes(contentType)) {
 		throw fieldError(
 			field,
-			rules.typesLabel ? `Dateityp nicht erlaubt (${rules.typesLabel})` : 'Dateityp nicht erlaubt'
+			rules.typesLabel
+				? t('sdk.upload.typeNotAllowedList', { types: rules.typesLabel })
+				: t('sdk.upload.typeNotAllowed')
 		);
 	}
 	if (rules.sniff !== false) assertContentMatches(input.bytes, contentType, [field]);
@@ -112,12 +116,12 @@ export async function takeUpload(form: FormData, rules: UploadRules): Promise<Up
 	const file = form.get(field);
 	if (!(file instanceof File) || (!required && file.size === 0)) {
 		if (!required) return null;
-		throw fieldError(field, 'Bitte eine Datei auswählen');
+		throw fieldError(field, t('sdk.upload.required'));
 	}
-	if (file.size === 0) throw fieldError(field, 'Die Datei ist leer');
+	if (file.size === 0) throw fieldError(field, t('sdk.upload.empty'));
 	// Größe vor dem Einlesen der Bytes prüfen
 	if (file.size > rules.maxBytes) {
-		throw errors.tooLarge(`Die Datei ist zu groß (höchstens ${formatMb(rules.maxBytes)} MB).`);
+		throw errors.tooLarge(t('sdk.upload.tooLarge', { mb: formatMb(rules.maxBytes) }));
 	}
 	const bytes = new Uint8Array(await file.arrayBuffer());
 	return checkUploadBytes({ bytes, contentType: file.type, name: file.name }, rules);
@@ -145,7 +149,7 @@ export async function readUpload(
 ): Promise<UploadedFile | null> {
 	const length = Number(request.headers.get('content-length') ?? '');
 	if (Number.isFinite(length) && length > rules.maxBytes + BODY_OVERHEAD) {
-		throw errors.tooLarge(`Die Datei ist zu groß (höchstens ${formatMb(rules.maxBytes)} MB).`);
+		throw errors.tooLarge(t('sdk.upload.tooLarge', { mb: formatMb(rules.maxBytes) }));
 	}
 	return takeUpload(await readFormData(request), rules);
 }

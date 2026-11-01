@@ -9,7 +9,7 @@ import { getRequestEvent } from '$app/server';
  * Better Auth liest (`ipAddressHeaders`) nur diesen Header. Eigene `X-Forwarded-For`-Auswertung
  * gibt es nirgends.
  */
-export const CLIENT_IP_HEADER = 'x-ep-client-ip';
+export const CLIENT_IP_HEADER = 'x-atrium-client-ip';
 
 /** `event.getClientAddress()` ohne Ausnahme (z. B. beim Prerendern) → `null`. */
 export function clientAddress(event: { getClientAddress(): string }): string | null {

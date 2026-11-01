@@ -2,12 +2,9 @@ import { fail } from '@sveltejs/kit';
 import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import QRCode from 'qrcode';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { getAuth } from '$lib/server/core/auth';
-import {
-	limitAuthAction,
-	TOO_MANY_ATTEMPTS,
-	type AuthLimitKind
-} from '$lib/server/core/auth/auth-limits';
+import { limitAuthAction, type AuthLimitKind } from '$lib/server/core/auth/auth-limits';
 import { clientAddress, withClientIp } from '$lib/server/core/auth/client-ip';
 import {
 	AVATAR_MAX_BYTES,
@@ -17,6 +14,7 @@ import {
 	updateOwnName
 } from '$lib/server/core/auth/profile';
 import { getDb, schema } from '$lib/server/core/database/client';
+import { invalidateUserLocale, userLocale } from '$lib/server/core/i18n/locale';
 import { isCoreError } from '$lib/server/core/errors';
 import { navigationFor } from '$lib/server/core/modules/service';
 import { enabledModuleIds } from '$lib/server/core/modules/state';
@@ -26,6 +24,7 @@ import { loadUserPrefs, resolveStartPage } from '$lib/server/core/settings/user-
 import { resolveTheme, THEME_PRESETS } from '$lib/appearance/presets';
 import { FAVORITES_MAX, THEMES_MAX, userThemeSchema } from '$lib/appearance/schema';
 import { authErrorMessage } from '../../login/auth-error';
+import { setLocaleCookie } from '../../login/locale-cookie';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -51,7 +50,7 @@ function listOwnSessions(userId: string) {
 export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
 	const canApiKeys = locals.ctx.permissions.has('core.api.manage');
-	const [sessions, prefs, nav, enabled, [dbUser], roles, apiKeys] = await Promise.all([
+	const [sessions, prefs, nav, enabled, [dbUser], roles, apiKeys, locale] = await Promise.all([
 		listOwnSessions(userId),
 		loadUserPrefs(userId),
 		navigationFor(locals.ctx),
@@ -81,7 +80,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 					.where(and(eq(schema.apiKey.ownerId, userId), isNull(schema.apiKey.revokedAt)))
 					.orderBy(desc(schema.apiKey.createdAt))
 					.limit(3)
-			: Promise.resolve([])
+			: Promise.resolve([]),
+		userLocale(userId)
 	]);
 	const startPage = resolveStartPage(
 		prefs.startPage,
@@ -92,13 +92,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 		pageSize: prefs.pageSize,
 		accentColor: prefs.accentColor,
 		density: prefs.density,
-		startPage
+		startPage,
+		/** Eigene Sprache (`''` = wie das System) */
+		locale: locale ?? ''
 	};
 	const themes = {
 		own: prefs.themes,
 		presets: THEME_PRESETS,
 		activeId: prefs.activeThemeId,
-		favorites: prefs.favorites.map((t) => t.id)
+		favorites: prefs.favorites.map((f) => f.id)
 	};
 	return {
 		profile: locals.user!,
@@ -123,8 +125,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		themes,
 		/** Auswahl für die Startseite: Dashboard, Profil und Modul-Navigation (nach Rechten) */
 		startPageOptions: [
-			{ value: '/dashboard', label: 'Dashboard' },
-			{ value: '/profile', label: 'Profil' },
+			{ value: '/dashboard', label: t('profile.startPage.dashboard') },
+			{ value: '/profile', label: t('profile.startPage.profile') },
 			...nav.map((n) => ({ value: n.path, label: n.label }))
 		],
 		/** IDs aktiver Module (für `profileSections` in `+page.ts`) */
@@ -133,10 +135,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 	};
 };
 
-const passwordSchema = z
-	.string()
-	.min(12, 'Das Passwort muss mindestens 12 Zeichen lang sein.')
-	.max(128);
+/** Funktion statt Konstante: die Meldung folgt der Sprache des Requests */
+const passwordSchema = () => z.string().min(12, t('profile.errors.passwordTooShort')).max(128);
 
 const THEME_COOKIE_AGE = 60 * 60 * 24 * 365;
 
@@ -159,12 +159,12 @@ export const actions: Actions = {
 		const current = String(f.get('currentPassword') ?? '');
 		const next = String(f.get('newPassword') ?? '');
 		if (next !== String(f.get('confirm') ?? '')) {
-			return fail(400, { section: 'password', error: 'Die Passwörter stimmen nicht überein.' });
+			return fail(400, { section: 'password', error: t('profile.errors.passwordMismatch') });
 		}
-		const p = passwordSchema.safeParse(next);
+		const p = passwordSchema().safeParse(next);
 		if (!p.success) return fail(400, { section: 'password', error: p.error.issues[0]?.message });
 		const headers = limitedHeaders(event, 'changePassword');
-		if (!headers) return fail(429, { section: 'password', error: TOO_MANY_ATTEMPTS });
+		if (!headers) return fail(429, { section: 'password', error: t('profile.errors.tooMany') });
 		try {
 			await getAuth().api.changePassword({
 				body: {
@@ -177,23 +177,23 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, {
 				section: 'password',
-				error: authErrorMessage(e, 'Passwort konnte nicht geändert werden.')
+				error: authErrorMessage(e, t('profile.errors.passwordChangeFailed'))
 			});
 		}
-		return { section: 'password', success: 'Passwort wurde geändert.' };
+		return { section: 'password', success: t('profile.success.passwordChanged') };
 	},
 
 	enable2fa: async (event) => {
 		const f = await event.request.formData();
 		const headers = limitedHeaders(event, 'enableTwoFactor');
-		if (!headers) return fail(429, { section: '2fa', error: TOO_MANY_ATTEMPTS });
+		if (!headers) return fail(429, { section: '2fa', error: t('profile.errors.tooMany') });
 		try {
 			const res = await getAuth().api.enableTwoFactor({
 				body: { password: String(f.get('password') ?? ''), method: 'totp' },
 				headers
 			});
 			if (!('totpURI' in res)) {
-				return fail(400, { section: '2fa', error: 'Aktivierung fehlgeschlagen.' });
+				return fail(400, { section: '2fa', error: t('profile.errors.enableFailed') });
 			}
 			return {
 				section: '2fa',
@@ -205,7 +205,7 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, {
 				section: '2fa',
-				error: authErrorMessage(e, 'Aktivierung fehlgeschlagen.')
+				error: authErrorMessage(e, t('profile.errors.enableFailed'))
 			});
 		}
 	},
@@ -213,22 +213,25 @@ export const actions: Actions = {
 	verify2fa: async (event) => {
 		const f = await event.request.formData();
 		const headers = limitedHeaders(event, 'verifyTotp');
-		if (!headers) return fail(429, { section: '2fa', error: TOO_MANY_ATTEMPTS });
+		if (!headers) return fail(429, { section: '2fa', error: t('profile.errors.tooMany') });
 		try {
 			await getAuth().api.verifyTOTP({
 				body: { code: String(f.get('code') ?? '').replace(/\s+/g, '') },
 				headers
 			});
 		} catch (e) {
-			return fail(400, { section: '2fa', error: authErrorMessage(e, 'Code ungültig.') });
+			return fail(400, {
+				section: '2fa',
+				error: authErrorMessage(e, t('profile.errors.codeInvalid'))
+			});
 		}
-		return { section: '2fa', success: 'Zwei-Faktor-Authentifizierung ist aktiv.' };
+		return { section: '2fa', success: t('profile.success.twoFactorEnabled') };
 	},
 
 	disable2fa: async (event) => {
 		const f = await event.request.formData();
 		const headers = limitedHeaders(event, 'disableTwoFactor');
-		if (!headers) return fail(429, { section: '2fa', error: TOO_MANY_ATTEMPTS });
+		if (!headers) return fail(429, { section: '2fa', error: t('profile.errors.tooMany') });
 		try {
 			await getAuth().api.disableTwoFactor({
 				body: { password: String(f.get('password') ?? '') },
@@ -237,10 +240,10 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, {
 				section: '2fa',
-				error: authErrorMessage(e, 'Deaktivierung fehlgeschlagen.')
+				error: authErrorMessage(e, t('profile.errors.disableFailed'))
 			});
 		}
-		return { section: '2fa', success: 'Zwei-Faktor-Authentifizierung wurde deaktiviert.' };
+		return { section: '2fa', success: t('profile.success.twoFactorDisabled') };
 	},
 
 	revokeSession: async ({ request, locals }) => {
@@ -250,10 +253,10 @@ export const actions: Actions = {
 		const sessions = await listOwnSessions(locals.user!.id);
 		const target = sessions.find((s) => s.id === id);
 		if (!target || id === locals.sessionId) {
-			return fail(400, { section: 'sessions', error: 'Session nicht gefunden.' });
+			return fail(400, { section: 'sessions', error: t('profile.errors.sessionNotFound') });
 		}
 		await auth.api.revokeSession({ body: { token: target.token }, headers: request.headers });
-		return { section: 'sessions', success: 'Session wurde beendet.' };
+		return { section: 'sessions', success: t('profile.success.sessionRevoked') };
 	},
 
 	revokeOtherSessions: async ({ request }) => {
@@ -262,10 +265,10 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, {
 				section: 'sessions',
-				error: authErrorMessage(e, 'Sessions konnten nicht beendet werden.')
+				error: authErrorMessage(e, t('profile.errors.sessionsRevokeFailed'))
 			});
 		}
-		return { section: 'sessions', success: 'Alle anderen Sessions wurden beendet.' };
+		return { section: 'sessions', success: t('profile.success.otherSessionsRevoked') };
 	},
 
 	saveSettings: async ({ request, locals, cookies, url }) => {
@@ -301,13 +304,22 @@ export const actions: Actions = {
 				);
 				await setSetting(locals.ctx, 'core.user.startPage', page);
 			}
+			if (f.has('locale')) {
+				// '' = wie das System; zusätzlich Cookie, damit auch Login/öffentliche Seiten passen
+				const raw = String(f.get('locale'));
+				const locale = raw === 'de' || raw === 'en' ? raw : '';
+				await setSetting(locals.ctx, 'core.user.locale', locale);
+				// `setSettings` leert den Cache schon; hier zusätzlich für den eigenen Request
+				invalidateUserLocale(locals.user!.id);
+				setLocaleCookie(cookies, locale, url.protocol === 'https:');
+			}
 		} catch (e) {
 			return fail(400, {
 				section: 'settings',
-				error: isCoreError(e) ? e.message : 'Einstellungen konnten nicht gespeichert werden.'
+				error: isCoreError(e) ? e.message : t('profile.errors.settingsSaveFailed')
 			});
 		}
-		return { section: 'settings', success: 'Einstellungen gespeichert.' };
+		return { section: 'settings', success: t('profile.success.settingsSaved') };
 	},
 
 	saveTheme: async ({ request, locals }) => {
@@ -322,14 +334,17 @@ export const actions: Actions = {
 		if (!parsed.success) {
 			return fail(400, {
 				section: 'themes',
-				error: parsed.error.issues[0]?.message ?? 'Ungültiges Theme.'
+				error: parsed.error.issues[0]?.message ?? t('profile.errors.invalidThemeData')
 			});
 		}
 		const theme = parsed.data;
 		const prefs = await loadUserPrefs(locals.user!.id);
 		const exists = prefs.themes.some((t) => t.id === theme.id);
 		if (!exists && prefs.themes.length >= THEMES_MAX) {
-			return fail(400, { section: 'themes', error: `Höchstens ${THEMES_MAX} eigene Themes.` });
+			return fail(400, {
+				section: 'themes',
+				error: t('profile.errors.themesMax', { max: THEMES_MAX })
+			});
 		}
 		const list = exists
 			? prefs.themes.map((t) => (t.id === theme.id ? theme : t))
@@ -347,17 +362,21 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, {
 				section: 'themes',
-				error: isCoreError(e) ? e.message : 'Theme konnte nicht gespeichert werden.'
+				error: isCoreError(e) ? e.message : t('profile.errors.themeSaveFailed')
 			});
 		}
-		return { section: 'themes', success: `Theme „${theme.name}“ gespeichert.`, id: theme.id };
+		return {
+			section: 'themes',
+			success: t('profile.success.themeSaved', { name: theme.name }),
+			id: theme.id
+		};
 	},
 
 	deleteTheme: async ({ request, locals }) => {
 		const id = String((await request.formData()).get('id') ?? '');
 		const prefs = await loadUserPrefs(locals.user!.id);
 		const theme = prefs.themes.find((t) => t.id === id);
-		if (!theme) return fail(404, { section: 'themes', error: 'Theme nicht gefunden.' });
+		if (!theme) return fail(404, { section: 'themes', error: t('profile.errors.themeNotFound') });
 		try {
 			await setSetting(
 				locals.ctx,
@@ -375,10 +394,10 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, {
 				section: 'themes',
-				error: isCoreError(e) ? e.message : 'Theme konnte nicht gelöscht werden.'
+				error: isCoreError(e) ? e.message : t('profile.errors.themeDeleteFailed')
 			});
 		}
-		return { section: 'themes', success: `Theme „${theme.name}“ gelöscht.` };
+		return { section: 'themes', success: t('profile.success.themeDeleted', { name: theme.name }) };
 	},
 
 	toggleFavorite: async ({ request, locals }) => {
@@ -387,18 +406,21 @@ export const actions: Actions = {
 		const on = f.get('on') === '1';
 		const prefs = await loadUserPrefs(locals.user!.id);
 		if (!id || !resolveTheme(id, prefs.themes)) {
-			return fail(400, { section: 'themes', error: 'Unbekanntes Theme.' });
+			return fail(400, { section: 'themes', error: t('profile.errors.unknownThemeDot') });
 		}
 		const current = prefs.favorites.map((t) => t.id).filter((x) => x !== id);
 		if (on && current.length >= FAVORITES_MAX) {
-			return fail(400, { section: 'themes', error: `Höchstens ${FAVORITES_MAX} Favoriten.` });
+			return fail(400, {
+				section: 'themes',
+				error: t('profile.errors.favoritesMax', { max: FAVORITES_MAX })
+			});
 		}
 		try {
 			await setSetting(locals.ctx, 'core.user.themeFavorites', on ? [...current, id] : current);
 		} catch (e) {
 			return fail(400, {
 				section: 'themes',
-				error: isCoreError(e) ? e.message : 'Favorit konnte nicht gespeichert werden.'
+				error: isCoreError(e) ? e.message : t('profile.errors.favoriteSaveFailed')
 			});
 		}
 		return { section: 'themes' };
@@ -408,14 +430,14 @@ export const actions: Actions = {
 		const id = String((await request.formData()).get('id') ?? '');
 		const prefs = await loadUserPrefs(locals.user!.id);
 		if (id && !resolveTheme(id, prefs.themes)) {
-			return fail(400, { section: 'themes', error: 'Unbekanntes Theme.' });
+			return fail(400, { section: 'themes', error: t('profile.errors.unknownThemeDot') });
 		}
 		try {
 			await setSetting(locals.ctx, 'core.user.activeTheme', id);
 		} catch (e) {
 			return fail(400, {
 				section: 'themes',
-				error: isCoreError(e) ? e.message : 'Theme konnte nicht gewählt werden.'
+				error: isCoreError(e) ? e.message : t('profile.errors.themeActivateFailed')
 			});
 		}
 		return { section: 'themes' };
@@ -428,10 +450,10 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, {
 				section: 'account',
-				error: isCoreError(e) ? e.message : 'Name konnte nicht geändert werden.'
+				error: isCoreError(e) ? e.message : t('profile.errors.nameSaveFailed')
 			});
 		}
-		return { section: 'account', success: 'Name wurde gespeichert.' };
+		return { section: 'account', success: t('profile.success.nameSaved') };
 	},
 
 	changeEmail: async ({ request, locals }) => {
@@ -443,8 +465,8 @@ export const actions: Actions = {
 					.trim()
 					.toLowerCase()
 					.max(255)
-					.pipe(z.email('Bitte eine gültige E-Mail-Adresse eingeben.')),
-				password: z.string().min(1, 'Bitte das Passwort eingeben.').max(128)
+					.pipe(z.email(t('profile.errors.invalidEmail'))),
+				password: z.string().min(1, t('profile.errors.passwordRequired')).max(128)
 			})
 			.safeParse({ newEmail: f.get('newEmail'), password: f.get('password') });
 		if (!parsed.success) {
@@ -457,14 +479,13 @@ export const actions: Actions = {
 				section: 'email',
 				error: isCoreError(e)
 					? e.message
-					: authErrorMessage(e, 'Die Änderung konnte nicht angefragt werden.')
+					: authErrorMessage(e, t('profile.errors.emailChangeFailed'))
 			});
 		}
 		// Neutrale Antwort: unabhängig davon, ob die Adresse bereits vergeben ist
 		return {
 			section: 'email',
-			success:
-				'Wir haben einen Bestätigungslink an die neue Adresse gesendet. Die Adresse ändert sich erst nach Klick auf den Link (1 Stunde gültig).'
+			success: t('profile.success.emailChangeRequested')
 		};
 	},
 
@@ -472,11 +493,11 @@ export const actions: Actions = {
 		const f = await request.formData();
 		const file = f.get('avatar');
 		if (!(file instanceof File) || file.size === 0) {
-			return fail(400, { section: 'avatar', error: 'Bitte ein Bild auswählen.' });
+			return fail(400, { section: 'avatar', error: t('profile.errors.avatarRequired') });
 		}
 		// Größe vor dem Einlesen prüfen (kein Puffern überlanger Uploads)
 		if (file.size > AVATAR_MAX_BYTES) {
-			return fail(413, { section: 'avatar', error: 'Das Bild darf höchstens 2 MB groß sein' });
+			return fail(413, { section: 'avatar', error: t('profile.errors.avatarTooLarge') });
 		}
 		try {
 			await setOwnAvatar(locals.ctx, {
@@ -486,10 +507,10 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(isCoreError(e) ? e.status : 400, {
 				section: 'avatar',
-				error: isCoreError(e) ? e.message : 'Profilbild konnte nicht gespeichert werden.'
+				error: isCoreError(e) ? e.message : t('profile.errors.avatarSaveFailed')
 			});
 		}
-		return { section: 'avatar', success: 'Profilbild wurde gespeichert.' };
+		return { section: 'avatar', success: t('profile.success.avatarSaved') };
 	},
 
 	removeAvatar: async ({ locals }) => {
@@ -498,9 +519,9 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, {
 				section: 'avatar',
-				error: isCoreError(e) ? e.message : 'Profilbild konnte nicht entfernt werden.'
+				error: isCoreError(e) ? e.message : t('profile.errors.avatarRemoveFailed')
 			});
 		}
-		return { section: 'avatar', success: 'Profilbild wurde entfernt.' };
+		return { section: 'avatar', success: t('profile.success.avatarRemoved') };
 	}
 };

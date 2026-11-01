@@ -4,6 +4,7 @@
  */
 import sanitizeHtml from 'sanitize-html';
 import type { AssistCheck, AssistFormat } from '$lib/sdk/types/assist';
+import { t } from '$lib/i18n';
 import { RICH_TEXT_TAGS, sanitizeRichText } from '$lib/sdk/server/html';
 
 const PLACEHOLDER_RE = /\{\{\s*[A-Za-zÄÖÜäöüß_][\w-]*\s*\}\}|\{\s*[A-Za-zÄÖÜäöüß_][\w-]*\s*\}/g;
@@ -117,27 +118,39 @@ export function verifyOutput(input: VerifyInput): AssistCheck[] {
 	const allowed = new Set([...(input.allowedPlaceholders ?? []), ...before]);
 	const unknown = after.filter((p) => !allowed.has(p));
 	if (missing.length) {
-		checks.push({ level: 'warning', message: `Platzhalter fehlt: ${missing.join(', ')}` });
+		checks.push({
+			level: 'warning',
+			message: t('ai.verify.placeholderMissing', { list: missing.join(', ') })
+		});
 	} else if (before.length) {
-		checks.push({ level: 'ok', message: `Platzhalter erhalten: ${before.join(', ')}` });
+		checks.push({
+			level: 'ok',
+			message: t('ai.verify.placeholdersKept', { list: before.join(', ') })
+		});
 	}
 	if (unknown.length) {
-		checks.push({ level: 'warning', message: `Unbekannter Platzhalter: ${unknown.join(', ')}` });
+		checks.push({
+			level: 'warning',
+			message: t('ai.verify.placeholderUnknown', { list: unknown.join(', ') })
+		});
 	}
 	const known = numbersIn(input.sources);
 	const invented = [...numbersIn(htmlToText(input.output))].filter((n) => !known.has(n));
 	if (invented.length) {
 		checks.push({
 			level: 'warning',
-			message: `Enthält Zahlen, die nicht vorgegeben waren (${invented.slice(0, 5).join(', ')}) – bitte prüfen`
+			message: t('ai.verify.inventedNumbers', { list: invented.slice(0, 5).join(', ') })
 		});
 	} else {
-		checks.push({ level: 'ok', message: 'Keine neuen Zahlen oder Daten erfunden' });
+		checks.push({ level: 'ok', message: t('ai.verify.noInventedNumbers') });
 	}
 	if (input.output.length > input.maxChars) {
 		checks.push({
 			level: 'warning',
-			message: `Länger als erlaubt (${input.output.length} von ${input.maxChars} Zeichen) – bitte kürzen`
+			message: t('ai.verify.tooLong', {
+				length: String(input.output.length),
+				max: String(input.maxChars)
+			})
 		});
 	}
 	return checks;

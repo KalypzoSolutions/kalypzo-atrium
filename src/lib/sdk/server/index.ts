@@ -57,6 +57,30 @@ export type {
 	ProcessImageOptions
 } from '$lib/server/core/images';
 export type { RenderPdfPageOptions, RenderedPdfPage } from '$lib/server/core/pdf/raster';
+export {
+	createLetterTemplate,
+	letterGeometry,
+	foldMarks,
+	addressField,
+	neutralFooterLines,
+	GEOMETRY as LETTER_GEOMETRY,
+	GEOMETRY_LANDSCAPE as LETTER_GEOMETRY_LANDSCAPE
+} from '$lib/server/core/pdf/parts/letter';
+export type {
+	LetterGeometry,
+	LetterheadSpec,
+	LetterOrientation,
+	LetterTemplateOptions
+} from '$lib/server/core/pdf/parts/letter';
+export { CARLITO_STACK } from '$lib/server/core/pdf/fonts';
+export { escapeHtml } from '$lib/server/core/pdf/templates';
+export type {
+	PdfLayoutData,
+	PdfTemplate,
+	PdfTemplateInput,
+	PdfTemplatePart
+} from '$lib/server/core/pdf/templates';
+export type { MailBranding } from '$lib/server/core/mail-layout';
 
 export { manifestFromPackage } from './module-package';
 

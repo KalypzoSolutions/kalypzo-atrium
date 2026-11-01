@@ -1,3 +1,4 @@
+import { getLocale } from '$lib/i18n';
 import type { JsonSchema } from '$lib/api-docs/types';
 import { buildOpenApiDocument } from '../openapi';
 import { allEndpoints } from '../registry';
@@ -21,10 +22,11 @@ type Json = Record<string, unknown>;
 const MAX_DEPTH = 24;
 const REF_PREFIX = '#/components/schemas/';
 
-let cache: { key: number; doc: OpenApiDocument } | null = null;
+let cache: { key: string; doc: OpenApiDocument } | null = null;
 
-/** Dokument je Prozess cachen; neu bauen, sobald sich die Anzahl der Endpunkte ändert. */
-function getDocument(key: number): OpenApiDocument {
+/** Dokument je Prozess cachen; neu bauen, sobald sich die Anzahl der Endpunkte oder die Sprache ändert. */
+function getDocument(count: number): OpenApiDocument {
+	const key = `${count}:${getLocale()}`;
 	if (!cache || cache.key !== key) cache = { key, doc: buildOpenApiDocument() };
 	return cache.doc;
 }

@@ -5,6 +5,7 @@
  * 3. sonst `<basis>/atrium-module.json` (Ein-Modul-Repository bzw. Link direkt auf einen Modulordner).
  * Jeder Modulordner braucht `atrium-module.json` und `module.ts`; die Ordner-ID muss zur Paket-ID passen.
  */
+import { t } from '$lib/i18n';
 import { errors } from '../../errors';
 import {
 	MODULE_CATALOG_FILE,
@@ -46,7 +47,9 @@ function parseJson(files: ArchiveFiles, path: string): unknown {
 	try {
 		return JSON.parse(text(data).replace(BOM, ''));
 	} catch {
-		throw errors.validation([{ path: ['archive'], message: `${path} ist kein gültiges JSON` }]);
+		throw errors.validation([
+			{ path: ['archive'], message: t('install.discover.invalidJson', { path }) }
+		]);
 	}
 }
 
@@ -56,15 +59,15 @@ function readModule(files: ArchiveFiles, dir: string, expectedId?: string): Disc
 		join(dir, MODULE_PACKAGE_FILE)
 	);
 	if (expectedId && pkg.id !== expectedId) {
-		throw new Error(`Katalog nennt „${expectedId}“, atrium-module.json „${pkg.id}“`);
+		throw new Error(t('install.discover.catalogMismatch', { expected: expectedId, id: pkg.id }));
 	}
-	if (!files.has(join(dir, 'module.ts'))) throw new Error('module.ts fehlt');
+	if (!files.has(join(dir, 'module.ts'))) throw new Error(t('install.discover.moduleTsMissing'));
 	const prefix = dir ? `${dir}/` : '';
 	const own: ArchiveFiles = new Map();
 	for (const [k, v] of files) if (k.startsWith(prefix)) own.set(k.slice(prefix.length), v);
 	const folder = dir.split('/').pop() ?? '';
 	if (dir && folder !== pkg.id) {
-		throw new Error(`Ordner „${folder}“ passt nicht zur Modul-ID „${pkg.id}“`);
+		throw new Error(t('install.discover.folderMismatch', { folder, id: pkg.id }));
 	}
 	const migrations = [...own.keys()]
 		.filter((k) => /^migrations\/[^/]+\.sql$/.test(k))
@@ -77,7 +80,7 @@ function readModule(files: ArchiveFiles, dir: string, expectedId?: string): Disc
 export function discoverModules(files: ArchiveFiles, base = ''): DiscoveredRepo {
 	const b = base.replace(/^\/+|\/+$/g, '');
 	if (b && ![...files.keys()].some((k) => k.startsWith(`${b}/`))) {
-		throw errors.notFound(`Ordner „${b}“ gibt es im Repository nicht`);
+		throw errors.notFound(t('install.discover.folderMissing', { folder: b }));
 	}
 	const problems: DiscoveredRepo['problems'] = [];
 	const modules: DiscoveredModule[] = [];
@@ -96,7 +99,7 @@ export function discoverModules(files: ArchiveFiles, base = ''): DiscoveredRepo 
 			throw errors.validation([
 				{
 					path: ['archive'],
-					message: `${MODULE_CATALOG_FILE}: ${r.error.issues[0]?.message ?? 'ungültig'}`
+					message: `${MODULE_CATALOG_FILE}: ${r.error.issues[0]?.message ?? t('install.discover.invalid')}`
 				}
 			]);
 		}
@@ -122,7 +125,10 @@ export function discoverModules(files: ArchiveFiles, base = ''): DiscoveredRepo 
 		throw errors.validation([
 			{
 				path: ['archive'],
-				message: `Keine Module gefunden (erwartet ${MODULE_CATALOG_FILE} oder ${MODULE_PACKAGE_FILE})`
+				message: t('install.discover.noModules', {
+					catalog: MODULE_CATALOG_FILE,
+					pkg: MODULE_PACKAGE_FILE
+				})
 			}
 		]);
 	}

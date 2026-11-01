@@ -3,6 +3,7 @@
  * (`loadIconSet`, eigener Chunk), Suche über englische Namen und deutsche Begriffe.
  * Daten: `lucide-icons.json`, erzeugt mit `node scripts/generate-icon-data.mjs`.
  */
+import { getLocale } from '$lib/i18n';
 import { ICON_KEYWORDS_DE } from './keywords-de';
 
 export { ICON_KEYWORDS_DE, ICON_SUGGESTIONS } from './keywords-de';
@@ -96,9 +97,9 @@ export function searchIcons(set: IconSet, query: string, limit = Infinity): stri
 	return scored.slice(0, limit).map((s) => s.name);
 }
 
-/** Lesbare Bezeichnung: erster deutscher Begriff (groß geschrieben), sonst der Name */
+/** Lesbare Bezeichnung: auf Deutsch der erste deutsche Begriff (groß geschrieben), sonst der Name */
 export function iconLabel(name: string): string {
-	const de = ICON_KEYWORDS_DE[name]?.[0];
+	const de = getLocale() === 'de' ? ICON_KEYWORDS_DE[name]?.[0] : undefined;
 	if (de) return de.charAt(0).toUpperCase() + de.slice(1);
 	return name.replace(/-/g, ' ');
 }

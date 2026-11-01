@@ -1,5 +1,6 @@
 <script lang="ts">
 	// Knopf „Schreibhilfe“ + Blatt. Unsichtbar, solange die Textstelle für die Person nicht freigegeben ist.
+	import { t } from '$lib/i18n';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import { Button } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils.js';
@@ -14,7 +15,7 @@
 		onitems,
 		tasks,
 		variant = 'toolbar',
-		label = 'Schreibhilfe',
+		label = t('assistant.button'),
 		disabled = false,
 		class: className
 	}: {
@@ -36,8 +37,9 @@
 	// Ohne erlaubte Aufgabe (z. B. nur Bildbeschreibung, Bilder aber gesperrt) kein Knopf
 	const visibleTasks = $derived(
 		(handle.info?.tasks ?? []).filter(
-			(t) =>
-				(!tasks || tasks.includes(t)) && (t !== 'alt-text' || handle.status?.allowImages === true)
+			(task) =>
+				(!tasks || tasks.includes(task)) &&
+				(task !== 'alt-text' || handle.status?.allowImages === true)
 		).length
 	);
 	let open = $state(false);

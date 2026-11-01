@@ -1,0 +1,17 @@
+{
+	"pageTitle": "E-Mail-Layout · Einstellungen",
+	"layout": {
+		"title": "Layout ausgehender E-Mails",
+		"description": "Kopf, Signatur und Fußzeile aller E-Mails des Systems."
+	},
+	"preview": {
+		"title": "Vorschau",
+		"description": "So sehen ausgehende E-Mails aus. Speichere Änderungen zuerst, dann lade die Vorschau neu.",
+		"frameTitle": "Vorschau des E-Mail-Layouts",
+		"reload": "Vorschau neu laden"
+	},
+	"errors": {
+		"unauthenticated": "Nicht angemeldet",
+		"forbidden": "Keine Berechtigung"
+	}
+}

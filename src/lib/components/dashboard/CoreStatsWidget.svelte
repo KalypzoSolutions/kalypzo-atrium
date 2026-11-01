@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
+	import { formatNumber } from '$lib/i18n/intl';
 	import { onMount } from 'svelte';
 	import ChartBar from '@lucide/svelte/icons/chart-bar';
 	import { DashboardCard } from '$lib/components/layout';
@@ -10,7 +12,6 @@
 	let loading = $state(true);
 	let error = $state('');
 	let stats = $state<{ key: string; label: string; value: number; href: string }[]>([]);
-	const fmt = new Intl.NumberFormat('de-DE');
 
 	async function load(fresh = false) {
 		loading = true;
@@ -22,23 +23,28 @@
 			if (d.users !== undefined)
 				next.push({
 					key: 'users',
-					label: 'Aktive Benutzer*innen',
+					label: t('widgets.stats.users'),
 					value: d.users,
 					href: '/admin/users'
 				});
 			if (d.modules !== undefined)
 				next.push({
 					key: 'modules',
-					label: 'Aktive Module',
+					label: t('widgets.stats.modules'),
 					value: d.modules,
 					href: '/admin/modules'
 				});
 			if (d.apiKeys !== undefined)
-				next.push({ key: 'keys', label: 'Aktive API-Keys', value: d.apiKeys, href: '/admin/api' });
+				next.push({
+					key: 'keys',
+					label: t('widgets.stats.apiKeys'),
+					value: d.apiKeys,
+					href: '/admin/api'
+				});
 			stats = next;
 			onstatus?.(next.length ? 'ready' : 'empty');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Die Kennzahlen konnten nicht geladen werden.';
+			error = e instanceof Error ? e.message : t('widgets.stats.loadFailed');
 			onstatus?.('error');
 		} finally {
 			loading = false;
@@ -51,14 +57,14 @@
 </script>
 
 <DashboardCard
-	title="Kennzahlen"
+	title={t('widgets.stats.title')}
 	icon={ChartBar}
 	{loading}
 	{error}
 	onretry={() => load(true)}
 	skeletonRows={1}
 	empty={!stats.length}
-	emptyText="Keine Kennzahlen verfügbar."
+	emptyText={t('widgets.stats.empty')}
 >
 	<ul class="grid grid-cols-1 gap-2 min-[400px]:grid-cols-3">
 		{#each stats as s (s.key)}
@@ -67,7 +73,7 @@
 					href={s.href}
 					class="flex h-full flex-col gap-1 rounded-md border p-3 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 				>
-					<span class="text-2xl font-semibold tabular-nums">{fmt.format(s.value)}</span>
+					<span class="text-2xl font-semibold tabular-nums">{formatNumber(s.value)}</span>
 					<span class="text-xs text-muted-foreground">{s.label}</span>
 				</a>
 			</li>

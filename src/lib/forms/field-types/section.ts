@@ -1,14 +1,19 @@
+import { t } from '$lib/i18n';
 import { z } from 'zod';
 import type { FieldTypeSpec } from '../registry';
 import type { SectionField } from '../types';
 
 export const sectionFieldType: FieldTypeSpec<SectionField> = {
 	type: 'section',
-	label: 'Abschnitt',
-	description: 'Überschrift zum Gliedern, ohne Eingabe',
+	get label() {
+		return t('forms.types.section.label');
+	},
+	get description() {
+		return t('forms.types.section.description');
+	},
 	icon: 'heading',
 	hasValue: false,
-	create: (id, key) => ({ id, key, type: 'section', label: 'Neuer Abschnitt' }),
+	create: (id, key) => ({ id, key, type: 'section', label: t('forms.defaults.newSection') }),
 	schema() {
 		return z.never();
 	}

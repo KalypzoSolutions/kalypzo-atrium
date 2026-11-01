@@ -30,6 +30,8 @@
 		ApiCatalogFilter,
 		ApiMethod
 	} from '$lib/api-docs/types';
+	import { t } from '$lib/i18n';
+	import { formatDateTime } from '$lib/i18n/intl';
 	import EndpointSheet from './EndpointSheet.svelte';
 
 	let { data }: { data: { catalog: ApiCatalog } } = $props();
@@ -70,12 +72,7 @@
 	const filterActive = $derived(
 		!!filter.search || !!moduleId || !!method || !!access || onlyAllowed
 	);
-	const generatedAt = $derived(
-		new Date(catalog.generatedAt).toLocaleString('de-DE', {
-			dateStyle: 'medium',
-			timeStyle: 'short'
-		})
-	);
+	const generatedAt = $derived(formatDateTime(catalog.generatedAt));
 
 	/** Alle Schlüssel, die der Filter in der URL belegen kann */
 	const FILTER_KEYS = [
@@ -127,29 +124,29 @@
 	}
 
 	const ACCESS_LABEL: Record<ApiAccess, string> = {
-		public: 'Öffentlich',
-		authenticated: 'Anmeldung',
-		permission: 'Recht'
+		public: 'api-docs.accessShort.public',
+		authenticated: 'api-docs.accessShort.authenticated',
+		permission: 'api-docs.accessShort.permission'
 	};
 
 	/** Pfad in Text- und Parameterteile zerlegen (`:name` hervorheben) */
 	function pathParts(path: string): { text: string; param: boolean }[] {
 		return path
 			.split(/(:[A-Za-z0-9_]+)/)
-			.filter((t) => t !== '')
+			.filter((s) => s !== '')
 			.map((text) => ({ text, param: text.startsWith(':') }));
 	}
 </script>
 
-<PageTitle title="API-Übersicht" />
+<PageTitle title={t('api-docs.page.title')} />
 
 <div class="space-y-6">
 	<div>
 		<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
 			<div class="min-w-0">
-				<h2 class="text-section">API-Übersicht</h2>
+				<h2 class="text-section">{t('api-docs.page.title')}</h2>
 				<p class="text-sm text-muted-foreground">
-					Alle REST-Endpunkte von Core und Modulen – automatisch aus dem Code erzeugt.
+					{t('api-docs.page.description')}
 				</p>
 			</div>
 			<Button
@@ -165,7 +162,8 @@
 
 		<div class="-mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
 			<span
-				><span class="font-medium text-foreground tabular-nums">{stats.total}</span> Endpunkte</span
+				><span class="font-medium text-foreground tabular-nums">{stats.total}</span>
+				{t('api-docs.page.endpoints')}</span
 			>
 			<span class="flex flex-wrap items-center gap-1.5">
 				{#each API_METHODS as m (m)}
@@ -181,12 +179,14 @@
 				{/each}
 			</span>
 			<span
-				><span class="font-medium text-foreground tabular-nums">{stats.publicCount}</span> öffentlich</span
+				><span class="font-medium text-foreground tabular-nums">{stats.publicCount}</span>
+				{t('api-docs.page.public')}</span
 			>
 			<span
-				><span class="font-medium text-foreground tabular-nums">{stats.allowedCount}</span> für dich aufrufbar</span
+				><span class="font-medium text-foreground tabular-nums">{stats.allowedCount}</span>
+				{t('api-docs.page.allowed')}</span
 			>
-			<span>Stand: {generatedAt}</span>
+			<span>{t('api-docs.page.generatedAt', { date: generatedAt })}</span>
 		</div>
 	</div>
 
@@ -195,44 +195,44 @@
 		role="search"
 	>
 		<div class="space-y-1.5 sm:col-span-2 lg:col-span-1">
-			<Label for="api-docs-search">Suche</Label>
+			<Label for="api-docs-search">{t('api-docs.page.search')}</Label>
 			<Input
 				id="api-docs-search"
 				type="search"
 				bind:value={search}
 				oninput={syncUrl}
-				placeholder="Pfad, Beschreibung, Recht …"
+				placeholder={t('api-docs.page.searchPlaceholder')}
 			/>
 		</div>
 		<div class="space-y-1.5">
-			<Label for="api-docs-module">Modul</Label>
+			<Label for="api-docs-module">{t('api-docs.page.module')}</Label>
 			<SelectField
 				id="api-docs-module"
-				label="Modul"
+				label={t('api-docs.page.module')}
 				options={modules}
-				emptyLabel="Alle Module"
+				emptyLabel={t('api-docs.page.allModules')}
 				bind:value={moduleId}
 				onchange={syncUrl}
 			/>
 		</div>
 		<div class="space-y-1.5">
-			<Label for="api-docs-method">Methode</Label>
+			<Label for="api-docs-method">{t('api-docs.page.method')}</Label>
 			<SelectField
 				id="api-docs-method"
-				label="Methode"
+				label={t('api-docs.page.method')}
 				options={METHOD_OPTIONS}
-				emptyLabel="Alle Methoden"
+				emptyLabel={t('api-docs.page.allMethods')}
 				bind:value={method}
 				onchange={syncUrl}
 			/>
 		</div>
 		<div class="space-y-1.5">
-			<Label for="api-docs-access">Zugriff</Label>
+			<Label for="api-docs-access">{t('api-docs.page.access')}</Label>
 			<SelectField
 				id="api-docs-access"
-				label="Zugriff"
+				label={t('api-docs.page.access')}
 				options={ACCESS_OPTIONS}
-				emptyLabel="Jeder Zugriff"
+				emptyLabel={t('api-docs.page.anyAccess')}
 				bind:value={access}
 				onchange={syncUrl}
 			/>
@@ -248,28 +248,30 @@
 					}
 				}
 			/>
-			<Label for="api-docs-allowed" class="whitespace-nowrap">Nur für mich aufrufbar</Label>
+			<Label for="api-docs-allowed" class="whitespace-nowrap"
+				>{t('api-docs.page.onlyAllowed')}</Label
+			>
 		</div>
 	</div>
 
 	<p class="text-xs text-muted-foreground" aria-live="polite">
-		{filtered.length} von {catalog.entries.length} Endpunkten
+		{t('api-docs.page.filteredCount', { shown: filtered.length, total: catalog.entries.length })}
 		{#if filterActive}
 			· <button
 				type="button"
 				class="underline underline-offset-2 hover:text-foreground"
-				onclick={resetFilters}>Filter zurücksetzen</button
+				onclick={resetFilters}>{t('api-docs.page.resetFilters')}</button
 			>
 		{/if}
 	</p>
 
 	{#if filtered.length === 0}
 		<EmptyState
-			title="Keine Endpunkte gefunden"
-			description="Kein Endpunkt passt zu Suche und Filtern."
+			title={t('api-docs.page.emptyTitle')}
+			description={t('api-docs.page.emptyDescription')}
 		>
 			{#if filterActive}
-				<Button variant="outline" onclick={resetFilters}>Filter zurücksetzen</Button>
+				<Button variant="outline" onclick={resetFilters}>{t('api-docs.page.resetFilters')}</Button>
 			{/if}
 		</EmptyState>
 	{:else}
@@ -277,24 +279,24 @@
 			<section aria-label={g.group.label}>
 				<DataTable
 					title={g.group.label}
-					description={g.entries.length === 1 ? '1 Endpunkt' : `${g.entries.length} Endpunkte`}
-					caption="Endpunkte: {g.group.label}"
+					description={t('api-docs.page.groupCount', { count: g.entries.length })}
+					caption={t('api-docs.page.groupCaption', { group: g.group.label })}
 					mobile="cards"
 				>
 					{#snippet head()}
 						<Table.Row>
-							<Table.Head class="w-20">Methode</Table.Head>
-							<Table.Head>Pfad</Table.Head>
-							<Table.Head>Beschreibung</Table.Head>
-							<Table.Head>Zugriff</Table.Head>
-							<Table.Head>Hinweise</Table.Head>
+							<Table.Head class="w-20">{t('api-docs.page.colMethod')}</Table.Head>
+							<Table.Head>{t('api-docs.page.colPath')}</Table.Head>
+							<Table.Head>{t('api-docs.page.colDescription')}</Table.Head>
+							<Table.Head>{t('api-docs.page.colAccess')}</Table.Head>
+							<Table.Head>{t('api-docs.page.colHints')}</Table.Head>
 						</Table.Row>
 					{/snippet}
 					{#each g.entries as entry (entry.id)}
 						<Table.Row
 							class="cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
 							tabindex={0}
-							aria-label="{entry.method} {entry.path} – Details öffnen"
+							aria-label={t('api-docs.page.rowLabel', { method: entry.method, path: entry.path })}
 							onclick={() => openEntry(entry)}
 							onkeydown={(e) => rowKey(e, entry)}
 						>
@@ -315,7 +317,7 @@
 							<Table.Cell class="whitespace-normal">
 								<div class="flex flex-col items-start gap-1">
 									<Badge variant={entry.access === 'public' ? 'default' : 'secondary'}
-										>{ACCESS_LABEL[entry.access]}</Badge
+										>{t(ACCESS_LABEL[entry.access])}</Badge
 									>
 									{#if entry.permission}
 										<code class="text-xs whitespace-nowrap text-muted-foreground"
@@ -327,13 +329,15 @@
 							<Table.Cell class="whitespace-normal">
 								<div class="flex flex-wrap gap-1">
 									{#if !entry.moduleEnabled}
-										<Badge variant="outline" class="text-muted-foreground">Modul inaktiv</Badge>
+										<Badge variant="outline" class="text-muted-foreground"
+											>{t('api-docs.page.moduleInactive')}</Badge
+										>
 									{/if}
 									{#if !entry.allowed && entry.moduleEnabled}
-										<Badge variant="destructive">Recht fehlt</Badge>
+										<Badge variant="destructive">{t('api-docs.page.permissionMissing')}</Badge>
 									{/if}
 									{#if entry.sessionOnly}
-										<Badge variant="outline">Nur Session</Badge>
+										<Badge variant="outline">{t('api-docs.page.sessionOnly')}</Badge>
 									{/if}
 									{#if entry.multipart}
 										<Badge variant="outline">multipart</Badge>

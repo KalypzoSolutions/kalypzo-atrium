@@ -1,0 +1,49 @@
+{
+	"everyone": "Everyone",
+	"hiddenMember": "Member",
+	"unknown": "Unknown",
+	"invalidPrincipal": "Unknown or not allowed",
+	"searchForbidden": "Only people who can share something here may use the sharing search",
+	"types": {
+		"everyone": "Everyone",
+		"group": "Group",
+		"role": "Role",
+		"user": "User",
+		"member": "Member"
+	},
+	"panel": {
+		"placeholder": "Search name or email …",
+		"searchLabel": "Search users",
+		"emptyResult": "No matching users",
+		"searchFailed": "Search failed",
+		"shareFailed": "Sharing failed",
+		"changeFailed": "Change failed",
+		"removeFailed": "Removing failed",
+		"newLevel": "Level for new share",
+		"shareWithEveryoneAria": "Share with {label} (everyone)",
+		"shareWithEveryone": "{label} (everyone)",
+		"results": "Search results",
+		"searching": "Searching …",
+		"addAria": "Add {name}",
+		"add": "Add",
+		"minChars": "Enter at least {count} characters.",
+		"access": "Access ({count})",
+		"notShared": "Not shared yet.",
+		"owner": "Owner",
+		"levelFor": "Level for {name}",
+		"removeAria": "Remove share for {name}"
+	},
+	"menu": {
+		"title": "Access",
+		"description": "Who may view or edit this item.",
+		"label": "Share",
+		"onlyYou": "Only you have access",
+		"persons": "{count} people have access: {names}",
+		"shares": "{count, plural, one {# share} other {# shares}}: {names}"
+	},
+	"dialog": {
+		"title": "Share",
+		"description": "Share this item with other users.",
+		"close": "Close"
+	}
+}

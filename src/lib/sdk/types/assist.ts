@@ -2,6 +2,7 @@
  * Typen der KI-Schreibhilfe (Client + Server). Module melden ihre Textstellen („Zwecke“) in
  * `ModuleDefinition.assist` an; die Oberfläche ruft `POST /api/v1/ai/assist` (SSE) auf.
  */
+import { translatedLabels } from './i18n-labels';
 
 /** Was die Schreibhilfe mit dem Text tun soll */
 export type AssistTask =
@@ -47,24 +48,24 @@ export const ASSIST_VARIANT_TASKS: readonly AssistTask[] = ['subject', 'title', 
 export const ASSIST_LIST_TASKS: readonly AssistTask[] = ['split', 'packing-list', 'todos'];
 
 /** Beschriftung der Aufgaben in der Oberfläche */
-export const ASSIST_TASK_LABELS: Record<AssistTask, string> = {
-	draft: 'Entwurf schreiben',
-	rewrite: 'Nach Wunsch ändern',
-	friendly: 'Freundlicher',
-	shorter: 'Kürzer',
-	simple: 'Einfache Sprache',
-	spelling: 'Rechtschreibung',
-	english: 'Englisch',
-	subject: 'Betreff vorschlagen',
-	title: 'Titel vorschlagen',
-	teaser: 'Kurztext vorschlagen',
-	'alt-text': 'Bild beschreiben',
-	split: 'In Schritte zerlegen',
-	'packing-list': 'Packliste vorschlagen',
-	summarize: 'Zusammenfassen',
-	continue: 'Weiterschreiben',
-	todos: 'Aufgaben ableiten'
-};
+export const ASSIST_TASK_LABELS: Record<AssistTask, string> = translatedLabels({
+	draft: 'modules.assistTask.draft',
+	rewrite: 'modules.assistTask.rewrite',
+	friendly: 'modules.assistTask.friendly',
+	shorter: 'modules.assistTask.shorter',
+	simple: 'modules.assistTask.simple',
+	spelling: 'modules.assistTask.spelling',
+	english: 'modules.assistTask.english',
+	subject: 'modules.assistTask.subject',
+	title: 'modules.assistTask.title',
+	teaser: 'modules.assistTask.teaser',
+	'alt-text': 'modules.assistTask.altText',
+	split: 'modules.assistTask.split',
+	'packing-list': 'modules.assistTask.packingList',
+	summarize: 'modules.assistTask.summarize',
+	continue: 'modules.assistTask.continue',
+	todos: 'modules.assistTask.todos'
+});
 
 /** Standard-Aufgaben für Fließtext */
 export const ASSIST_TEXT_TASKS: AssistTask[] = [

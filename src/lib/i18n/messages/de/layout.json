@@ -1,0 +1,106 @@
+{
+	"back": "Zurück",
+	"close": "Schließen",
+	"confirm": "Bestätigen",
+	"cancel": "Abbrechen",
+	"retry": "Erneut versuchen",
+	"loadFailed": "Laden fehlgeschlagen",
+	"loadingLabel": "Lädt {label} …",
+	"noEntries": "Keine Einträge",
+	"nothingNew": "Nichts Neues.",
+	"showAll": "Alle anzeigen",
+	"entriesCount": "{count} Einträge",
+	"unread": "{count} ungelesen",
+	"busy": {
+		"save": "Speichert …",
+		"load": "Lädt …",
+		"delete": "Löscht …",
+		"send": "Sendet …",
+		"upload": "Lädt hoch …"
+	},
+	"contacts": {
+		"namePlaceholder": "Bezeichnung, z. B. Mutter",
+		"add": "Hinzufügen",
+		"empty": "Keine Einträge.",
+		"nameFor": "Bezeichnung für {label} {n}",
+		"remove": "{label} {n} entfernen"
+	},
+	"cost": {
+		"summary": "Kostenverteilung, gesamt {total}: ",
+		"percent": "{value} %",
+		"lessThanOnePercent": "<1 %"
+	},
+	"file": {
+		"typeNotAllowed": "Dateityp nicht erlaubt",
+		"tooLarge": "Datei ist zu groß (maximal {max})",
+		"croppedTooLarge": "Zugeschnittenes Bild ist zu groß (maximal {max})",
+		"remove": "Entfernen",
+		"clearSelection": "Auswahl entfernen",
+		"changeCrop": "Ausschnitt ändern",
+		"storageUnavailable": "Die Dokumentenablage ist gerade nicht verfügbar (Speicher nicht eingerichtet oder nicht erreichbar).",
+		"notFound": "Das Dokument wurde nicht gefunden.",
+		"openFailed": "Die Datei konnte nicht geöffnet werden.",
+		"offline": "Die Datei konnte nicht geladen werden (keine Verbindung zum Server)."
+	},
+	"legal": {
+		"notice": "Informationen zur Verarbeitung deiner Angaben findest du in der Datenschutzerklärung.",
+		"label": "Rechtliche Hinweise",
+		"privacy": "Datenschutz",
+		"imprint": "Impressum"
+	},
+	"stepper": {
+		"decrease": "{label} verringern",
+		"increase": "{label} erhöhen"
+	},
+	"pagination": {
+		"range": "{from} - {to} von {total}",
+		"prev": "Zurück",
+		"next": "Weiter"
+	},
+	"pdf": {
+		"cannotEmbed": "Dein Gerät kann PDFs hier nicht direkt anzeigen. Öffne die Datei oder lade sie herunter.",
+		"open": "PDF öffnen",
+		"download": "Herunterladen",
+		"createFailed": "PDF konnte nicht erzeugt werden"
+	},
+	"pdfList": {
+		"title": "PDF-Liste erzeugen",
+		"description": "Wähle, welche Angaben in der Liste stehen – weniger Spalten ergeben weniger Seiten.",
+		"preset": "Voreinstellung",
+		"custom": "Eigene Auswahl",
+		"sensitive": "sensibel",
+		"hideEmpty": "Leere Spalten ausblenden",
+		"estimate": "≈ {pages, plural, one {# Seite} other {# Seiten}} · {count, plural, one {# Person} other {# Personen}} · {columns, plural, one {# Spalte} other {# Spalten}}",
+		"sensitiveNote": "Die Liste enthält Gesundheitsangaben. Nur für den vorgesehenen Zweck verwenden und danach vernichten.",
+		"creating": "Erzeuge PDF …",
+		"create": "PDF erzeugen"
+	},
+	"search": {
+		"placeholder": "Suchen …",
+		"label": "Suche"
+	},
+	"selection": {
+		"close": "Auswahl beenden",
+		"count": "{count} ausgewählt",
+		"none": "Keine",
+		"all": "Alle"
+	},
+	"summary": {
+		"showDetails": "Details zu {label} anzeigen",
+		"hideDetails": "Details zu {label} ausblenden",
+		"hint": "Hinweis zu {label}",
+		"minus": "minus"
+	},
+	"typedConfirm": {
+		"before": "Gib zur Bestätigung",
+		"after": "ein",
+		"confirmed": "Bestätigt.",
+		"mismatch": "Die Eingabe stimmt nicht überein – achte auf Großbuchstaben und Umlaute.",
+		"hint": "Groß-/Kleinschreibung beachten."
+	},
+	"undo": {
+		"action": "Rückgängig",
+		"done": "Rückgängig gemacht",
+		"failed": "Rückgängig fehlgeschlagen"
+	}
+}

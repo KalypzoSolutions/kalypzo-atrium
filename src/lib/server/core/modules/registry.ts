@@ -1,3 +1,5 @@
+import { localized, t, type LocalizedText, type MessageParams } from '$lib/i18n';
+import type { ModuleManifest, ResolvedModuleManifest } from '$lib/sdk/types';
 import { PERMISSION_PATTERN } from '../permissions/catalog';
 import { errors } from '../errors';
 import { NOTIFICATION_KEY_PATTERN, allowedChannels } from '$lib/sdk/types/notifications';
@@ -23,7 +25,45 @@ export interface BrokenModule {
 	version: string | null;
 	reason: string;
 }
-const broken = new Map<string, BrokenModule>();
+
+/** Grund als i18n-Schlüssel (beim Ausliefern übersetzt) oder fertiger Text (z. B. Fehlermeldung des Moduls) */
+export type BrokenReason = string | { key: string; params?: MessageParams };
+
+/** Eintrag beim Merken: Name je Sprache möglich, Grund ggf. als Schlüssel */
+export interface BrokenModuleEntry {
+	id: string;
+	name: LocalizedText;
+	version: string | null;
+	reason: BrokenReason;
+}
+const broken = new Map<string, BrokenModuleEntry>();
+
+function reasonText(reason: BrokenReason): string {
+	return typeof reason === 'string' ? reason : t(reason.key, reason.params);
+}
+
+/** Manifest mit aufgelösten Texten (Name, Navigation, Rechte-Beschreibungen) in der Sprache des Requests */
+export function resolveManifest(m: ModuleManifest): ResolvedModuleManifest {
+	const { permissionDescriptions: _descriptions, ...rest } = m;
+	void _descriptions;
+	return {
+		...rest,
+		name: localized(m.name),
+		navigation: m.navigation.map((n) => ({ ...n, label: localized(n.label) })),
+		...(m.permissionDescriptions
+			? {
+					permissionDescriptions: Object.fromEntries(
+						Object.entries(m.permissionDescriptions).map(([k, v]) => [k, localized(v)])
+					)
+				}
+			: {})
+	};
+}
+
+/** Paket ↔ Manifest: gleicher deutscher Name (das Manifest darf weitere Sprachen ergänzen) */
+function sameText(a: LocalizedText, b: LocalizedText): boolean {
+	return localized(a, 'de') === localized(b, 'de');
+}
 
 /** Paketbeschreibung (`atrium-module.json`) eines registrierten Moduls, sofern vorhanden */
 const packages = new Map<string, ModulePackage>();
@@ -40,7 +80,7 @@ function checkPackage(def: ModuleDefinition): ModulePackage | null {
 		a.length === b.length && [...a].sort().every((v, i) => v === [...b].sort()[i]);
 	const diffs: string[] = [];
 	if (pkg.id !== m.id) diffs.push(`id ${pkg.id} ≠ ${m.id}`);
-	if (pkg.name !== m.name) diffs.push('name');
+	if (!sameText(pkg.name, m.name)) diffs.push('name');
 	if ((pkg.description ?? '') !== (m.description ?? '')) diffs.push('description');
 	if (pkg.version !== m.version) diffs.push(`version ${pkg.version} ≠ ${m.version}`);
 	if (!sameSet(Object.keys(pkg.dependencies), m.dependencies)) diffs.push('dependencies');
@@ -206,13 +246,16 @@ export function getModulePackage(id: string): ModulePackage | undefined {
 }
 
 /** Merkt ein Modul als defekt (nicht geladen) – Anzeige unter Administration → Module */
-export function markModuleBroken(entry: BrokenModule): void {
+export function markModuleBroken(entry: BrokenModuleEntry): void {
 	broken.set(entry.id, entry);
-	console.error(`[modules] Modul ${entry.id} nicht geladen: ${entry.reason}`);
+	console.error(`[modules] Modul ${entry.id} nicht geladen: ${reasonText(entry.reason)}`);
 }
 
+/** Defekte Module mit Name und Grund in der Sprache des Requests */
 export function brokenModules(): BrokenModule[] {
-	return [...broken.values()].sort((a, b) => a.id.localeCompare(b.id));
+	return [...broken.values()]
+		.map((b) => ({ ...b, name: localized(b.name), reason: reasonText(b.reason) }))
+		.sort((a, b) => a.id.localeCompare(b.id));
 }
 
 /**
@@ -222,11 +265,11 @@ export function brokenModules(): BrokenModule[] {
  */
 export function excludeUnresolvableModules(): BrokenModule[] {
 	const removed: BrokenModule[] = [];
-	const drop = (d: ModuleDefinition, reason: string) => {
-		const entry = { id: d.manifest.id, name: d.manifest.name, version: d.manifest.version, reason };
+	const drop = (d: ModuleDefinition, key: string, params: MessageParams) => {
+		const entry = { id: d.manifest.id, name: d.manifest.name, version: d.manifest.version };
 		unregisterModule(d.manifest.id);
-		markModuleBroken(entry);
-		removed.push(entry);
+		markModuleBroken({ ...entry, reason: { key, params } });
+		removed.push({ ...entry, name: localized(entry.name), reason: t(key, params) });
 	};
 	let changed = true;
 	while (changed) {
@@ -234,20 +277,20 @@ export function excludeUnresolvableModules(): BrokenModule[] {
 		for (const d of [...definitions.values()]) {
 			const pkg = packages.get(d.manifest.id);
 			if (pkg && !versionSatisfies(CORE_VERSION, pkg.core)) {
-				drop(d, `Braucht Core ${pkg.core}, installiert ist ${CORE_VERSION}`);
+				drop(d, 'modules.broken.coreVersion', { range: pkg.core, version: CORE_VERSION });
 				changed = true;
 				continue;
 			}
 			for (const dep of d.manifest.dependencies) {
 				const target = definitions.get(dep);
 				const range = pkg?.dependencies[dep]?.version;
-				const reason = !target
-					? `Benötigtes Modul „${dep}“ fehlt`
+				const reason: [string, MessageParams] | null = !target
+					? ['modules.broken.missingDependency', { dep }]
 					: range && !versionSatisfies(target.manifest.version, range)
-						? `Benötigt „${dep}“ ${range}, vorhanden ist ${target.manifest.version}`
+						? ['modules.broken.dependencyVersion', { dep, range, version: target.manifest.version }]
 						: null;
 				if (reason) {
-					drop(d, reason);
+					drop(d, ...reason);
 					changed = true;
 					break;
 				}
@@ -270,7 +313,7 @@ export function excludeUnresolvableModules(): BrokenModule[] {
 	for (const id of definitions.keys()) visit(id, []);
 	for (const id of inCycle) {
 		const d = definitions.get(id);
-		if (d) drop(d, `Zyklische Abhängigkeit (${[...inCycle].join(', ')})`);
+		if (d) drop(d, 'modules.broken.cycle', { ids: [...inCycle].join(', ') });
 	}
 	return removed;
 }
@@ -305,6 +348,6 @@ export async function notifyModuleDataReplaced(): Promise<void> {
 
 export function requireDefinition(id: string): ModuleDefinition {
 	const d = definitions.get(id);
-	if (!d) throw errors.notFound(`Modul "${id}" ist nicht installiert`);
+	if (!d) throw errors.notFound(t('modules.notInstalled', { id }));
 	return d;
 }

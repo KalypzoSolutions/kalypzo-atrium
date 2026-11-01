@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import PanelLeft from '@lucide/svelte/icons/panel-left';
 	import PanelLeftClose from '@lucide/svelte/icons/panel-left-close';
 	import PanelLeftOpen from '@lucide/svelte/icons/panel-left-open';
@@ -41,7 +42,7 @@
 		<a
 			href="/dashboard"
 			class="flex min-w-0 items-center gap-2.5 text-base font-semibold"
-			aria-label={collapsed ? `${systemName} – Dashboard` : undefined}
+			aria-label={collapsed ? t('sidebar.homeLabel', { name: systemName }) : undefined}
 		>
 			{#if logoUrl}
 				<img src={logoUrl} alt="" class="size-8 shrink-0 object-contain" />
@@ -59,8 +60,8 @@
 			type="button"
 			onclick={() => ontoggle?.(!collapsed)}
 			aria-expanded={!collapsed}
-			aria-label={collapsed ? 'Seitenleiste ausklappen' : 'Seitenleiste einklappen'}
-			title={collapsed ? 'Seitenleiste ausklappen' : undefined}
+			aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+			title={collapsed ? t('sidebar.expand') : undefined}
 			data-testid="sidebar-toggle"
 			class={cn(
 				'flex items-center gap-2.5 rounded-md py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
@@ -71,7 +72,7 @@
 				<PanelLeftOpen class="size-4 shrink-0" aria-hidden="true" />
 			{:else}
 				<PanelLeftClose class="size-4 shrink-0" aria-hidden="true" />
-				Einklappen
+				{t('sidebar.collapseShort')}
 			{/if}
 		</button>
 	</div>

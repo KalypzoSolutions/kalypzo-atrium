@@ -1,0 +1,101 @@
+{
+	"page": "Page {page} of {total}",
+	"previewTitle": "Preview",
+	"fileNameFallback": "document",
+	"attachmentUnreadable": "Attachment could not be read",
+	"templates": {
+		"default": {
+			"label": "Default"
+		},
+		"compact": {
+			"label": "Compact"
+		},
+		"brief": {
+			"label": "Letter (with address field)",
+			"description": "Letterhead with fold marks and address field (84 × 40 mm, window envelope) plus a footer on every page."
+		},
+		"briefkopf": {
+			"label": "Letterhead (no address field)",
+			"description": "Letterhead with the organisation's logo and name plus a footer on every page; no address field or fold marks."
+		},
+		"briefkopfQuer": {
+			"label": "Letterhead landscape (no address field)",
+			"description": "A4 landscape for wide tables and lists: logo, organisation name and footer on every page; no address field or fold marks."
+		}
+	},
+	"parts": {
+		"briefkopf": {
+			"label": "Letterhead",
+			"description": "Organisation name and logo"
+		},
+		"falzmarken": {
+			"label": "Fold marks",
+			"description": "Marks at 105 mm and 210 mm"
+		},
+		"adressfeld": {
+			"label": "Address field",
+			"description": "Address window 84 × 40 mm"
+		},
+		"fusszeile": {
+			"label": "Footer",
+			"description": "Separator line and footer text (or contact details), on every page"
+		}
+	},
+	"sample": {
+		"recipientName": "Jane Doe",
+		"recipientStreet": "7 Sample Street",
+		"recipientCity": "28207 Bremen",
+		"lorem": "This sample text shows how the content of a document is set on the page. It checks the typeface, line spacing and page margins of the template and contains special characters such as äöüß.",
+		"tableHeading": "Sample table",
+		"colPosition": "Item",
+		"colName": "Name",
+		"colStatus": "Status",
+		"row1": "First entry",
+		"row2": "Second entry",
+		"row3": "Third entry",
+		"active": "Active",
+		"inactive": "Inactive",
+		"listUmlauts": "Umlauts: äöüß",
+		"listSpecial": "Special characters: & < > \""
+	},
+	"errors": {
+		"invalidImage": "Invalid image in the document",
+		"invalidImageWidth": "Invalid image width",
+		"invalidLink": "Invalid link in the document",
+		"invalidTextBlock": "Invalid text block in the document",
+		"documentTooLarge": "The document is too large",
+		"engineUnavailable": "The PDF engine (Chromium) could not be started",
+		"invalidRecipient": "Invalid recipient address",
+		"attachmentsTooLarge": "Too many or too large attachments",
+		"attachmentsFailed": "PDF attachments could not be created",
+		"attachmentsMergeFailed": "The PDF could not be merged with its attachments",
+		"invalidDocumentCount": "Invalid number of documents",
+		"mergeTooLarge": "The documents are too large to merge",
+		"mergeFailed": "The PDF could not be merged",
+		"invalidTitle": "Invalid document title",
+		"moduleRequired": "`module` is required for saving",
+		"unknownTemplate": "Unknown PDF template: {id}",
+		"invalidFormat": "Invalid page format",
+		"invalidMargin": "Invalid page margin",
+		"templateNotFound": "Template not found",
+		"unknownPart": "Unknown component"
+	},
+	"labels": {
+		"none": "No labels selected",
+		"tooMany": "At most {max} labels at once",
+		"invalidFormat": "Invalid label format",
+		"invalidLayout": "Invalid label layout",
+		"invalidContent": "Invalid label content"
+	},
+	"raster": {
+		"tooLarge": "The PDF is too large.",
+		"notPdfShort": "Not a PDF",
+		"notPdf": "The file is not a PDF.",
+		"timeout": "The PDF preview took too long.",
+		"pageMissing": "Page does not exist"
+	},
+	"lists": {
+		"yes": "Yes",
+		"no": "No"
+	}
+}

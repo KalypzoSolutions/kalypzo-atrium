@@ -1,0 +1,23 @@
+{
+	"button": "Writing assistant",
+	"title": "Writing assistant",
+	"apply": "Apply",
+	"unavailable": "The writing assistant is currently unavailable",
+	"taskLegend": "What should happen?",
+	"moreWithText": "More actions become available once the field contains text.",
+	"address": "Form of address",
+	"instructionRequired": "What should change? *",
+	"instructionOptional": "Additional request (optional)",
+	"placeholderDraft": "e.g. “Remind them to bring a sleeping bag and torch”",
+	"placeholderOther": "e.g. “A bit more formal”",
+	"writing": "Writing …",
+	"regenerate": "Regenerate",
+	"generate": "Create suggestion",
+	"suggestion": "Suggestion",
+	"tapToApply": "Tap to apply the suggestion.",
+	"diffLegend": "Green = new, red strikethrough = removed.",
+	"facts": "Key facts the AI received",
+	"discard": "Discard",
+	"reviewNotice": "AI suggestion – please read before sending.",
+	"sheetDescription": "AI suggestions for this text field"
+}

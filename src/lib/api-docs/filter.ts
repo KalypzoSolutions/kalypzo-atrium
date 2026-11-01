@@ -1,6 +1,7 @@
 /**
  * Filter, Gruppierung und Kennzahlen der API-Übersicht (`/api-docs`). Rein, client-tauglich.
  */
+import { t } from '$lib/i18n';
 import type {
 	ApiAccess,
 	ApiCatalog,
@@ -20,12 +21,14 @@ export const METHOD_OPTIONS: { value: ApiMethod; label: string }[] = API_METHODS
 	label: m
 }));
 
-export const ACCESS_OPTIONS: { value: AccessFilter; label: string }[] = [
-	{ value: 'public', label: 'Öffentlich' },
-	{ value: 'authenticated', label: 'Nur Anmeldung' },
-	{ value: 'permission', label: 'Mit Berechtigung' },
-	{ value: 'session', label: 'Nur Session' }
-];
+/** Zugriffsarten; `label` wird beim Lesen in der aktuellen Sprache übersetzt */
+export const ACCESS_OPTIONS: { readonly value: AccessFilter; readonly label: string }[] =
+	ACCESS_VALUES.map((value) => ({
+		value,
+		get label() {
+			return t(`api-docs.access.${value}`);
+		}
+	}));
 
 function isMethod(v: unknown): v is ApiMethod {
 	return typeof v === 'string' && (API_METHODS as readonly string[]).includes(v);
@@ -94,7 +97,7 @@ export function moduleOptions(catalog: ApiCatalog): { value: string; label: stri
 		options.push({ value, label });
 	};
 	const core = catalog.entries.find((e) => e.moduleId === 'core');
-	if (core) add('core', core.moduleName || 'Core');
+	if (core) add('core', core.moduleName || t('api-docs.core'));
 	for (const group of catalog.groups) {
 		for (const e of catalog.entries) {
 			if (e.group === group.id && e.moduleId !== 'core') add(e.moduleId, e.moduleName);

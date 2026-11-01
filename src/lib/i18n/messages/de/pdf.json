@@ -1,0 +1,101 @@
+{
+	"page": "Seite {page} von {total}",
+	"previewTitle": "Vorschau",
+	"fileNameFallback": "dokument",
+	"attachmentUnreadable": "Anlage nicht lesbar",
+	"templates": {
+		"default": {
+			"label": "Standard"
+		},
+		"compact": {
+			"label": "Kompakt"
+		},
+		"brief": {
+			"label": "Brief (mit Adressfeld)",
+			"description": "Briefkopf mit Falzmarken und Adressfeld (84 × 40 mm, Fensterumschlag) sowie Fußzeile auf jeder Seite."
+		},
+		"briefkopf": {
+			"label": "Briefkopf (ohne Adressfeld)",
+			"description": "Briefkopf mit Logo und Name der Organisation sowie Fußzeile auf jeder Seite; ohne Adressfeld und Falzmarken."
+		},
+		"briefkopfQuer": {
+			"label": "Briefkopf quer (ohne Adressfeld)",
+			"description": "A4 quer für breite Tabellen und Listen: Logo, Name der Organisation und Fußzeile auf jeder Seite; ohne Adressfeld und Falzmarken."
+		}
+	},
+	"parts": {
+		"briefkopf": {
+			"label": "Briefkopf",
+			"description": "Name der Organisation und Logo"
+		},
+		"falzmarken": {
+			"label": "Falzmarken",
+			"description": "Marken bei 105 mm und 210 mm"
+		},
+		"adressfeld": {
+			"label": "Adressfeld",
+			"description": "Anschriftfenster 84 × 40 mm"
+		},
+		"fusszeile": {
+			"label": "Fußzeile",
+			"description": "Trennlinie und Fußzeilentext (oder Kontaktdaten), auf jeder Seite"
+		}
+	},
+	"sample": {
+		"recipientName": "Max Mustermann",
+		"recipientStreet": "Musterstraße 7",
+		"recipientCity": "28207 Bremen",
+		"lorem": "Dieser Beispieltext zeigt, wie der Inhalt eines Dokuments auf der Seite gesetzt wird. Er prüft Schriftbild, Zeilenabstand und Seitenränder der Vorlage und enthält Umlaute wie äöüß.",
+		"tableHeading": "Beispieltabelle",
+		"colPosition": "Position",
+		"colName": "Bezeichnung",
+		"colStatus": "Status",
+		"row1": "Erster Eintrag",
+		"row2": "Zweiter Eintrag",
+		"row3": "Dritter Eintrag",
+		"active": "Aktiv",
+		"inactive": "Inaktiv",
+		"listUmlauts": "Umlaute: äöüß",
+		"listSpecial": "Sonderzeichen: & < > \""
+	},
+	"errors": {
+		"invalidImage": "Ungültiges Bild im Dokument",
+		"invalidImageWidth": "Ungültige Bildbreite",
+		"invalidLink": "Ungültiger Link im Dokument",
+		"invalidTextBlock": "Ungültiger Textblock im Dokument",
+		"documentTooLarge": "Dokument ist zu umfangreich",
+		"engineUnavailable": "PDF-Engine (Chromium) konnte nicht gestartet werden",
+		"invalidRecipient": "Ungültige Empfängeradresse",
+		"attachmentsTooLarge": "Zu viele oder zu große Anlagen",
+		"attachmentsFailed": "PDF-Anlagen konnten nicht erzeugt werden",
+		"attachmentsMergeFailed": "PDF konnte nicht mit Anlagen zusammengeführt werden",
+		"invalidDocumentCount": "Ungültige Anzahl von Dokumenten",
+		"mergeTooLarge": "Dokumente sind zu groß zum Zusammenführen",
+		"mergeFailed": "PDF konnte nicht zusammengeführt werden",
+		"invalidTitle": "Ungültiger Dokumenttitel",
+		"moduleRequired": "`module` ist für das Speichern erforderlich",
+		"unknownTemplate": "Unbekanntes PDF-Template: {id}",
+		"invalidFormat": "Ungültiges Seitenformat",
+		"invalidMargin": "Ungültiger Seitenrand",
+		"templateNotFound": "Vorlage nicht gefunden",
+		"unknownPart": "Unbekannter Bestandteil"
+	},
+	"labels": {
+		"none": "Keine Etiketten ausgewählt",
+		"tooMany": "Höchstens {max} Etiketten auf einmal",
+		"invalidFormat": "Ungültiges Etikettenformat",
+		"invalidLayout": "Ungültiges Etikett-Layout",
+		"invalidContent": "Ungültiger Etikett-Inhalt"
+	},
+	"raster": {
+		"tooLarge": "Das PDF ist zu groß.",
+		"notPdfShort": "Kein PDF",
+		"notPdf": "Die Datei ist kein PDF.",
+		"timeout": "Die PDF-Vorschau hat zu lange gedauert.",
+		"pageMissing": "Seite nicht vorhanden"
+	},
+	"lists": {
+		"yes": "Ja",
+		"no": "Nein"
+	}
+}

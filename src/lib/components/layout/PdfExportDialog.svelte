@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { untrack } from 'svelte';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import { Button } from '$lib/components/ui/button';
@@ -26,7 +27,7 @@
 	 */
 	let {
 		open = $bindable(false),
-		title = 'PDF-Liste erzeugen',
+		title = t('layout.pdfList.title'),
 		catalog,
 		count,
 		sections = 1,
@@ -133,14 +134,14 @@
 		<Dialog.Header>
 			<Dialog.Title>{title}</Dialog.Title>
 			<Dialog.Description>
-				Wähle, welche Angaben in der Liste stehen – weniger Spalten ergeben weniger Seiten.
+				{t('layout.pdfList.description')}
 			</Dialog.Description>
 		</Dialog.Header>
 
 		<form class="space-y-4" onsubmit={submit}>
 			<div class="space-y-1.5">
 				<p class="text-xs font-medium text-muted-foreground" id="pdf-list-presets">
-					Voreinstellung
+					{t('layout.pdfList.preset')}
 				</p>
 				<div class="flex flex-wrap gap-2" role="group" aria-labelledby="pdf-list-presets">
 					{#each catalog.presets as p (p.id)}
@@ -160,7 +161,7 @@
 							class="inline-flex h-7 items-center rounded-md bg-primary px-2.5 text-[0.8rem] font-medium text-primary-foreground"
 							aria-current="true"
 						>
-							Eigene Auswahl
+							{t('layout.pdfList.custom')}
 						</span>
 					{/if}
 				</div>
@@ -183,7 +184,7 @@
 									/>
 									<span class="min-w-0 truncate">{c.label}</span>
 									{#if c.sensitive}
-										<span class="text-xs text-warning">sensibel</span>
+										<span class="text-xs text-warning">{t('layout.pdfList.sensitive')}</span>
 									{/if}
 								</label>
 							{/each}
@@ -193,15 +194,12 @@
 			</div>
 
 			<label class="flex min-h-9 cursor-pointer items-center gap-3 text-sm">
-				<Switch bind:checked={selection.hideEmpty} aria-label="Leere Spalten ausblenden" />
-				<span>Leere Spalten ausblenden</span>
+				<Switch bind:checked={selection.hideEmpty} aria-label={t('layout.pdfList.hideEmpty')} />
+				<span>{t('layout.pdfList.hideEmpty')}</span>
 			</label>
 
 			<p class="text-sm text-muted-foreground" aria-live="polite">
-				≈ {pages}
-				{pages === 1 ? 'Seite' : 'Seiten'} · {count}
-				{count === 1 ? 'Person' : 'Personen'} · {columns.length}
-				{columns.length === 1 ? 'Spalte' : 'Spalten'}
+				{t('layout.pdfList.estimate', { pages, count, columns: columns.length })}
 			</p>
 
 			{#if sensitive}
@@ -211,15 +209,18 @@
 				>
 					<TriangleAlert class="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
 					<span>
-						Die Liste enthält Gesundheitsangaben. Nur für den vorgesehenen Zweck verwenden und
-						danach vernichten.
+						{t('layout.pdfList.sensitiveNote')}
 					</span>
 				</p>
 			{/if}
 
 			<Dialog.Footer class="sticky -bottom-4 -mx-4 -mb-4 bg-background px-4 pb-4 pt-2">
-				<Button type="button" variant="outline" onclick={() => (open = false)}>Abbrechen</Button>
-				<Button type="submit" disabled={busy}>{busy ? 'Erzeuge PDF …' : 'PDF erzeugen'}</Button>
+				<Button type="button" variant="outline" onclick={() => (open = false)}
+					>{t('layout.cancel')}</Button
+				>
+				<Button type="submit" disabled={busy}
+					>{busy ? t('layout.pdfList.creating') : t('layout.pdfList.create')}</Button
+				>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

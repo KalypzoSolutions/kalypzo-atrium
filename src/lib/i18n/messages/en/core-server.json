@@ -1,0 +1,26 @@
+{
+	"moduleUnavailable": "Module not available",
+	"internalError": "An internal error occurred.",
+	"mail": {
+		"invalidEmail": "Invalid email address",
+		"invalidSubject": "Invalid subject (max. 200 characters, no line breaks)",
+		"textTooLongMax": "Text too long (max. 20000 characters)",
+		"htmlTooLongMax": "HTML too long (max. 100000 characters)",
+		"textTooLong": "Text too long",
+		"htmlTooLong": "HTML too long",
+		"pdfAttachments": "Only up to 3 PDF attachments with max. 5 MB in total",
+		"invalidMessageId": "Invalid Message-ID",
+		"messageAttachments": "At most 10 attachments with 20 MB in total; executable files are not allowed"
+	},
+	"notSignedIn": "Not signed in",
+	"forbidden": "Permission denied",
+	"invalidQr": "Invalid QR content",
+	"env": {
+		"secretTooShort": "APP_SECRET must be at least 32 characters long",
+		"backupTmpDir": "BACKUP_TMP_DIR must be an absolute path",
+		"originHttps": "ORIGIN must start with https:// in production (otherwise cookies lack the Secure flag)",
+		"secretPlaceholder": "APP_SECRET is still the build placeholder – set a random value (openssl rand -base64 48)",
+		"secretTrivial": "APP_SECRET is too simple – set a random value (openssl rand -base64 48)",
+		"originRequired": "ORIGIN must be set in production"
+	}
+}

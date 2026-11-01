@@ -1,0 +1,19 @@
+{
+	"suggestions": {
+		"outdoor": "Draußen & Fahrt",
+		"organisation": "Organisation",
+		"media": "Medien",
+		"community": "Gemeinschaft"
+	},
+	"picker": {
+		"search": "Icon suchen",
+		"placeholder": "Icon suchen, z. B. Zelt, Kasse, Foto …",
+		"results": "{count} Treffer",
+		"all": "Alle Icons ({count})",
+		"loadFailed": "Die Icons konnten nicht geladen werden.",
+		"retry": "Erneut versuchen",
+		"loading": "Lädt Icons …",
+		"none": "Keine Icons gefunden.",
+		"more": "Weitere anzeigen ({count})"
+	}
+}

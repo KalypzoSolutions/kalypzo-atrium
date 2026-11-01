@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -7,7 +8,6 @@
 	import * as Popover from '$lib/components/ui/popover';
 	import {
 		MAX_LANES,
-		WEEKDAY_LABELS,
 		buildAgenda,
 		buildMonthGrid,
 		calendarItemKey,
@@ -25,6 +25,7 @@
 		localToday,
 		monthOf,
 		shiftMonth,
+		weekdayLabels,
 		type CalendarItem,
 		type WeekSegment
 	} from './month-calendar';
@@ -56,6 +57,7 @@
 	const weeks = $derived(buildMonthGrid(current).map((days) => layoutWeek(days, items)));
 	const agenda = $derived(buildAgenda(current, items));
 	const label = $derived(formatMonthLabel(current));
+	const weekdays = weekdayLabels();
 
 	let openDay = $state<string | null>(null);
 
@@ -102,13 +104,26 @@
 		<h2 class="text-section" aria-live="polite">{label}</h2>
 		<div class="flex items-center gap-1">
 			{#if loading}
-				<span class="text-muted-foreground mr-2 text-xs" role="status">Lädt …</span>
+				<span class="text-muted-foreground mr-2 text-xs" role="status">{t('calendar.loading')}</span
+				>
 			{/if}
-			<Button variant="outline" size="sm" onclick={goToday} aria-label="Heute">Heute</Button>
-			<Button variant="outline" size="icon-sm" onclick={() => go(-1)} aria-label="Vorheriger Monat">
+			<Button variant="outline" size="sm" onclick={goToday} aria-label={t('calendar.today')}
+				>{t('calendar.today')}</Button
+			>
+			<Button
+				variant="outline"
+				size="icon-sm"
+				onclick={() => go(-1)}
+				aria-label={t('calendar.prevMonth')}
+			>
 				<ChevronLeft />
 			</Button>
-			<Button variant="outline" size="icon-sm" onclick={() => go(1)} aria-label="Nächster Monat">
+			<Button
+				variant="outline"
+				size="icon-sm"
+				onclick={() => go(1)}
+				aria-label={t('calendar.nextMonth')}
+			>
 				<ChevronRight />
 			</Button>
 		</div>
@@ -119,11 +134,11 @@
 		class="bg-card hidden overflow-hidden rounded-lg border transition-opacity sm:block"
 		class:opacity-60={loading}
 		role="table"
-		aria-label="Kalender {label}"
+		aria-label={t('calendar.gridLabel', { month: label })}
 		aria-busy={loading}
 	>
 		<div class="bg-muted/40 grid grid-cols-7 border-b" role="row">
-			{#each WEEKDAY_LABELS as wd (wd)}
+			{#each weekdays as wd (wd)}
 				<div class="text-muted-foreground px-2 py-1.5 text-xs font-medium" role="columnheader">
 					{wd}
 				</div>
@@ -153,12 +168,12 @@
 							>
 								{Number(date.slice(8, 10))}
 							</span>
-							{#if isToday}<span class="sr-only">Heute</span>{/if}
+							{#if isToday}<span class="sr-only">{t('calendar.today')}</span>{/if}
 							{#if onday}
 								<button
 									type="button"
 									class="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring inline-flex size-6 items-center justify-center rounded-md opacity-0 outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3"
-									aria-label="Termin am {formatLongDate(date)} anlegen"
+									aria-label={t('calendar.createOn', { date: formatLongDate(date) })}
 									onclick={() => onday?.(date)}
 								>
 									<Plus class="size-3.5" />
@@ -196,9 +211,9 @@
 								<Popover.Trigger
 									class="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring absolute left-[3px] z-10 h-5 rounded-md px-1.5 text-left text-xs outline-none focus-visible:ring-3"
 									style="top: {HEAD + MAX_LANES * LANE}rem"
-									aria-label="{hidden} weitere Termine am {formatLongDate(date)}"
+									aria-label={t('calendar.moreOn', { count: hidden, date: formatLongDate(date) })}
 								>
-									+{hidden} weitere
+									{t('calendar.more', { count: hidden })}
 								</Popover.Trigger>
 								<Popover.Content class="w-64">
 									<p class="mb-1 px-1 text-xs font-medium">{formatDayLabel(date)}</p>
@@ -243,30 +258,33 @@
 	<div class="sm:hidden" class:opacity-60={loading} aria-busy={loading}>
 		{#if agenda.length === 0}
 			<div class="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
-				Keine Termine in diesem Monat.
+				{t('calendar.emptyMonth')}
 				{#if onday}
 					<div class="mt-3">
 						<Button variant="outline" size="sm" onclick={() => onday?.(today)}>
-							<Plus /> Termin anlegen
+							<Plus />
+							{t('calendar.create')}
 						</Button>
 					</div>
 				{/if}
 			</div>
 		{:else}
-			<ul class="space-y-3" aria-label="Termine {label}">
+			<ul class="space-y-3" aria-label={t('calendar.agendaLabel', { month: label })}>
 				{#each agenda as day (day.date)}
 					{@const isToday = day.date === today}
 					<li class="bg-card rounded-lg border">
 						<div class="flex items-center justify-between gap-2 border-b px-3 py-1.5">
 							<h3
 								class="text-sm font-semibold"
-								aria-label="{formatLongDate(day.date)}{isToday ? ', heute' : ''}"
+								aria-label={isToday
+									? t('calendar.dayToday', { date: formatLongDate(day.date) })
+									: formatLongDate(day.date)}
 							>
 								{formatDayLabel(day.date)}
 								{#if isToday}
 									<span
 										class="bg-primary text-primary-foreground ml-1 rounded-full px-1.5 py-0.5 text-[0.7rem] font-medium"
-										>Heute</span
+										>{t('calendar.today')}</span
 									>
 								{/if}
 							</h3>
@@ -274,7 +292,7 @@
 								<Button
 									variant="ghost"
 									size="icon-sm"
-									aria-label="Termin am {formatLongDate(day.date)} anlegen"
+									aria-label={t('calendar.createOn', { date: formatLongDate(day.date) })}
 									onclick={() => onday?.(day.date)}
 								>
 									<Plus />

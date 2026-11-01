@@ -1,4 +1,5 @@
 <script lang="ts" generics="T extends string">
+	import { t } from '$lib/i18n';
 	// Unteransichten als Pillen, seitlich scrollbar statt Umbruch (Handy/Tablet).
 	// Aktive Pille gefüllt; optional Zähler (z. B. „Ohne Zuordnung 3“).
 	import { cn } from '$lib/utils.js';
@@ -53,7 +54,7 @@
 		>
 			{o.label}
 			{#if o.count}
-				<CountBadge count={o.count} max={99} label={`${o.count} Einträge`} />
+				<CountBadge count={o.count} max={99} label={t('layout.entriesCount', { count: o.count })} />
 			{/if}
 		</button>
 	{/each}

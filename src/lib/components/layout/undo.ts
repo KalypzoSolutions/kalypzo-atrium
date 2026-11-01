@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /** Erfolgs-Toast mit „Rückgängig“ – der Rückweg läuft über einen vorhandenen API-Aufruf (kein lokaler Zustand). */
 import { toast } from 'svelte-sonner';
 import { ApiClientError } from '$lib/sdk/client';
@@ -17,14 +18,14 @@ export function toastWithUndo({ message, undo, undone, onundone }: UndoOptions):
 	toast.success(message, {
 		duration: 10_000,
 		action: {
-			label: 'Rückgängig',
+			label: t('layout.undo.action'),
 			onClick: async () => {
 				try {
 					await undo();
-					toast.success(undone ?? 'Rückgängig gemacht');
+					toast.success(undone ?? t('layout.undo.done'));
 					await onundone?.();
 				} catch (e) {
-					toast.error(e instanceof ApiClientError ? e.message : 'Rückgängig fehlgeschlagen');
+					toast.error(e instanceof ApiClientError ? e.message : t('layout.undo.failed'));
 				}
 			}
 		}

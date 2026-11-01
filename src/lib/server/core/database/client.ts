@@ -15,7 +15,7 @@ interface State {
 	concurrent: boolean;
 }
 
-const globalKey = Symbol.for('ep-intern.db');
+const globalKey = Symbol.for('atrium.db');
 type G = typeof globalThis & { [globalKey]?: State };
 
 function create(): State {

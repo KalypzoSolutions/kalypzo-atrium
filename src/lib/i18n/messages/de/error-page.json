@@ -1,0 +1,7 @@
+{
+	"title": "Fehler {status}",
+	"notFound": "Seite nicht gefunden",
+	"generic": "Es ist ein Fehler aufgetreten",
+	"reference": "Referenz: {id}",
+	"toDashboard": "Zum Dashboard"
+}

@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Einheitlich gehärtete Datei-Antworten und Inhaltsprüfung für Module (#67, 01b-11).
  *
@@ -158,8 +159,7 @@ export function assertContentMatches(
 ): void {
 	const declared = baseType(declaredType);
 	const detected = detectContentType(bytes);
-	const fail = () =>
-		errors.validation([{ path, message: 'Der Dateiinhalt passt nicht zum Dateityp' }]);
+	const fail = () => errors.validation([{ path, message: t('sdk.file.contentMismatch') }]);
 	if (declared.startsWith('image/') || declared === 'application/pdf') {
 		if (detected !== declared) throw fail();
 		return;

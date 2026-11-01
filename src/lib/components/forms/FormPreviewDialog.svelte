@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	/**
 	 * Vollbild-Vorschau eines Formulars, wie Ausfüllende es sehen – umschaltbar zwischen Handy-, Tablet- und
 	 * Desktop-Breite. Eingaben werden nur lokal gehalten (Pflichtprüfung per „Testweise absenden“).
@@ -30,9 +31,24 @@
 	const uid = $props.id();
 	type Device = 'phone' | 'tablet' | 'desktop';
 	const DEVICES: { value: Device; label: string; width: string; icon: typeof Monitor }[] = [
-		{ value: 'phone', label: 'Handy', width: 'max-w-[390px]', icon: Smartphone },
-		{ value: 'tablet', label: 'Tablet', width: 'max-w-[768px]', icon: Tablet },
-		{ value: 'desktop', label: 'Desktop', width: 'max-w-3xl', icon: Monitor }
+		{
+			value: 'phone',
+			label: t('form-builder.preview.phone'),
+			width: 'max-w-[390px]',
+			icon: Smartphone
+		},
+		{
+			value: 'tablet',
+			label: t('form-builder.preview.tablet'),
+			width: 'max-w-[768px]',
+			icon: Tablet
+		},
+		{
+			value: 'desktop',
+			label: t('form-builder.preview.desktop'),
+			width: 'max-w-3xl',
+			icon: Monitor
+		}
 	];
 
 	let device = $state<Device>('desktop');
@@ -69,12 +85,18 @@
 	>
 		<header class="flex flex-wrap items-center gap-2 border-b bg-background px-3 py-2 sm:px-4">
 			<div class="min-w-0 flex-1">
-				<Dialog.Title class="text-base font-semibold">Vorschau</Dialog.Title>
+				<Dialog.Title class="text-base font-semibold"
+					>{t('form-builder.preview.title')}</Dialog.Title
+				>
 				<Dialog.Description class="text-xs text-muted-foreground">
-					So sehen Ausfüllende das Formular. Eingaben werden nicht gespeichert.
+					{t('form-builder.preview.description')}
 				</Dialog.Description>
 			</div>
-			<div class="flex items-center rounded-lg border p-0.5" role="radiogroup" aria-label="Breite">
+			<div
+				class="flex items-center rounded-lg border p-0.5"
+				role="radiogroup"
+				aria-label={t('form-builder.preview.width')}
+			>
 				{#each DEVICES as d (d.value)}
 					{@const Icon = d.icon}
 					<button
@@ -92,10 +114,14 @@
 					</button>
 				{/each}
 			</div>
-			<Button variant="ghost" size="sm" onclick={reset}><RotateCcw /> Zurücksetzen</Button>
+			<Button variant="ghost" size="sm" onclick={reset}
+				><RotateCcw /> {t('form-builder.preview.reset')}</Button
+			>
 			<Dialog.Close>
 				{#snippet child({ props })}
-					<Button {...props} variant="outline" size="sm"><X /> Schließen</Button>
+					<Button {...props} variant="outline" size="sm"
+						><X /> {t('form-builder.preview.close')}</Button
+					>
 				{/snippet}
 			</Dialog.Close>
 		</header>
@@ -113,7 +139,7 @@
 					{/if}
 					<div class={definition.title || definition.intro ? 'mt-5' : ''}>
 						{#if !hasFields}
-							<p class="text-sm text-muted-foreground">Das Formular hat noch keine Felder.</p>
+							<p class="text-sm text-muted-foreground">{t('form-builder.preview.noFields')}</p>
 						{:else}
 							<FormRenderer
 								bind:this={renderer}
@@ -126,12 +152,14 @@
 					</div>
 					{#if hasFields}
 						<div class="mt-6 flex flex-wrap items-center gap-3">
-							<Button onclick={trySubmit}>{definition.submitLabel || 'Absenden'}</Button>
+							<Button onclick={trySubmit}
+								>{definition.submitLabel || t('form-builder.preview.submit')}</Button
+							>
 							{#if checked}
 								<p class="text-xs text-muted-foreground" aria-live="polite">
 									{Object.keys(errors).length
-										? `${Object.keys(errors).length} Angabe(n) fehlen oder sind ungültig.`
-										: 'Alles ausgefüllt – in der Vorschau wird nichts abgeschickt.'}
+										? t('form-builder.preview.errors', { count: Object.keys(errors).length })
+										: t('form-builder.preview.allFilled')}
 								</p>
 							{/if}
 						</div>

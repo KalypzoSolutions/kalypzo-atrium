@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /** Antwort von `GET /dashboard/core` – Felder fehlen, wenn das Recht fehlt. */
 export interface CoreDashboardData {
 	/** Aktive Benutzer*innen (`core.users.view`) */
@@ -31,7 +32,7 @@ export function loadCoreDashboard(fresh = false): Promise<CoreDashboardData> {
 	if (!fresh && cached && Date.now() - cached.at < SHARE_MS) return cached.promise;
 	const promise = fetch('/dashboard/core', { headers: { accept: 'application/json' } }).then(
 		async (res) => {
-			if (!res.ok) throw new Error('Die Übersicht konnte nicht geladen werden.');
+			if (!res.ok) throw new Error(t('widgets.loadFailed'));
 			return ((await res.json()) as { data: CoreDashboardData }).data;
 		}
 	);

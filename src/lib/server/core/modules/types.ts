@@ -295,6 +295,25 @@ export interface ModuleDefinition {
 		/** Recht, das Mitglieder in Freigabe-Suche/-Anzeige sichtbar macht (sonst nur „Mitglied“) */
 		memberViewPermission: string;
 	};
+	/**
+	 * Vorgaben für globale Einstellungen des Core (oder anderer Module), solange dieses Modul aktiv ist und nichts
+	 * gespeichert wurde – z. B. ein Profil-Modul einer Organisation (Systemname, Bezeichnung für „alle“, Sprache,
+	 * Schreibstil der KI). Gespeicherte Werte gewinnen immer; mehrere Module: das erste in Ladereihenfolge.
+	 */
+	settingDefaults?: Record<string, unknown>;
+	/**
+	 * Briefvorlagen (PDF) dieses Moduls. Eine Vorlage mit der ID einer Core-Vorlage (`brief`, `briefkopf`,
+	 * `briefkopf-quer`) **ersetzt** diese, solange das Modul aktiv ist. Bausteine: `createLetterTemplate`
+	 * aus `$lib/sdk/server`.
+	 */
+	pdfTemplates?: import('../pdf/templates').PdfTemplate[];
+	/** Kopf des E-Mail-Layouts (ersetzt Logo + Name des Core, solange das Modul aktiv ist) */
+	mailBranding?: import('../mail-layout').MailBranding;
+	/**
+	 * Ersatz-Logo (Data-URL, PNG, quadratisch ≥ 512 px), solange das Modul aktiv ist und kein Logo hochgeladen wurde:
+	 * Favicon, App-Icons und Bild in Seitenleiste/Login (statt der neutralen Icons des Core).
+	 */
+	brandingLogo?: string;
 	/** Hintergrundjobs (siehe `core/jobs`) */
 	jobs?: ModuleJob[];
 	/**

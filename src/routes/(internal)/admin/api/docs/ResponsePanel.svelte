@@ -4,6 +4,7 @@
 	import type { ApiCatalogEntry } from '$lib/api-docs/types';
 	import { exampleFromSchema } from '$lib/api-docs/example';
 	import { Button } from '$lib/components/ui/button';
+	import { t } from '$lib/i18n';
 	import SchemaTree from './SchemaTree.svelte';
 
 	let { entry }: { entry: ApiCatalogEntry } = $props();
@@ -21,34 +22,38 @@
 		if (!exampleText) return;
 		try {
 			await navigator.clipboard.writeText(exampleText);
-			toast.success('Beispiel kopiert');
+			toast.success(t('api-docs.response.exampleCopied'));
 		} catch {
-			toast.error('Beispiel konnte nicht kopiert werden.');
+			toast.error(t('api-docs.response.exampleCopyFailed'));
 		}
 	}
 </script>
 
 <div class="space-y-4">
 	<p class="text-sm">
-		<span class="font-medium">Erfolg: <span class="tabular-nums">{entry.successStatus}</span></span>
+		<span class="font-medium"
+			>{t('api-docs.response.success')}
+			<span class="tabular-nums">{entry.successStatus}</span></span
+		>
 		<span class="text-muted-foreground">
-			– Antwort hat die Form <code class="font-mono text-xs text-foreground">{'{ data: … }'}</code>
+			{t('api-docs.response.shapeBefore')}
+			<code class="font-mono text-xs text-foreground">{'{ data: … }'}</code>
 		</span>
 	</p>
 
 	{#if entry.response}
 		<SchemaTree schema={entry.response} />
 	{:else}
-		<p class="text-sm text-muted-foreground">Antwort-Schema nicht dokumentiert.</p>
+		<p class="text-sm text-muted-foreground">{t('api-docs.response.notDocumented')}</p>
 	{/if}
 
 	{#if exampleText}
 		<div class="space-y-1.5">
 			<div class="flex items-center justify-between gap-2">
-				<span class="text-sm font-medium">Beispiel</span>
+				<span class="text-sm font-medium">{t('api-docs.response.example')}</span>
 				<Button variant="ghost" size="sm" onclick={copyExample}>
 					<Copy class="size-4" aria-hidden="true" />
-					Kopieren
+					{t('api-docs.response.copy')}
 				</Button>
 			</div>
 			<pre
@@ -57,9 +62,10 @@
 	{/if}
 
 	<p class="text-xs text-muted-foreground">
-		Jede Antwort enthält den Header <code class="font-mono text-foreground">x-request-id</code>
-		(für Rückfragen und das API-Protokoll); bei begrenzten Endpunkten zeigt
-		<code class="font-mono text-foreground">x-ratelimit-remaining</code> die verbleibenden Aufrufe im
-		aktuellen Zeitfenster.
+		{t('api-docs.response.headersBefore')}
+		<code class="font-mono text-foreground">x-request-id</code>
+		{t('api-docs.response.headersMiddle')}
+		<code class="font-mono text-foreground">x-ratelimit-remaining</code>
+		{t('api-docs.response.headersAfter')}
 	</p>
 </div>

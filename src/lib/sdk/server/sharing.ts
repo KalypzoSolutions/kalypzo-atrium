@@ -1,5 +1,5 @@
 /**
- * Freigabe an Principals (Stamm, Gruppen, Rollen, Benutzer, Mitglieder) für Module.
+ * Freigabe an Principals (alle, Gruppen, Rollen, Benutzer, Mitglieder) für Module.
  *
  * Muster je Modul (Tabelle im Modulschema):
  *   <obj>_shares(<obj>_id text, principal_type text, principal_id text, level text,
@@ -30,6 +30,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 import { core } from '$lib/server/core';
 import { errors } from '$lib/server/core/errors';
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import {
 	EVERYONE_ID,
@@ -58,8 +59,11 @@ export {
 } from '$lib/sdk/types/sharing';
 
 export interface PrincipalOptions {
-	/** Anzeigename für `everyone`, z. B. „Stamm Edelweißpiraten“ */
-	everyoneLabel: string;
+	/**
+	 * Anzeigename für `everyone`, z. B. „Alle Mitglieder des Vereins“; ohne Angabe die Einstellung
+	 * `core.org.everyoneLabel` bzw. „Alle“ (`defaultEveryoneLabel`).
+	 */
+	everyoneLabel?: string;
 	/** Erlaubte Typen (Standard: alle) */
 	types?: readonly PrincipalType[];
 	/** Max. Treffer je Typ bei der Suche (Standard 10) */
@@ -78,12 +82,26 @@ type Display = Omit<PrincipalInfo, 'type' | 'id'>;
 /** Recht, das E-Mail-Adressen in Suche/Anzeige freischaltet */
 const USERS_VIEW = 'core.users.view';
 /** Anzeige gespeicherter Mitglieds-Freigaben ohne `members.member.view` */
-const HIDDEN_MEMBER: Display = { name: 'Mitglied' };
+const hiddenMember = (): Display => ({ name: t('sharing.hiddenMember') });
+
+/**
+ * Bezeichnung der Freigabe an alle (`everyone`): Einstellung `core.org.everyoneLabel` (Profil-Module geben sie
+ * per `settingDefaults` vor, z. B. „Stamm“), leer → „Alle“ in der Sprache der Anzeige.
+ */
+export async function defaultEveryoneLabel(): Promise<string> {
+	try {
+		const v = await core.settings.get<string>('core.org.everyoneLabel');
+		if (typeof v === 'string' && v.trim()) return v.trim();
+	} catch {
+		// ohne Datenbank (Unit-Tests) gilt der Standard
+	}
+	return t('sharing.everyone');
+}
 
 /**
  * Dienst der Personenquelle (Modul mit `ModuleDefinition.principals`, z. B. Mitglieder & Gruppen) passend zur
  * Deklaration des Aufrufers: harte Abhängigkeit → `core.modules.use`, optionale → `core.modules.useOptional`
- * (`null`, wenn nicht aktiv). Keine Personenquelle installiert → `null` (nur Stamm, Rollen, Benutzer*innen).
+ * (`null`, wenn nicht aktiv). Keine Personenquelle installiert → `null` (nur alle, Rollen, Benutzer*innen).
  * Quelle installiert, aber vom Aufrufer nicht deklariert: `Error` (Programmierfehler).
  */
 async function membersProvider(moduleId: string): Promise<PrincipalProvider | null> {
@@ -258,10 +276,11 @@ export async function searchPrincipals(
 	};
 
 	if (types.has('everyone')) {
-		const hit = [opts.everyoneLabel, 'Stamm', 'alle'].some((s) =>
+		const label = opts.everyoneLabel?.trim() || (await defaultEveryoneLabel());
+		const hit = [label, t('sharing.everyone'), 'alle', 'everyone'].some((s) =>
 			s.toLocaleLowerCase('de').includes(needle)
 		);
-		if (hit) byType.everyone.push({ type: 'everyone', id: EVERYONE_ID, name: opts.everyoneLabel });
+		if (hit) byType.everyone.push({ type: 'everyone', id: EVERYONE_ID, name: label });
 	}
 	if (types.has('role')) {
 		const roles = await core.roles.directory(ctx, { search: q, limit });
@@ -329,7 +348,9 @@ async function resolvePrincipals(
 	const ids = (type: PrincipalType) => (types.has(type) ? uniqueIds(list, type) : []);
 
 	if (types.has('everyone') && list.some((p) => p.type === 'everyone' && p.id === EVERYONE_ID)) {
-		found.set(EVERYONE_KEY, { name: opts.everyoneLabel ?? 'Stamm' });
+		found.set(EVERYONE_KEY, {
+			name: opts.everyoneLabel?.trim() || (await defaultEveryoneLabel())
+		});
 	}
 	const showEmail = core.permissions.has(ctx, USERS_VIEW);
 	for (const chunk of chunks(ids('user'), DIRECTORY_CHUNK)) {
@@ -363,7 +384,7 @@ async function resolvePrincipals(
 			}
 			const memberDetails = canSeeMembers(ctx);
 			if (opts.purpose === 'display' && !memberDetails) {
-				for (const id of memberIds) found.set(`member:${id}`, HIDDEN_MEMBER);
+				for (const id of memberIds) found.set(`member:${id}`, hiddenMember());
 			} else {
 				// Prüfung: nur Existenz (UUIDs, nichts wird ausgegeben) – daher im System-Kontext,
 				// damit Speichern vorbereiteter Mitglieds-Freigaben nicht am Leserecht scheitert
@@ -398,7 +419,7 @@ export async function describePrincipals(
 	return list.map((p) => ({
 		type: p.type,
 		id: p.id,
-		...(found.get(principalKey(p)) ?? { name: 'Unbekannt' })
+		...(found.get(principalKey(p)) ?? { name: t('sharing.unknown') })
 	}));
 }
 
@@ -429,7 +450,7 @@ export async function validatePrincipals(
 		if (!keep.has(principalKey(p)) && !found.has(principalKey(p))) {
 			issues.push({
 				path: [opts.pathPrefix ?? 'shares', index, 'id'],
-				message: 'Unbekannt oder nicht erlaubt'
+				message: t('sharing.invalidPrincipal')
 			});
 		}
 	});
@@ -472,7 +493,5 @@ export async function requireShareCapability(
 		});
 		if (ok) return;
 	}
-	throw errors.forbidden(
-		'Die Freigabe-Suche steht nur Personen offen, die hier etwas teilen dürfen'
-	);
+	throw errors.forbidden(t('sharing.searchForbidden'));
 }

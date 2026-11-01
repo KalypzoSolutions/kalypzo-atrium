@@ -2,6 +2,7 @@
  * Gemeinsame Server-Loads der Seiten hinter dem Login: `(internal)`-Layout und schlanke Embed-Seiten
  * (`/embed/<modul>/…`) teilen Login-Pflicht, Theme-Abgleich und den Guard der Modul-Oberfläche.
  */
+import { localized, t } from '$lib/i18n';
 import { error, redirect, type Cookies } from '@sveltejs/kit';
 import type { RequestContext } from '$lib/sdk/types';
 import { getDefinition } from './modules/registry';
@@ -41,16 +42,17 @@ export async function guardModulePage(
 	params: { moduleId: string; path?: string },
 	locals: { user: unknown; ctx: RequestContext }
 ) {
-	if (!locals.user) throw error(401, 'Nicht angemeldet');
+	if (!locals.user) throw error(401, t('core-server.notSignedIn'));
 	const def = getDefinition(params.moduleId);
-	if (!def || !(await isModuleEnabled(params.moduleId))) throw error(404, 'Modul nicht verfügbar');
+	if (!def || !(await isModuleEnabled(params.moduleId)))
+		throw error(404, t('core-server.moduleUnavailable'));
 	const perms = def.manifest.permissions;
 	if (perms.length && !perms.some((p) => locals.ctx.permissions.has(p))) {
-		throw error(403, 'Keine Berechtigung');
+		throw error(403, t('core-server.forbidden'));
 	}
 	return {
 		moduleId: params.moduleId,
-		moduleName: def.manifest.name,
+		moduleName: localized(def.manifest.name),
 		path: (params.path ?? '').replace(/^\/+|\/+$/g, '')
 	};
 }

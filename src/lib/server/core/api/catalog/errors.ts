@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import type { ApiErrorInfo } from '$lib/api-docs/types';
 import type { RegisteredEndpoint } from '../types';
 
@@ -22,54 +23,60 @@ export function deriveErrors(e: RegisteredEndpoint): ApiErrorInfo[] {
 
 	// 400 – Content-Type, JSON, Formulardaten
 	if (e.public && mutating && !e.multipart) {
-		add(400, 'bad_request', 'Content-Type ist nicht application/json');
+		add(400, 'bad_request', t('api.docs.notJson'));
 	}
 	if (e.multipart && mutating) {
-		add(400, 'bad_request', 'Content-Type ist nicht multipart/form-data');
-		add(400, 'bad_request', 'Content-Length fehlt');
-		add(
-			400,
-			'bad_request',
-			`Ungültige Formulardaten, doppeltes Feld oder mehr als ${e.multipart.maxFiles ?? 1} Datei(en)`
-		);
+		add(400, 'bad_request', t('api.docs.notMultipart'));
+		add(400, 'bad_request', t('api.docs.noContentLength'));
+		add(400, 'bad_request', t('api.docs.invalidForm', { count: e.multipart.maxFiles ?? 1 }));
 	} else if (e.body) {
-		add(400, 'bad_request', 'Body ist kein gültiges JSON');
+		add(400, 'bad_request', t('api.docs.invalidJson'));
 	}
 
 	// 401 – Authentifizierung (ein Authorization-Header kann bei jedem Endpunkt gesendet werden)
-	if (needsIdentity) add(401, 'unauthenticated', 'Keine Anmeldung (weder Session noch API-Key)');
-	add(401, 'unauthenticated', 'Authorization-Header ungültig (erwartet: Bearer <API-Key>)');
-	add(401, 'unauthenticated', 'API-Key ungültig, abgelaufen oder widerrufen');
+	if (needsIdentity) add(401, 'unauthenticated', t('api.docs.noLogin'));
+	add(401, 'unauthenticated', t('api.docs.invalidAuthHeader'));
+	add(401, 'unauthenticated', t('api.docs.invalidApiKey'));
 
 	// 403 – CSRF, Session-Pflicht, Berechtigung
-	if (mutating) add(403, 'forbidden', 'Anfrage mit Session-Cookie von fremder Origin');
+	if (mutating) add(403, 'forbidden', t('api.docs.foreignOrigin'));
 	if (needsIdentity && e.sessionOnly) {
-		add(403, 'forbidden', 'Aufruf per API-Key (nur mit Session erreichbar)');
+		add(403, 'forbidden', t('api.docs.sessionOnly'));
 	}
-	if (e.permission !== null) add(403, 'forbidden', `Berechtigung ${e.permission} fehlt`);
+	if (e.permission !== null)
+		add(403, 'forbidden', t('api.docs.missingPermission', { permission: e.permission }));
 
 	// 404 – Objekt bzw. Modul
 	if (e.segments.some((s) => s.startsWith(':'))) {
-		add(404, 'not_found', 'Objekt nicht gefunden oder nicht sichtbar');
+		add(404, 'not_found', t('api.docs.objectNotFound'));
 	}
-	if (e.moduleId !== 'core') add(404, 'module_disabled', `Modul ${e.moduleId} ist nicht aktiv`);
+	if (e.moduleId !== 'core')
+		add(404, 'module_disabled', t('api.docs.moduleDisabled', { id: e.moduleId }));
 
 	// 413 – Größe
 	if (e.multipart && mutating) {
-		add(413, 'payload_too_large', `Anfrage größer als ${formatMb(e.multipart.maxBytes)} MB`);
+		add(
+			413,
+			'payload_too_large',
+			t('api.docs.requestTooLarge', { mb: formatMb(e.multipart.maxBytes) })
+		);
 	} else if (e.body) {
-		add(413, 'payload_too_large', `Body größer als ${JSON_BODY_LIMIT_MB} MB`);
+		add(413, 'payload_too_large', t('api.docs.bodyTooLarge', { mb: JSON_BODY_LIMIT_MB }));
 	}
 
 	// 422 – Schema-Validierung
-	if (e.params) add(422, 'validation_failed', 'Pfadparameter ungültig');
-	if (e.query) add(422, 'validation_failed', 'Query-Parameter ungültig');
+	if (e.params) add(422, 'validation_failed', t('api.docs.invalidParams'));
+	if (e.query) add(422, 'validation_failed', t('api.docs.invalidQuery'));
 	if (e.body)
-		add(422, 'validation_failed', e.multipart ? 'Formularfelder ungültig' : 'Body ungültig');
+		add(
+			422,
+			'validation_failed',
+			e.multipart ? t('api.docs.invalidFields') : t('api.docs.invalidBody')
+		);
 
 	// 429, 500 – immer
-	add(429, 'rate_limited', 'Zu viele Anfragen (Header Retry-After beachten)');
-	add(500, 'internal_error', 'Unerwarteter Serverfehler, Request-ID angeben');
+	add(429, 'rate_limited', t('api.docs.rateLimited'));
+	add(500, 'internal_error', t('api.docs.internalError'));
 
 	// Gleiche Status+Code zusammenfassen, Reihenfolge des ersten Auftretens behalten
 	const merged = new Map<string, ApiErrorInfo>();

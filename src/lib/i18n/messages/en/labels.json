@@ -1,0 +1,27 @@
+{
+	"formats": {
+		"zweckform3474": "Avery Zweckform 3474 – 70 × 37 mm, 24 per A4",
+		"zweckform3475": "Avery Zweckform 3475 – 70 × 36 mm, 24 per A4",
+		"averyL7160": "Avery L7160 – 63.5 × 38.1 mm, 21 per A4",
+		"averyL7163": "Avery L7163 – 99.1 × 38.1 mm, 14 per A4",
+		"averyL7159": "Avery Zweckform L7159 – 63.5 × 33.9 mm, 24 per A4",
+		"averyL7651": "Avery L7651 – 38.1 × 21.2 mm, 65 per A4",
+		"zweckform3427": "Avery Zweckform 3427 – 105 × 74 mm, 8 per A4",
+		"brother62x29": "Brother DK-11209 – 62 × 29 mm (roll)",
+		"brother62x100": "Brother DK-11202 – 62 × 100 mm (roll)",
+		"brother29x90": "Brother DK-11201 – 90 × 29 mm (roll)",
+		"dymo89x36": "Dymo 99012 – 89 × 36 mm (roll)",
+		"dymo57x32": "Dymo 11354 – 57 × 32 mm (roll)",
+		"roll100x50": "Thermal printer – 100 × 50 mm (roll)"
+	},
+	"problems": {
+		"sizeMissing": "Label size missing",
+		"tooWide": "The labels are wider than the page",
+		"tooHigh": "The labels are taller than the page"
+	},
+	"barcodes": {
+		"qrcode": "QR code",
+		"code128": "Barcode (Code 128)",
+		"datamatrix": "DataMatrix"
+	}
+}

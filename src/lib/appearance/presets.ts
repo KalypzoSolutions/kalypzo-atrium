@@ -1,17 +1,22 @@
+import { t } from '$lib/i18n';
 /**
  * Vorschläge (fest im Code, ID `preset:<slug>`). Jede Person kann einen Vorschlag direkt nutzen oder als
  * eigenes Theme kopieren und anpassen. Lesbarkeit prüft `tests/unit/appearance-presets.test.ts`.
  */
 import { PRESET_PREFIX, type UserTheme } from './schema';
 
-const p = (slug: string, t: Omit<UserTheme, 'id'>): UserTheme => ({
-	id: `${PRESET_PREFIX}${slug}`,
-	...t
-});
+/** Vorschlag; der Name wird erst beim Lesen übersetzt (Sprache des Requests bzw. der Seite). */
+const p = (slug: string, theme: Omit<UserTheme, 'id' | 'name'>): UserTheme => {
+	const out = { id: `${PRESET_PREFIX}${slug}`, name: '', ...theme };
+	Object.defineProperty(out, 'name', {
+		get: () => t(`appearance.presets.${slug}`),
+		enumerable: true
+	});
+	return out;
+};
 
 export const THEME_PRESETS: readonly UserTheme[] = [
 	p('wald', {
-		name: 'Wald',
 		accent: '#15803d',
 		light: {
 			background: {
@@ -41,7 +46,6 @@ export const THEME_PRESETS: readonly UserTheme[] = [
 		}
 	}),
 	p('ozean', {
-		name: 'Ozean',
 		accent: '#0369a1',
 		light: {
 			background: {
@@ -71,7 +75,6 @@ export const THEME_PRESETS: readonly UserTheme[] = [
 		}
 	}),
 	p('nordlicht', {
-		name: 'Nordlicht',
 		accent: '#0f766e',
 		light: {
 			background: {
@@ -101,7 +104,6 @@ export const THEME_PRESETS: readonly UserTheme[] = [
 		}
 	}),
 	p('lagerfeuer', {
-		name: 'Lagerfeuer',
 		accent: '#c2410c',
 		light: {
 			background: {
@@ -131,7 +133,6 @@ export const THEME_PRESETS: readonly UserTheme[] = [
 		}
 	}),
 	p('sonnenuntergang', {
-		name: 'Sonnenuntergang',
 		accent: '#be185d',
 		light: {
 			background: {
@@ -161,7 +162,6 @@ export const THEME_PRESETS: readonly UserTheme[] = [
 		}
 	}),
 	p('lavendel', {
-		name: 'Lavendel',
 		accent: '#7c3aed',
 		light: {
 			background: {
@@ -189,7 +189,6 @@ export const THEME_PRESETS: readonly UserTheme[] = [
 		}
 	}),
 	p('bergsee', {
-		name: 'Bergsee',
 		accent: '#0891b2',
 		light: {
 			background: {
@@ -219,7 +218,6 @@ export const THEME_PRESETS: readonly UserTheme[] = [
 		}
 	}),
 	p('sand', {
-		name: 'Sand',
 		accent: '#a16207',
 		light: {
 			background: {
@@ -247,7 +245,6 @@ export const THEME_PRESETS: readonly UserTheme[] = [
 		}
 	}),
 	p('schiefer', {
-		name: 'Schiefer',
 		accent: '#475569',
 		light: {
 			background: { kind: 'solid', color: '#f1f5f9' },
@@ -261,7 +258,6 @@ export const THEME_PRESETS: readonly UserTheme[] = [
 		}
 	}),
 	p('morgenrot', {
-		name: 'Morgenrot',
 		accent: '#e11d48',
 		light: {
 			background: {

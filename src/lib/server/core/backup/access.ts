@@ -3,11 +3,12 @@ import type { RequestContext } from '$lib/sdk/types';
 import { errors } from '../errors';
 import { requirePermission } from '../permissions/service';
 import { allDefinitions } from '../modules/registry';
+import { localized, t } from '$lib/i18n';
 
 export async function requireBackupUser(ctx: RequestContext): Promise<string> {
 	await requirePermission(ctx, 'core.system.backup');
 	if (ctx.actor.type !== 'user' || !ctx.userId) {
-		throw errors.forbidden('Datensicherung ist nur für angemeldete Benutzer möglich');
+		throw errors.forbidden(t('backup.access.onlyUsers'));
 	}
 	return ctx.userId;
 }
@@ -24,20 +25,17 @@ export const CORE_ADMIN_ONLY_RESTORE_SCOPES: ReadonlySet<string> = new Set([
 	'core:api-keys'
 ]);
 
-const CORE_REASON =
-	'Nur Administrator*innen dürfen Konten, Rollen und API-Keys wiederherstellen oder zusammenführen.';
-
 /** Bereich → Grund für alle Bereiche, die nur Administrator*innen wiederherstellen dürfen (Core + Module) */
 export function adminOnlyRestoreScopes(): Map<string, string> {
 	const out = new Map<string, string>(
-		[...CORE_ADMIN_ONLY_RESTORE_SCOPES].map((s) => [s, CORE_REASON])
+		[...CORE_ADMIN_ONLY_RESTORE_SCOPES].map((s) => [s, t('backup.access.adminOnlyCore')])
 	);
 	for (const d of allDefinitions()) {
 		const why = d.backup?.adminOnlyRestore;
 		if (why) {
 			out.set(
 				d.manifest.id,
-				`Nur Administrator*innen dürfen „${d.manifest.name}“ wiederherstellen oder zusammenführen (${why}).`
+				t('backup.access.adminOnlyModule', { name: localized(d.manifest.name), reason: why })
 			);
 		}
 	}

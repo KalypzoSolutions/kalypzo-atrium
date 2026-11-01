@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { sql } from 'drizzle-orm';
 import { getDb } from '../database/client';
 import { errors } from '../errors';
@@ -27,7 +28,7 @@ export async function healthCheck(): Promise<{ status: 'ok'; database: 'ok' }> {
 		]);
 	} catch (e) {
 		console.error('[health] Datenbank nicht erreichbar:', e instanceof Error ? e.message : e);
-		throw errors.unavailable('Datenbank nicht erreichbar');
+		throw errors.unavailable(t('api.health.databaseUnavailable'));
 	} finally {
 		if (timer) clearTimeout(timer);
 	}

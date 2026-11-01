@@ -1,0 +1,172 @@
+{
+	"home": "Übersicht",
+	"sections": {
+		"people": {
+			"label": "Personen & Rechte",
+			"description": "Benutzerkonten, Rollen und was sie dürfen."
+		},
+		"settings": {
+			"label": "Einstellungen",
+			"description": "Organisation, Design, E-Mail, Speicher, KI, PDF und Modul-Einstellungen."
+		},
+		"modules": {
+			"label": "Module",
+			"description": "Module aktivieren und ihre eigenen Einstellungsseiten."
+		},
+		"api": {
+			"label": "Schnittstellen",
+			"description": "API-Keys für externe Dienste und die Übersicht aller Endpunkte."
+		},
+		"maintenance": {
+			"label": "Protokoll & Wartung",
+			"description": "Audit-Log, Datensicherung und Zurücksetzen von Daten."
+		}
+	},
+	"entries": {
+		"users": {
+			"label": "Benutzer",
+			"description": "Konten anlegen, sperren, Rollen zuweisen.",
+			"keywords": "Konto, Konten, Benutzer*innen, Passwort, deaktivieren, E-Mail-Adresse"
+		},
+		"roles": {
+			"label": "Rollen",
+			"description": "Rollen und ihre Rechte bearbeiten.",
+			"keywords": "Rolle, Administrator, Mitglied, Rechte vergeben"
+		},
+		"roles-permissions": {
+			"label": "Berechtigungen",
+			"description": "Alle Rechte mit Modul und zugehörigen Rollen.",
+			"keywords": "Recht, Rechte, Permission, Zugriff"
+		},
+		"settings": {
+			"label": "Einstellungen",
+			"description": "Alle Systemeinstellungen an einem Ort.",
+			"keywords": "Konfiguration, System"
+		},
+		"settings-general": {
+			"label": "Allgemein",
+			"description": "Systemname, Name, Anschrift und Kontakt der Organisation.",
+			"keywords": "Systemname, Organisation, Verein, Anschrift, Adresse, Telefon, Kontakt, Sprache"
+		},
+		"settings-design": {
+			"label": "Design",
+			"description": "Logo und Akzentfarbe.",
+			"keywords": "Logo, Akzentfarbe, Farbe, Erscheinungsbild, Branding"
+		},
+		"settings-mail": {
+			"label": "E-Mail-Versand",
+			"description": "SMTP-Server, Zugangsdaten, Absender und Test-E-Mail.",
+			"keywords": "SMTP, Mailserver, Absender, Port, TLS, Test-E-Mail, Passwort"
+		},
+		"settings-mail-layout": {
+			"label": "E-Mail-Layout",
+			"description": "Aussehen ausgehender E-Mails mit Vorschau.",
+			"keywords": "Signatur, Fußzeile, Emblem, Logo, Vorschau, Mail-Vorlage"
+		},
+		"settings-storage": {
+			"label": "Speicher",
+			"description": "S3-Speicher für Dateien, Belege und Bilder.",
+			"keywords": "Storage, S3, MinIO, Bucket, Dateien, Upload, Endpoint"
+		},
+		"settings-notifications": {
+			"label": "Benachrichtigungen",
+			"description": "Push-Benachrichtigungen (Web Push) ein- und ausschalten, Schlüssel.",
+			"keywords": "Push, Web Push, VAPID, Handy, App, Benachrichtigung, Mitteilung"
+		},
+		"settings-ai": {
+			"label": "KI",
+			"description": "KI-Anbieter, Modell, Limits und Nutzung.",
+			"keywords": "Künstliche Intelligenz, Claude, Modell, API-Schlüssel, Kosten, Budget"
+		},
+		"settings-pdf": {
+			"label": "PDF",
+			"description": "PDF-Einstellungen, Briefvorlagen mit Vorschau, Test-PDF.",
+			"keywords": "Briefkopf, Vorlage, Brief, Dokument, Papierformat"
+		},
+		"settings-modules": {
+			"label": "Module",
+			"description": "Einstellungen der aktiven Module (z. B. Bankdaten, Namen).",
+			"keywords": "Modul-Einstellungen, Bankdaten, IBAN, BIC, Kontoinhaber, Name, Adresssuche"
+		},
+		"modules": {
+			"label": "Module",
+			"description": "Module aktivieren, deaktivieren und installieren.",
+			"keywords": "aktivieren, deaktivieren, Erweiterung, Version"
+		},
+		"modules-install": {
+			"label": "Installieren",
+			"description": "Module per GitHub-Link oder ZIP-Datei installieren und aktualisieren.",
+			"keywords": "GitHub, ZIP, hochladen, Update, Quelle, Repository"
+		},
+		"modules-history": {
+			"label": "Verlauf",
+			"description": "Installationen und Aktualisierungen von Modulen.",
+			"keywords": "Installationen, Protokoll, Commit"
+		},
+		"api": {
+			"label": "API-Keys",
+			"description": "Schlüssel für externe Dienste (z. B. eigene Website).",
+			"keywords": "API-Schlüssel, Token, Scope, Website, Zugang"
+		},
+		"api-docs": {
+			"label": "API-Übersicht",
+			"description": "Alle REST-Endpunkte mit Rechten, Schemas und Konsole.",
+			"keywords": "REST, Endpunkte, Dokumentation, OpenAPI, Konsole"
+		},
+		"audit": {
+			"label": "Audit-Log",
+			"description": "Wer hat wann was geändert.",
+			"keywords": "Protokoll, Verlauf, Logins, Änderungen, Log"
+		},
+		"reset": {
+			"label": "Zurücksetzen",
+			"description": "Daten einzelner Bereiche oder des ganzen Systems löschen (mit Sicherung).",
+			"keywords": "Reset, Löschen"
+		},
+		"backup": {
+			"label": "Datensicherung",
+			"description": "Alle Daten verschlüsselt sichern und wiederherstellen oder zusammenführen.",
+			"keywords": "Sicherung, Backup, Export, Import, Wiederherstellen, Umzug"
+		},
+		"privacy": {
+			"label": "Datenauskunft",
+			"description": "Alle Daten einer Person exportieren (Auskunft und Datenübertragbarkeit, DSGVO).",
+			"keywords": "DSGVO, Auskunft, Datenschutz, Art. 15, Art. 20, Export, Betroffene"
+		}
+	},
+	"moduleEntry": {
+		"pageOf": "{page} des Moduls {module}",
+		"settingsOf": "Einstellungen des Moduls {module}",
+		"hint": "Einstellungen",
+		"keywords": "Modul-Einstellungen"
+	},
+	"overview": {
+		"title": "Verwaltung",
+		"description": "Benutzer, Rollen, Einstellungen, Module und Schnittstellen an einem Ort.",
+		"searchPlaceholder": "Einstellung suchen … (z. B. SMTP, Logo, IBAN)",
+		"searchLabel": "Einstellung suchen",
+		"searchHint": "Enter öffnet den ersten Treffer.",
+		"hits": "{count} Treffer – Enter öffnet den ersten.",
+		"nothingFound": "Nichts gefunden",
+		"nothingFoundHint": "Zu „{query}“ gibt es keine Einstellung, auf die du Zugriff hast. Versuch einen anderen Begriff, z. B. „Mail“, „Rolle“ oder „Speicher“.",
+		"noAccess": "Du hast keinen Zugriff auf die Verwaltung."
+	},
+	"errors": {
+		"unauthenticated": "Nicht angemeldet",
+		"forbidden": "Keine Berechtigung"
+	},
+	"form": {
+		"saved": "Gespeichert",
+		"failed": "Aktion fehlgeschlagen",
+		"unexpected": "Unerwarteter Fehler"
+	},
+	"permissionPicker": {
+		"searchLabel": "Berechtigungen durchsuchen",
+		"searchPlaceholder": "Berechtigung suchen, z. B. „kasse“ oder „löschen“ …",
+		"countHits": "{visible} von {total} Berechtigungen – „alle“/„keine“ wirken nur auf die Treffer.",
+		"countNone": "{visible} von {total} Berechtigungen.",
+		"all": "alle",
+		"none": "keine",
+		"privileged": "Admin-gleich"
+	}
+}

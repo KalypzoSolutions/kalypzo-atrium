@@ -1,0 +1,30 @@
+{
+	"title": "Dashboard",
+	"customize": "Anpassen",
+	"coreModule": "Allgemein",
+	"saveLayoutFailed": "Die Anordnung konnte nicht gespeichert werden.",
+	"saveFailed": "Speichern fehlgeschlagen.",
+	"emptyTitle": "Noch keine Kacheln",
+	"emptyDescription": "Über „Anpassen“ kannst du Kacheln einblenden und anordnen.",
+	"widgetError": "Diese Kachel konnte nicht geladen werden.",
+	"nothingNewAll": "Gerade gibt es nichts Neues: {list}",
+	"nothingNewAt": "Nichts Neues bei: {list}",
+	"customizeTitle": "Dashboard anpassen",
+	"customizeDescription": "Kacheln ein- und ausblenden und die Reihenfolge ändern. Änderungen werden sofort gespeichert.",
+	"noWidgets": "Für dich sind keine Kacheln verfügbar.",
+	"widgets": "Kacheln",
+	"dragToMove": "Ziehen zum Verschieben",
+	"moveUp": "{title} nach oben",
+	"moveDown": "{title} nach unten",
+	"show": "{title} anzeigen",
+	"resetLayout": "Standard wiederherstellen",
+	"saving": "Speichert …",
+	"saved": "Gespeichert",
+	"notSaved": "Nicht gespeichert",
+	"live": {
+		"shown": "{title} eingeblendet",
+		"hidden": "{title} ausgeblendet",
+		"moved": "{title} jetzt an Position {position} von {total}",
+		"reset": "Standard wiederhergestellt"
+	}
+}

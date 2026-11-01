@@ -15,10 +15,12 @@ import {
 	BackupFormatError,
 	isSecretMarker,
 	KEY_CHECK_INPUT,
+	LEGACY_KEY_CHECK_INPUTS,
 	type SecretMarker,
 	type SecretPurpose,
 	type TableInfo
 } from './types';
+import { t } from '$lib/i18n';
 
 const TEXT_TYPE = /^(text|character varying(\(\d+\))?|character(\(\d+\))?)$/;
 const isTextType = (type: string) => TEXT_TYPE.test(type);
@@ -107,25 +109,25 @@ export async function encodeRowSecrets(
  * In jsonb-Spalten ohne Geheimnis-Zweck bleiben marker-ähnliche Werte unverändert (gewöhnliche Daten).
  */
 export async function decodeRowSecrets(
-	t: TableInfo,
+	tbl: TableInfo,
 	row: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
 	let out: Record<string, unknown> | null = null;
-	for (const col of t.columns) {
+	for (const col of tbl.columns) {
 		const v = row[col.name];
 		if (!isSecretMarker(v)) continue;
-		const expected = markerColumn(t, col.name, col.type);
+		const expected = markerColumn(tbl, col.name, col.type);
 		if (!expected) {
 			if (isJsonbType(col.type)) continue;
 			throw new BackupFormatError(
 				'corrupt',
-				`Unerwarteter verschlüsselter Wert in ${t.schema}.${t.table}.${col.name}`
+				t('backup.format.unexpectedSecret', { column: `${tbl.schema}.${tbl.table}.${col.name}` })
 			);
 		}
 		if (v.$secret.p !== expected) {
 			throw new BackupFormatError(
 				'corrupt',
-				`Verschlüsselter Wert in ${t.schema}.${t.table}.${col.name} hat einen falschen Zweck`
+				t('backup.format.wrongPurpose', { column: `${tbl.schema}.${tbl.table}.${col.name}` })
 			);
 		}
 		const plain = v.$secret.v;
@@ -142,4 +144,12 @@ export async function decodeRowSecrets(
 /** Prüfwert des Server-Schlüssels (erkennt beim Import einen anderen `APP_SECRET`). */
 export function keyCheckValue(): string {
 	return keyedHash(KEY_CHECK_INPUT, 'backup');
+}
+
+/** Stammt der Prüfwert vom selben Schlüssel? Nimmt auch Prüfwerte älterer Sicherungen (EP Intern) an. */
+export function keyCheckMatches(value: string): boolean {
+	return (
+		value === keyCheckValue() ||
+		LEGACY_KEY_CHECK_INPUTS.some((input) => value === keyedHash(input, 'backup'))
+	);
 }

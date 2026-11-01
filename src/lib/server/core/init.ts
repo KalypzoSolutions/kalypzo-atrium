@@ -8,6 +8,8 @@ import { syncModules } from './modules/service';
 import { reconcileInstallEvents } from './modules/install/supervisor-link';
 import { syncInstallsFromLock } from './modules/install/manage';
 import { seedSettingsFromEnv } from './settings/env-seed';
+import { installServerLocale, setSystemLocaleCache } from './i18n/locale';
+import { getSetting } from './settings/service';
 
 let started: Promise<void> | undefined;
 let apiRegistered = false;
@@ -16,6 +18,7 @@ let apiRegistered = false;
 export function initCore(opts: { migrate?: boolean } = {}): Promise<void> {
 	started ??= (async () => {
 		const e = env();
+		await installServerLocale();
 		if (opts.migrate ?? true) await runCoreMigrations(getDb());
 		if (!apiRegistered) {
 			registerCoreApi();
@@ -37,6 +40,7 @@ export function initCore(opts: { migrate?: boolean } = {}): Promise<void> {
 		await syncInstallsFromLock().catch((err) =>
 			console.error('[core] Übernahme der Lock-Datei fehlgeschlagen:', err)
 		);
+		setSystemLocaleCache(await getSetting('core.system.locale').catch(() => 'auto'));
 		const seeded = await seedSettingsFromEnv();
 		if (seeded.length)
 			console.info(`[core] Einstellungen aus Umgebung vorbelegt: ${seeded.join(', ')}`);

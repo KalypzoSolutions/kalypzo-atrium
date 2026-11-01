@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	// Blatt von unten (Handy): Griff + Kopf ziehen schließt, Hintergrund tippen schließt,
 	// die Zurück-Geste schließt nur das Blatt (Verlaufseintrag per Shallow Routing).
 	// Für Menüs (`SheetAction`), Filter (`ChoiceChips`) und kurze Formulare/Assistenten.
@@ -17,7 +18,7 @@
 		description,
 		size = 'auto',
 		onback,
-		backLabel = 'Zurück',
+		backLabel = t('layout.back'),
 		headerActions,
 		footer,
 		children,
@@ -166,7 +167,7 @@
 							class="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted"
 						>
 							<XIcon class="size-5" />
-							<span class="sr-only">Schließen</span>
+							<span class="sr-only">{t('layout.close')}</span>
 						</DialogPrimitive.Close>
 					{/if}
 				</div>

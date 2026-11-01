@@ -1,5 +1,6 @@
 import { fail, type Actions } from '@sveltejs/kit';
 import { isCoreError } from '$lib/server/core/errors';
+import { t } from '$lib/i18n';
 import { testConnection, usageByModule } from '$lib/server/core/storage';
 import { loadFields, saveFields } from '../../_shared/group-form.server';
 import { requirePerm } from '../../_shared/server-utils';
@@ -27,7 +28,7 @@ export const actions: Actions = {
 		requirePerm(locals, 'core.storage.manage');
 		try {
 			await testConnection(locals.ctx);
-			return { success: true, message: 'Verbindung zum Bucket erfolgreich' };
+			return { success: true, message: t('admin-settings.storage.testOk') };
 		} catch (e) {
 			if (isCoreError(e)) return fail(e.status, { message: e.message });
 			throw e;

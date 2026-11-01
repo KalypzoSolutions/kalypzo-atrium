@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /** Lädt eine PDF-Antwort der API und startet den Download im Browser. */
 export async function downloadPdf(
 	url: string,
@@ -9,7 +10,7 @@ export async function downloadPdf(
 	const res = await fetch(url, { ...init, headers, credentials: 'same-origin' });
 	if (!res.ok) {
 		const b = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-		throw new Error(b?.error?.message ?? 'PDF konnte nicht erzeugt werden');
+		throw new Error(b?.error?.message ?? t('layout.pdf.createFailed'));
 	}
 	const name =
 		/filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? fallbackName;

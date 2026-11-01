@@ -1,0 +1,12 @@
+{
+	"lockBusy": "Es läuft bereits ein Wartungsvorgang ({name})",
+	"lock": {
+		"backup": "Datensicherung",
+		"restore": "Wiederherstellung",
+		"reset": "Zurücksetzen",
+		"resetExport": "Sicherung vor dem Zurücksetzen"
+	},
+	"tooManyAttempts": "Zu viele Versuche. Bitte später erneut versuchen.",
+	"wrongPassword": "Passwort ist nicht korrekt",
+	"totpInvalid": "Bestätigungscode (2FA) fehlt oder ist ungültig"
+}

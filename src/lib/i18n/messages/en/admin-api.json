@@ -1,0 +1,53 @@
+{
+	"tabKeys": "API keys",
+	"headerTitle": "Interfaces",
+	"headerDescription": "API keys for external services and an overview of all REST endpoints.",
+	"tabsLabel": "Interface sections",
+	"title": "API keys",
+	"description": "Keys for external services. Effective permissions are the intersection of the scopes and your own permissions.",
+	"create": "Create API key",
+	"empty": "No API keys yet.",
+	"col": {
+		"name": "Name",
+		"prefix": "Prefix",
+		"scopes": "Scopes",
+		"status": "Status",
+		"expires": "Expires",
+		"lastUsed": "Last used",
+		"actions": "Actions"
+	},
+	"scopeCount": "{count} scopes",
+	"status": {
+		"revoked": "Revoked",
+		"expired": "Expired",
+		"active": "Active"
+	},
+	"revoke": "Revoke",
+	"copied": "Copied to clipboard",
+	"copyFailed": "Copying not possible – please select it manually",
+	"createDescription": "The key is shown only once after it is created.",
+	"name": "Name",
+	"namePlaceholder": "e.g. accounting export",
+	"expiresAt": "Expiry date (optional)",
+	"scopes": "Scopes",
+	"scopeFilter": "Filter scopes …",
+	"scopeFilterLabel": "Filter scopes",
+	"noScopes": "No scopes found.",
+	"cancel": "Cancel",
+	"creating": "Creating …",
+	"createSubmit": "Create",
+	"createdTitle": "API key “{name}” created",
+	"createdDescription": "Copy the key now and keep it safe. It cannot be shown again later.",
+	"keyLabel": "API key",
+	"copy": "Copy",
+	"done": "Done, I have saved the key",
+	"revokeTitle": "Revoke API key?",
+	"revokeDescription": "“{name}” ({prefix}…) becomes invalid immediately. This cannot be undone.",
+	"server": {
+		"nameMin": "Name must be at least 2 characters long",
+		"scopeRequired": "At least one scope is required",
+		"invalidDate": "Invalid date",
+		"created": "API key created",
+		"revoked": "API key revoked"
+	}
+}

@@ -7,6 +7,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { eq } from 'drizzle-orm';
 import semver from 'semver';
+import { localized, t } from '$lib/i18n';
 import { getDb, schema } from '../../database/client';
 import { CORE_PACKAGES, CORE_VERSION } from '../../version';
 import { canonicalChecksumFor } from '../migration-checksum';
@@ -51,12 +52,12 @@ export interface ModuleAnalysis {
 
 /** Auffällige Muster in Moduldateien (nur Hinweise – Module haben ohnehin volle Rechte) */
 const SCAN: { re: RegExp; text: string }[] = [
-	{ re: /from\s+['"]\$lib\/server\//, text: 'importiert Core-Interna ($lib/server)' },
-	{ re: /['"](node:)?child_process['"]/, text: 'startet Prozesse (child_process)' },
-	{ re: /process\.env\b/, text: 'liest Umgebungsvariablen (process.env)' },
-	{ re: /\beval\s*\(|new\s+Function\s*\(/, text: 'führt dynamischen Code aus (eval/Function)' },
-	{ re: /['"](node:)?(fs|fs\/promises)['"]/, text: 'greift auf Dateien zu (node:fs)' },
-	{ re: /['"](node:)?(net|dgram|tls)['"]/, text: 'öffnet Netzwerkverbindungen (net/tls)' }
+	{ re: /from\s+['"]\$lib\/server\//, text: 'install.analyze.scan.serverImport' },
+	{ re: /['"](node:)?child_process['"]/, text: 'install.analyze.scan.childProcess' },
+	{ re: /process\.env\b/, text: 'install.analyze.scan.env' },
+	{ re: /\beval\s*\(|new\s+Function\s*\(/, text: 'install.analyze.scan.eval' },
+	{ re: /['"](node:)?(fs|fs\/promises)['"]/, text: 'install.analyze.scan.fs' },
+	{ re: /['"](node:)?(net|dgram|tls)['"]/, text: 'install.analyze.scan.net' }
 ];
 
 export function scanSources(files: Map<string, Uint8Array>): string[] {
@@ -68,7 +69,7 @@ export function scanSources(files: Map<string, Uint8Array>): string[] {
 		const src = decoder.decode(data);
 		for (const s of SCAN) if (!found.has(s.text) && s.re.test(src)) found.set(s.text, path);
 	}
-	return [...found].map(([text, path]) => `${text} – z. B. ${path}`);
+	return [...found].map(([key, path]) => t('install.analyze.scanHit', { text: t(key), path }));
 }
 
 /** Dateien des Moduls im laufenden Modulverzeichnis gegen den neuen Stand (Listen je höchstens 200) */
@@ -106,9 +107,10 @@ export async function analyzeModule(mod: DiscoveredModule): Promise<ModuleAnalys
 	const { pkg } = mod;
 	const blockers: string[] = [];
 	const warnings: string[] = [];
-	if (RESERVED_MODULE_IDS.has(pkg.id)) blockers.push(`Die Modul-ID „${pkg.id}“ ist reserviert`);
+	if (RESERVED_MODULE_IDS.has(pkg.id))
+		blockers.push(t('install.analyze.reservedId', { id: pkg.id }));
 	if (!versionSatisfies(CORE_VERSION, pkg.core)) {
-		blockers.push(`Braucht Core ${pkg.core}, installiert ist ${CORE_VERSION}`);
+		blockers.push(t('install.analyze.coreVersion', { range: pkg.core, version: CORE_VERSION }));
 	}
 
 	const db = getDb();
@@ -132,12 +134,10 @@ export async function analyzeModule(mod: DiscoveredModule): Promise<ModuleAnalys
 		else action = lock?.contentHash === mod.contentHash ? 'unchanged' : 'reinstall';
 	}
 	if (action === 'downgrade') {
-		warnings.push(
-			`Ältere Version als installiert (${installedVersion}) – bereits angewendete Migrationen bleiben bestehen`
-		);
+		warnings.push(t('install.analyze.downgrade', { version: installedVersion ?? '' }));
 	}
 	if (action === 'reinstall' && def) {
-		warnings.push('Gleiche Version wie installiert, aber anderer Inhalt');
+		warnings.push(t('install.analyze.reinstall'));
 	}
 
 	// Rechte
@@ -155,16 +155,16 @@ export async function analyzeModule(mod: DiscoveredModule): Promise<ModuleAnalys
 	for (const row of applied) {
 		const sql = byName.get(row.name);
 		if (sql === undefined) {
-			blockers.push(`Bereits angewendete Migration ${row.name} fehlt im neuen Stand`);
+			blockers.push(t('install.analyze.migrationMissing', { name: row.name }));
 		} else if (!canonicalChecksumFor(row.checksum, sql)) {
-			blockers.push(`Bereits angewendete Migration ${row.name} wurde verändert`);
+			blockers.push(t('install.analyze.migrationChanged', { name: row.name }));
 		}
 	}
 	const appliedNames = new Set(applied.map((r) => r.name));
 	const newMigrations = mod.migrations.map((m) => m.name).filter((n) => !appliedNames.has(n));
 	const lastApplied = [...appliedNames].sort().pop();
 	if (lastApplied && newMigrations.some((n) => n < lastApplied)) {
-		blockers.push('Neue Migrationen müssen hinter den bereits angewendeten einsortiert sein');
+		blockers.push(t('install.analyze.migrationOrder'));
 	}
 
 	// npm-Pakete
@@ -175,18 +175,24 @@ export async function analyzeModule(mod: DiscoveredModule): Promise<ModuleAnalys
 		return { name, version, status: ok ? 'core' : 'conflict', coreRange };
 	});
 	for (const n of npm.filter((x) => x.status === 'conflict')) {
-		blockers.push(`npm-Paket ${n.name}@${n.version} passt nicht zum Core (${n.coreRange})`);
+		blockers.push(
+			t('install.analyze.npmConflict', {
+				name: n.name,
+				version: n.version,
+				range: n.coreRange ?? ''
+			})
+		);
 	}
 	if (npm.some((n) => n.status === 'new')) {
-		warnings.push('Bringt eigene npm-Pakete mit (werden beim Neubau installiert)');
+		warnings.push(t('install.analyze.npmNew'));
 	}
 
 	warnings.push(...scanSources(mod.files));
 	const fileChanges = installedFileChanges(pkg.id, mod.files);
 	return {
 		id: pkg.id,
-		name: pkg.name,
-		description: pkg.description ?? '',
+		name: localized(pkg.name),
+		description: localized(pkg.description),
 		version: pkg.version,
 		installedVersion,
 		action,

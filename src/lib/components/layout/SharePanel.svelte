@@ -3,17 +3,19 @@
 	import ContactRound from '@lucide/svelte/icons/contact-round';
 	import Search from '@lucide/svelte/icons/search';
 	import Shield from '@lucide/svelte/icons/shield';
-	import Tent from '@lucide/svelte/icons/tent';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import User from '@lucide/svelte/icons/user';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import Users from '@lucide/svelte/icons/users';
+	import UsersRound from '@lucide/svelte/icons/users-round';
 	import { Avatar, AvatarFallback, AvatarImage } from '$lib/components/ui/avatar';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { SelectField } from '$lib/components/ui/select-field';
 	import { contrastTextColor } from '$lib/components/ui/color-picker/color';
+	import { t } from '$lib/i18n';
+	import { principalTypeLabel } from '$lib/sdk/types/sharing';
 	import {
 		shareInitials,
 		shareKey,
@@ -25,7 +27,7 @@
 	} from './share-types';
 
 	/**
-	 * Inhalt der Freigabe: Ziele (Benutzer*innen oder – mit `type` – Stamm, Gruppen, Rollen,
+	 * Inhalt der Freigabe: Ziele (Benutzer*innen oder – mit `type` – alle, Gruppen, Rollen,
 	 * Mitglieder) suchen, mit einer Stufe hinzufügen, Stufe ändern oder entfernen. Wird von
 	 * `ShareDialog` (Dialog) und `ShareMenu` (Popover) verwendet. Die Persistenz liegt bei der
 	 * aufrufenden Seite; Fehler der Callbacks werden hier angezeigt.
@@ -44,9 +46,9 @@
 		onchange,
 		onremove,
 		everyoneLabel,
-		placeholder = 'Name oder E-Mail suchen …',
-		searchLabel = 'Benutzer suchen',
-		emptyResultText = 'Keine passenden Benutzer'
+		placeholder = t('sharing.panel.placeholder'),
+		searchLabel = t('sharing.panel.searchLabel'),
+		emptyResultText = t('sharing.panel.emptyResult')
 	}: {
 		shares: ShareEntry[];
 		/** Optional: wird als erste Zeile mit Badge „Besitzer*in“ angezeigt */
@@ -76,11 +78,11 @@
 	const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
 	const TYPE_META: Record<ShareTargetType, { label: string; icon: Component }> = {
-		everyone: { label: 'Stamm', icon: Tent },
-		group: { label: 'Gruppe', icon: Users },
-		role: { label: 'Rolle', icon: Shield },
-		user: { label: 'Benutzer*in', icon: User },
-		member: { label: 'Mitglied', icon: ContactRound }
+		everyone: { label: principalTypeLabel('everyone'), icon: UsersRound },
+		group: { label: principalTypeLabel('group'), icon: Users },
+		role: { label: principalTypeLabel('role'), icon: Shield },
+		user: { label: principalTypeLabel('user'), icon: User },
+		member: { label: principalTypeLabel('member'), icon: ContactRound }
 	};
 
 	let query = $state('');
@@ -116,7 +118,7 @@
 				const found = await search(q);
 				if (mine === seq) results = found;
 			} catch (e) {
-				if (mine === seq) error = message(e, 'Suche fehlgeschlagen');
+				if (mine === seq) error = message(e, t('sharing.panel.searchFailed'));
 			} finally {
 				if (mine === seq) searching = false;
 			}
@@ -144,12 +146,16 @@
 			await onadd(user, effectiveLevel);
 			query = '';
 			results = [];
-		}, 'Freigabe fehlgeschlagen');
+		}, t('sharing.panel.shareFailed'));
 
 	const addEveryone = () =>
 		run(
-			() => onadd({ id: '*', type: 'everyone', name: everyoneLabel ?? 'Stamm' }, effectiveLevel),
-			'Freigabe fehlgeschlagen'
+			() =>
+				onadd(
+					{ id: '*', type: 'everyone', name: everyoneLabel ?? t('sharing.everyone') },
+					effectiveLevel
+				),
+			t('sharing.panel.shareFailed')
 		);
 </script>
 
@@ -232,7 +238,7 @@
 				<div class="w-36">
 					<SelectField
 						class="min-w-0"
-						label="Stufe für neue Freigabe"
+						label={t('sharing.panel.newLevel')}
 						options={levels}
 						value={effectiveLevel}
 						onchange={(v) => (level = v)}
@@ -246,18 +252,21 @@
 					size="sm"
 					variant="outline"
 					disabled={busy}
-					aria-label="Für {everyoneLabel} (alle) freigeben"
+					aria-label={t('sharing.panel.shareWithEveryoneAria', { label: everyoneLabel ?? '' })}
 					onclick={addEveryone}
 				>
-					<Tent />
-					{everyoneLabel} (alle)
+					<UsersRound />
+					{t('sharing.panel.shareWithEveryone', { label: everyoneLabel ?? '' })}
 				</Button>
 			{/if}
 
 			{#if query.trim().length >= MIN_QUERY}
-				<ul class="max-h-48 divide-y overflow-y-auto rounded-md border" aria-label="Suchergebnisse">
+				<ul
+					class="max-h-48 divide-y overflow-y-auto rounded-md border"
+					aria-label={t('sharing.panel.results')}
+				>
 					{#if searching}
-						<li class="px-3 py-2 text-sm text-muted-foreground">Suche …</li>
+						<li class="px-3 py-2 text-sm text-muted-foreground">{t('sharing.panel.searching')}</li>
 					{:else if candidates.length === 0}
 						<li class="px-3 py-2 text-sm text-muted-foreground">{emptyResultText}</li>
 					{:else}
@@ -269,31 +278,34 @@
 									size="sm"
 									variant="outline"
 									disabled={busy}
-									aria-label="{c.name} hinzufügen"
+									aria-label={t('sharing.panel.addAria', { name: c.name })}
 									onclick={() => add(c)}
 								>
-									<UserPlus /> Hinzufügen
+									<UserPlus />
+									{t('sharing.panel.add')}
 								</Button>
 							</li>
 						{/each}
 					{/if}
 				</ul>
 			{:else if query.trim().length > 0}
-				<p class="text-xs text-muted-foreground">Mindestens {MIN_QUERY} Zeichen eingeben.</p>
+				<p class="text-xs text-muted-foreground">
+					{t('sharing.panel.minChars', { count: MIN_QUERY })}
+				</p>
 			{/if}
 		</div>
 	{/if}
 
 	<div>
-		<h3 class="mb-2 text-sm font-medium">Zugriff ({total})</h3>
+		<h3 class="mb-2 text-sm font-medium">{t('sharing.panel.access', { count: total })}</h3>
 		{#if total === 0}
-			<p class="text-sm text-muted-foreground">Noch nicht freigegeben.</p>
+			<p class="text-sm text-muted-foreground">{t('sharing.panel.notShared')}</p>
 		{:else}
 			<ul class="max-h-72 divide-y overflow-y-auto rounded-md border">
 				{#if owner}
 					<li class="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
 						{@render identity({ name: owner.name, email: owner.email, image: owner.image })}
-						<Badge>Besitzer*in</Badge>
+						<Badge>{t('sharing.panel.owner')}</Badge>
 					</li>
 				{/if}
 				{#each shares as s (shareKey(s))}
@@ -304,21 +316,21 @@
 								<div class="w-32">
 									<SelectField
 										class="min-w-0"
-										label="Stufe für {s.name}"
+										label={t('sharing.panel.levelFor', { name: s.name })}
 										options={levels}
 										value={s.level}
 										disabled={busy}
 										onchange={(v) =>
-											v && run(() => onchange(shareKey(s), v), 'Änderung fehlgeschlagen')}
+											v && run(() => onchange(shareKey(s), v), t('sharing.panel.changeFailed'))}
 									/>
 								</div>
 								<Button
 									type="button"
 									size="icon"
 									variant="ghost"
-									aria-label="Freigabe für {s.name} entfernen"
+									aria-label={t('sharing.panel.removeAria', { name: s.name })}
 									disabled={busy}
-									onclick={() => run(() => onremove(shareKey(s)), 'Entfernen fehlgeschlagen')}
+									onclick={() => run(() => onremove(shareKey(s)), t('sharing.panel.removeFailed'))}
 								>
 									<Trash2 class="size-4" />
 								</Button>

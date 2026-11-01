@@ -19,6 +19,7 @@ import { has } from '../permissions/service';
 import { getSettings } from '../settings/service';
 import { newId } from '../util';
 import { invalidateStorageConfigCache, storageConfigGeneration } from './config-cache';
+import { t } from '$lib/i18n';
 
 export { invalidateStorageConfigCache } from './config-cache';
 
@@ -105,20 +106,20 @@ const ACTIVE_CONTENT_TYPES = new Set(['text/html', 'image/svg+xml', 'application
 
 export function validateModuleId(module: string): void {
 	if (!MODULE_PATTERN.test(module) && module !== 'core') {
-		throw errors.badRequest('Ungültige Modul-ID');
+		throw errors.badRequest(t('storage.invalidModuleId'));
 	}
 }
 
 export function validatePath(path: string): void {
 	if (typeof path !== 'string' || !path.length || path.length > 512) {
-		throw errors.badRequest('Ungültiger Dateipfad');
+		throw errors.badRequest(t('storage.invalidPath'));
 	}
 	// eslint-disable-next-line no-control-regex
 	if (/[\u0000-\u001f\u007f\\]/.test(path) || path.startsWith('/') || path.endsWith('/')) {
-		throw errors.badRequest('Ungültiger Dateipfad');
+		throw errors.badRequest(t('storage.invalidPath'));
 	}
 	for (const seg of path.split('/')) {
-		if (!seg || seg === '.' || seg === '..') throw errors.badRequest('Ungültiger Dateipfad');
+		if (!seg || seg === '.' || seg === '..') throw errors.badRequest(t('storage.invalidPath'));
 	}
 }
 
@@ -145,7 +146,9 @@ export function assertAccess(ctx: RequestContext, module: string, action: Action
 	if (ctx.actor.type === 'system') return;
 	if (!ctx.userId) throw errors.unauthenticated();
 	if (has(ctx, `${module}.storage.${action}`) || has(ctx, 'core.storage.manage')) return;
-	throw errors.forbidden(`Berechtigung fehlt: ${module}.storage.${action}`);
+	throw errors.forbidden(
+		t('storage.permissionMissing', { permission: `${module}.storage.${action}` })
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -241,7 +244,7 @@ export function setFileRepoForTests(r: FileRepo | undefined): void {
 async function connect(): Promise<{ s3: S3Handle; config: StorageConfig }> {
 	const config = await loadConfig();
 	if (!config.bucket || !config.accessKeyId || !config.secretAccessKey) {
-		throw errors.unavailable('S3-Storage ist nicht konfiguriert');
+		throw errors.unavailable(t('storage.notConfigured'));
 	}
 	const cacheKey = JSON.stringify([
 		config.endpoint,
@@ -264,12 +267,12 @@ function mapS3Error(e: unknown): never {
 	const err = e as { name?: string; $metadata?: { httpStatusCode?: number } };
 	const status = err.$metadata?.httpStatusCode;
 	if (err.name === 'NoSuchKey' || err.name === 'NotFound' || status === 404) {
-		throw errors.notFound('Datei nicht im Speicher gefunden');
+		throw errors.notFound(t('storage.objectNotFound'));
 	}
 	if (status === 403 || err.name === 'AccessDenied' || err.name === 'InvalidAccessKeyId') {
-		throw errors.unavailable('Zugriff auf den S3-Storage wurde abgelehnt');
+		throw errors.unavailable(t('storage.accessDenied'));
 	}
-	throw errors.unavailable('S3-Storage ist nicht erreichbar');
+	throw errors.unavailable(t('storage.unreachable'));
 }
 
 // ---------------------------------------------------------------------------
@@ -377,7 +380,7 @@ function maxBytes(config: StorageConfig): number {
 
 function checkType(contentType: string, config: StorageConfig): void {
 	if (!contentTypeAllowed(contentType, config.allowedContentTypes)) {
-		throw errors.badRequest(`Dateityp nicht erlaubt: ${contentType}`);
+		throw errors.badRequest(t('storage.typeNotAllowed', { type: contentType }));
 	}
 }
 
@@ -400,7 +403,7 @@ export async function upload(ctx: RequestContext, input: UploadInput): Promise<S
 	const { s3, config } = await connect();
 	const size = input.file.byteLength;
 	if (size > maxBytes(config))
-		throw errors.tooLarge(`Datei überschreitet das Limit von ${config.maxFileSizeMb} MB`);
+		throw errors.tooLarge(t('storage.tooLarge', { mb: String(config.maxFileSizeMb) }));
 	const contentType = normalizeContentType(input.contentType);
 	checkType(contentType, config);
 
@@ -477,7 +480,7 @@ async function requireFile(
 	validatePath(path);
 	const row = await files().findByPath(module, path);
 	if (!row || (opts.ready !== false && row.status !== 'ready'))
-		throw errors.notFound('Datei nicht gefunden');
+		throw errors.notFound(t('storage.fileNotFound'));
 	return row;
 }
 
@@ -494,7 +497,7 @@ export async function download(
 		)) as {
 			Body?: { transformToByteArray(): Promise<Uint8Array> };
 		};
-		if (!res.Body) throw errors.notFound('Datei nicht im Speicher gefunden');
+		if (!res.Body) throw errors.notFound(t('storage.objectNotFound'));
 		return { buffer: await res.Body.transformToByteArray(), file: toStored(row) };
 	} catch (e) {
 		if (isCoreError(e)) throw e;
@@ -639,7 +642,7 @@ export async function downloadStream(
 		const res = (await s3.send(
 			new GetObjectCommand({ Bucket: s3.bucket, Key: row.objectKey })
 		)) as { Body?: S3Body };
-		if (!res.Body) throw errors.notFound('Datei nicht im Speicher gefunden');
+		if (!res.Body) throw errors.notFound(t('storage.objectNotFound'));
 		const body = res.Body;
 		const stream = body.transformToWebStream
 			? body.transformToWebStream()
@@ -705,9 +708,9 @@ export async function createSignedUploadUrl(
 	validatePath(input.path);
 	const { s3, config } = await connect();
 	if (!Number.isInteger(input.size) || input.size <= 0)
-		throw errors.badRequest('Ungültige Dateigröße');
+		throw errors.badRequest(t('storage.invalidSize'));
 	if (input.size > maxBytes(config))
-		throw errors.tooLarge(`Datei überschreitet das Limit von ${config.maxFileSizeMb} MB`);
+		throw errors.tooLarge(t('storage.tooLarge', { mb: String(config.maxFileSizeMb) }));
 	const contentType = normalizeContentType(input.contentType);
 	checkType(contentType, config);
 	const expiresInSec = Math.min(input.expiresInSec ?? DEFAULT_SIGNED_TTL, MAX_SIGNED_TTL);
@@ -715,8 +718,7 @@ export async function createSignedUploadUrl(
 	const objectKey = `${input.module}/${newId()}`;
 	const existing = await files().findByPath(input.module, input.path);
 	// Der Inhalt einer bestehenden Datei bleibt bis zum Löschen unverändert.
-	if (existing)
-		throw errors.conflict('Pfad existiert bereits; zuerst löschen oder direkt hochladen');
+	if (existing) throw errors.conflict(t('storage.pathExists'));
 	const fileId = newId();
 	await files().insert({
 		id: fileId,
@@ -748,7 +750,7 @@ export async function createSignedUploadUrl(
 /** Bestätigt einen per signierter URL hochgeladenen Upload (prüft Existenz und Größe). */
 export async function confirmUpload(ctx: RequestContext, fileId: string): Promise<StoredFile> {
 	const row = await files().findById(fileId);
-	if (!row) throw errors.notFound('Datei nicht gefunden');
+	if (!row) throw errors.notFound(t('storage.fileNotFound'));
 	assertAccess(ctx, row.moduleId, 'write');
 	if (row.status === 'ready') return toStored(row);
 	const { s3, config } = await connect();
@@ -761,14 +763,14 @@ export async function confirmUpload(ctx: RequestContext, fileId: string): Promis
 		};
 		length = head.ContentLength;
 	} catch {
-		throw errors.badRequest('Upload wurde nicht gefunden');
+		throw errors.badRequest(t('storage.uploadNotFound'));
 	}
 	if (length === undefined || length > maxBytes(config) || length !== row.size) {
 		await s3
 			.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key: row.objectKey }))
 			.catch(() => undefined);
 		await files().delete(row.id);
-		throw errors.badRequest('Hochgeladene Datei entspricht nicht der angekündigten Größe');
+		throw errors.badRequest(t('storage.sizeMismatch'));
 	}
 	await files().update(row.id, { status: 'ready' });
 	return toStored({ ...row, status: 'ready' });
@@ -794,7 +796,7 @@ export async function usageByModule(
 	if (ctx.actor.type !== 'system') {
 		if (!ctx.userId) throw errors.unauthenticated();
 		if (!has(ctx, 'core.storage.manage'))
-			throw errors.forbidden('Berechtigung fehlt: core.storage.manage');
+			throw errors.forbidden(t('storage.permissionMissing', { permission: 'core.storage.manage' }));
 	}
 	return files().usage();
 }
@@ -803,7 +805,7 @@ export async function usageByModule(
 export async function testConnection(ctx?: RequestContext): Promise<{ ok: true }> {
 	if (ctx && ctx.actor.type !== 'system') {
 		if (!has(ctx, 'core.storage.manage'))
-			throw errors.forbidden('Berechtigung fehlt: core.storage.manage');
+			throw errors.forbidden(t('storage.permissionMissing', { permission: 'core.storage.manage' }));
 	}
 	const { s3 } = await connect();
 	try {
@@ -848,7 +850,7 @@ export async function readFileByIdUnchecked(
 const OBJECT_KEY = /^[a-z][a-z0-9-]*\/[A-Za-z0-9-]{1,64}$/;
 
 function checkObjectKey(objectKey: string): void {
-	if (!OBJECT_KEY.test(objectKey)) throw errors.badRequest('Ungültiger Objektschlüssel');
+	if (!OBJECT_KEY.test(objectKey)) throw errors.badRequest(t('storage.invalidObjectKey'));
 }
 
 /** Objekt lesen; `null`, wenn es fehlt. Nie direkt an Clients durchreichen. */
@@ -979,9 +981,7 @@ export async function purgeUnchecked(
 		try {
 			s3 = (await connect()).s3;
 		} catch {
-			warnings.push(
-				`Speicher für ${input.module} nicht erreichbar/konfiguriert: nur Metadaten gelöscht (${rows.length} Dateien)`
-			);
+			warnings.push(t('storage.purgeUnavailable', { module: input.module, count: rows.length }));
 		}
 		if (s3) {
 			let failed = 0;
@@ -995,9 +995,7 @@ export async function purgeUnchecked(
 				failed += results.filter((x) => x.status === 'rejected').length;
 			}
 			if (failed) {
-				warnings.push(
-					`${failed} Objekte von ${input.module} konnten nicht aus dem Speicher gelöscht werden`
-				);
+				warnings.push(t('storage.purgeFailed', { module: input.module, count: failed }));
 			}
 		}
 		for (const r of rows) await files().delete(r.id);
@@ -1022,7 +1020,7 @@ export async function purge(ctx: RequestContext, input: PurgeInput): Promise<Pur
 	if (ctx.actor.type !== 'system') {
 		if (!ctx.userId) throw errors.unauthenticated();
 		if (!has(ctx, 'core.storage.manage'))
-			throw errors.forbidden('Berechtigung fehlt: core.storage.manage');
+			throw errors.forbidden(t('storage.permissionMissing', { permission: 'core.storage.manage' }));
 	}
 	if (input.prefix) {
 		const p = input.prefix.replace(/\/+$/, '');

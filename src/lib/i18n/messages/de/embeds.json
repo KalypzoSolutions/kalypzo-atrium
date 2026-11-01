@@ -1,0 +1,12 @@
+{
+	"invalidKey": "Ungültiger Schlüssel",
+	"invalidId": "Ungültige ID",
+	"tooMany": "Höchstens {max} Einträge",
+	"endpoints": {
+		"search": "Einbettbare Inhalte suchen (ab 2 Zeichen, je Art höchstens 10)",
+		"kinds": "Arten einbettbarer Inhalte, die die Person nutzen darf",
+		"describe": "Eingebettete Inhalte je Betrachter*in auflösen (Titel, Zugriff, Pfade)"
+	},
+	"unavailable": "Nicht verfügbar",
+	"embeddedContent": "Eingebetteter Inhalt"
+}

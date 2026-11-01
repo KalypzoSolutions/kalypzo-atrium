@@ -1,0 +1,16 @@
+{
+	"core": {
+		"housekeeping": "Aufbewahrungsfristen durchsetzen (API-Protokoll, Audit-Log)",
+		"avatarsReprocess": "Alte Profilbilder bereinigen (neu kodieren, Metadaten entfernen)",
+		"notificationsDigest": "Tageszusammenfassung der Benachrichtigungen (E-Mail/Push) verschicken"
+	},
+	"result": {
+		"housekeeping": "API-Protokoll: {apiLog} gelöscht; Audit-Log: {audit} gelöscht, {ips} IP-Adressen entfernt",
+		"avatars": "Profilbilder: {processed} bereinigt, {removed} entfernt, {skipped} übersprungen",
+		"digest": "Tageszusammenfassung: {users} Personen, {email} Mails, {push} Push, {expired} verworfen"
+	},
+	"legacyMessage": "Fehler (Details aus Datenschutzgründen entfernt)",
+	"notFound": "Job nicht gefunden",
+	"paused": "Jobs sind pausiert (Zurücksetzen läuft)",
+	"running": "Job läuft bereits"
+}

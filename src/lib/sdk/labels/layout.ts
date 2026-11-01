@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import type {
 	LabelElement,
 	LabelImageElement,
@@ -11,48 +12,30 @@ import type {
  * Vorgaben für gängige Etiketten. Bögen: Maße laut Herstellerangabe (Avery Zweckform), Ränder so
  * gerechnet, dass das Raster mittig sitzt. Rollen: ein Etikett je PDF-Seite (Etikettendrucker).
  */
+/** Vorgabe mit übersetztem Namen (Text `labels.formats.<name>`, erst beim Lesen übersetzt) */
+function preset(key: string, name: string, format: LabelFormat): LabelFormatPreset {
+	const out = { key, name: '', format };
+	Object.defineProperty(out, 'name', {
+		get: () => t(`labels.formats.${name}`),
+		enumerable: true
+	});
+	return out;
+}
+
 export const LABEL_FORMAT_PRESETS: LabelFormatPreset[] = [
-	{
-		key: 'zweckform-3474',
-		name: 'Avery Zweckform 3474 – 70 × 37 mm, 24 je A4',
-		format: sheet(3, 8, 70, 37, 0, 0)
-	},
-	{
-		key: 'zweckform-3475',
-		name: 'Avery Zweckform 3475 – 70 × 36 mm, 24 je A4',
-		format: sheet(3, 8, 70, 36, 0, 0)
-	},
-	{
-		key: 'avery-l7160',
-		name: 'Avery L7160 – 63,5 × 38,1 mm, 21 je A4',
-		format: sheet(3, 7, 63.5, 38.1, 2.54, 0)
-	},
-	{
-		key: 'avery-l7163',
-		name: 'Avery L7163 – 99,1 × 38,1 mm, 14 je A4',
-		format: sheet(2, 7, 99.1, 38.1, 2.54, 0)
-	},
-	{
-		key: 'avery-l7159',
-		name: 'Avery Zweckform L7159 – 63,5 × 33,9 mm, 24 je A4',
-		format: sheet(3, 8, 63.5, 33.9, 2.54, 0)
-	},
-	{
-		key: 'avery-l7651',
-		name: 'Avery L7651 – 38,1 × 21,2 mm, 65 je A4',
-		format: sheet(5, 13, 38.1, 21.2, 2.54, 0)
-	},
-	{
-		key: 'zweckform-3427',
-		name: 'Avery Zweckform 3427 – 105 × 74 mm, 8 je A4',
-		format: sheet(2, 4, 105, 74, 0, 0)
-	},
-	{ key: 'brother-62x29', name: 'Brother DK-11209 – 62 × 29 mm (Rolle)', format: roll(62, 29) },
-	{ key: 'brother-62x100', name: 'Brother DK-11202 – 62 × 100 mm (Rolle)', format: roll(62, 100) },
-	{ key: 'brother-29x90', name: 'Brother DK-11201 – 90 × 29 mm (Rolle)', format: roll(90, 29) },
-	{ key: 'dymo-89x36', name: 'Dymo 99012 – 89 × 36 mm (Rolle)', format: roll(89, 36) },
-	{ key: 'dymo-57x32', name: 'Dymo 11354 – 57 × 32 mm (Rolle)', format: roll(57, 32) },
-	{ key: 'roll-100x50', name: 'Thermodrucker – 100 × 50 mm (Rolle)', format: roll(100, 50) }
+	preset('zweckform-3474', 'zweckform3474', sheet(3, 8, 70, 37, 0, 0)),
+	preset('zweckform-3475', 'zweckform3475', sheet(3, 8, 70, 36, 0, 0)),
+	preset('avery-l7160', 'averyL7160', sheet(3, 7, 63.5, 38.1, 2.54, 0)),
+	preset('avery-l7163', 'averyL7163', sheet(2, 7, 99.1, 38.1, 2.54, 0)),
+	preset('avery-l7159', 'averyL7159', sheet(3, 8, 63.5, 33.9, 2.54, 0)),
+	preset('avery-l7651', 'averyL7651', sheet(5, 13, 38.1, 21.2, 2.54, 0)),
+	preset('zweckform-3427', 'zweckform3427', sheet(2, 4, 105, 74, 0, 0)),
+	preset('brother-62x29', 'brother62x29', roll(62, 29)),
+	preset('brother-62x100', 'brother62x100', roll(62, 100)),
+	preset('brother-29x90', 'brother29x90', roll(90, 29)),
+	preset('dymo-89x36', 'dymo89x36', roll(89, 36)),
+	preset('dymo-57x32', 'dymo57x32', roll(57, 32)),
+	preset('roll-100x50', 'roll100x50', roll(100, 50))
 ];
 
 function sheet(
@@ -144,14 +127,15 @@ export function placeLabels(format: LabelFormat, count: number, startIndex = 0):
 
 /** Fehlertext, wenn die Etiketten nicht auf den Bogen passen; sonst `null` */
 export function formatProblem(format: LabelFormat): string | null {
-	if (format.labelWidthMm <= 0 || format.labelHeightMm <= 0) return 'Etikettgröße fehlt';
+	if (format.labelWidthMm <= 0 || format.labelHeightMm <= 0)
+		return t('labels.problems.sizeMissing');
 	if (format.kind === 'roll') return null;
 	const right =
 		format.marginLeftMm + format.cols * format.labelWidthMm + (format.cols - 1) * format.gapXMm;
 	const bottom =
 		format.marginTopMm + format.rows * format.labelHeightMm + (format.rows - 1) * format.gapYMm;
-	if (right > format.pageWidthMm + 0.5) return 'Die Etiketten sind breiter als die Seite';
-	if (bottom > format.pageHeightMm + 0.5) return 'Die Etiketten sind höher als die Seite';
+	if (right > format.pageWidthMm + 0.5) return t('labels.problems.tooWide');
+	if (bottom > format.pageHeightMm + 0.5) return t('labels.problems.tooHigh');
 	return null;
 }
 

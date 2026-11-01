@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import DatabaseBackup from '@lucide/svelte/icons/database-backup';
 	import Download from '@lucide/svelte/icons/download';
@@ -46,12 +47,12 @@
 
 	const pwError = $derived(
 		backupPassword.length > 0 && backupPassword.length < minPassword
-			? `Mindestens ${minPassword} Zeichen`
+			? t('admin-backup.export.minChars', { count: minPassword })
 			: (fieldErrors.backupPassword ?? null)
 	);
 	const pw2Error = $derived(
 		backupPassword2.length > 0 && backupPassword2 !== backupPassword
-			? 'Die Passwörter stimmen nicht überein'
+			? t('admin-backup.export.mismatch')
 			: null
 	);
 	const canStart = $derived(
@@ -107,7 +108,7 @@
 			result = r.data;
 			backupPassword = '';
 			backupPassword2 = '';
-			toast.success('Sicherung erstellt');
+			toast.success(t('admin-backup.export.created'));
 			startDownload(r.data);
 			return;
 		}
@@ -134,36 +135,38 @@
 		<Card.Header>
 			<Card.Title class="flex items-center gap-2">
 				<CircleCheck class="size-5 text-success" aria-hidden="true" />
-				Sicherung erstellt
+				{t('admin-backup.export.created')}
 			</Card.Title>
 			<Card.Description>
-				{result.fileName} – {result.summary.scopes.length}
-				{result.summary.scopes.length === 1 ? 'Bereich' : 'Bereiche'}
+				{t('admin-backup.export.resultSummary', {
+					file: result.fileName,
+					count: result.summary.scopes.length
+				})}
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="space-y-4">
 			<dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 				<div class="rounded-lg border p-3">
-					<dt class="text-xs text-muted-foreground">Tabellen</dt>
+					<dt class="text-xs text-muted-foreground">{t('admin-backup.export.tables')}</dt>
 					<dd class="text-2xl font-semibold tabular-nums">{fmt(result.summary.tables)}</dd>
 				</div>
 				<div class="rounded-lg border p-3">
-					<dt class="text-xs text-muted-foreground">Datensätze</dt>
+					<dt class="text-xs text-muted-foreground">{t('admin-backup.export.rows')}</dt>
 					<dd class="text-2xl font-semibold tabular-nums">{fmt(result.summary.rows)}</dd>
 				</div>
 				<div class="rounded-lg border p-3">
-					<dt class="text-xs text-muted-foreground">Dateien</dt>
+					<dt class="text-xs text-muted-foreground">{t('admin-backup.export.files')}</dt>
 					<dd class="text-2xl font-semibold tabular-nums">{fmt(result.summary.files)}</dd>
 				</div>
 				<div class="rounded-lg border p-3">
-					<dt class="text-xs text-muted-foreground">Größe</dt>
+					<dt class="text-xs text-muted-foreground">{t('admin-backup.export.size')}</dt>
 					<dd class="text-2xl font-semibold tabular-nums">{fmtBytes(result.summary.bytes)}</dd>
 				</div>
 			</dl>
 			{#if result.summary.warnings.length}
 				<Alert.Root variant="warning">
 					<TriangleAlert aria-hidden="true" />
-					<Alert.Title>Hinweise</Alert.Title>
+					<Alert.Title>{t('admin-backup.export.warnings')}</Alert.Title>
 					<Alert.Description>
 						<ul class="list-disc space-y-1 pl-4">
 							{#each result.summary.warnings as w, i (i)}<li>{w}</li>{/each}
@@ -173,21 +176,20 @@
 			{/if}
 			<p class="text-xs text-muted-foreground" role="status">
 				{downloaded
-					? 'Der Download wurde gestartet. Prüfe, ob die Datei vollständig gespeichert ist.'
-					: 'Startet der Download nicht von selbst, nutze den Knopf.'}
-				Der Link funktioniert nur einmal und 15 Minuten lang. Bewahre Datei und Sicherungs-Passwort getrennt
-				und sicher auf.
+					? t('admin-backup.export.downloadStarted')
+					: t('admin-backup.export.downloadManual')}
+				{t('admin-backup.export.linkOnce')}
 			</p>
 		</Card.Content>
 		<Card.Footer class="flex flex-wrap justify-end gap-2">
-			<Button variant="outline" onclick={reset}>Neue Sicherung</Button>
+			<Button variant="outline" onclick={reset}>{t('admin-backup.export.newBackup')}</Button>
 			<Button
 				href="/admin/backup/export/{encodeURIComponent(result.downloadId)}"
 				download={result.fileName}
 				onclick={() => (downloaded = true)}
 			>
 				<Download aria-hidden="true" />
-				Herunterladen
+				{t('admin-backup.export.download')}
 			</Button>
 		</Card.Footer>
 	</Card.Root>
@@ -195,9 +197,9 @@
 	<div class="space-y-6">
 		<Card.Root>
 			<Card.Header>
-				<Card.Title>Bereiche</Card.Title>
+				<Card.Title>{t('admin-backup.export.scopesTitle')}</Card.Title>
 				<Card.Description>
-					Wähle aus, was gesichert werden soll. Abhängige Bereiche gehen automatisch mit.
+					{t('admin-backup.export.scopesDescription')}
 				</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-5">
@@ -211,10 +213,11 @@
 						aria-describedby="export-files-desc"
 					/>
 					<div class="space-y-1">
-						<Label for="export-files" class="font-medium">Dateien einschließen</Label>
+						<Label for="export-files" class="font-medium"
+							>{t('admin-backup.export.includeFiles')}</Label
+						>
 						<p id="export-files-desc" class="text-xs text-muted-foreground">
-							Hochgeladene Dateien (Belege, Bilder, Dokumente) der gewählten Bereiche. Ohne Dateien
-							ist die Sicherung kleiner, beim Wiederherstellen fehlen dann aber die Inhalte.
+							{t('admin-backup.export.includeFilesHint')}
 						</p>
 					</div>
 				</div>
@@ -223,18 +226,15 @@
 
 		<Card.Root>
 			<Card.Header>
-				<Card.Title>Sicherungs-Passwort</Card.Title>
-				<Card.Description
-					>Die Sicherungsdatei wird mit diesem Passwort verschlüsselt.</Card.Description
-				>
+				<Card.Title>{t('admin-backup.export.passwordTitle')}</Card.Title>
+				<Card.Description>{t('admin-backup.export.passwordDescription')}</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-4">
 				<Alert.Root variant="warning">
 					<TriangleAlert aria-hidden="true" />
-					<Alert.Title>Gut aufbewahren</Alert.Title>
+					<Alert.Title>{t('admin-backup.export.keepSafe')}</Alert.Title>
 					<Alert.Description>
-						Ohne dieses Passwort lässt sich die Sicherung nicht wiederherstellen. Datei + Passwort
-						geben Zugriff auf alle Daten inkl. Zugangsdaten.
+						{t('admin-backup.export.keepSafeText')}
 					</Alert.Description>
 				</Alert.Root>
 				<form
@@ -246,10 +246,10 @@
 				>
 					<div class="grid content-start gap-2">
 						<FormField
-							label="Sicherungs-Passwort *"
+							label={t('admin-backup.export.passwordLabel')}
 							id="export-backup-password"
 							error={pwError}
-							hint="Mindestens {minPassword} Zeichen"
+							hint={t('admin-backup.export.minChars', { count: minPassword })}
 						>
 							<Input
 								id="export-backup-password"
@@ -275,11 +275,17 @@
 										></span>
 									{/each}
 								</div>
-								<span class="text-xs text-muted-foreground">Stärke: {strength.label}</span>
+								<span class="text-xs text-muted-foreground"
+									>{t('admin-backup.export.strength', { label: strength.label })}</span
+								>
 							</div>
 						{/if}
 					</div>
-					<FormField label="Passwort wiederholen *" id="export-backup-password2" error={pw2Error}>
+					<FormField
+						label={t('admin-backup.export.passwordRepeat')}
+						id="export-backup-password2"
+						error={pw2Error}
+					>
 						<Input
 							id="export-backup-password2"
 							type="password"
@@ -297,10 +303,10 @@
 
 		{#if busy}
 			<div class="space-y-2 rounded-md border p-4" role="status" aria-live="polite">
-				<p class="text-sm font-medium">Sicherung wird erstellt …</p>
-				<ProgressBar value={0} indeterminate label="Sicherung wird erstellt" />
+				<p class="text-sm font-medium">{t('admin-backup.export.creating')}</p>
+				<ProgressBar value={0} indeterminate label={t('admin-backup.export.creatingLabel')} />
 				<p class="text-xs text-muted-foreground">
-					Das kann bei vielen Dateien einige Minuten dauern. Bitte lass die Seite geöffnet.
+					{t('admin-backup.export.creatingHint')}
 				</p>
 			</div>
 		{/if}
@@ -310,11 +316,11 @@
 
 		<div class="flex flex-wrap items-center justify-end gap-3">
 			{#if !allScopes.length}
-				<p class="text-xs text-muted-foreground">Bitte mindestens einen Bereich wählen.</p>
+				<p class="text-xs text-muted-foreground">{t('admin-backup.export.chooseScope')}</p>
 			{/if}
 			<Button onclick={openDialog} disabled={!canStart}>
 				<DatabaseBackup aria-hidden="true" />
-				{busy ? 'Sicherung läuft …' : 'Sicherung erstellen'}
+				{busy ? t('admin-backup.export.running') : t('admin-backup.export.create')}
 			</Button>
 		</div>
 	</div>
@@ -323,14 +329,13 @@
 <Dialog.Root bind:open={dialogOpen}>
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
-			<Dialog.Title>Sicherung bestätigen</Dialog.Title>
+			<Dialog.Title>{t('admin-backup.export.confirmTitle')}</Dialog.Title>
 			<Dialog.Description>
-				Bestätige mit deinem Konto-Passwort{twoFactorEnabled
-					? ' und dem Code deiner Authenticator-App'
-					: ''}. Gesichert werden {allScopes.length}
-				{allScopes.length === 1 ? 'Bereich' : 'Bereiche'}{includeFiles
-					? ' inklusive Dateien'
-					: ' ohne Dateien'}.
+				{t('admin-backup.export.confirmDescription', {
+					twoFactor: twoFactorEnabled ? 'yes' : 'no',
+					count: allScopes.length,
+					files: includeFiles ? 'yes' : 'no'
+				})}
 			</Dialog.Description>
 		</Dialog.Header>
 		<form
@@ -350,10 +355,10 @@
 			/>
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (dialogOpen = false)}>
-					Abbrechen
+					{t('admin-backup.export.cancel')}
 				</Button>
 				<Button type="submit" disabled={!canSubmit}>
-					{busy ? 'Sicherung läuft …' : 'Sicherung erstellen'}
+					{busy ? t('admin-backup.export.running') : t('admin-backup.export.create')}
 				</Button>
 			</Dialog.Footer>
 		</form>

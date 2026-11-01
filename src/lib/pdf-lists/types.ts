@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Vertrag für konfigurierbare PDF-Listen (eine Zeile je Person, Spalten wählbar).
  * Rein (ohne Server-/Svelte-Importe): wird vom Server (Katalog, Zeilen, Layout) und von der
@@ -8,11 +9,20 @@
 export const LIST_COLUMN_GROUPS = ['person', 'contact', 'health', 'action'] as const;
 export type ListColumnGroup = (typeof LIST_COLUMN_GROUPS)[number];
 
-export const LIST_COLUMN_GROUP_LABELS: Record<ListColumnGroup, string> = {
-	person: 'Person',
-	contact: 'Kontakt',
-	health: 'Gesundheit & Zusatzangaben',
-	action: 'Aktion'
+/** Anzeigenamen der Gruppen (beim Lesen übersetzt) */
+export const LIST_COLUMN_GROUP_LABELS: Readonly<Record<ListColumnGroup, string>> = {
+	get person() {
+		return t('pdf-lists.groups.person');
+	},
+	get contact() {
+		return t('pdf-lists.groups.contact');
+	},
+	get health() {
+		return t('pdf-lists.groups.health');
+	},
+	get action() {
+		return t('pdf-lists.groups.action');
+	}
 };
 
 export interface ListColumn {

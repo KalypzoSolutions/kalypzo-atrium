@@ -9,6 +9,7 @@
  */
 import { createHash } from 'node:crypto';
 import { inflateRawSync } from 'node:zlib';
+import { t } from '$lib/i18n';
 import { errors } from '../../errors';
 
 export const ARCHIVE_LIMITS = {
@@ -61,23 +62,22 @@ function u32(b: Uint8Array, o: number): number {
 
 /** Pfad prüfen und normalisieren (nur `/`, keine leeren Segmente); `null` = Verzeichniseintrag */
 function checkPath(raw: string): string | null {
-	if (raw.includes('\0')) throw fail('Archiv enthält einen ungültigen Dateinamen');
-	if (raw.includes('\\')) throw fail(`Ungültiger Pfad im Archiv: ${raw.slice(0, 120)}`);
+	if (raw.includes('\0')) throw fail(t('install.archive.invalidFileName'));
+	if (raw.includes('\\')) throw fail(t('install.archive.invalidPath', { path: raw.slice(0, 120) }));
 	if (raw.startsWith('/') || /^[A-Za-z]:/.test(raw)) {
-		throw fail(`Absoluter Pfad im Archiv: ${raw.slice(0, 120)}`);
+		throw fail(t('install.archive.absolutePath', { path: raw.slice(0, 120) }));
 	}
-	if (raw.length > ARCHIVE_LIMITS.maxPathLength) throw fail('Pfad im Archiv ist zu lang');
+	if (raw.length > ARCHIVE_LIMITS.maxPathLength) throw fail(t('install.archive.pathTooLong'));
 	const isDir = raw.endsWith('/');
 	const parts = raw.split('/').filter((p, i, a) => !(p === '' && i === a.length - 1));
 	for (const p of parts) {
 		if (p === '' || p === '.' || p === '..') {
-			throw fail(`Ungültiger Pfad im Archiv: ${raw.slice(0, 120)}`);
+			throw fail(t('install.archive.invalidPath', { path: raw.slice(0, 120) }));
 		}
-		if (p.startsWith('.'))
-			throw fail(`Versteckte Dateien sind nicht erlaubt: ${raw.slice(0, 120)}`);
-		if (p === 'node_modules') throw fail('node_modules darf nicht im Archiv liegen');
+		if (p.startsWith('.')) throw fail(t('install.archive.hiddenFile', { path: raw.slice(0, 120) }));
+		if (p === 'node_modules') throw fail(t('install.archive.nodeModules'));
 		if (/[<>:"|?*]/.test(p) || [...p].some((c) => c.charCodeAt(0) < 0x20)) {
-			throw fail(`Ungültiges Zeichen im Pfad: ${raw.slice(0, 120)}`);
+			throw fail(t('install.archive.invalidChar', { path: raw.slice(0, 120) }));
 		}
 	}
 	return isDir ? null : parts.join('/');
@@ -87,11 +87,11 @@ function checkExtension(path: string): void {
 	const name = path.slice(path.lastIndexOf('/') + 1);
 	const dot = name.lastIndexOf('.');
 	if (dot <= 0) {
-		if (!ALLOWED_PLAIN.has(name)) throw fail(`Dateityp nicht erlaubt: ${path}`);
+		if (!ALLOWED_PLAIN.has(name)) throw fail(t('install.archive.typeNotAllowed', { path }));
 		return;
 	}
 	const ext = name.slice(dot + 1).toLowerCase();
-	if (!ALLOWED_EXTENSIONS.has(ext)) throw fail(`Dateityp nicht erlaubt: ${path}`);
+	if (!ALLOWED_EXTENSIONS.has(ext)) throw fail(t('install.archive.typeNotAllowed', { path }));
 }
 
 /**
@@ -100,7 +100,7 @@ function checkExtension(path: string): void {
  */
 export function readModuleArchive(zip: Uint8Array): ArchiveFiles {
 	if (zip.byteLength > ARCHIVE_LIMITS.maxArchiveBytes) {
-		throw errors.tooLarge('Das Archiv ist größer als 50 MB');
+		throw errors.tooLarge(t('install.archive.tooLarge'));
 	}
 	// Ende des zentralen Verzeichnisses (EOCD) suchen – höchstens 64 KB Kommentar
 	let eocd = -1;
@@ -110,14 +110,13 @@ export function readModuleArchive(zip: Uint8Array): ArchiveFiles {
 			break;
 		}
 	}
-	if (eocd < 0) throw fail('Die Datei ist kein gültiges ZIP-Archiv');
+	if (eocd < 0) throw fail(t('install.archive.notZip'));
 	const count = u16(zip, eocd + 10);
 	const cdSize = u32(zip, eocd + 12);
 	const cdOffset = u32(zip, eocd + 16);
-	if (count === 0xffff || cdOffset === 0xffffffff)
-		throw fail('ZIP64-Archive werden nicht unterstützt');
-	if (cdOffset + cdSize > eocd) throw fail('Das ZIP-Archiv ist beschädigt');
-	if (count > ARCHIVE_LIMITS.maxFiles) throw fail('Das Archiv enthält zu viele Dateien');
+	if (count === 0xffff || cdOffset === 0xffffffff) throw fail(t('install.archive.zip64'));
+	if (cdOffset + cdSize > eocd) throw fail(t('install.archive.corrupt'));
+	if (count > ARCHIVE_LIMITS.maxFiles) throw fail(t('install.archive.tooManyFiles'));
 
 	const decoder = new TextDecoder('utf-8', { fatal: true });
 	const raw: { path: string; data: Uint8Array }[] = [];
@@ -125,7 +124,7 @@ export function readModuleArchive(zip: Uint8Array): ArchiveFiles {
 	let total = 0;
 	let p = cdOffset;
 	for (let n = 0; n < count; n++) {
-		if (u32(zip, p) !== 0x02014b50) throw fail('Das ZIP-Archiv ist beschädigt');
+		if (u32(zip, p) !== 0x02014b50) throw fail(t('install.archive.corrupt'));
 		const madeBy = u16(zip, p + 4) >> 8;
 		const flags = u16(zip, p + 8);
 		const method = u16(zip, p + 10);
@@ -140,7 +139,7 @@ export function readModuleArchive(zip: Uint8Array): ArchiveFiles {
 		try {
 			name = decoder.decode(zip.subarray(p + 46, p + 46 + nameLen));
 		} catch {
-			throw fail('Archiv enthält einen ungültigen Dateinamen');
+			throw fail(t('install.archive.invalidFileName'));
 		}
 		p += 46 + nameLen + extraLen + commentLen;
 
@@ -149,34 +148,33 @@ export function readModuleArchive(zip: Uint8Array): ArchiveFiles {
 		if (madeBy === 3) {
 			const type = (external >>> 16) & 0o170000;
 			if (type !== 0 && type !== 0o100000 && type !== 0o040000) {
-				throw fail(`Symlinks und Sonderdateien sind nicht erlaubt: ${name.slice(0, 120)}`);
+				throw fail(t('install.archive.symlink', { path: name.slice(0, 120) }));
 			}
 		}
 		if (path === null) continue;
-		if (flags & 0x1) throw fail('Verschlüsselte Archive werden nicht unterstützt');
-		if (method !== 0 && method !== 8) throw fail(`Nicht unterstützte Kompression: ${path}`);
-		if (size > ARCHIVE_LIMITS.maxFileBytes) throw fail(`Datei zu groß (über 10 MB): ${path}`);
+		if (flags & 0x1) throw fail(t('install.archive.encrypted'));
+		if (method !== 0 && method !== 8) throw fail(t('install.archive.compression', { path }));
+		if (size > ARCHIVE_LIMITS.maxFileBytes) throw fail(t('install.archive.fileTooLarge', { path }));
 		if (compSize > 0 && size / compSize > ARCHIVE_LIMITS.maxRatio) {
-			throw fail(`Ungewöhnlich stark gepackte Datei: ${path}`);
+			throw fail(t('install.archive.ratio', { path }));
 		}
 		total += size;
-		if (total > ARCHIVE_LIMITS.maxTotalBytes)
-			throw fail('Das Archiv ist entpackt größer als 50 MB');
+		if (total > ARCHIVE_LIMITS.maxTotalBytes) throw fail(t('install.archive.unpackedTooLarge'));
 		const key = path.toLowerCase();
-		if (seen.has(key)) throw fail(`Doppelter Pfad im Archiv: ${path}`);
+		if (seen.has(key)) throw fail(t('install.archive.duplicate', { path }));
 		seen.add(key);
 		checkExtension(path);
 
 		// Lokaler Kopf: Name muss übereinstimmen, Daten dahinter
-		if (u32(zip, localOffset) !== 0x04034b50) throw fail('Das ZIP-Archiv ist beschädigt');
+		if (u32(zip, localOffset) !== 0x04034b50) throw fail(t('install.archive.corrupt'));
 		const lNameLen = u16(zip, localOffset + 26);
 		const lExtraLen = u16(zip, localOffset + 28);
 		const lName = new TextDecoder().decode(
 			zip.subarray(localOffset + 30, localOffset + 30 + lNameLen)
 		);
-		if (lName !== name) throw fail(`Archiv-Eintrag widersprüchlich: ${path}`);
+		if (lName !== name) throw fail(t('install.archive.mismatch', { path }));
 		const start = localOffset + 30 + lNameLen + lExtraLen;
-		if (start + compSize > cdOffset) throw fail('Das ZIP-Archiv ist beschädigt');
+		if (start + compSize > cdOffset) throw fail(t('install.archive.corrupt'));
 		const packed = zip.subarray(start, start + compSize);
 		let data: Uint8Array;
 		try {
@@ -185,9 +183,9 @@ export function readModuleArchive(zip: Uint8Array): ArchiveFiles {
 					? packed.slice()
 					: new Uint8Array(inflateRawSync(packed, { maxOutputLength: size + 1 }));
 		} catch {
-			throw fail(`Datei im Archiv ist beschädigt: ${path}`);
+			throw fail(t('install.archive.fileCorrupt', { path }));
 		}
-		if (data.byteLength !== size) throw fail(`Datei im Archiv ist beschädigt: ${path}`);
+		if (data.byteLength !== size) throw fail(t('install.archive.fileCorrupt', { path }));
 		raw.push({ path, data });
 	}
 

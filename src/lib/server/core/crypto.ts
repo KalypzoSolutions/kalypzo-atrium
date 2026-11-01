@@ -12,6 +12,7 @@ import { env } from './env';
 const PREFIX = 'enc:v1:';
 
 function key(purpose: string): Buffer {
+	// Salz 'ep-intern' NIE ändern: alle gespeicherten Geheimnisse (IBAN, Secrets, Tokens) hängen daran
 	return Buffer.from(hkdfSync('sha256', env().APP_SECRET, 'ep-intern', purpose, 32));
 }
 

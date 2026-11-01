@@ -2,11 +2,12 @@
 	import type { Component } from 'svelte';
 	import Share2 from '@lucide/svelte/icons/share-2';
 	import Shield from '@lucide/svelte/icons/shield';
-	import Tent from '@lucide/svelte/icons/tent';
 	import Users from '@lucide/svelte/icons/users';
+	import UsersRound from '@lucide/svelte/icons/users-round';
 	import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from '$lib/components/ui/avatar';
 	import { Button } from '$lib/components/ui/button';
 	import * as Popover from '$lib/components/ui/popover';
+	import { t } from '$lib/i18n';
 	import SharePanel from './SharePanel.svelte';
 	import {
 		shareInitials,
@@ -33,9 +34,9 @@
 		onadd,
 		onchange,
 		onremove,
-		title = 'Zugriff',
-		description = 'Wer diese Aktion sehen oder bearbeiten darf.',
-		label = 'Teilen',
+		title = t('sharing.menu.title'),
+		description = t('sharing.menu.description'),
+		label = t('sharing.menu.label'),
 		maxAvatars = 3,
 		everyoneLabel,
 		placeholder,
@@ -66,7 +67,7 @@
 
 	/** Ziele ohne Personenbezug: im Avatar-Stapel als Typ-Icon statt Initialen */
 	const TYPE_ICONS: Partial<Record<ShareTargetType, Component>> = {
-		everyone: Tent,
+		everyone: UsersRound,
 		group: Users,
 		role: Shield
 	};
@@ -87,10 +88,16 @@
 	);
 	const summary = $derived(
 		people.length <= 1 && onlyPersons
-			? 'Nur du hast Zugriff'
+			? t('sharing.menu.onlyYou')
 			: onlyPersons
-				? `${people.length} Personen haben Zugriff: ${people.map((p) => p.name).join(', ')}`
-				: `${people.length} ${people.length === 1 ? 'Freigabe' : 'Freigaben'}: ${people.map((p) => p.name).join(', ')}`
+				? t('sharing.menu.persons', {
+						count: people.length,
+						names: people.map((p) => p.name).join(', ')
+					})
+				: t('sharing.menu.shares', {
+						count: people.length,
+						names: people.map((p) => p.name).join(', ')
+					})
 	);
 </script>
 

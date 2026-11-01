@@ -5,10 +5,12 @@ import {
 	executeReset,
 	listResetAreas,
 	previewReset,
-	RESET_CONFIRM_WORD
+	RESET_CONFIRM_WORD,
+	resetConfirmWord
 } from '$lib/server/core/system/reset';
 import { invalid, requirePerm } from '../_shared/server-utils';
 import type { PageServerLoad } from './$types';
+import { t } from '$lib/i18n';
 
 const PERMISSION = 'core.system.reset';
 
@@ -18,7 +20,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		areas,
 		twoFactorEnabled: locals.user?.twoFactorEnabled ?? false,
-		confirmWord: RESET_CONFIRM_WORD
+		confirmWord: resetConfirmWord(),
+		/** Das deutsche Wort gilt immer (Server nimmt es an) */
+		legacyConfirmWord: RESET_CONFIRM_WORD
 	};
 };
 
@@ -40,12 +44,15 @@ function coreFail(e: unknown) {
 const previewSchema = z.object({
 	areas: z
 		.array(z.string().min(1).max(80))
-		.min(1, 'Bitte mindestens einen Bereich auswählen')
+		.min(1, { error: () => t('admin-reset.server.chooseArea') })
 		.max(200)
 });
 
 const executeSchema = z.object({
-	token: z.string().min(1, 'Token fehlt').max(500),
+	token: z
+		.string()
+		.min(1, { error: () => t('admin-reset.server.tokenMissing') })
+		.max(500),
 	confirmWord: z.string().max(100)
 });
 

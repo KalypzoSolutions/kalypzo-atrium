@@ -22,6 +22,7 @@ import {
 	type ByteSource,
 	type EnvelopeHeader
 } from './types';
+import { t } from '$lib/i18n';
 
 const MAGIC = [0x45, 0x50, 0x42, 0x4b]; // 'EPBK'
 const VERSION = 1;
@@ -38,10 +39,11 @@ const MAX_R = 16;
 const MAX_P = 4;
 const SCRYPT_MAXMEM = 256 * 1024 * 1024;
 
-const MSG_WRONG_PASSWORD = 'Sicherungs-Passwort ist falsch oder die Datei ist beschädigt.';
-const MSG_CORRUPT = 'Die Sicherungsdatei ist beschädigt oder unvollständig.';
-const MSG_NOT_BACKUP = 'Die Datei ist keine Sicherung von EP Intern.';
-const MSG_UNSUPPORTED = 'Diese Sicherung verwendet nicht unterstützte Parameter.';
+// Texte erst beim Werfen übersetzen (Sprache des Requests)
+const MSG_WRONG_PASSWORD = () => t('backup.format.wrongPassword');
+const MSG_CORRUPT = () => t('backup.format.corrupt');
+const MSG_NOT_BACKUP = () => t('backup.format.notBackup');
+const MSG_UNSUPPORTED = () => t('backup.format.unsupported');
 
 function validParams(N: number, r: number, p: number): boolean {
 	return (
@@ -79,19 +81,16 @@ function encodeHeader(
 /** Header aus den ersten Bytes lesen und prüfen */
 export function parseEnvelopeHeader(bytes: Uint8Array): EnvelopeHeader {
 	if (bytes.length < ENVELOPE_HEADER_BYTES || MAGIC.some((b, i) => bytes[i] !== b)) {
-		throw new BackupFormatError('corrupt', MSG_NOT_BACKUP);
+		throw new BackupFormatError('corrupt', MSG_NOT_BACKUP());
 	}
 	const buf = Buffer.from(bytes.buffer, bytes.byteOffset, ENVELOPE_HEADER_BYTES);
 	if (buf.readUInt8(4) !== VERSION) {
-		throw new BackupFormatError(
-			'unsupported',
-			'Diese Version des Sicherungsformats wird nicht unterstützt.'
-		);
+		throw new BackupFormatError('unsupported', t('backup.format.versionUnsupported'));
 	}
 	const N = buf.readUInt32BE(5);
 	const r = buf.readUInt8(9);
 	const p = buf.readUInt8(10);
-	if (!validParams(N, r, p)) throw new BackupFormatError('unsupported', MSG_UNSUPPORTED);
+	if (!validParams(N, r, p)) throw new BackupFormatError('unsupported', MSG_UNSUPPORTED());
 	const raw = new Uint8Array(buf.subarray(0, ENVELOPE_HEADER_BYTES));
 	return {
 		version: 1,
@@ -131,11 +130,11 @@ function scryptAsync(
 
 export async function deriveEnvelopeKey(header: EnvelopeHeader, password: string): Promise<Buffer> {
 	const { N, r, p } = header.params;
-	if (!validParams(N, r, p)) throw new BackupFormatError('unsupported', MSG_UNSUPPORTED);
+	if (!validParams(N, r, p)) throw new BackupFormatError('unsupported', MSG_UNSUPPORTED());
 	try {
 		return await scryptAsync(password, header.salt, header.params);
 	} catch {
-		throw new BackupFormatError('unsupported', MSG_UNSUPPORTED);
+		throw new BackupFormatError('unsupported', MSG_UNSUPPORTED());
 	}
 }
 
@@ -158,7 +157,7 @@ export async function createEnvelopeWriter(
 ): Promise<ByteSink> {
 	const params = opts.params ?? DEFAULT_SCRYPT_PARAMS;
 	if (!validParams(params.N, params.r, params.p)) {
-		throw new BackupFormatError('unsupported', MSG_UNSUPPORTED);
+		throw new BackupFormatError('unsupported', MSG_UNSUPPORTED());
 	}
 	const chunkBytes = Math.min(
 		BACKUP_LIMITS.envelopeChunkBytes,
@@ -249,13 +248,13 @@ export function decryptEnvelope(path: string, header: EnvelopeHeader, key: Buffe
 				for (let counter = 0; ; counter++) {
 					const lenBytes = await reader.readUpTo(4);
 					// Ende ohne Final-Chunk → abgeschnitten
-					if (lenBytes.length < 4) throw new BackupFormatError('corrupt', MSG_CORRUPT);
+					if (lenBytes.length < 4) throw new BackupFormatError('corrupt', MSG_CORRUPT());
 					const len = Buffer.from(lenBytes).readUInt32BE(0);
 					if (len > BACKUP_LIMITS.envelopeChunkBytes) {
-						throw new BackupFormatError('corrupt', MSG_CORRUPT);
+						throw new BackupFormatError('corrupt', MSG_CORRUPT());
 					}
 					const body = await reader.readUpTo(len + TAG_BYTES);
-					if (body.length < len + TAG_BYTES) throw new BackupFormatError('corrupt', MSG_CORRUPT);
+					if (body.length < len + TAG_BYTES) throw new BackupFormatError('corrupt', MSG_CORRUPT());
 					const ct = body.subarray(0, len);
 					const tag = body.subarray(len);
 					const isLast = await reader.atEnd();
@@ -263,10 +262,10 @@ export function decryptEnvelope(path: string, header: EnvelopeHeader, key: Buffe
 					if (!plain) {
 						// Passt der Chunk mit dem anderen Final-Flag, ist die Struktur kaputt (abgeschnitten/angehängt).
 						if (tryOpen(key, header, counter, !isLast, ct, tag)) {
-							throw new BackupFormatError('corrupt', MSG_CORRUPT);
+							throw new BackupFormatError('corrupt', MSG_CORRUPT());
 						}
-						if (counter === 0) throw new BackupFormatError('wrong_password', MSG_WRONG_PASSWORD);
-						throw new BackupFormatError('corrupt', MSG_CORRUPT);
+						if (counter === 0) throw new BackupFormatError('wrong_password', MSG_WRONG_PASSWORD());
+						throw new BackupFormatError('corrupt', MSG_CORRUPT());
 					}
 					if (plain.length > 0) yield plain;
 					if (isLast) return;

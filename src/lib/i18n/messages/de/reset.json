@@ -1,0 +1,49 @@
+{
+	"confirmWord": "ZURÜCKSETZEN",
+	"rebuildReason": "Das Modul wird komplett neu aufgebaut",
+	"coreGroup": "Core",
+	"onlyUsers": "Zurücksetzen ist nur für angemeldete Benutzer möglich",
+	"previewExpired": "Vorschau abgelaufen, bitte neu starten",
+	"chooseArea": "Bitte mindestens einen Bereich wählen",
+	"unknownAreas": "Unbekannter Bereich: {areas}",
+	"backupPasswordMin": "Sicherungs-Passwort: mindestens {count} Zeichen",
+	"noData": "Für die gewählten Bereiche gibt es keine Daten",
+	"exportFirst": "Bitte zuerst die Daten exportieren",
+	"typeExactly": "Bitte genau \"{word}\" eingeben",
+	"lostAdmin": "Das eigene Konto hat nach dem Zurücksetzen keine Administrationsrechte mehr",
+	"area": {
+		"apiKeys": {
+			"label": "API-Keys",
+			"description": "Alle API-Keys aller Benutzer (auch die eigenen)."
+		},
+		"users": {
+			"label": "Benutzer",
+			"description": "Alle Benutzerkonten außer dem eigenen, inkl. Sitzungen, Anmeldedaten, Rollenzuweisungen und persönlicher Einstellungen.",
+			"impliesApiKeys": "API-Keys gehören zu Benutzerkonten"
+		},
+		"roles": {
+			"label": "Rollen",
+			"description": "Alle selbst angelegten Rollen mit Rechten und Zuweisungen. Systemrollen (Administrator) bleiben."
+		},
+		"apiLog": {
+			"label": "API-Protokoll",
+			"description": "Protokoll aller API-Aufrufe."
+		},
+		"jobs": {
+			"label": "Job-Läufe",
+			"description": "Letzte Läufe der Hintergrundjobs (Jobs laufen danach beim nächsten Takt neu)."
+		},
+		"aiUsage": {
+			"label": "KI-Nutzung",
+			"description": "Erfasste KI-Nutzung und Kosten."
+		},
+		"settings": {
+			"label": "Einstellungen",
+			"description": "Globale und persönliche Einstellungen (inkl. Modul-Einstellungen). Speicher- und SMTP-Zugang sowie Secrets bleiben erhalten."
+		},
+		"audit": {
+			"label": "Audit-Log",
+			"description": "Alle Audit-Einträge. Danach bleibt nur der Eintrag über dieses Zurücksetzen bestehen."
+		}
+	}
+}

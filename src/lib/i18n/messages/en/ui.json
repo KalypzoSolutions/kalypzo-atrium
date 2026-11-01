@@ -1,0 +1,106 @@
+{
+	"close": "Close",
+	"select": {
+		"placeholder": "Select …"
+	},
+	"multiSelect": {
+		"search": "Search …",
+		"empty": "No results",
+		"remove": "Remove {label}",
+		"selected": "{count} selected",
+		"clear": "Deselect all"
+	},
+	"tagInput": {
+		"placeholder": "Enter tag …",
+		"remove": "Remove tag {tag}",
+		"max": "At most {max} tags possible.",
+		"suggestionsFor": "Suggestions for {label}",
+		"suggestions": "Suggestions",
+		"create": "Create “{tag}”"
+	},
+	"colorPicker": {
+		"invalidHex": "Invalid hex code, e.g. #2f855a or #3a7",
+		"none": "No color",
+		"area": "{label}: saturation and brightness",
+		"areaValue": "Saturation {s} %, brightness {v} %",
+		"hue": "{label}: hue",
+		"hex": "{label}: hex code",
+		"presets": "Preset colors",
+		"preset": "Color {color}",
+		"clear": "Remove color"
+	},
+	"richText": {
+		"tools": {
+			"bold": "Bold",
+			"italic": "Italic",
+			"underline": "Underline",
+			"strike": "Strikethrough",
+			"heading": "Heading",
+			"subheading": "Subheading",
+			"bulletList": "Bulleted list",
+			"orderedList": "Numbered list",
+			"quote": "Quote",
+			"rule": "Divider",
+			"link": "Insert or edit link",
+			"unlink": "Remove link",
+			"image": "Insert image",
+			"undo": "Undo",
+			"redo": "Redo"
+		},
+		"label": "Message text",
+		"uploadFailed": "Image could not be uploaded.",
+		"toolbar": "Formatting",
+		"address": "Address",
+		"addressPlaceholder": "https://… or mailto:…",
+		"apply": "Apply",
+		"cancel": "Cancel",
+		"alt": "Image description",
+		"altPlaceholder": "What can be seen? (for screen readers)",
+		"uploading": "Uploading image …"
+	},
+	"gradient": {
+		"kind": {
+			"solid": "Solid",
+			"linear": "Linear",
+			"radial": "Radial",
+			"mesh": "Color spots"
+		},
+		"kindLabel": "Background type",
+		"moveSpot": "Move color spot {n} ({x} % / {y} %)",
+		"color": "Color",
+		"backgroundColor": "Background color",
+		"stops": "Color stops",
+		"stopsHint": "{count} of {max} · Click the bar to add a stop",
+		"stop": "Color stop {n} ({color})",
+		"stopColor": "Color of stop {n}",
+		"position": "Position {pos} %",
+		"stopPosition": "Position of stop {n}",
+		"addStop": "Stop",
+		"removeStop": "Remove stop {n}",
+		"angle": "Direction {a}°",
+		"direction": "Direction",
+		"angleLabel": "Direction in degrees",
+		"center": "Center",
+		"baseColor": "Base color",
+		"addSpot": "Color spot",
+		"spotsHint": "{count} of {max} · Drag the points in the preview",
+		"spotColor": "Color of spot {n}",
+		"size": "Size",
+		"spotSize": "Size of spot {n}",
+		"spot": "Spot {n}",
+		"removeSpot": "Remove spot {n}",
+		"positions": {
+			"topLeft": "top left",
+			"top": "top",
+			"topRight": "top right",
+			"left": "left",
+			"center": "center",
+			"right": "right",
+			"bottomLeft": "bottom left",
+			"bottom": "bottom",
+			"bottomRight": "bottom right"
+		},
+		"sizeValue": "Size {size} %",
+		"stopN": "Stop {n}"
+	}
+}

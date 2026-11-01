@@ -5,6 +5,7 @@ import {
 	visibleAdminEntries,
 	type AdminSectionId
 } from './admin-registry';
+import { t } from '$lib/i18n';
 
 export interface NavItem {
 	label: string;
@@ -16,9 +17,15 @@ export interface NavItem {
 	anyPermission?: readonly string[];
 }
 
-/** Immer sichtbar (oben, zusammen mit den Modulen) */
+/** Immer sichtbar (oben, zusammen mit den Modulen); `label` übersetzt beim Zugriff */
 export const PRIMARY_NAV: NavItem[] = [
-	{ label: 'Dashboard', href: '/dashboard', icon: 'layout-dashboard' }
+	{
+		get label() {
+			return t('nav.dashboard');
+		},
+		href: '/dashboard',
+		icon: 'layout-dashboard'
+	}
 ];
 
 /** Eintrag eines Moduls in der Seitenleiste (siehe ModuleNavigationItem). */
@@ -35,14 +42,27 @@ export interface ModuleNavEntry {
 	admin?: boolean;
 }
 
-export const ADMIN_GROUP = { label: 'Administration', icon: 'wrench' } as const;
+export const ADMIN_GROUP = {
+	get label() {
+		return t('nav.administration');
+	},
+	icon: 'wrench'
+} as const;
 
 /** Alle Core-Seiten der Seitenleiste (Startseite, Verwaltungsseiten aus `admin-registry.ts`). */
 export const CORE_NAV: NavItem[] = [
 	...PRIMARY_NAV,
-	{ label: ADMIN_HOME.label, href: ADMIN_HOME.href, icon: ADMIN_HOME.icon },
+	{
+		get label() {
+			return ADMIN_HOME.label;
+		},
+		href: ADMIN_HOME.href,
+		icon: ADMIN_HOME.icon
+	},
 	...ADMIN_ENTRIES.filter((e) => e.nav).map((e) => ({
-		label: e.label,
+		get label() {
+			return e.label;
+		},
 		href: e.href,
 		icon: e.icon,
 		permission: e.permission,

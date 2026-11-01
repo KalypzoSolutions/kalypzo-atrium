@@ -1,0 +1,30 @@
+{
+	"title": "Dashboard",
+	"customize": "Customize",
+	"coreModule": "General",
+	"saveLayoutFailed": "The layout could not be saved.",
+	"saveFailed": "Saving failed.",
+	"emptyTitle": "No tiles yet",
+	"emptyDescription": "Use “Customize” to show and arrange tiles.",
+	"widgetError": "This tile could not be loaded.",
+	"nothingNewAll": "Nothing new right now: {list}",
+	"nothingNewAt": "Nothing new in: {list}",
+	"customizeTitle": "Customize dashboard",
+	"customizeDescription": "Show or hide tiles and change their order. Changes are saved immediately.",
+	"noWidgets": "No tiles are available for you.",
+	"widgets": "Tiles",
+	"dragToMove": "Drag to move",
+	"moveUp": "Move {title} up",
+	"moveDown": "Move {title} down",
+	"show": "Show {title}",
+	"resetLayout": "Restore default",
+	"saving": "Saving …",
+	"saved": "Saved",
+	"notSaved": "Not saved",
+	"live": {
+		"shown": "{title} shown",
+		"hidden": "{title} hidden",
+		"moved": "{title} now at position {position} of {total}",
+		"reset": "Default restored"
+	}
+}

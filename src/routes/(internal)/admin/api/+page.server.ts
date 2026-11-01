@@ -1,5 +1,6 @@
 import type { Actions } from '@sveltejs/kit';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { createApiKey, listApiKeys, revokeApiKey } from '$lib/server/core/api/keys';
 import { listPermissions } from '$lib/server/core/permissions/service';
 import { invalid, requirePerm, toFail } from '../_shared/server-utils';
@@ -27,20 +28,22 @@ export const load: PageServerLoad = async ({ locals }) => {
 	};
 };
 
-const createSchema = z.object({
-	name: z.string().trim().min(2, 'Name muss mindestens 2 Zeichen lang sein').max(80),
-	scopes: z.array(z.string()).min(1, 'Mindestens ein Scope ist erforderlich').max(200),
-	expiresAt: z
-		.string()
-		.regex(/^\d{4}-\d{2}-\d{2}$/, 'Ungültiges Datum')
-		.optional()
-});
+// Je Aufruf gebaut, damit die Fehlertexte in der Sprache des Requests erscheinen
+const createSchema = () =>
+	z.object({
+		name: z.string().trim().min(2, t('admin-api.server.nameMin')).max(80),
+		scopes: z.array(z.string()).min(1, t('admin-api.server.scopeRequired')).max(200),
+		expiresAt: z
+			.string()
+			.regex(/^\d{4}-\d{2}-\d{2}$/, t('admin-api.server.invalidDate'))
+			.optional()
+	});
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
 		const fd = await request.formData();
 		const exp = String(fd.get('expiresAt') ?? '').trim();
-		const parsed = createSchema.safeParse({
+		const parsed = createSchema().safeParse({
 			name: fd.get('name'),
 			scopes: fd.getAll('scopes').map(String),
 			expiresAt: exp || undefined
@@ -53,7 +56,7 @@ export const actions: Actions = {
 				expiresAt: parsed.data.expiresAt ? new Date(`${parsed.data.expiresAt}T23:59:59`) : null
 			});
 			// Der Klartext-Key wird nur in dieser Antwort ausgeliefert.
-			return { success: true, message: 'API-Key erstellt', key, name: item.name };
+			return { success: true, message: t('admin-api.server.created'), key, name: item.name };
 		} catch (e) {
 			return toFail(e);
 		}
@@ -66,7 +69,7 @@ export const actions: Actions = {
 		if (!id.success) return invalid(id.error);
 		try {
 			await revokeApiKey(locals.ctx, id.data);
-			return { success: true, message: 'API-Key widerrufen' };
+			return { success: true, message: t('admin-api.server.revoked') };
 		} catch (e) {
 			return toFail(e);
 		}

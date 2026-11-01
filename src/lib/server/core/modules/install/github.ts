@@ -3,6 +3,7 @@
  * Nur `api.github.com` und `codeload.github.com` (keine frei wählbaren Hosts → kein SSRF), Weiterleitungen werden
  * einzeln geprüft. Optionales Token aus der Einstellung `core.modules.githubToken` (private Repos, höhere Limits).
  */
+import { t } from '$lib/i18n';
 import { errors } from '../../errors';
 import { getSetting } from '../../settings/service';
 import type { ModuleSource } from '../package/schema';
@@ -36,7 +37,7 @@ async function get(url: string, accept?: string): Promise<Response> {
 	for (let hop = 0; hop < 4; hop++) {
 		const u = new URL(current);
 		if (u.protocol !== 'https:' || !ALLOWED_HOSTS.has(u.hostname)) {
-			throw errors.badRequest('Unerwartete Weiterleitung beim Abruf von GitHub');
+			throw errors.badRequest(t('install.github.unexpectedRedirect'));
 		}
 		const h = await headers();
 		// Token nur an die API, nie an andere Hosts
@@ -50,7 +51,7 @@ async function get(url: string, accept?: string): Promise<Response> {
 				signal: AbortSignal.timeout(TIMEOUT_MS)
 			});
 		} catch {
-			throw errors.unavailable('GitHub ist nicht erreichbar');
+			throw errors.unavailable(t('install.github.unreachable'));
 		}
 		if (res.status >= 300 && res.status < 400) {
 			const loc = res.headers.get('location');
@@ -60,14 +61,12 @@ async function get(url: string, accept?: string): Promise<Response> {
 		}
 		if (res.status === 403 || res.status === 429) {
 			if (res.headers.get('x-ratelimit-remaining') === '0') {
-				throw errors.unavailable(
-					'GitHub-Abruflimit erreicht – später erneut versuchen oder ein Token hinterlegen'
-				);
+				throw errors.unavailable(t('install.github.rateLimit'));
 			}
 		}
 		return res;
 	}
-	throw errors.badRequest('Zu viele Weiterleitungen beim Abruf von GitHub');
+	throw errors.badRequest(t('install.github.tooManyRedirects'));
 }
 
 const api = (path: string) => `https://api.github.com${path}`;
@@ -77,18 +76,18 @@ const enc = encodeURIComponent;
 async function defaultBranch(owner: string, repo: string): Promise<string> {
 	const res = await get(api(`/repos/${enc(owner)}/${enc(repo)}`));
 	if (res.status === 404) {
-		throw errors.notFound('Repository nicht gefunden (oder privat ohne Token)');
+		throw errors.notFound(t('install.github.repoNotFound'));
 	}
-	if (!res.ok) throw errors.unavailable(`GitHub antwortet mit ${res.status}`);
+	if (!res.ok) throw errors.unavailable(t('install.github.status', { status: res.status }));
 	const body = (await res.json()) as { default_branch?: string };
-	if (!body.default_branch) throw errors.unavailable('GitHub liefert keinen Standard-Branch');
+	if (!body.default_branch) throw errors.unavailable(t('install.github.noDefaultBranch'));
 	return body.default_branch;
 }
 
 async function commitSha(owner: string, repo: string, ref: string): Promise<string | null> {
 	const res = await get(api(`/repos/${enc(owner)}/${enc(repo)}/commits/${enc(ref)}`));
 	if (res.status === 404 || res.status === 422) return null;
-	if (!res.ok) throw errors.unavailable(`GitHub antwortet mit ${res.status}`);
+	if (!res.ok) throw errors.unavailable(t('install.github.status', { status: res.status }));
 	const sha = String(((await res.json()) as { sha?: string }).sha ?? '');
 	return SHA_RE.test(sha) ? sha : null;
 }
@@ -106,7 +105,7 @@ export async function resolveGithubSource(
 	if (!source.ref) {
 		const ref = await defaultBranch(owner, repo);
 		const sha = await commitSha(owner, repo, ref);
-		if (!sha) throw errors.notFound(`Branch „${ref}“ nicht gefunden`);
+		if (!sha) throw errors.notFound(t('install.github.branchNotFound', { ref }));
 		return { owner, repo, ref, sha, path: source.path };
 	}
 	const segments = [source.ref, ...pathAfterRef];
@@ -118,7 +117,7 @@ export async function resolveGithubSource(
 			return { owner, repo, ref, sha, path: pathAfterRef.length ? rest : source.path };
 		}
 	}
-	throw errors.notFound(`Branch, Tag oder Commit „${source.ref}“ nicht gefunden`);
+	throw errors.notFound(t('install.github.refNotFound', { ref: source.ref }));
 }
 
 /** Archiv des Repositorys am Commit `sha` (ZIP), höchstens `ARCHIVE_LIMITS.maxArchiveBytes` */
@@ -127,13 +126,14 @@ export async function downloadGithubArchive(
 	repo: string,
 	sha: string
 ): Promise<Uint8Array> {
-	if (!SHA_RE.test(sha)) throw errors.badRequest('Ungültiger Commit');
+	if (!SHA_RE.test(sha)) throw errors.badRequest(t('install.github.invalidCommit'));
 	const res = await get(api(`/repos/${enc(owner)}/${enc(repo)}/zipball/${sha}`), '*/*');
-	if (res.status === 404) throw errors.notFound('Archiv nicht gefunden');
-	if (!res.ok || !res.body) throw errors.unavailable(`GitHub antwortet mit ${res.status}`);
+	if (res.status === 404) throw errors.notFound(t('install.github.archiveNotFound'));
+	if (!res.ok || !res.body)
+		throw errors.unavailable(t('install.github.status', { status: res.status }));
 	const declared = Number(res.headers.get('content-length') ?? '0');
 	if (declared > ARCHIVE_LIMITS.maxArchiveBytes)
-		throw errors.tooLarge('Das Archiv ist größer als 50 MB');
+		throw errors.tooLarge(t('install.archive.tooLarge'));
 	const reader = res.body.getReader();
 	const chunks: Uint8Array[] = [];
 	let total = 0;
@@ -143,7 +143,7 @@ export async function downloadGithubArchive(
 		total += value.byteLength;
 		if (total > ARCHIVE_LIMITS.maxArchiveBytes) {
 			await reader.cancel();
-			throw errors.tooLarge('Das Archiv ist größer als 50 MB');
+			throw errors.tooLarge(t('install.archive.tooLarge'));
 		}
 		chunks.push(value);
 	}

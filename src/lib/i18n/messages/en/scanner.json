@@ -1,0 +1,12 @@
+{
+	"insecure": "The camera only works over a secure connection (HTTPS).",
+	"denied": "Camera access denied. Allow the camera in your browser settings.",
+	"notFound": "No camera found. You can also type the code or use a USB scanner.",
+	"busy": "The camera is being used by another app.",
+	"startFailed": "The camera could not be started.",
+	"torchOn": "Torch on",
+	"torchOff": "Torch off",
+	"switchCamera": "Switch camera",
+	"retry": "Try again",
+	"starting": "Starting camera …"
+}

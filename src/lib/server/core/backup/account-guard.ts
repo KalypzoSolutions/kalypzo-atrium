@@ -15,6 +15,7 @@ import { eq } from 'drizzle-orm';
 import { getAuth } from '../auth';
 import { getDb, schema } from '../database/client';
 import { ADMIN_ROLE_ID } from '../permissions/catalog';
+import { t } from '$lib/i18n';
 
 const BACKUP_PERMISSION = 'core.system.backup';
 /** Obergrenze gesammelter Zeilen je Tabelle (Speicher) */
@@ -170,8 +171,7 @@ export async function assessAccount(
 				effectiveUserId: userId,
 				willLogout: false,
 				twoFactorInBackup: false,
-				blocked:
-					'Die Benutzerdaten der Sicherung sind zu umfangreich für die Prüfung des eigenen Kontos.'
+				blocked: t('backup.account.tooLarge')
 			};
 		}
 		return { case: 'kept', effectiveUserId: userId, willLogout: false, twoFactorInBackup: false };
@@ -194,18 +194,15 @@ export async function assessAccount(
 		}
 	}
 	if (!ok) {
-		result.blocked =
-			'Ihr Konto ist in der Sicherung mit einem anderen Passwort enthalten. Benutzer lassen sich nur wiederherstellen, wenn Ihr aktuelles Passwort auch in der Sicherung gilt.';
+		result.blocked = t('backup.account.otherPassword');
 		return result;
 	}
 	if (!u.active) {
-		result.blocked =
-			'Ihr Konto ist in der Sicherung deaktiviert. Benutzer lassen sich so nicht wiederherstellen.';
+		result.blocked = t('backup.account.inactive');
 		return result;
 	}
 	if (!(await rolesWithBackupRight(data.userRoles.get(matchId) ?? new Set(), data, matchId))) {
-		result.blocked =
-			'Ihr Konto hat in der Sicherung kein Recht für die Datensicherung. Benutzer lassen sich so nicht wiederherstellen.';
+		result.blocked = t('backup.account.noRight');
 	}
 	return result;
 }

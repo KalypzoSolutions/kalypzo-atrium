@@ -1,6 +1,7 @@
 import type { RequestContext } from '$lib/sdk/types';
 import { errors } from '../errors';
 import { getUserPermissions } from '../permissions/service';
+import { t } from '$lib/i18n';
 
 /**
  * Schutz vor Rechteausweitung bei Kontoänderungen (E-Mail, Status, Profilbild, Rollen, Löschen):
@@ -14,12 +15,10 @@ export async function canManageUser(ctx: RequestContext, targetId: string): Prom
 	return (await missingPermissions(ctx, targetId)).length === 0;
 }
 
-/** Wie `canManageUser`, wirft aber 403 mit deutscher Meldung. */
+/** Wie `canManageUser`, wirft aber 403 mit Meldung. */
 export async function assertCanManageUser(ctx: RequestContext, targetId: string): Promise<void> {
 	if ((await missingPermissions(ctx, targetId)).length) {
-		throw errors.forbidden(
-			'Dieses Konto hat Rechte, die Sie selbst nicht besitzen. Änderungen daran kann nur eine Person mit mindestens denselben Rechten vornehmen.'
-		);
+		throw errors.forbidden(t('auth.manageGuardForbidden'));
 	}
 }
 

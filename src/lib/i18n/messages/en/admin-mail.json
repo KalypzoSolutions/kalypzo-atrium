@@ -1,0 +1,17 @@
+{
+	"pageTitle": "Email layout · Settings",
+	"layout": {
+		"title": "Layout of outgoing emails",
+		"description": "Header, signature and footer of all emails sent by the system."
+	},
+	"preview": {
+		"title": "Preview",
+		"description": "This is how outgoing emails look. Save your changes first, then reload the preview.",
+		"frameTitle": "Preview of the email layout",
+		"reload": "Reload preview"
+	},
+	"errors": {
+		"unauthenticated": "Not signed in",
+		"forbidden": "No permission"
+	}
+}

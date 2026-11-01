@@ -4,6 +4,7 @@ import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
+import { withLocale } from '../i18n/locale';
 import { sendMail } from '../mail';
 import { requirePermission } from '../permissions/service';
 import { hit, peek, reset } from '../rate-limit';
@@ -12,8 +13,10 @@ import { processImage, type ImageVariantSpec } from '../images';
 import * as storage from '../storage';
 import { requireUser, systemContext } from './context';
 import { getAuth } from './index';
+import { accountMailLocale } from './account-mail';
 import { assertCanManageUser } from './manage-guard';
 import { maskEmail } from './mask-email';
+import { t } from '$lib/i18n';
 
 export { maskEmail };
 
@@ -29,7 +32,7 @@ const EMAIL_CHANGE_WINDOW_SEC = 60 * 60;
 export async function verifyUserPassword(userId: string, password: string): Promise<boolean> {
 	const key = `pwcheck:${userId}`;
 	if (peek(key, PW_WINDOW_SEC) >= PW_MAX_FAILURES) {
-		throw errors.badRequest('Zu viele Versuche. Bitte später erneut versuchen.');
+		throw errors.badRequest(t('auth.tooManyAttempts'));
 	}
 	const [acc] = await getDb()
 		.select({ password: schema.account.password })
@@ -61,34 +64,40 @@ export async function requestEmailChange(
 	const userId = requireUser(ctx);
 	const parsed = emailSchema.safeParse(input.newEmail);
 	if (!parsed.success) {
-		throw errors.validation(parsed.error.issues, 'Ungültige E-Mail-Adresse');
+		throw errors.validation(parsed.error.issues, t('auth.invalidEmail'));
 	}
 	const newEmail = parsed.data;
 	const [u] = await getDb().select().from(schema.user).where(eq(schema.user.id, userId));
-	if (!u) throw errors.notFound('Benutzer nicht gefunden');
+	if (!u) throw errors.notFound(t('auth.userNotFound'));
 	if (!(await verifyUserPassword(userId, input.password))) {
-		throw errors.badRequest('Das Passwort ist nicht korrekt.');
+		throw errors.badRequest(t('auth.wrongPassword'));
 	}
 	if (newEmail === u.email) {
-		throw errors.badRequest('Die neue Adresse entspricht der aktuellen.');
+		throw errors.badRequest(t('auth.emailUnchanged'));
 	}
 	// Eigenes Limit (Better Auth begrenzt nur den HTTP-Weg): 3 je Stunde und Benutzer
 	if (!hit(`emailchange:${userId}`, EMAIL_CHANGE_MAX, EMAIL_CHANGE_WINDOW_SEC).allowed) {
-		throw errors.rateLimited(
-			'Zu viele Änderungsanfragen für die E-Mail-Adresse. Bitte später erneut versuchen.'
-		);
+		throw errors.rateLimited(t('auth.tooManyEmailChanges'));
 	}
-	const name = await getSetting<string>('core.system.name');
+	const [name, locale] = await Promise.all([
+		getSetting<string>('core.system.name'),
+		accountMailLocale(userId)
+	]);
 	await getAuth().api.changeEmail({
 		body: { newEmail, callbackURL: '/profile?emailChanged=1' },
 		headers
 	});
 	// Hinweis an die alte Adresse erst nach erfolgreichem Aufruf (Fire-and-forget, Fehler bleiben intern)
-	void sendMail({
-		to: u.email,
-		subject: `${name}: Änderung deiner E-Mail-Adresse angefragt`,
-		text: `Hallo ${u.name},\n\nfür dein Konto wurde die Änderung der E-Mail-Adresse auf ${maskEmail(newEmail)} angefragt. Die Änderung wird erst wirksam, wenn der Link in der Bestätigungsmail an die neue Adresse geöffnet wird.\n\nWenn du das nicht warst, ändere bitte sofort dein Passwort und melde dich bei der Administration.`
-	}).catch((err) =>
+	void withLocale(locale, () =>
+		sendMail({
+			to: u.email,
+			subject: t('account-mail.emailChangeRequested.subject', { system: name }),
+			text: t('account-mail.emailChangeRequested.text', {
+				name: u.name,
+				email: maskEmail(newEmail)
+			})
+		})
+	).catch((err) =>
 		console.error('[mail] Hinweis zum E-Mail-Wechsel fehlgeschlagen:', err?.message)
 	);
 	await auditFromContext(ctx, 'core.auth.email_change_requested', {
@@ -100,8 +109,8 @@ export async function requestEmailChange(
 /** Eigenen Anzeigenamen ändern. */
 export async function updateOwnName(ctx: RequestContext, name: string): Promise<void> {
 	const userId = requireUser(ctx);
-	const parsed = z.string().trim().min(1, 'Name ist erforderlich').max(100).safeParse(name);
-	if (!parsed.success) throw errors.validation(parsed.error.issues, 'Ungültiger Name');
+	const parsed = z.string().trim().min(1, t('auth.nameRequired')).max(100).safeParse(name);
+	if (!parsed.success) throw errors.validation(parsed.error.issues, t('auth.invalidName'));
 	await getDb()
 		.update(schema.user)
 		.set({ name: parsed.data, updatedAt: new Date() })
@@ -144,10 +153,10 @@ async function normalizeAvatar(data: Uint8Array, type: string | null): Promise<U
 		maxInputBytes: AVATAR_MAX_BYTES
 	});
 	if (type && FORMAT_OF_TYPE[type] !== processed.format) {
-		throw errors.badRequest('Die Datei ist kein gültiges PNG-, JPEG- oder WebP-Bild');
+		throw errors.badRequest(t('auth.avatarInvalidImage'));
 	}
 	if (!type && !Object.values(FORMAT_OF_TYPE).includes(processed.format)) {
-		throw errors.badRequest('Die Datei ist kein gültiges PNG-, JPEG- oder WebP-Bild');
+		throw errors.badRequest(t('auth.avatarInvalidImage'));
 	}
 	return processed.variants[0]!.bytes;
 }
@@ -200,7 +209,7 @@ async function requireEditableUser(ctx: RequestContext, userId: string): Promise
 		.select({ id: schema.user.id })
 		.from(schema.user)
 		.where(eq(schema.user.id, userId));
-	if (!u) throw errors.notFound('Benutzer nicht gefunden');
+	if (!u) throw errors.notFound(t('auth.userNotFound'));
 	// Kein Bearbeiten von Konten mit mehr Rechten (Schutz vor Rechteausweitung)
 	await assertCanManageUser(ctx, userId);
 }
@@ -216,13 +225,13 @@ async function writeAvatar(
 ): Promise<string> {
 	const type = file.contentType.split(';')[0]!.trim().toLowerCase();
 	if (!(AVATAR_TYPES as readonly string[]).includes(type)) {
-		throw errors.badRequest('Nur PNG-, JPEG- oder WebP-Bilder sind erlaubt');
+		throw errors.badRequest(t('auth.avatarTypeNotAllowed'));
 	}
 	if (file.data.byteLength === 0 || file.data.byteLength > AVATAR_MAX_BYTES) {
-		throw errors.tooLarge('Das Bild darf höchstens 2 MB groß sein');
+		throw errors.tooLarge(t('auth.avatarTooLarge', { mb: 2 }));
 	}
 	if (!matchesImageSignature(file.data, type)) {
-		throw errors.badRequest('Die Datei ist kein gültiges PNG-, JPEG- oder WebP-Bild');
+		throw errors.badRequest(t('auth.avatarInvalidImage'));
 	}
 	// Neu kodieren (Metadaten/GPS entfernt); ungültige oder nicht passende Bilder → 400
 	const bytes = await normalizeAvatar(file.data, type);

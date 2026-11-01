@@ -1,0 +1,17 @@
+{
+	"title": "Bild zuschneiden",
+	"description": "Ziehe das Bild, um den Ausschnitt zu wählen, und zoome mit dem Regler – auch über das Bild hinaus.",
+	"readFailed": "Bild konnte nicht gelesen werden.",
+	"createFailed": "Der Ausschnitt konnte nicht erzeugt werden.",
+	"stageLabel": "Bildausschnitt. Mit den Pfeiltasten verschieben, mit Plus und Minus zoomen, 0 setzt zurück.",
+	"zoomOut": "Verkleinern",
+	"zoom": "Zoom",
+	"zoomIn": "Vergrößern",
+	"reset": "Ausschnitt zurücksetzen",
+	"background": "Hintergrund",
+	"backgroundColor": "Hintergrundfarbe",
+	"transparent": "Transparent",
+	"backgroundHint": "für Ränder beim Herauszoomen und durchsichtige Bilder",
+	"cancel": "Abbrechen",
+	"apply": "Übernehmen"
+}

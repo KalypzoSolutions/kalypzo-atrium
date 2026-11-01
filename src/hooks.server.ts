@@ -3,6 +3,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 import '$lib/zod-locale';
+import { t } from '$lib/i18n';
 import { legacyAdminRedirect } from '$lib/server/core/admin-redirects';
 import { requestIdFrom } from '$lib/server/core/api/request-id';
 import { anonymousContext, resolveSession } from '$lib/server/core/auth/context';
@@ -15,6 +16,7 @@ import { startJobRunner } from '$lib/server/core/jobs';
 import { brandVersion, brandingState } from '$lib/server/core/branding';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
 import { getSetting } from '$lib/server/core/settings/service';
+import { LOCALE_COOKIE, resolveLocale, withLocale } from '$lib/server/core/i18n/locale';
 import { applyAppearance, loadUserPrefs } from '$lib/server/core/settings/user-prefs';
 
 const PUBLIC_PAGES = [
@@ -72,7 +74,14 @@ const init: Handle = async ({ event, resolve }) => {
 			}
 		}
 	}
-	return resolve(event);
+	const locale = await resolveLocale({
+		userId: event.locals.user?.id,
+		cookie: event.cookies.get(LOCALE_COOKIE),
+		acceptLanguage: event.request.headers.get('accept-language')
+	});
+	event.locals.locale = locale;
+	// Alles Weitere (Auth, Guard, Load, SSR, API) läuft in dieser Sprache (`t()` auf dem Server)
+	return withLocale(locale, () => resolve(event));
 };
 
 const authHandler: Handle = ({ event, resolve }) =>
@@ -95,7 +104,7 @@ const guard: Handle = async ({ event, resolve }) => {
 		// Moduloberfläche (auch eingebettet): deaktivierte Module sind nicht erreichbar
 		const m = /^\/(?:modules|p|embed)\/([^/]+)/.exec(path);
 		if (m && !(await isModuleEnabled(m[1] as string))) {
-			return new Response('Modul nicht verfügbar', { status: 404 });
+			return new Response(t('core-server.moduleUnavailable'), { status: 404 });
 		}
 	}
 	return resolve(event);
@@ -119,18 +128,36 @@ async function appearanceFor(event: Parameters<Handle>[0]['event']) {
 	}
 }
 
+/** Für Attributwerte in `app.html` (Systemname) */
+function escapeAttr(s: string): string {
+	return s
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+}
+
 const headers: Handle = async ({ event, resolve }) => {
 	let appearance: ReturnType<typeof appearanceFor> | undefined;
 	let brand: Promise<string> | undefined;
+	let appName: Promise<string> | undefined;
 	const response = await resolve(event, {
 		// Läuft beim Rendern (nach Session und Layout-Load): der Theme-Cookie ist dann bereits abgeglichen
 		transformPageChunk: async ({ html }) => {
 			if (!html.includes('%app.')) return html;
 			appearance ??= appearanceFor(event);
 			brand ??= brandingState().then(brandVersion);
-			const [a, v] = await Promise.all([appearance, brand]);
+			appName ??= getSetting<string>('core.system.name')
+				.then((n) => escapeAttr(String(n || 'Kalypzo Atrium').slice(0, 80)))
+				.catch(() => 'Kalypzo Atrium');
+			const [a, v, name] = await Promise.all([appearance, brand, appName]);
 			// Favicon/Apple-Icon aus dem Logo: Version in der URL, damit Browser ein neues Logo laden
-			return applyAppearance(html.replaceAll('%app.brand%', v), {
+			const lang = event.locals.locale ?? 'de';
+			const filled = html
+				.replaceAll('%app.brand%', v)
+				.replaceAll('%app.lang%', lang)
+				.replaceAll('%app.name%', name);
+			return applyAppearance(filled, {
 				theme: event.cookies.get('theme'),
 				density: a.density,
 				accent: a.accent,
@@ -169,5 +196,5 @@ export const handle: Handle = sequence(headers, init, authHandler, guard);
 export const handleError: HandleServerError = ({ error, event }) => {
 	// Parameterfrei loggen (keine SQL-Werte), Stack nur serverseitig (#56)
 	logError(`[server] ${event.locals.requestId}`, error, { requestId: event.locals.requestId });
-	return { message: 'Es ist ein interner Fehler aufgetreten.', requestId: event.locals.requestId };
+	return { message: t('core-server.internalError'), requestId: event.locals.requestId };
 };

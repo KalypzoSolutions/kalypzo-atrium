@@ -1,0 +1,172 @@
+{
+	"home": "Overview",
+	"sections": {
+		"people": {
+			"label": "People & permissions",
+			"description": "User accounts, roles and what they may do."
+		},
+		"settings": {
+			"label": "Settings",
+			"description": "Organization, design, email, storage, AI, PDF and module settings."
+		},
+		"modules": {
+			"label": "Modules",
+			"description": "Enable modules and open their own settings pages."
+		},
+		"api": {
+			"label": "Interfaces",
+			"description": "API keys for external services and an overview of all endpoints."
+		},
+		"maintenance": {
+			"label": "Log & maintenance",
+			"description": "Audit log, backup and resetting data."
+		}
+	},
+	"entries": {
+		"users": {
+			"label": "Users",
+			"description": "Create and lock accounts, assign roles.",
+			"keywords": "account, accounts, users, password, deactivate, email address"
+		},
+		"roles": {
+			"label": "Roles",
+			"description": "Edit roles and their permissions.",
+			"keywords": "role, administrator, member, grant permissions"
+		},
+		"roles-permissions": {
+			"label": "Permissions",
+			"description": "All permissions with module and related roles.",
+			"keywords": "permission, permissions, rights, access"
+		},
+		"settings": {
+			"label": "Settings",
+			"description": "All system settings in one place.",
+			"keywords": "configuration, system"
+		},
+		"settings-general": {
+			"label": "General",
+			"description": "System name and the organization’s name, address and contact.",
+			"keywords": "system name, organization, address, phone, contact, language"
+		},
+		"settings-design": {
+			"label": "Design",
+			"description": "Logo and accent color.",
+			"keywords": "logo, accent color, color, appearance, branding"
+		},
+		"settings-mail": {
+			"label": "Email delivery",
+			"description": "SMTP server, credentials, sender and test email.",
+			"keywords": "SMTP, mail server, sender, port, TLS, test email, password"
+		},
+		"settings-mail-layout": {
+			"label": "Email layout",
+			"description": "Look of outgoing emails with preview.",
+			"keywords": "signature, footer, emblem, preview, mail template"
+		},
+		"settings-storage": {
+			"label": "Storage",
+			"description": "S3 storage for files, receipts and images.",
+			"keywords": "storage, S3, MinIO, bucket, files, upload, endpoint"
+		},
+		"settings-notifications": {
+			"label": "Notifications",
+			"description": "Turn push notifications (Web Push) on and off, keys.",
+			"keywords": "push, Web Push, VAPID, phone, app, notification, message"
+		},
+		"settings-ai": {
+			"label": "AI",
+			"description": "AI provider, model, limits and usage.",
+			"keywords": "artificial intelligence, Claude, model, API key, costs, budget"
+		},
+		"settings-pdf": {
+			"label": "PDF",
+			"description": "PDF settings, letter templates with preview, test PDF.",
+			"keywords": "letterhead, template, letter, document, paper size"
+		},
+		"settings-modules": {
+			"label": "Modules",
+			"description": "Settings of the enabled modules (e.g. bank details, organization name).",
+			"keywords": "module settings, bank details, IBAN, BIC, account holder, organization name, address lookup"
+		},
+		"modules": {
+			"label": "Modules",
+			"description": "Enable, disable and install modules.",
+			"keywords": "enable, disable, extension, version"
+		},
+		"modules-install": {
+			"label": "Install",
+			"description": "Install and update modules from a GitHub link or ZIP file.",
+			"keywords": "GitHub, ZIP, upload, update, source, repository"
+		},
+		"modules-history": {
+			"label": "History",
+			"description": "Installations and updates of modules.",
+			"keywords": "installations, log, commit"
+		},
+		"api": {
+			"label": "API keys",
+			"description": "Keys for external services (e.g. your website).",
+			"keywords": "API key, token, scope, website, access"
+		},
+		"api-docs": {
+			"label": "API overview",
+			"description": "All REST endpoints with permissions, schemas and console.",
+			"keywords": "REST, endpoints, documentation, OpenAPI, console"
+		},
+		"audit": {
+			"label": "Audit log",
+			"description": "Who changed what and when.",
+			"keywords": "log, history, logins, changes"
+		},
+		"reset": {
+			"label": "Reset",
+			"description": "Delete data of individual areas or the whole system (with backup).",
+			"keywords": "reset, delete"
+		},
+		"backup": {
+			"label": "Backup",
+			"description": "Back up all data encrypted and restore or merge it.",
+			"keywords": "backup, export, import, restore, migration"
+		},
+		"privacy": {
+			"label": "Data access request",
+			"description": "Export all data about a person (access and data portability, GDPR).",
+			"keywords": "GDPR, access request, privacy, Art. 15, Art. 20, export, data subject"
+		}
+	},
+	"moduleEntry": {
+		"pageOf": "{page} of the {module} module",
+		"settingsOf": "Settings of the {module} module",
+		"hint": "Settings",
+		"keywords": "module settings"
+	},
+	"overview": {
+		"title": "Administration",
+		"description": "Users, roles, settings, modules and interfaces in one place.",
+		"searchPlaceholder": "Search settings … (e.g. SMTP, logo, IBAN)",
+		"searchLabel": "Search settings",
+		"searchHint": "Enter opens the first result.",
+		"hits": "{count, plural, one {# result} other {# results}} – Enter opens the first.",
+		"nothingFound": "Nothing found",
+		"nothingFoundHint": "There is no setting for “{query}” that you can access. Try another term, e.g. “mail”, “role” or “storage”.",
+		"noAccess": "You don’t have access to the administration."
+	},
+	"errors": {
+		"unauthenticated": "Not signed in",
+		"forbidden": "No permission"
+	},
+	"form": {
+		"saved": "Saved",
+		"failed": "Action failed",
+		"unexpected": "Unexpected error"
+	},
+	"permissionPicker": {
+		"searchLabel": "Search permissions",
+		"searchPlaceholder": "Search permissions, e.g. “treasury” or “delete” …",
+		"countHits": "{visible} of {total} permissions – “all”/“none” only affect the results.",
+		"countNone": "{visible} of {total} permissions.",
+		"all": "all",
+		"none": "none",
+		"privileged": "Admin-level"
+	}
+}

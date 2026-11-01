@@ -52,7 +52,18 @@ export { default as MonthCalendar } from './MonthCalendar.svelte';
 export type { CalendarItem } from './month-calendar';
 export { default as PageTitle } from './PageTitle.svelte';
 export { documentTitle, navLabelFor } from './page-title';
-export { BUSY_SAVE, BUSY_LOAD, BUSY_DELETE, BUSY_SEND, BUSY_UPLOAD } from './busy';
+export {
+	BUSY_SAVE,
+	BUSY_LOAD,
+	BUSY_DELETE,
+	BUSY_SEND,
+	BUSY_UPLOAD,
+	busySave,
+	busyLoad,
+	busyDelete,
+	busySend,
+	busyUpload
+} from './busy';
 export { default as BarcodeScanner } from './BarcodeScanner.svelte';
 export { ScanBuffer, listenForScanner, type ScanBufferOptions } from './scan-input';
 export { default as WritingAssistant } from './writing-assistant/WritingAssistant.svelte';

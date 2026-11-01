@@ -3,6 +3,7 @@
  * der Anfrage (same-origin, Session-Cookie), zum Erzeugen eines curl-Beispiels und zum
  * Aufbereiten der Antwort. Keine Server-Imports.
  */
+import { t } from '$lib/i18n';
 import type { ApiMethod, ConsoleRequestBuild, ConsoleRequestInput, ConsoleResult } from './types';
 
 /** Höchstlänge des angezeigten Antwort-Bodys (Zeichen) */
@@ -45,16 +46,16 @@ function fail(error: string, field?: string): ConsoleRequestBuild {
 /** Baut die Anfrage für `fetch(url, init)` (same-origin, ohne Authorization-Header) */
 export function buildConsoleRequest(input: ConsoleRequestInput): ConsoleRequestBuild {
 	if (!isSafeApiPath(input.path)) {
-		return fail('Ungültiger Pfad: Nur Pfade unter /api/v1/ sind erlaubt.', 'path');
+		return fail(t('api-docs.console.invalidPath'), 'path');
 	}
 
 	let pathname = input.path;
 	for (const name of pathParamNames(input.path)) {
 		const raw = input.params[name];
 		const value = typeof raw === 'string' ? raw.trim() : '';
-		if (!value) return fail(`Pfadparameter „${name}“ fehlt.`, `param:${name}`);
+		if (!value) return fail(t('api-docs.console.paramMissing', { name }), `param:${name}`);
 		if (value === '.' || value === '..') {
-			return fail(`Pfadparameter „${name}“ ist ungültig.`, `param:${name}`);
+			return fail(t('api-docs.console.paramInvalid', { name }), `param:${name}`);
 		}
 		const encoded = encodeURIComponent(value);
 		pathname = pathname.replace(new RegExp(`:${name}(?![A-Za-z0-9_])`, 'g'), () => encoded);
@@ -82,7 +83,7 @@ export function buildConsoleRequest(input: ConsoleRequestInput): ConsoleRequestB
 			parsed = JSON.parse(input.bodyText);
 		} catch (err) {
 			const detail = err instanceof Error ? err.message : String(err);
-			return fail(`Body ist kein gültiges JSON: ${detail}`, 'body');
+			return fail(t('api-docs.console.bodyInvalid', { detail }), 'body');
 		}
 		init.body = JSON.stringify(parsed);
 		headers['content-type'] = 'application/json';
@@ -120,7 +121,7 @@ export function buildCurl(
 
 function truncate(text: string): string {
 	if (text.length <= MAX_RESULT_CHARS) return text;
-	return `${text.slice(0, MAX_RESULT_CHARS)}\n… (gekürzt)`;
+	return `${text.slice(0, MAX_RESULT_CHARS)}\n${t('api-docs.console.truncated')}`;
 }
 
 function isJsonType(type: string): boolean {
@@ -148,7 +149,7 @@ export async function readConsoleResult(
 
 	if (type && !isJsonType(type) && !isTextType(type)) {
 		const bytes = (await res.arrayBuffer()).byteLength;
-		bodyText = `Binäre Antwort (${type}, ${bytes} Bytes)`;
+		bodyText = t('api-docs.console.binary', { type, bytes });
 	} else {
 		const raw = await res.text();
 		if (isJsonType(type) && raw.trim() !== '') {

@@ -9,6 +9,7 @@ import type { z } from 'zod';
 import { isCoreError } from '$lib/server/core/errors';
 import { safeFileName as cleanFileName } from '$lib/sdk/file-names';
 import { BackupFormatError } from '$lib/server/core/backup/types';
+import { t } from '$lib/i18n';
 
 export const BACKUP_PERMISSION = 'core.system.backup';
 
@@ -40,7 +41,7 @@ export function safeFileName(name: string, ext: string): string {
 	const cleaned = cleanFileName(name, {
 		replacement: '-',
 		maxLength: 200,
-		fallback: 'ep-intern-sicherung'
+		fallback: 'atrium-backup'
 	});
 	return cleaned + (cleaned.endsWith(ext) ? '' : ext);
 }
@@ -63,19 +64,21 @@ export function guard(
 	url: URL,
 	opts: GuardOptions = {}
 ): Response | null {
-	if (!locals.user) return problem(401, 'Nicht angemeldet');
-	if (!locals.ctx.permissions.has(BACKUP_PERMISSION)) return problem(403, 'Keine Berechtigung');
+	if (!locals.user) return problem(401, t('admin-backup.http.unauthenticated'));
+	if (!locals.ctx.permissions.has(BACKUP_PERMISSION))
+		return problem(403, t('admin-backup.http.forbidden'));
 
 	if (opts.write) {
 		const origin = request.headers.get('origin');
-		if (!origin || origin !== url.origin) return problem(403, 'Ungültige Herkunft der Anfrage');
+		if (!origin || origin !== url.origin) return problem(403, t('admin-backup.http.badOrigin'));
 	} else if (request.headers.get('sec-fetch-site') === 'cross-site') {
-		return problem(403, 'Ungültige Herkunft der Anfrage');
+		return problem(403, t('admin-backup.http.badOrigin'));
 	}
 
 	if (opts.contentType) {
 		const ct = (request.headers.get('content-type') ?? '').toLowerCase();
-		if (!ct.startsWith(opts.contentType)) return problem(415, `Erwartet ${opts.contentType}`);
+		if (!ct.startsWith(opts.contentType))
+			return problem(415, t('admin-backup.http.expectedType', { type: opts.contentType }));
 	}
 	return null;
 }
@@ -89,7 +92,7 @@ export async function readJson<S extends z.ZodType>(
 	try {
 		raw = await request.json();
 	} catch {
-		return { ok: false, response: problem(400, 'Ungültiges JSON') };
+		return { ok: false, response: problem(400, t('admin-backup.http.invalidJson')) };
 	}
 	const parsed = schema.safeParse(raw);
 	if (!parsed.success) {

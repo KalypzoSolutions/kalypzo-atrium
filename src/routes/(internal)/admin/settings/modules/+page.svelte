@@ -2,18 +2,19 @@
 	import { EmptyState, PageTitle } from '$lib/components/layout';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
+	import { t } from '$lib/i18n';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 </script>
 
-<PageTitle title="Module · Einstellungen" />
+<PageTitle title={t('admin-settings.modules.pageTitle')} />
 
 {#if data.modules.length === 0}
 	<EmptyState
-		title="Keine Modul-Einstellungen"
-		description="Keines der aktiven Module bringt eigene Einstellungen mit. Module aktivierst du unter Administration → Module."
+		title={t('admin-settings.modules.emptyTitle')}
+		description={t('admin-settings.modules.emptyDescription')}
 	/>
 {:else}
 	{#each data.modules as m (m.id)}
@@ -27,14 +28,14 @@
 					<div class="flex flex-wrap items-center justify-between gap-3">
 						<p class="text-sm text-muted-foreground">
 							{#if m.ownPage.canOpen}
-								Dieses Modul hat eine eigene Einstellungsseite.
+								{t('admin-settings.modules.ownPage')}
 							{:else}
-								Dieses Modul hat eine eigene Einstellungsseite. Dafür fehlt dir die Berechtigung.
+								{t('admin-settings.modules.ownPageNoAccess')}
 							{/if}
 						</p>
 						{#if m.ownPage.canOpen}
 							<Button href={m.ownPage.href} variant="outline">
-								Zu den Einstellungen „{m.name}“
+								{t('admin-settings.modules.openOwnPage', { name: m.name })}
 							</Button>
 						{/if}
 					</div>

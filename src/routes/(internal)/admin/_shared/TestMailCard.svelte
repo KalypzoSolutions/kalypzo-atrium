@@ -4,6 +4,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { t } from '$lib/i18n';
 	import { submitHandler } from './form-utils';
 
 	/** Karte „Test-E-Mail“ – erwartet eine Action `testMail` auf der Seite. */
@@ -15,9 +16,9 @@
 
 <Card.Root>
 	<Card.Header>
-		<Card.Title>Test-E-Mail</Card.Title>
+		<Card.Title>{t('admin-settings.testMail.title')}</Card.Title>
 		<Card.Description>
-			Speichere zuerst deine Änderungen, dann sende eine Testnachricht.
+			{t('admin-settings.testMail.description')}
 		</Card.Description>
 	</Card.Header>
 	<Card.Content>
@@ -28,11 +29,11 @@
 			use:enhance={handler}
 		>
 			<div class="space-y-1.5">
-				<Label for="to">Empfänger</Label>
+				<Label for="to">{t('admin-settings.testMail.recipient')}</Label>
 				<Input id="to" name="to" type="email" required value={email} />
 			</div>
 			<Button type="submit" variant="outline" disabled={busy}>
-				{busy ? 'Sendet …' : 'Test-E-Mail senden'}
+				{busy ? t('admin-settings.testMail.sending') : t('admin-settings.testMail.send')}
 			</Button>
 		</form>
 	</Card.Content>

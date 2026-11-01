@@ -4,6 +4,7 @@
  * Paket der anfordernden Moduls → (Phase 7) früherer Lock-Eintrag. Installierte Module in passender Version
  * bleiben unverändert. Optionale Abhängigkeiten werden nur empfohlen.
  */
+import { t } from '$lib/i18n';
 import { versionSatisfies, type ModulePackage } from '../package/schema';
 import { allDefinitions, getDefinition, getModulePackage } from '../registry';
 import type { DiscoveredModule } from './discover';
@@ -49,7 +50,7 @@ export async function resolvePlan(
 
 	for (const id of selected) {
 		const c = byId.get(id);
-		if (!c) blockers.push(`Modul „${id}“ gibt es in dieser Quelle nicht`);
+		if (!c) blockers.push(t('install.resolve.notInSource', { id }));
 		else entries.set(id, { ...c, reason: 'selected', requiredBy: [] });
 	}
 
@@ -64,7 +65,12 @@ export async function resolvePlan(
 				if (!planned.requiredBy.includes(id)) planned.requiredBy.push(id);
 				if (!versionSatisfies(planned.mod.pkg.version, range)) {
 					blockers.push(
-						`${pkg.id} braucht ${dep} ${range}, geplant ist ${planned.mod.pkg.version}`
+						t('install.resolve.plannedMismatch', {
+							id: pkg.id,
+							dep,
+							range,
+							version: planned.mod.pkg.version
+						})
 					);
 				}
 				continue;
@@ -80,7 +86,12 @@ export async function resolvePlan(
 					candidate = await loadSource(source, dep);
 				} catch (e) {
 					blockers.push(
-						`${dep} (für ${pkg.id}) konnte nicht von ${source} geladen werden: ${e instanceof Error ? e.message : String(e)}`
+						t('install.resolve.loadFailed', {
+							dep,
+							id: pkg.id,
+							source,
+							error: e instanceof Error ? e.message : String(e)
+						})
 					);
 					continue;
 				}
@@ -88,14 +99,24 @@ export async function resolvePlan(
 			if (!candidate) {
 				blockers.push(
 					installed
-						? `${pkg.id} braucht ${dep} ${range}, installiert ist ${installed.manifest.version} – keine passende Quelle`
-						: `${pkg.id} braucht ${dep} ${range} – nicht installiert und keine Quelle angegeben`
+						? t('install.resolve.installedNoSource', {
+								id: pkg.id,
+								dep,
+								range,
+								version: installed.manifest.version
+							})
+						: t('install.resolve.missingNoSource', { id: pkg.id, dep, range })
 				);
 				continue;
 			}
 			if (!versionSatisfies(candidate.mod.pkg.version, range)) {
 				blockers.push(
-					`${pkg.id} braucht ${dep} ${range}, die Quelle liefert ${candidate.mod.pkg.version}`
+					t('install.resolve.sourceMismatch', {
+						id: pkg.id,
+						dep,
+						range,
+						version: candidate.mod.pkg.version
+					})
 				);
 				continue;
 			}
@@ -121,7 +142,7 @@ export async function resolvePlan(
 	const visit = (id: string, trail: string[]): void => {
 		if (done.has(id)) return;
 		if (visiting.has(id)) {
-			blockers.push(`Zyklische Abhängigkeit: ${[...trail, id].join(' → ')}`);
+			blockers.push(t('install.resolve.cycle', { trail: [...trail, id].join(' → ') }));
 			return;
 		}
 		visiting.add(id);
@@ -139,7 +160,12 @@ export async function resolvePlan(
 			const range = getModulePackage(other.manifest.id)?.dependencies[e.mod.id]?.version;
 			if (range && !versionSatisfies(e.mod.pkg.version, range)) {
 				blockers.push(
-					`Installiertes Modul ${other.manifest.id} braucht ${e.mod.id} ${range} – ${e.mod.pkg.version} passt nicht`
+					t('install.resolve.reverse', {
+						other: other.manifest.id,
+						id: e.mod.id,
+						range,
+						version: e.mod.pkg.version
+					})
 				);
 			}
 		}

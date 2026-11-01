@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { json } from '@sveltejs/kit';
 import { collectDashboardFeed } from '$lib/server/core/dashboard/feed';
 import type { RequestHandler } from './$types';
@@ -10,7 +11,7 @@ const NO_STORE = { 'cache-control': 'no-store' };
  */
 export const GET: RequestHandler = async ({ locals }) => {
 	if (!locals.user) {
-		return json({ message: 'Nicht angemeldet' }, { status: 401, headers: NO_STORE });
+		return json({ message: t('dashboard-feed.notSignedIn') }, { status: 401, headers: NO_STORE });
 	}
 	const data = await collectDashboardFeed(locals.ctx);
 	return json({ data }, { headers: NO_STORE });

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
@@ -42,10 +43,11 @@
 </script>
 
 <div class="flex items-center justify-between gap-2 pt-4 text-sm text-muted-foreground">
-	<span aria-live="polite">{from} - {to} von {total}</span>
+	<span aria-live="polite">{t('layout.pagination.range', { from, to, total })}</span>
 	<div class="flex gap-2">
 		<Button variant="outline" size="sm" disabled={offset <= 0} onclick={() => go(offset - limit)}>
-			<ChevronLeft /> Zurück
+			<ChevronLeft />
+			{t('layout.pagination.prev')}
 		</Button>
 		<Button
 			variant="outline"
@@ -53,7 +55,8 @@
 			disabled={offset + limit >= total}
 			onclick={() => go(offset + limit)}
 		>
-			Weiter <ChevronRight />
+			{t('layout.pagination.next')}
+			<ChevronRight />
 		</Button>
 	</div>
 </div>

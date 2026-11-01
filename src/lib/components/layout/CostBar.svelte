@@ -19,11 +19,13 @@
 </script>
 
 <script lang="ts">
+	import { t } from '$lib/i18n';
+	import { formatNumber } from '$lib/i18n/intl';
 	import { cn } from '$lib/utils';
 
 	let {
 		segments,
-		format = (n: number) => n.toLocaleString('de-DE'),
+		format = (n: number) => formatNumber(n),
 		class: className
 	}: {
 		segments: CostSegment[];
@@ -45,10 +47,12 @@
 	});
 
 	const fmtPct = (p: number) =>
-		p > 0 && p < 1 ? '<1 %' : `${Math.round(p).toLocaleString('de-DE')} %`;
+		p > 0 && p < 1
+			? t('layout.cost.lessThanOnePercent')
+			: t('layout.cost.percent', { value: formatNumber(Math.round(p)) });
 
 	const summary = $derived(
-		`Kostenverteilung, gesamt ${format(items.total)}: ` +
+		t('layout.cost.summary', { total: format(items.total) }) +
 			items.list.map((s) => `${s.label} ${format(s.value)} (${fmtPct(s.pct)})`).join(', ')
 	);
 </script>

@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { getAuth } from '$lib/server/core/auth';
 import { limitAuthAction } from '$lib/server/core/auth/auth-limits';
 import { clientAddress, withClientIp } from '$lib/server/core/auth/client-ip';
@@ -11,7 +12,7 @@ export const actions: Actions = {
 		const { request } = event;
 		const form = await request.formData();
 		const parsed = z.string().trim().email().max(255).safeParse(form.get('email'));
-		if (!parsed.success) return fail(400, { error: 'Bitte eine gültige E-Mail-Adresse eingeben.' });
+		if (!parsed.success) return fail(400, { error: t('password.forgot.invalidEmail') });
 		const email = parsed.data.toLowerCase();
 		const ip = clientAddress(event);
 		// Je IP und je Adresse wie die Better-Auth-Regel; über dem Limit still verwerfen

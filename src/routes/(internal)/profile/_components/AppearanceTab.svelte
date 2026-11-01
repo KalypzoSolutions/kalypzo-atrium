@@ -13,6 +13,8 @@
 	import { SelectField } from '$lib/components/ui/select-field';
 	import { Switch } from '$lib/components/ui/switch';
 	import { FormField, NumberStepper } from '$lib/components/layout';
+	import { LOCALE_LABELS, LOCALES, t } from '$lib/i18n';
+	import { formatNumber } from '$lib/i18n/intl';
 	import { theme, type ThemeChoice } from '$lib/theme.svelte';
 	import { cn } from '$lib/utils';
 	import { submitter } from './actions';
@@ -23,9 +25,9 @@
 
 	const DEFAULT_ACCENT = '#2563eb';
 	const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
-		{ value: 'light', label: 'Hell', icon: Sun },
-		{ value: 'dark', label: 'Dunkel', icon: Moon },
-		{ value: 'system', label: 'System', icon: Monitor }
+		{ value: 'light', label: t('profile.appearance.light'), icon: Sun },
+		{ value: 'dark', label: t('profile.appearance.dark'), icon: Moon },
+		{ value: 'system', label: t('profile.appearance.system'), icon: Monitor }
 	];
 
 	const initial = untrack(() => data.settings);
@@ -38,6 +40,10 @@
 	let density = $state<string>(initial.density === 'compact' ? 'compact' : 'comfortable');
 	let startPage = $state<string>(initial.startPage || '/dashboard');
 	let pageSize = $state<number>(initial.pageSize || 25);
+	// Sprache: '' = wie das System; nach dem Speichern lädt die Seite neu (Texte sind nicht reaktiv)
+	const initialLocale = initial.locale ?? '';
+	let locale = $state<string>(initialLocale);
+	const localeOptions = LOCALES.map((code) => ({ value: code, label: LOCALE_LABELS[code] }));
 
 	let busy = $state(false);
 	let error = $state<string | null>(null);
@@ -48,7 +54,7 @@
 	// Schrift auf Primärflächen wird automatisch hell/dunkel gewählt (app.css); hier nur der erreichte Kontrast
 	const contrast = $derived(primaryContrast(shown) ?? 21);
 	const lowContrast = $derived(contrast < 4.5);
-	const contrastText = $derived(contrast.toFixed(1).replace('.', ','));
+	const contrastText = $derived(formatNumber(contrast, 1));
 	const previewStyle = $derived(`--accent-color:${shown};--primary:${shown};--ring:${shown}`);
 
 	let previewSwitch = $state(true);
@@ -75,6 +81,7 @@
 					theme.apply();
 					picked = null;
 				}
+				if (o.ok && locale !== initialLocale) location.reload();
 			},
 			{ setBusy: (b) => (busy = b) }
 		)}
@@ -84,21 +91,24 @@
 		{/if}
 
 		<Card>
-			<CardHeader><CardTitle class="font-semibold">Farbschema</CardTitle></CardHeader>
+			<CardHeader
+				><CardTitle class="font-semibold">{t('profile.appearance.colorScheme')}</CardTitle
+				></CardHeader
+			>
 			<CardContent class="max-w-2xl space-y-6">
 				<fieldset class="grid gap-2">
-					<legend class="mb-1 text-sm font-medium">Darstellung</legend>
+					<legend class="mb-1 text-sm font-medium">{t('profile.appearance.mode')}</legend>
 					<div class="grid gap-3 sm:grid-cols-3">
-						{#each THEMES as t (t.value)}
-							{@const Icon = t.icon}
+						{#each THEMES as choice (choice.value)}
+							{@const Icon = choice.icon}
 							<label class="relative cursor-pointer">
 								<input
 									type="radio"
 									name="theme-choice"
-									value={t.value}
+									value={choice.value}
 									class="peer sr-only"
-									checked={selected === t.value}
-									onchange={() => (picked = t.value)}
+									checked={selected === choice.value}
+									onchange={() => (picked = choice.value)}
 								/>
 								<span
 									class={cn(
@@ -108,7 +118,7 @@
 									)}
 								>
 									<Icon class="size-5" aria-hidden="true" />
-									{t.label}
+									{choice.label}
 								</span>
 							</label>
 						{/each}
@@ -119,10 +129,12 @@
 				<div class="grid gap-3">
 					<div class="flex flex-wrap items-center gap-3">
 						<div class="grid gap-1.5">
-							<span class="text-sm font-medium" id="accent-label">Akzentfarbe</span>
+							<span class="text-sm font-medium" id="accent-label"
+								>{t('profile.appearance.accent')}</span
+							>
 							<ColorPicker
 								id="accent"
-								label="Akzentfarbe"
+								label={t('profile.appearance.accent')}
 								value={accent}
 								onchange={(v) => (accent = v)}
 							/>
@@ -133,35 +145,41 @@
 							size="sm"
 							class="self-end"
 							disabled={accent === null}
-							onclick={() => (accent = null)}>Zurücksetzen</Button
+							onclick={() => (accent = null)}>{t('profile.appearance.reset')}</Button
 						>
 					</div>
 					<input type="hidden" name="accentColor" value={accent ?? ''} />
 					{#if themeAccent}
 						<p class="text-xs text-muted-foreground">
-							Das aktive Theme „{activeTheme?.name}“ bringt eine eigene Akzentfarbe mit; sie gilt,
-							solange das Theme aktiv ist.
+							{t('profile.appearance.themeAccent', { name: activeTheme?.name ?? '' })}
 						</p>
 					{/if}
 					<p class="text-xs text-muted-foreground" aria-live="polite">
 						{#if lowContrast}
 							<span class="text-warning">
-								Schrift auf dieser Farbe ist schwer lesbar (Kontrast {contrastText} : 1, empfohlen mindestens
-								4,5 : 1). Wähle eine hellere oder dunklere Farbe.
+								{t('profile.appearance.lowContrast', { contrast: contrastText })}
 							</span>
 						{:else}
-							Kontrast {contrastText} : 1 – gut lesbar. Die Schriftfarbe auf Knöpfen passt sich automatisch
-							an.
+							{t('profile.appearance.goodContrast', { contrast: contrastText })}
 						{/if}
 					</p>
 
 					<div class="grid gap-2 rounded-lg border bg-muted/30 p-4" style={previewStyle}>
-						<p class="text-xs font-medium text-muted-foreground">Vorschau</p>
+						<p class="text-xs font-medium text-muted-foreground">
+							{t('profile.appearance.preview')}
+						</p>
 						<div class="flex flex-wrap items-center gap-3">
-							<Button type="button" size="sm">Speichern</Button>
-							<Switch bind:checked={previewSwitch} aria-label="Vorschau-Schalter" />
-							<Badge>Neu</Badge>
-							<Input class="w-40" placeholder="Fokus testen" aria-label="Vorschau-Eingabefeld" />
+							<Button type="button" size="sm">{t('profile.save')}</Button>
+							<Switch
+								bind:checked={previewSwitch}
+								aria-label={t('profile.appearance.previewSwitch')}
+							/>
+							<Badge>{t('profile.appearance.previewBadge')}</Badge>
+							<Input
+								class="w-40"
+								placeholder={t('profile.appearance.previewPlaceholder')}
+								aria-label={t('profile.appearance.previewInput')}
+							/>
 						</div>
 					</div>
 				</div>
@@ -169,15 +187,32 @@
 		</Card>
 
 		<Card>
-			<CardHeader><CardTitle class="font-semibold">Anzeige</CardTitle></CardHeader>
+			<CardHeader
+				><CardTitle class="font-semibold">{t('profile.appearance.display')}</CardTitle></CardHeader
+			>
 			<CardContent class="grid max-w-2xl gap-4">
-				<FormField label="Dichte" id="density">
+				<FormField
+					label={t('profile.appearance.language')}
+					id="locale"
+					hint={t('profile.appearance.languageHint')}
+				>
+					<SelectField
+						id="locale"
+						label={t('profile.appearance.language')}
+						options={localeOptions}
+						emptyLabel={t('profile.appearance.languageSystem')}
+						bind:value={() => locale || null, (v) => (locale = v ?? '')}
+					/>
+				</FormField>
+				<input type="hidden" name="locale" value={locale} />
+
+				<FormField label={t('profile.appearance.density')} id="density">
 					<SelectField
 						id="density"
-						label="Dichte"
+						label={t('profile.appearance.density')}
 						options={[
-							{ value: 'comfortable', label: 'Normal' },
-							{ value: 'compact', label: 'Kompakt' }
+							{ value: 'comfortable', label: t('profile.appearance.densityNormal') },
+							{ value: 'compact', label: t('profile.appearance.densityCompact') }
 						]}
 						bind:value={() => density, (v) => (density = v ?? 'comfortable')}
 					/>
@@ -185,13 +220,13 @@
 				<input type="hidden" name="density" value={density} />
 
 				<FormField
-					label="Einträge pro Seite"
+					label={t('profile.appearance.pageSize')}
 					id="pageSize"
-					hint="Gilt für Tabellen und Listen (10 bis 100)."
+					hint={t('profile.appearance.pageSizeHint')}
 				>
 					<NumberStepper
 						id="pageSize"
-						label="Einträge pro Seite"
+						label={t('profile.appearance.pageSize')}
 						min={10}
 						max={100}
 						step={10}
@@ -201,13 +236,13 @@
 				<input type="hidden" name="pageSize" value={pageSize} />
 
 				<FormField
-					label="Startseite"
+					label={t('profile.appearance.startPage')}
 					id="startPage"
-					hint="Diese Seite öffnet sich nach der Anmeldung."
+					hint={t('profile.appearance.startPageHint')}
 				>
 					<SelectField
 						id="startPage"
-						label="Startseite"
+						label={t('profile.appearance.startPage')}
 						options={startOptions}
 						bind:value={() => startPage, (v) => (startPage = v ?? '/dashboard')}
 					/>
@@ -216,6 +251,6 @@
 			</CardContent>
 		</Card>
 
-		<Button type="submit" disabled={busy}>{busy ? 'Speichert …' : 'Speichern'}</Button>
+		<Button type="submit" disabled={busy}>{busy ? t('profile.saving') : t('profile.save')}</Button>
 	</form>
 </div>

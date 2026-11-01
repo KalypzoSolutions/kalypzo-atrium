@@ -1,7 +1,8 @@
+import { t } from '$lib/i18n';
 import { safeRedirect as safeRedirectCore } from '$lib/server/core/safe-redirect';
 
-/** Wandelt Better-Auth-Fehler in eine anzeigbare deutsche Meldung um (ohne interne Details). */
-export function authErrorMessage(e: unknown, fallback = 'Aktion fehlgeschlagen.'): string {
+/** Wandelt Better-Auth-Fehler in eine anzeigbare Meldung um (ohne interne Details). */
+export function authErrorMessage(e: unknown, fallback = t('login.errors.actionFailed')): string {
 	const err = e as {
 		status?: string | number;
 		statusCode?: number;
@@ -10,21 +11,20 @@ export function authErrorMessage(e: unknown, fallback = 'Aktion fehlgeschlagen.'
 	const status = err?.statusCode ?? err?.status;
 	const code = err?.body?.code ?? '';
 	if (status === 429 || status === 'TOO_MANY_REQUESTS') {
-		return 'Zu viele Versuche. Bitte später erneut versuchen.';
+		return t('login.errors.tooMany');
 	}
 	if (code === 'INVALID_EMAIL_OR_PASSWORD' || code === 'INVALID_PASSWORD') {
-		return 'E-Mail oder Passwort ist falsch.';
+		return t('login.errors.wrongCredentials');
 	}
 	if (code === 'EMAIL_NOT_VERIFIED') {
-		return 'Bitte bestätige zuerst deine E-Mail-Adresse über den Link in der Bestätigungsmail.';
+		return t('login.errors.emailNotVerified');
 	}
-	if (code === 'INVALID_TOKEN') return 'Der Link ist ungültig oder abgelaufen.';
+	if (code === 'INVALID_TOKEN') return t('login.errors.invalidToken');
 	if (code === 'INVALID_TWO_FACTOR_COOKIE' || code === 'INVALID_CODE') {
-		return 'Der Code ist ungültig oder abgelaufen.';
+		return t('login.errors.invalidCode');
 	}
-	if (status === 403 || status === 'FORBIDDEN')
-		return 'Zugriff nicht erlaubt (Konto deaktiviert?).';
-	if (status === 401 || status === 'UNAUTHORIZED') return 'E-Mail oder Passwort ist falsch.';
+	if (status === 403 || status === 'FORBIDDEN') return t('login.errors.forbidden');
+	if (status === 401 || status === 'UNAUTHORIZED') return t('login.errors.wrongCredentials');
 	return fallback;
 }
 

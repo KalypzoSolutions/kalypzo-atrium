@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { Button } from '$lib/components/ui/button';
@@ -20,14 +21,14 @@
 		type = 'text',
 		valueLabel,
 		valuePlaceholder,
-		namePlaceholder = 'Bezeichnung, z. B. Mutter',
-		addLabel = 'Hinzufügen',
+		namePlaceholder = t('layout.contacts.namePlaceholder'),
+		addLabel = t('layout.contacts.add'),
 		max = 10,
 		errors = {},
 		listError = null,
 		disabled = false,
 		readonly = false,
-		emptyText = 'Keine Einträge.'
+		emptyText = t('layout.contacts.empty')
 	}: {
 		id: string;
 		label: string;
@@ -61,7 +62,7 @@
 					id="{id}-{i}-name"
 					class="sm:w-2/5"
 					placeholder={namePlaceholder}
-					aria-label="Bezeichnung für {valueLabel} {i + 1}"
+					aria-label={t('layout.contacts.nameFor', { label: valueLabel, n: i + 1 })}
 					aria-invalid={err?.name ? true : undefined}
 					autocomplete="off"
 					bind:value={items[i]!.name}
@@ -84,7 +85,7 @@
 						variant="ghost"
 						class="self-end sm:self-auto"
 						size="icon"
-						aria-label="{valueLabel} {i + 1} entfernen"
+						aria-label={t('layout.contacts.remove', { label: valueLabel, n: i + 1 })}
 						onclick={() => (items = items.filter((_, j) => j !== i))}
 					>
 						<Trash2 class="size-4" />

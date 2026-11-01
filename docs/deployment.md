@@ -269,7 +269,8 @@ gemeinsamer Upload-Helfer mit `Content-Length`-Pflicht.
 
 ## Backups
 
-- **Datensicherung in der App** (Verwaltung → Datensicherung, Recht `core.system.backup`): verschlüsselte Datei `.epbackup`
+- **Datensicherung in der App** (Verwaltung → Datensicherung, Recht `core.system.backup`): verschlüsselte Datei `.atriumbackup`
+  (ältere Sicherungen `.epbackup` lassen sich weiter einspielen)
   (Sicherungs-Passwort, AES-256-GCM, scrypt) mit allen oder ausgewählten Bereichen, optional inkl. Dateien aus S3 und inkl. Zugangsdaten.
   Wiederherstellen oder Zusammenführen auch auf einem **neuen Server mit anderem `APP_SECRET`** (Werte werden neu verschlüsselt).
   Upload in 8-MB-Stücken (passt zu `BODY_SIZE_LIMIT`), Grenze `BACKUP_MAX_BYTES` (Standard 4 GB). Temp-Dateien liegen in

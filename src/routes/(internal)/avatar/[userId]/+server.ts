@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { t } from '$lib/i18n';
 import { readAvatar } from '$lib/server/core/auth/profile';
 import type { RequestHandler } from './$types';
 
@@ -8,9 +9,9 @@ import type { RequestHandler } from './$types';
  * `user.image`-Werte liefern kein Bild (siehe `readAvatar`).
  */
 export const GET: RequestHandler = async ({ params, locals }) => {
-	if (!locals.user) throw error(401, 'Nicht angemeldet');
+	if (!locals.user) throw error(401, t('app.notSignedIn'));
 	const avatar = await readAvatar(params.userId);
-	if (!avatar) throw error(404, 'Kein Profilbild');
+	if (!avatar) throw error(404, t('app.noAvatar'));
 	return new Response(avatar.data as BodyInit, {
 		headers: {
 			'content-type': avatar.contentType,

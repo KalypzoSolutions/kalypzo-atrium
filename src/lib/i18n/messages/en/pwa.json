@@ -1,0 +1,9 @@
+{
+	"defaultName": "Kalypzo Atrium",
+	"shortName": "Atrium",
+	"description": "Internal area of {name}",
+	"unknownSystem": "Unknown",
+	"deviceLabel": "{app} on {os}",
+	"pushUnsupported": "Push is not supported here",
+	"permissionDenied": "Notifications were not allowed in the browser"
+}

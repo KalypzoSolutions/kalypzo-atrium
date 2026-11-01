@@ -4,6 +4,7 @@
  * Jede Person wählt je Benachrichtigungstyp einen Kanal: Aus · E-Mail · Beides · Push. Module deklarieren
  * ihre Typen in `ModuleDefinition.notifications` und senden über `core.notifications.send`.
  */
+import { translatedLabels } from './i18n-labels';
 
 export const NOTIFICATION_CHANNELS = ['off', 'email', 'both', 'push'] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
@@ -11,12 +12,12 @@ export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 export const NOTIFICATION_DELIVERIES = ['immediate', 'daily'] as const;
 export type NotificationDelivery = (typeof NOTIFICATION_DELIVERIES)[number];
 
-export const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannel, string> = {
-	off: 'Aus',
-	email: 'E-Mail',
-	both: 'Beides',
-	push: 'Push'
-};
+export const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannel, string> = translatedLabels({
+	off: 'modules.notificationChannel.off',
+	email: 'modules.notificationChannel.email',
+	both: 'modules.notificationChannel.both',
+	push: 'modules.notificationChannel.push'
+});
 
 /** Schlüssel eines Typs innerhalb des Moduls (vollständig: `<modul>.<key>`) */
 export const NOTIFICATION_KEY_PATTERN = /^[a-z][a-z0-9-]*$/;

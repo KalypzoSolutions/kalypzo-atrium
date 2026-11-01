@@ -81,8 +81,8 @@ test('Export: nur Rollen, ohne Dateien, mit Passwort → Download', async ({ pag
 	const download = page.waitForEvent('download');
 	await dialog.getByRole('button', { name: 'Sicherung erstellen' }).click();
 	const dl = await download;
-	expect(dl.suggestedFilename()).toMatch(/^ep-intern-sicherung-.*\.epbackup$/);
-	backupFile = info.outputPath('sicherung.epbackup');
+	expect(dl.suggestedFilename()).toMatch(/^atrium-sicherung-.*\.atriumbackup$/);
+	backupFile = info.outputPath('sicherung.atriumbackup');
 	await dl.saveAs(backupFile);
 	expect((await readFile(backupFile)).byteLength).toBeGreaterThan(100);
 	await expect(page.getByText('Sicherung erstellt').first()).toBeVisible();

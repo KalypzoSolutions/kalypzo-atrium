@@ -6,12 +6,14 @@ import {
 	labelPageSize,
 	placeLabels,
 	resolveLayout,
+	LABEL_LOGO_KEY,
 	type LabelElement,
 	type LabelPdfInput
 } from '$lib/sdk/labels';
 import { barcodeSvg } from '$lib/sdk/labels/barcode';
-import { logoDataUrl } from '$lib/sdk/labels/logos';
+import { logoKey } from '$lib/sdk/labels/layout';
 import { errors } from '../errors';
+import { getLocale, t } from '$lib/i18n';
 import { CARLITO_STACK, carlitoFontFaceCss } from './fonts';
 import { escapeHtml } from './templates';
 import { pdfRenderer, sanitizeFileName } from './index';
@@ -19,6 +21,7 @@ import { pdfRenderer, sanitizeFileName } from './index';
 /** Höchstens so viele Etiketten je Dokument */
 export const MAX_LABELS = 2000;
 const MAX_VALUE_LENGTH = 500;
+const LOGO_DATA_URL = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 
 const n = (v: number) => Math.round(v * 1000) / 1000;
 const mm = (v: number) => `${n(v)}mm`;
@@ -27,7 +30,7 @@ function box(el: LabelElement, inner: string, extra = ''): string {
 	return `<div style="position:absolute;left:${mm(el.x)};top:${mm(el.y)};width:${mm(el.w)};height:${mm(el.h)};${extra}">${inner}</div>`;
 }
 
-function renderElement(el: LabelElement): string {
+function renderElement(el: LabelElement, logos: Record<string, string>): string {
 	switch (el.type) {
 		case 'text': {
 			const justify = { left: 'flex-start', center: 'center', right: 'flex-end' }[el.align];
@@ -51,7 +54,12 @@ function renderElement(el: LabelElement): string {
 		case 'image':
 			return box(
 				el,
-				`<img src="${logoDataUrl(el)}" alt="" style="width:100%;height:100%;object-fit:contain;" />`
+				(() => {
+					const src = logos[logoKey(el)] ?? logos[el.logo];
+					return src
+						? `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:contain;" />`
+						: '';
+				})()
 			);
 		case 'rect': {
 			const s = el.stroke;
@@ -82,7 +90,7 @@ export function buildLabelsHtml(input: LabelPdfInput): { html: string; pages: nu
 	placements.forEach((p, i) => {
 		const fit = fitLayout(input.layout, p);
 		const elements = resolveLayout(input.layout, input.labels[i] ?? {})
-			.map(renderElement)
+			.map((el) => renderElement(el, input.logos ?? {}))
 			.join('');
 		const outline = input.outlines
 			? `<div style="position:absolute;inset:0;outline:0.1mm dashed #999;outline-offset:-0.05mm;"></div>`
@@ -93,7 +101,7 @@ export function buildLabelsHtml(input: LabelPdfInput): { html: string; pages: nu
 	});
 	const body = perPage.map((labels) => `<div class="page">${labels.join('')}</div>`).join('');
 	const html = `<!doctype html>
-<html lang="de"><head><meta charset="utf-8" />
+<html lang="${getLocale()}"><head><meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'" />
 <title>${escapeHtml(input.title)}</title>
 <style>
@@ -119,24 +127,36 @@ export async function generateLabels(
 ): Promise<PdfResult> {
 	if (ctx.actor.type !== 'system' && !ctx.userId) throw errors.unauthenticated();
 	if (!input.title.trim() || input.title.length > 200) {
-		throw errors.badRequest('Ungültiger Dokumenttitel');
+		throw errors.badRequest(t('pdf.errors.invalidTitle'));
 	}
-	if (!input.labels.length) throw errors.badRequest('Keine Etiketten ausgewählt');
+	if (!input.labels.length) throw errors.badRequest(t('pdf.labels.none'));
 	if (input.labels.length > MAX_LABELS) {
-		throw errors.badRequest(`Höchstens ${MAX_LABELS} Etiketten auf einmal`);
+		throw errors.badRequest(t('pdf.labels.tooMany', { max: String(MAX_LABELS) }));
 	}
 	const format = labelFormatSchema.safeParse(input.format);
-	if (!format.success) throw errors.badRequest('Ungültiges Etikettenformat');
+	if (!format.success) throw errors.badRequest(t('pdf.labels.invalidFormat'));
 	const layout = labelLayoutSchema.safeParse(input.layout);
-	if (!layout.success) throw errors.badRequest('Ungültiges Etikett-Layout');
+	if (!layout.success) throw errors.badRequest(t('pdf.labels.invalidLayout'));
+	const logos: Record<string, string> = {};
+	for (const [key, url] of Object.entries(input.logos ?? {})) {
+		// Nur eingebettete Rasterbilder (CSP des Dokuments: img-src data:), höchstens 2 MB je Logo
+		if (
+			!LABEL_LOGO_KEY.test(key.replace(/-sw$/, '')) ||
+			!LOGO_DATA_URL.test(url) ||
+			url.length > 2_800_000
+		) {
+			throw errors.badRequest(t('pdf.labels.invalidLayout'));
+		}
+		logos[key] = url;
+	}
 	for (const values of input.labels) {
 		for (const v of Object.values(values)) {
 			if (typeof v !== 'string' || v.length > MAX_VALUE_LENGTH) {
-				throw errors.badRequest('Ungültiger Etikett-Inhalt');
+				throw errors.badRequest(t('pdf.labels.invalidContent'));
 			}
 		}
 	}
-	const clean: LabelPdfInput = { ...input, format: format.data, layout: layout.data };
+	const clean: LabelPdfInput = { ...input, format: format.data, layout: layout.data, logos };
 	const { html } = buildLabelsHtml(clean);
 	const size = labelPageSize(clean.format);
 	const buffer = await pdfRenderer()(html, {

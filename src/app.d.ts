@@ -17,6 +17,8 @@ declare global {
 			} | null;
 			sessionId: string | null;
 			requestId: string;
+			/** Sprache des Requests (`core/i18n/locale.ts`) */
+			locale: import('$lib/i18n').Locale;
 		}
 		interface PageState {
 			/** Ebene offener Blätter (`BottomSheet`, Zurück-Geste schließt das oberste) */

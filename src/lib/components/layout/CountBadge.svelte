@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils';
 	import { formatCount } from './count';
 
@@ -33,9 +34,9 @@
 				: 'border border-info-border bg-info-muted text-info',
 			className
 		)}
-		title={label ?? `${Math.floor(count)} ungelesen`}
+		title={label ?? t('layout.unread', { count: Math.floor(count) })}
 	>
 		<span aria-hidden="true">{text}</span>
-		<span class="sr-only">({label ?? `${Math.floor(count)} ungelesen`})</span>
+		<span class="sr-only">({label ?? t('layout.unread', { count: Math.floor(count) })})</span>
 	</span>
 {/if}

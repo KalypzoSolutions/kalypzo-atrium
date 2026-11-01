@@ -1,3 +1,5 @@
+import { t } from '$lib/i18n';
+
 const MAX_RAW = 60;
 
 /** Rohtext kürzen, damit ungewöhnliche User-Agents (curl, Bots) die Zeile nicht sprengen. */
@@ -11,7 +13,7 @@ function shorten(ua: string): string {
  */
 export function describeUserAgent(ua: string | null | undefined): string {
 	const s = (ua ?? '').trim();
-	if (!s) return 'Unbekanntes Gerät';
+	if (!s) return t('app.userAgent.unknown');
 
 	// Reihenfolge ist wichtig: Edge/Opera/Samsung enthalten auch „Chrome“, Chrome enthält „Safari“
 	let browser: string | null = null;
@@ -30,7 +32,7 @@ export function describeUserAgent(ua: string | null | undefined): string {
 	else if (/\bCrOS\b/.test(s)) os = 'ChromeOS';
 	else if (/\bLinux\b|\bX11\b/.test(s)) os = 'Linux';
 
-	if (browser && os) return `${browser} auf ${os}`;
+	if (browser && os) return t('app.userAgent.browserOnOs', { browser, os });
 	if (browser) return browser;
 	return shorten(s);
 }

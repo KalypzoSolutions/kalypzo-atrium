@@ -28,6 +28,12 @@ vi.mock('$lib/server/core/lifecycle', () => ({
 	runVerifyAndExit: () => {}
 }));
 vi.mock('$lib/server/core/jobs', () => ({ startJobRunner: () => {} }));
+// Sprache ohne Datenbank: immer Deutsch, ohne AsyncLocalStorage
+vi.mock('$lib/server/core/i18n/locale', () => ({
+	LOCALE_COOKIE: 'locale',
+	resolveLocale: async () => 'de',
+	withLocale: (_l: string, fn: () => unknown) => fn()
+}));
 vi.mock('$lib/server/core/auth', () => ({ getAuth: () => ({}) }));
 vi.mock('better-auth/svelte-kit', () => ({
 	svelteKitHandler: ({
@@ -242,10 +248,10 @@ describe('init: Request-ID und Client-IP', () => {
 	it('übernimmt eine gültige x-request-id und ersetzt einen gefälschten IP-Header', async () => {
 		login();
 		const r = await run('/dashboard', {
-			headers: { 'x-request-id': 'r'.repeat(64), 'x-ep-client-ip': '6.6.6.6' }
+			headers: { 'x-request-id': 'r'.repeat(64), 'x-atrium-client-ip': '6.6.6.6' }
 		});
 		expect(r.event.locals.requestId).toBe('r'.repeat(64));
-		expect(r.event.request.headers.get('x-ep-client-ip')).toBe('203.0.113.7');
+		expect(r.event.request.headers.get('x-atrium-client-ip')).toBe('203.0.113.7');
 	});
 
 	it('ersetzt zu lange oder unsichere x-request-id durch eine UUID (#72, 06-15)', async () => {

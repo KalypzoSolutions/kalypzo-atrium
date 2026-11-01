@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { Dialog as DialogPrimitive } from 'bits-ui';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { cn, type WithElementRef } from '$lib/utils.js';
@@ -34,7 +35,7 @@
 	{#if showCloseButton}
 		<DialogPrimitive.Close>
 			{#snippet child({ props })}
-				<Button variant="outline" {...props}>Schließen</Button>
+				<Button variant="outline" {...props}>{t('ui.close')}</Button>
 			{/snippet}
 		</DialogPrimitive.Close>
 	{/if}

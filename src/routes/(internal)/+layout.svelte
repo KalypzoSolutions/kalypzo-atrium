@@ -3,6 +3,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { AppSidebar, Topbar } from '$lib/components/layout';
+	import { t } from '$lib/i18n';
 	import { refreshNavBadges, seedNavBadges } from '$lib/sdk/client/nav-badges.svelte';
 
 	let { data, children } = $props();
@@ -32,14 +33,14 @@
 	});
 	$effect(() => {
 		if (!data.user) return;
-		const t = setInterval(() => {
+		const timer = setInterval(() => {
 			if (!document.hidden) void refreshNavBadges();
 		}, 60_000);
-		return () => clearInterval(t);
+		return () => clearInterval(timer);
 	});
 </script>
 
-<a href="#main" class="skip-link">Zum Inhalt springen</a>
+<a href="#main" class="skip-link">{t('app.skipToContent')}</a>
 <div class="flex min-h-screen">
 	<AppSidebar
 		systemName={data.systemName}

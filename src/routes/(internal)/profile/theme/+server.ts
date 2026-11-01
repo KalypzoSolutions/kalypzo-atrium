@@ -1,5 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { activeThemeSchema } from '$lib/appearance/schema';
 import { isCoreError } from '$lib/server/core/errors';
 import { setSetting } from '$lib/server/core/settings/service';
@@ -17,12 +18,12 @@ const bodySchema = z.union([
  * (`core.user.activeTheme`: `''`, Vorschlag oder eigenes Theme) des angemeldeten Benutzers.
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
-	if (!locals.user) throw error(401, 'Nicht angemeldet');
+	if (!locals.user) throw error(401, t('profile.errors.notSignedIn'));
 	if (!request.headers.get('content-type')?.startsWith('application/json')) {
-		throw error(415, 'JSON erwartet');
+		throw error(415, t('profile.errors.jsonExpected'));
 	}
 	const body = bodySchema.safeParse(await request.json().catch(() => null));
-	if (!body.success) throw error(422, 'Ungültige Darstellung');
+	if (!body.success) throw error(422, t('profile.errors.invalidTheme'));
 	try {
 		if ('theme' in body.data) {
 			await setSetting(locals.ctx, 'core.user.theme', body.data.theme);
@@ -30,7 +31,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		const id = body.data.activeTheme;
 		if (id && !resolveTheme(id, (await loadUserPrefs(locals.user.id)).themes)) {
-			throw error(422, 'Unbekanntes Theme');
+			throw error(422, t('profile.errors.unknownTheme'));
 		}
 		await setSetting(locals.ctx, 'core.user.activeTheme', id);
 		return json({ data: { activeTheme: id } });

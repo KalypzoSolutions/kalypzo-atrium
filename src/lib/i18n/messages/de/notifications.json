@@ -1,0 +1,29 @@
+{
+	"digestSubject": "Tageszusammenfassung: {count, plural, one {# Benachrichtigung} other {# Benachrichtigungen}}",
+	"newSubject": "{count, plural, one {# neue Benachrichtigung} other {# neue Benachrichtigungen}}",
+	"greeting": "Hallo {name},",
+	"digestIntro": "hier ist deine Zusammenfassung:",
+	"newIntro": "es gibt {count} neue Benachrichtigungen:",
+	"settingsHint": "Ob du Benachrichtigungen per E-Mail, als Push aufs Handy oder gar nicht bekommst, stellst du in deinem Profil ein: {url}",
+	"pushDisabled": "Push-Benachrichtigungen sind ausgeschaltet",
+	"unknownDevice": "Unbekanntes Gerät",
+	"unknownPushService": "Unbekannter Push-Dienst",
+	"tooManyDevices": "Höchstens {max} Geräte – bitte zuerst ein altes Gerät entfernen",
+	"deviceNotFound": "Gerät nicht gefunden",
+	"typeNotFound": "Benachrichtigung nicht gefunden",
+	"mandatory": "Diese Benachrichtigung lässt sich nicht abschalten",
+	"pushOnly": "Für diese Benachrichtigung gibt es nur Push",
+	"testTitle": "Test-Benachrichtigung",
+	"testBody": "Push-Benachrichtigungen funktionieren auf diesem Gerät.",
+	"endpoints": {
+		"tag": "Benachrichtigungen",
+		"preferencesGet": "Eigene Benachrichtigungen mit Kanalwahl und Push-Geräten",
+		"preferencesPut": "Kanal einer Benachrichtigung wählen (Aus, E-Mail, Beides, Push)",
+		"vapidKey": "Öffentlicher Push-Schlüssel (VAPID) zum Registrieren eines Geräts",
+		"devicesList": "Eigene Push-Geräte",
+		"deviceAdd": "Gerät für Push registrieren",
+		"deviceUnsubscribe": "Gerät über seinen Endpoint abmelden (Push im Browser ausgeschaltet)",
+		"deviceRemove": "Push-Gerät entfernen",
+		"testPush": "Test-Benachrichtigung an die eigenen Geräte"
+	}
+}

@@ -1,10 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { getAuth } from '$lib/server/core/auth';
 import { getSettings } from '$lib/server/core/settings/service';
-import { limitAuthAction, TOO_MANY_ATTEMPTS } from '$lib/server/core/auth/auth-limits';
+import { limitAuthAction } from '$lib/server/core/auth/auth-limits';
 import { clientAddress, withClientIp } from '$lib/server/core/auth/client-ip';
 import { authErrorMessage, safeRedirect } from './auth-error';
+import { setLocaleCookie } from './locale-cookie';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Ohne `redirectTo` geht es auf `/` (leitet auf die persönliche Startseite). */
@@ -49,12 +51,12 @@ export const actions: Actions = {
 			password: form.get('password')
 		});
 		const email = String(form.get('email') ?? '');
-		if (!parsed.success) return fail(400, { error: 'Bitte E-Mail und Passwort eingeben.', email });
+		if (!parsed.success) return fail(400, { error: t('login.errors.missingCredentials'), email });
 		// Form-Actions umgehen den Limiter von Better Auth: gleiche Werte je IP (Sperre je
 		// E-Mail+IP und die globale Kontosperre prüft der Better-Auth-Hook)
 		const ip = clientAddress(event);
 		if (!limitAuthAction('signIn', { ip }).allowed) {
-			return fail(429, { error: TOO_MANY_ATTEMPTS, email });
+			return fail(429, { error: t('login.errors.tooMany'), email });
 		}
 		try {
 			const res = await getAuth().api.signInEmail({
@@ -65,7 +67,7 @@ export const actions: Actions = {
 				return { twoFactor: true, email };
 			}
 		} catch (e) {
-			return fail(400, { error: authErrorMessage(e, 'Anmeldung fehlgeschlagen.'), email });
+			return fail(400, { error: authErrorMessage(e, t('login.errors.loginFailed')), email });
 		}
 		throw redirect(303, target(url));
 	},
@@ -75,22 +77,35 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const code = String(form.get('code') ?? '').replace(/\s+/g, '');
 		if (!/^\d{6}$/.test(code)) {
-			return fail(400, { twoFactor: true, error: 'Bitte den 6-stelligen Code eingeben.' });
+			return fail(400, { twoFactor: true, error: t('login.errors.codeRequired') });
 		}
 		const ip = clientAddress(event);
 		const limited = limitAuthAction('verifyTotp', {
 			ip,
 			target: twoFactorCookie(request.headers)
 		});
-		if (!limited.allowed) return fail(429, { twoFactor: true, error: TOO_MANY_ATTEMPTS });
+		if (!limited.allowed) return fail(429, { twoFactor: true, error: t('login.errors.tooMany') });
 		try {
 			await getAuth().api.verifyTOTP({
 				body: { code },
 				headers: withClientIp(request.headers, ip)
 			});
 		} catch (e) {
-			return fail(400, { twoFactor: true, error: authErrorMessage(e, 'Code ungültig.') });
+			return fail(400, {
+				twoFactor: true,
+				error: authErrorMessage(e, t('login.errors.codeInvalid'))
+			});
 		}
 		throw redirect(303, target(url));
+	},
+
+	/**
+	 * Sprache wählen (Fußzeile, ohne Konto): nur Cookie `locale`. Form-Action → Origin-Prüfung von SvelteKit.
+	 */
+	locale: async ({ request, cookies, url }) => {
+		const form = await request.formData();
+		setLocaleCookie(cookies, form.get('locale'), url.protocol === 'https:');
+		const r = url.searchParams.get('redirectTo');
+		throw redirect(303, r ? `/login?redirectTo=${encodeURIComponent(safeRedirect(r))}` : '/login');
 	}
 };

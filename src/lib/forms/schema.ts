@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import './field-types';
+import { t } from '$lib/i18n';
+import { msg } from './field-types/shared';
 import { getFieldType } from './registry';
 import type {
 	FieldDefinition,
@@ -17,23 +19,37 @@ const KEY_RE = /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/;
 // ---------------------------------------------------------------------------
 
 const optionSchema = z.strictObject({
-	value: z.string().min(1, 'Wert fehlt').max(100, 'Höchstens 100 Zeichen'),
-	label: z.string().min(1, 'Bezeichnung fehlt').max(100, 'Höchstens 100 Zeichen')
+	value: z
+		.string()
+		.min(1, msg('forms.definition.valueMissing'))
+		.max(100, msg('forms.definition.maxChars', { max: '100' })),
+	label: z
+		.string()
+		.min(1, msg('forms.definition.labelMissing'))
+		.max(100, msg('forms.definition.maxChars', { max: '100' }))
 });
 
 const optionsSchema = z
 	.array(optionSchema)
-	.min(1, 'Mindestens eine Option')
-	.max(50, 'Höchstens 50 Optionen')
+	.min(1, msg('forms.definition.minOneOption'))
+	.max(50, msg('forms.definition.maxOptions', { max: '50' }))
 	.superRefine((opts, ctx) => {
 		const values = new Set<string>();
 		const labels = new Set<string>();
 		opts.forEach((o, i) => {
 			if (values.has(o.value)) {
-				ctx.addIssue({ code: 'custom', message: 'Wert doppelt', path: [i, 'value'] });
+				ctx.addIssue({
+					code: 'custom',
+					message: t('forms.definition.valueDuplicate'),
+					path: [i, 'value']
+				});
 			}
 			if (labels.has(o.label)) {
-				ctx.addIssue({ code: 'custom', message: 'Bezeichnung doppelt', path: [i, 'label'] });
+				ctx.addIssue({
+					code: 'custom',
+					message: t('forms.definition.labelDuplicate'),
+					path: [i, 'label']
+				});
 			}
 			values.add(o.value);
 			labels.add(o.label);
@@ -41,21 +57,30 @@ const optionsSchema = z
 	});
 
 const baseShape = {
-	id: z.string().min(1, 'ID fehlt').max(64, 'Höchstens 64 Zeichen'),
-	key: z.string().regex(KEY_RE, 'Ungültiger Schlüssel'),
-	label: z.string().min(1, 'Bezeichnung fehlt').max(200, 'Höchstens 200 Zeichen'),
-	help: z.string().max(500, 'Höchstens 500 Zeichen').optional(),
+	id: z
+		.string()
+		.min(1, msg('forms.definition.idMissing'))
+		.max(64, msg('forms.definition.maxChars', { max: '64' })),
+	key: z.string().regex(KEY_RE, msg('forms.definition.invalidKey')),
+	label: z
+		.string()
+		.min(1, msg('forms.definition.labelMissing'))
+		.max(200, msg('forms.definition.maxChars', { max: '200' })),
+	help: z
+		.string()
+		.max(500, msg('forms.definition.maxChars', { max: '500' }))
+		.optional(),
 	required: z.boolean().optional(),
 	locked: z.boolean().optional(),
 	hidden: z.boolean().optional(),
-	memberKey: z.string().regex(KEY_RE, 'Ungültiger Schlüssel').optional(),
+	memberKey: z.string().regex(KEY_RE, msg('forms.definition.invalidKey')).optional(),
 	mandatory: z.boolean().optional(),
 	health: z.boolean().optional()
 };
 
 const lengthSchema = z.number().int().min(1).max(10000).optional();
 const placeholder = z.string().max(200).optional();
-const dateSchema = z.string().regex(ISO_DATE, 'Ungültiges Datum').optional();
+const dateSchema = z.string().regex(ISO_DATE, msg('forms.definition.invalidDate')).optional();
 const finite = z.number().finite().optional();
 
 function minMax<T extends { min?: number | string; max?: number | string }>(v: T): boolean {
@@ -83,12 +108,12 @@ const fieldSchema = z.discriminatedUnion('type', [
 			max: finite,
 			integer: z.boolean().optional()
 		})
-		.refine(minMax, { message: 'Minimum darf nicht größer als Maximum sein', path: ['min'] }),
+		.refine(minMax, { ...msg('forms.definition.minGreaterMax'), path: ['min'] }),
 	z.strictObject({ ...baseShape, type: z.literal('email') }),
 	z.strictObject({ ...baseShape, type: z.literal('phone') }),
 	z
 		.strictObject({ ...baseShape, type: z.literal('date'), min: dateSchema, max: dateSchema })
-		.refine(minMax, { message: 'Minimum darf nicht größer als Maximum sein', path: ['min'] }),
+		.refine(minMax, { ...msg('forms.definition.minGreaterMax'), path: ['min'] }),
 	z.strictObject({
 		...baseShape,
 		type: z.literal('select'),
@@ -103,26 +128,29 @@ const fieldSchema = z.discriminatedUnion('type', [
 			min: z.number().int().min(0).max(50).optional(),
 			max: z.number().int().min(1).max(50).optional()
 		})
-		.refine(minMax, { message: 'Minimum darf nicht größer als Maximum sein', path: ['min'] }),
+		.refine(minMax, { ...msg('forms.definition.minGreaterMax'), path: ['min'] }),
 	z.strictObject({ ...baseShape, type: z.literal('boolean') }),
 	z.strictObject({
 		...baseShape,
 		type: z.literal('info'),
-		text: z.string().max(10000, 'Höchstens 10000 Zeichen'),
+		text: z.string().max(10000, msg('forms.definition.maxChars', { max: '10000' })),
 		format: z.literal('html').optional()
 	}),
 	z.strictObject({
 		...baseShape,
 		type: z.literal('section'),
-		text: z.string().max(500, 'Höchstens 500 Zeichen').optional()
+		text: z
+			.string()
+			.max(500, msg('forms.definition.maxChars', { max: '500' }))
+			.optional()
 	}),
 	z.strictObject({
 		...baseShape,
 		type: z.literal('consent'),
-		text: z.string().max(2000, 'Höchstens 2000 Zeichen'),
+		text: z.string().max(2000, msg('forms.definition.maxChars', { max: '2000' })),
 		href: z
 			.string()
-			.max(500, 'Höchstens 500 Zeichen')
+			.max(500, msg('forms.definition.maxChars', { max: '500' }))
 			.refine((v) => {
 				try {
 					const u = new URL(v);
@@ -130,9 +158,12 @@ const fieldSchema = z.discriminatedUnion('type', [
 				} catch {
 					return false;
 				}
-			}, 'Bitte eine gültige http(s)-Adresse angeben')
+			}, msg('forms.definition.invalidUrl'))
 			.optional(),
-		linkLabel: z.string().max(100, 'Höchstens 100 Zeichen').optional()
+		linkLabel: z
+			.string()
+			.max(100, msg('forms.definition.maxChars', { max: '100' }))
+			.optional()
 	})
 ]);
 
@@ -143,20 +174,37 @@ const fieldSchema = z.discriminatedUnion('type', [
 export const formDefinitionSchema = z
 	.strictObject({
 		version: z.literal(1),
-		title: z.string().max(120, 'Höchstens 120 Zeichen').optional(),
-		intro: z.string().max(2000, 'Höchstens 2000 Zeichen').optional(),
-		fields: z.array(fieldSchema).max(60, 'Höchstens 60 Felder'),
-		submitLabel: z.string().max(60, 'Höchstens 60 Zeichen').optional()
+		title: z
+			.string()
+			.max(120, msg('forms.definition.maxChars', { max: '120' }))
+			.optional(),
+		intro: z
+			.string()
+			.max(2000, msg('forms.definition.maxChars', { max: '2000' }))
+			.optional(),
+		fields: z.array(fieldSchema).max(60, msg('forms.definition.maxFields', { max: '60' })),
+		submitLabel: z
+			.string()
+			.max(60, msg('forms.definition.maxChars', { max: '60' }))
+			.optional()
 	})
 	.superRefine((def, ctx) => {
 		const ids = new Set<string>();
 		const keys = new Set<string>();
 		def.fields.forEach((f, i) => {
 			if (ids.has(f.id)) {
-				ctx.addIssue({ code: 'custom', message: 'ID doppelt', path: ['fields', i, 'id'] });
+				ctx.addIssue({
+					code: 'custom',
+					message: t('forms.definition.idDuplicate'),
+					path: ['fields', i, 'id']
+				});
 			}
 			if (keys.has(f.key)) {
-				ctx.addIssue({ code: 'custom', message: 'Schlüssel doppelt', path: ['fields', i, 'key'] });
+				ctx.addIssue({
+					code: 'custom',
+					message: t('forms.definition.keyDuplicate'),
+					path: ['fields', i, 'key']
+				});
 			}
 			ids.add(f.id);
 			keys.add(f.key);
@@ -225,14 +273,20 @@ function valueSchema(field: FieldDefinition): z.ZodType {
 	return z.unknown().transform((v, ctx) => {
 		if (isEmpty(v) || (required && v === false)) {
 			if (required) {
-				ctx.addIssue({ code: 'custom', message: confirm ? 'Bitte bestätigen' : 'Pflichtfeld' });
+				ctx.addIssue({
+					code: 'custom',
+					message: confirm ? t('forms.validation.confirm') : t('forms.validation.required')
+				});
 				return z.NEVER;
 			}
 			if (isEmpty(v)) return null;
 		}
 		const r = inner.safeParse(v);
 		if (!r.success) {
-			ctx.addIssue({ code: 'custom', message: r.error.issues[0]?.message ?? 'Ungültige Eingabe' });
+			ctx.addIssue({
+				code: 'custom',
+				message: r.error.issues[0]?.message ?? t('forms.validation.invalid')
+			});
 			return z.NEVER;
 		}
 		return r.data as FormValue;
@@ -245,7 +299,8 @@ export function buildFormSchema(def: FormDefinition): z.ZodType<FormValues> {
 	for (const f of visibleFields(def)) shape[f.key] = valueSchema(f);
 	const dropped = new Set(def.fields.filter((f) => !shape[f.key]).map((f) => f.key));
 	const strict = z.strictObject(shape, {
-		error: (iss) => (iss.code === 'unrecognized_keys' ? 'Unbekanntes Feld' : undefined)
+		error: (iss) =>
+			iss.code === 'unrecognized_keys' ? t('forms.validation.unknownField') : undefined
 	});
 	return z.preprocess((raw) => {
 		if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
@@ -261,14 +316,14 @@ export function buildFormSchema(def: FormDefinition): z.ZodType<FormValues> {
 /** Validiert Rohwerte gegen die Definition und liefert Werte oder Fehler je `key` (deutsche Texte). */
 export function validateFormValues(def: FormDefinition, raw: unknown): FormValidationResult {
 	if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
-		return { ok: false, errors: { _form: 'Ungültige Eingabe' } };
+		return { ok: false, errors: { _form: t('forms.validation.invalid') } };
 	}
 	const result = buildFormSchema(def).safeParse(raw);
 	if (result.success) return { ok: true, values: result.data };
 	const errors: Record<string, string> = {};
 	for (const issue of result.error.issues) {
 		if (issue.code === 'unrecognized_keys') {
-			for (const k of issue.keys) errors[k] ??= 'Unbekanntes Feld';
+			for (const k of issue.keys) errors[k] ??= t('forms.validation.unknownField');
 			continue;
 		}
 		const key = typeof issue.path[0] === 'string' ? issue.path[0] : '_form';

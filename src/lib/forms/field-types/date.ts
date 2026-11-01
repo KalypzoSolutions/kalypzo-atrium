@@ -1,6 +1,9 @@
+import { t } from '$lib/i18n';
 import { z } from 'zod';
+import { formatDate } from '$lib/i18n/intl';
 import type { FieldTypeSpec } from '../registry';
 import type { DateField } from '../types';
+import { msg } from './shared';
 
 export function isIsoDate(value: string): boolean {
 	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -13,24 +16,33 @@ export function isIsoDate(value: string): boolean {
 }
 
 function formatDe(iso: string): string {
-	const [y, m, d] = iso.split('-');
-	return `${d}.${m}.${y}`;
+	return formatDate(iso, iso);
 }
 
 export const dateFieldType: FieldTypeSpec<DateField> = {
 	type: 'date',
-	label: 'Datum',
-	description: 'Kalenderdatum',
+	get label() {
+		return t('forms.types.date.label');
+	},
+	get description() {
+		return t('forms.types.date.description');
+	},
 	icon: 'calendar',
 	hasValue: true,
-	create: (id, key) => ({ id, key, type: 'date', label: 'Neues Feld' }),
+	create: (id, key) => ({ id, key, type: 'date', label: t('forms.defaults.newField') }),
 	schema(field) {
 		const { min, max } = field;
 		return z
-			.string({ error: 'Bitte ein Datum angeben' })
+			.string(msg('forms.validation.dateRequired'))
 			.trim()
-			.refine(isIsoDate, 'Bitte ein gültiges Datum angeben')
-			.refine((v) => !min || !isIsoDate(min) || v >= min, `Frühestens ${formatDe(min ?? '')}`)
-			.refine((v) => !max || !isIsoDate(max) || v <= max, `Spätestens ${formatDe(max ?? '')}`);
+			.refine(isIsoDate, msg('forms.validation.dateInvalid'))
+			.refine(
+				(v) => !min || !isIsoDate(min) || v >= min,
+				msg('forms.validation.dateMin', { date: formatDe(min ?? '') })
+			)
+			.refine(
+				(v) => !max || !isIsoDate(max) || v <= max,
+				msg('forms.validation.dateMax', { date: formatDe(max ?? '') })
+			);
 	}
 };

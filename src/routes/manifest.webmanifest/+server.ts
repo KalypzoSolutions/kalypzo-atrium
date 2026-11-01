@@ -1,15 +1,16 @@
+import { getLocale, t } from '$lib/i18n';
 import { brandVersion, brandingState } from '$lib/server/core/branding';
 import { getSetting } from '$lib/server/core/settings/service';
 import type { RequestHandler } from './$types';
 
 /**
- * Web-App-Manifest (öffentlich). Icons kommen aus dem Logo (`/branding/…`, ohne Logo das Wappen); der Name
+ * Web-App-Manifest (öffentlich). Icons kommen aus dem Logo (`/branding/…`, ohne Logo die neutralen Icons); der Name
  * aus `core.system.name`. Die Version in den Icon-URLs ändert sich mit dem Logo, damit Geräte neu laden.
  */
 export const GET: RequestHandler = async () => {
 	const state = await brandingState();
 	const v = brandVersion(state);
-	let name = 'EP Intern';
+	let name = t('pwa.defaultName');
 	try {
 		const n = await getSetting<string>('core.system.name');
 		if (typeof n === 'string' && n.trim()) name = n.trim().slice(0, 45);
@@ -25,9 +26,9 @@ export const GET: RequestHandler = async () => {
 	const manifest = {
 		name,
 		// Unter dem Icon ist wenig Platz: lange Namen nicht abschneiden, sondern Kurzname nehmen
-		short_name: name.length <= 15 ? name : 'EP Intern',
-		description: 'Intern-Bereich des Stammes',
-		lang: 'de',
+		short_name: name.length <= 15 ? name : t('pwa.shortName'),
+		description: t('pwa.description', { name }),
+		lang: getLocale(),
 		id: '/',
 		start_url: '/',
 		scope: '/',

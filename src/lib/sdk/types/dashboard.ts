@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Übersicht (`/dashboard`): Einträge, die Module für „Zu erledigen“ und „Diese Woche“ liefern
  * (`ModuleDefinition.dashboard`). Der Core sammelt sie über `GET /dashboard/feed`, nur aus aktiven
@@ -51,11 +52,29 @@ export interface DashboardAgendaKindInfo {
 	style: DashboardAgendaStyle;
 }
 
-/** Arten, die der Core selbst kennt (Reihenfolge = Legende) */
+/** Arten, die der Core selbst kennt (Reihenfolge = Legende); Bezeichnung beim Lesen übersetzt */
 export const CORE_AGENDA_KINDS: readonly DashboardAgendaKindInfo[] = [
-	{ key: 'meeting', label: 'Gruppenstunde', style: 'muted' },
-	{ key: 'event', label: 'Termin', style: 'outline' },
-	{ key: 'deadline', label: 'Frist', style: 'dashed' }
+	{
+		key: 'meeting',
+		get label() {
+			return t('dashboard-feed.kinds.meeting');
+		},
+		style: 'muted'
+	},
+	{
+		key: 'event',
+		get label() {
+			return t('dashboard-feed.kinds.event');
+		},
+		style: 'outline'
+	},
+	{
+		key: 'deadline',
+		get label() {
+			return t('dashboard-feed.kinds.deadline');
+		},
+		style: 'dashed'
+	}
 ];
 
 export const DASHBOARD_AGENDA_STYLES: readonly DashboardAgendaStyle[] = [

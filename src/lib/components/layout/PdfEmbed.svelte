@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
@@ -44,14 +45,16 @@
 	>
 		<FileTextIcon class="text-muted-foreground size-10" aria-hidden="true" />
 		<p class="text-sm">
-			Dein Gerät kann PDFs hier nicht direkt anzeigen. Öffne die Datei oder lade sie herunter.
+			{t('layout.pdf.cannotEmbed')}
 		</p>
 		<div class="flex flex-wrap justify-center gap-2">
 			<Button href={url} target="_blank" rel="noopener">
-				<ExternalLinkIcon /> PDF öffnen
+				<ExternalLinkIcon />
+				{t('layout.pdf.open')}
 			</Button>
 			<Button variant="outline" href={url} download={fileName}>
-				<DownloadIcon /> Herunterladen
+				<DownloadIcon />
+				{t('layout.pdf.download')}
 			</Button>
 		</div>
 	</div>

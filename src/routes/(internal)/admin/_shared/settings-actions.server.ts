@@ -1,5 +1,6 @@
 import { fail, type RequestEvent } from '@sveltejs/kit';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { sendMail } from '$lib/server/core/mail';
 import { removeLogo, setLogo } from '$lib/server/core/branding';
 import { isCoreError } from '$lib/server/core/errors';
@@ -31,29 +32,28 @@ export function saveAction(match: RegExp) {
 	};
 }
 
-/** Test-E-Mail mit dem aktuellen SMTP-Versand und Stamm-Layout. */
+/** Test-E-Mail mit dem aktuellen SMTP-Versand und E-Mail-Layout. */
 export async function testMailAction({ request, locals }: RequestEvent) {
 	requirePerm(locals, 'core.settings.manage');
 	const parsed = z
 		.string()
-		.email('Ungültige E-Mail-Adresse')
+		.email({ error: () => t('admin-settings.testMail.invalidEmail') })
 		.safeParse((await request.formData()).get('to'));
 	if (!parsed.success) return fail(422, { message: parsed.error.issues[0]?.message });
 	try {
 		await sendMail({
 			to: parsed.data,
-			subject: 'Test-E-Mail',
-			text: 'Hallo,\n\ndiese Nachricht bestätigt, dass der E-Mail-Versand korrekt konfiguriert ist. So sieht eine E-Mail mit dem Stamm-Layout aus.'
+			subject: t('admin-settings.testMail.subject'),
+			text: t('admin-settings.testMail.text')
 		});
-		return { success: true, message: `Test-E-Mail an ${parsed.data} gesendet` };
+		return { success: true, message: t('admin-settings.testMail.sent', { to: parsed.data }) };
 	} catch (e) {
 		if (isCoreError(e)) return fail(e.status, { message: e.message });
 		// Details (Host, Port, Antwort des Servers) nur ins Server-Log – die Oberfläche bekommt keine
 		// Verbindungsinterna (sonst Port-/Dienstscan im internen Netz über die Testmail möglich)
 		console.error('[core] Test-E-Mail fehlgeschlagen:', e);
 		return fail(502, {
-			message:
-				'E-Mail-Versand fehlgeschlagen. Bitte Host, Port, TLS und Zugangsdaten prüfen; Details stehen im Server-Protokoll.'
+			message: t('admin-settings.testMail.failed')
 		});
 	}
 }
@@ -71,7 +71,7 @@ export async function uploadLogoAction({ request, locals }: RequestEvent) {
 	requirePerm(locals, 'core.settings.manage');
 	const file = (await request.formData()).get('logo');
 	if (!(file instanceof File) || file.size === 0) {
-		return fail(422, { message: 'Bitte wähle eine Bilddatei aus' });
+		return fail(422, { message: t('admin-settings.logo.chooseFile') });
 	}
 	try {
 		await setLogo(locals.ctx, {
@@ -79,7 +79,7 @@ export async function uploadLogoAction({ request, locals }: RequestEvent) {
 			contentType: file.type,
 			name: file.name.slice(0, 120)
 		});
-		return { success: true, message: 'Logo gespeichert' };
+		return { success: true, message: t('admin-settings.logo.saved') };
 	} catch (e) {
 		return toFail(e);
 	}
@@ -90,7 +90,7 @@ export async function removeLogoAction({ locals }: RequestEvent) {
 	requirePerm(locals, 'core.settings.manage');
 	try {
 		await removeLogo(locals.ctx);
-		return { success: true, message: 'Logo entfernt' };
+		return { success: true, message: t('admin-settings.logo.removed') };
 	} catch (e) {
 		return toFail(e);
 	}

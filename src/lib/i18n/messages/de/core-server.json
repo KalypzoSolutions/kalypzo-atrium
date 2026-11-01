@@ -1,0 +1,26 @@
+{
+	"moduleUnavailable": "Modul nicht verfügbar",
+	"internalError": "Es ist ein interner Fehler aufgetreten.",
+	"mail": {
+		"invalidEmail": "Ungültige E-Mail-Adresse",
+		"invalidSubject": "Betreff ungültig (max. 200 Zeichen, keine Zeilenumbrüche)",
+		"textTooLongMax": "Text zu lang (max. 20000 Zeichen)",
+		"htmlTooLongMax": "HTML zu lang (max. 100000 Zeichen)",
+		"textTooLong": "Text zu lang",
+		"htmlTooLong": "HTML zu lang",
+		"pdfAttachments": "Nur bis zu 3 PDF-Anhänge mit zusammen max. 5 MB",
+		"invalidMessageId": "Ungültige Message-ID",
+		"messageAttachments": "Höchstens 10 Anhänge mit zusammen 20 MB; ausführbare Dateien sind nicht erlaubt"
+	},
+	"notSignedIn": "Nicht angemeldet",
+	"forbidden": "Keine Berechtigung",
+	"invalidQr": "Ungültiger QR-Inhalt",
+	"env": {
+		"secretTooShort": "APP_SECRET muss mindestens 32 Zeichen lang sein",
+		"backupTmpDir": "BACKUP_TMP_DIR muss ein absoluter Pfad sein",
+		"originHttps": "ORIGIN muss im Produktivbetrieb mit https:// beginnen (sonst fehlt das Secure-Flag der Cookies)",
+		"secretPlaceholder": "APP_SECRET ist noch der Build-Platzhalter – zufälligen Wert setzen (openssl rand -base64 48)",
+		"secretTrivial": "APP_SECRET ist zu einfach – zufälligen Wert setzen (openssl rand -base64 48)",
+		"originRequired": "ORIGIN muss im Produktivbetrieb gesetzt sein"
+	}
+}

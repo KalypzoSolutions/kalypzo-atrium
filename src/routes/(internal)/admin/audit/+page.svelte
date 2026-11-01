@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { intlLocale, t } from '$lib/i18n';
 	import { goto } from '$app/navigation';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -36,26 +37,23 @@
 	}
 
 	function fmt(d: Date) {
-		return new Date(d).toLocaleString('de-DE');
+		return new Date(d).toLocaleString(intlLocale());
 	}
 	function hasMeta(m: Record<string, unknown>) {
 		return Object.keys(m ?? {}).length > 0;
 	}
 </script>
 
-<PageTitle title="Audit-Log" />
+<PageTitle title={t('admin-audit.title')} />
 
 <div class="space-y-6">
-	<PageHeader
-		title="Audit-Log"
-		description="Unveränderliches Protokoll sicherheitsrelevanter Ereignisse."
-	/>
+	<PageHeader title={t('admin-audit.title')} description={t('admin-audit.description')} />
 
 	<DataTable
 		mobile="cards"
-		caption="Audit-Log"
+		caption={t('admin-audit.title')}
 		empty={data.rows.length === 0}
-		emptyTitle="Keine Einträge gefunden."
+		emptyTitle={t('admin-audit.empty')}
 	>
 		{#snippet toolbar()}
 			<form
@@ -67,35 +65,35 @@
 				}}
 			>
 				<div class="space-y-1.5">
-					<Label for="a-q">Suche</Label>
-					<Input id="a-q" bind:value={q} placeholder="Akteur, Aktion, Ziel …" />
+					<Label for="a-q">{t('admin-audit.search')}</Label>
+					<Input id="a-q" bind:value={q} placeholder={t('admin-audit.searchPlaceholder')} />
 				</div>
 				<div class="space-y-1.5">
-					<Label for="a-action">Aktion (Präfix)</Label>
+					<Label for="a-action">{t('admin-audit.actionPrefix')}</Label>
 					<Input id="a-action" bind:value={action} placeholder="core.user" />
 				</div>
 				<div class="space-y-1.5">
-					<Label for="a-from">Von</Label>
+					<Label for="a-from">{t('admin-audit.from')}</Label>
 					<Input id="a-from" type="date" bind:value={from} />
 				</div>
 				<div class="space-y-1.5">
-					<Label for="a-to">Bis</Label>
+					<Label for="a-to">{t('admin-audit.to')}</Label>
 					<Input id="a-to" type="date" bind:value={to} />
 				</div>
 				<div class="flex gap-2">
-					<Button type="submit">Filtern</Button>
-					<Button type="button" variant="outline" onclick={reset}>Zurücksetzen</Button>
+					<Button type="submit">{t('admin-audit.filter')}</Button>
+					<Button type="button" variant="outline" onclick={reset}>{t('admin-audit.reset')}</Button>
 				</div>
 			</form>
 		{/snippet}
 		{#snippet head()}
 			<Table.Row>
-				<Table.Head>Zeitpunkt</Table.Head>
-				<Table.Head>Aktion</Table.Head>
-				<Table.Head>Akteur</Table.Head>
-				<Table.Head>Ziel</Table.Head>
-				<Table.Head>IP</Table.Head>
-				<Table.Head class="text-right">Details</Table.Head>
+				<Table.Head>{t('admin-audit.time')}</Table.Head>
+				<Table.Head>{t('admin-audit.action')}</Table.Head>
+				<Table.Head>{t('admin-audit.actor')}</Table.Head>
+				<Table.Head>{t('admin-audit.target')}</Table.Head>
+				<Table.Head>{t('admin-audit.ip')}</Table.Head>
+				<Table.Head class="text-right">{t('admin-audit.details')}</Table.Head>
 			</Table.Row>
 		{/snippet}
 		{#each data.rows as r (r.id)}
@@ -118,7 +116,7 @@
 							aria-expanded={!!expanded[r.id]}
 							onclick={() => (expanded = { ...expanded, [r.id]: !expanded[r.id] })}
 						>
-							{expanded[r.id] ? 'Ausblenden' : 'Anzeigen'}
+							{expanded[r.id] ? t('admin-audit.hide') : t('admin-audit.show')}
 						</Button>
 					{/if}
 				</Table.Cell>
@@ -128,7 +126,9 @@
 					<Table.Cell colspan={6} class="bg-muted/40">
 						<pre class="overflow-x-auto text-xs">{JSON.stringify(r.metadata, null, 2)}</pre>
 						{#if r.requestId}
-							<p class="mt-1 text-xs text-muted-foreground">Request-ID: {r.requestId}</p>
+							<p class="mt-1 text-xs text-muted-foreground">
+								{t('admin-audit.requestId', { id: r.requestId })}
+							</p>
 						{/if}
 					</Table.Cell>
 				</Table.Row>

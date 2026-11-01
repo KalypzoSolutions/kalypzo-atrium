@@ -7,6 +7,7 @@ import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AiGenerateInput, AiGenerateResult, AiUsage, RequestContext } from '$lib/sdk/types';
 import { getDb, schema } from '../database/client';
+import { t } from '$lib/i18n';
 import { errors, isCoreError } from '../errors';
 import { has } from '../permissions/service';
 import { hit } from '../rate-limit';
@@ -264,13 +265,14 @@ export function canUseAi(ctx: RequestContext, module: string): boolean {
 export async function assertAiAccess(ctx: RequestContext, module: string): Promise<void> {
 	if (ctx.actor.type !== 'system' && !ctx.userId) throw errors.unauthenticated();
 	if (!MODULE_PATTERN.test(module) && module !== 'core') {
-		throw errors.badRequest('Ungültige Modul-ID');
+		throw errors.badRequest(t('ai.errors.invalidModule'));
 	}
-	if (!canUseAi(ctx, module)) throw errors.forbidden(`Berechtigung fehlt: ${module}.ai.use`);
+	if (!canUseAi(ctx, module))
+		throw errors.forbidden(t('ai.errors.missingPermission', { permission: `${module}.ai.use` }));
 	const config = await loadConfig();
-	if (!config.apiKey) throw errors.unavailable('KI-Dienst ist nicht konfiguriert');
+	if (!config.apiKey) throw errors.unavailable(t('ai.errors.notConfigured'));
 	if (config.allowedModules.length && !config.allowedModules.includes(module)) {
-		throw errors.forbidden(`Modul "${module}" hat keinen Zugriff auf den KI-Dienst`);
+		throw errors.forbidden(t('ai.errors.moduleNotAllowed', { module }));
 	}
 }
 
@@ -296,37 +298,37 @@ export function actorTokensThisMonth(actorId: string): Promise<number> {
 async function prepare(ctx: RequestContext, input: AiGenerateInput): Promise<Prepared> {
 	if (ctx.actor.type !== 'system' && !ctx.userId) throw errors.unauthenticated();
 	if (!MODULE_PATTERN.test(input.module) && input.module !== 'core') {
-		throw errors.badRequest('Ungültige Modul-ID');
+		throw errors.badRequest(t('ai.errors.invalidModule'));
 	}
 	if (!canUseAi(ctx, input.module)) {
-		throw errors.forbidden(`Berechtigung fehlt: ${input.module}.ai.use`);
+		throw errors.forbidden(
+			t('ai.errors.missingPermission', { permission: `${input.module}.ai.use` })
+		);
 	}
 	if (input.prompt.length + (input.system?.length ?? 0) > MAX_PROMPT_CHARS) {
-		throw errors.tooLarge('Prompt ist zu lang');
+		throw errors.tooLarge(t('ai.errors.promptTooLong'));
 	}
 	const config = await loadConfig();
-	if (!config.apiKey) throw errors.unavailable('KI-Dienst ist nicht konfiguriert');
+	if (!config.apiKey) throw errors.unavailable(t('ai.errors.notConfigured'));
 	if (config.allowedModules.length && !config.allowedModules.includes(input.module)) {
-		throw errors.forbidden(`Modul "${input.module}" hat keinen Zugriff auf den KI-Dienst`);
+		throw errors.forbidden(t('ai.errors.moduleNotAllowed', { module: input.module }));
 	}
 	const model =
 		!input.model || input.model === 'configured-default' ? config.defaultModel : input.model;
 	if (config.allowedModels.length && !config.allowedModels.includes(model)) {
-		throw errors.badRequest(`Modell nicht erlaubt: ${model}`);
+		throw errors.badRequest(t('ai.errors.modelNotAllowed', { model }));
 	}
 	const rate = hit('ai:global', config.requestsPerMinute, 60);
 	if (!rate.allowed) {
-		throw errors.rateLimited(
-			`KI-Anfragelimit erreicht. Erneut versuchen in ${rate.retryAfterSec} s`
-		);
+		throw errors.rateLimited(t('ai.errors.rateLimited', { seconds: String(rate.retryAfterSec) }));
 	}
 	if (config.monthlyTokenLimit > 0 || config.monthlyCostLimitUsd > 0) {
 		const totals = await usage().totals(input.module, monthStart());
 		if (config.monthlyTokenLimit > 0 && totals.tokens >= config.monthlyTokenLimit) {
-			throw errors.rateLimited(`Monatliches Token-Limit für Modul "${input.module}" erreicht`);
+			throw errors.rateLimited(t('ai.errors.tokenLimit', { module: input.module }));
 		}
 		if (config.monthlyCostLimitUsd > 0 && totals.costUsd >= config.monthlyCostLimitUsd) {
-			throw errors.rateLimited(`Monatliches Kostenlimit für Modul "${input.module}" erreicht`);
+			throw errors.rateLimited(t('ai.errors.costLimit', { module: input.module }));
 		}
 	}
 	return {
@@ -344,7 +346,7 @@ async function buildMessages(
 	const parts: ChatCompletionContentPart[] = [{ type: 'text', text: input.prompt }];
 	for (const img of input.images ?? []) {
 		if (!/^data:image\/(png|jpeg|gif|webp);base64,/.test(img) && !/^https:\/\//.test(img)) {
-			throw errors.badRequest('Bilder müssen als Data-URL oder https-URL übergeben werden');
+			throw errors.badRequest(t('ai.errors.imageFormat'));
 		}
 		parts.push({ type: 'image_url', image_url: { url: img } });
 	}
@@ -356,7 +358,7 @@ async function buildMessages(
 			parts.push({ type: 'image_url', image_url: { url: `data:${ct};base64,${b64}` } });
 		} else if (ct.startsWith('text/') || ct === 'application/json') {
 			const text = Buffer.from(buffer).toString('utf8').slice(0, MAX_TEXT_FILE_CHARS);
-			parts.push({ type: 'text', text: `--- Datei: ${file.name} ---\n${text}` });
+			parts.push({ type: 'text', text: `--- ${t('ai.fileLabel')}: ${file.name} ---\n${text}` });
 		} else if (ct === 'application/pdf') {
 			parts.push({
 				type: 'file',
@@ -366,7 +368,7 @@ async function buildMessages(
 				}
 			});
 		} else {
-			throw errors.badRequest(`Dateityp wird vom KI-Dienst nicht unterstützt: ${ct}`);
+			throw errors.badRequest(t('ai.errors.fileType', { type: ct }));
 		}
 	}
 	const system = [input.system, extraSystem].filter(Boolean).join('\n\n');
@@ -379,15 +381,13 @@ async function buildMessages(
 function mapError(e: unknown): never {
 	if (isCoreError(e)) throw e;
 	const status = (e as { status?: number }).status;
-	if (status === 429) throw errors.rateLimited('Das KI-Anbieterlimit wurde erreicht');
+	if (status === 429) throw errors.rateLimited(t('ai.errors.providerLimit'));
 	if (status === 401 || status === 403)
-		throw errors.unavailable('KI-Zugangsdaten wurden abgelehnt');
+		throw errors.unavailable(t('ai.errors.credentialsRejected'));
 	if (status === 400 || status === 404 || status === 422) {
-		throw errors.badRequest(
-			'Die KI-Anfrage wurde vom Anbieter abgelehnt (Modell oder Eingabe prüfen)'
-		);
+		throw errors.badRequest(t('ai.errors.requestRejected'));
 	}
-	throw errors.unavailable('KI-Dienst ist nicht erreichbar');
+	throw errors.unavailable(t('ai.errors.unreachable'));
 }
 
 async function account(
@@ -449,7 +449,7 @@ export async function generateJson<T>(
 ): Promise<{ data: T; usage: AiUsage }> {
 	const { schema: zodSchema, ...base } = input;
 	const jsonSchema = JSON.stringify(z.toJSONSchema(zodSchema));
-	const extraSystem = `Antworte ausschließlich mit einem gültigen JSON-Objekt, das diesem JSON-Schema entspricht:\n${jsonSchema}`;
+	const extraSystem = `${t('ai.jsonOnly')}\n${jsonSchema}`;
 	let total: AiUsage | undefined;
 	for (let attempt = 0; attempt < 2; attempt++) {
 		const res = await generate(ctx, base, { json: true, extraSystem });
@@ -468,7 +468,7 @@ export async function generateJson<T>(
 			// ungültiges JSON: ein weiterer Versuch
 		}
 	}
-	throw errors.badRequest('Die KI-Antwort entsprach nicht dem erwarteten Format');
+	throw errors.badRequest(t('ai.errors.invalidFormat'));
 }
 
 /** Streamt Textfragmente; der Rückgabewert des Generators sind die Nutzungsdaten. */
@@ -518,7 +518,7 @@ export async function usageSummary(
 	if (ctx.actor.type !== 'system') {
 		if (!ctx.userId) throw errors.unauthenticated();
 		if (!has(ctx, 'core.ai.view') && !has(ctx, 'core.ai.manage')) {
-			throw errors.forbidden('Berechtigung fehlt: core.ai.view');
+			throw errors.forbidden(t('ai.errors.missingPermission', { permission: 'core.ai.view' }));
 		}
 	}
 	return usage().summary(range.from ?? monthStart(), range.to ?? new Date());

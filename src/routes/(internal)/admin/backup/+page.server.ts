@@ -1,8 +1,7 @@
 import {
-	BACKUP_FILE_EXT,
+	BACKUP_FILE_EXTS,
 	BACKUP_MIN_PASSWORD,
-	MERGE_CONFIRM_WORD,
-	RESTORE_CONFIRM_WORD,
+	confirmWord,
 	UPLOAD_CHUNK_BYTES
 } from '$lib/backup/contract';
 import { listScopesForBackup } from '$lib/server/core/backup/export';
@@ -19,9 +18,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 		constants: {
 			minPassword: BACKUP_MIN_PASSWORD,
 			chunkBytes: UPLOAD_CHUNK_BYTES,
-			fileExt: BACKUP_FILE_EXT,
-			restoreWord: RESTORE_CONFIRM_WORD,
-			mergeWord: MERGE_CONFIRM_WORD
+			/** Endungen für das Dateifeld (neu `.atriumbackup`, alt `.epbackup`) */
+			fileExt: BACKUP_FILE_EXTS.join(','),
+			restoreWord: confirmWord('restore'),
+			mergeWord: confirmWord('merge')
 		}
 	};
 };

@@ -1,6 +1,7 @@
 import { invalidateAll } from '$app/navigation';
 import type { SubmitFunction } from '@sveltejs/kit';
 import { toast } from 'svelte-sonner';
+import { t } from '$lib/i18n';
 
 export interface SubmitOptions {
 	/** Wird mit true/false aufgerufen, solange die Anfrage läuft */
@@ -22,16 +23,15 @@ export function submitHandler(opts: SubmitOptions = {}): SubmitFunction {
 			opts.busy?.(false);
 			if (result.type === 'success') {
 				const data = (result.data ?? {}) as Record<string, unknown>;
-				toast.success((data.message as string) ?? 'Gespeichert');
+				toast.success((data.message as string) ?? t('admin.form.saved'));
 				opts.success?.(data);
 				if (opts.reload !== false) await invalidateAll();
 			} else if (result.type === 'failure') {
-				const msg =
-					((result.data ?? {}) as { message?: string }).message ?? 'Aktion fehlgeschlagen';
+				const msg = ((result.data ?? {}) as { message?: string }).message ?? t('admin.form.failed');
 				opts.error?.(msg);
 				toast.error(msg);
 			} else if (result.type === 'error') {
-				toast.error('Unerwarteter Fehler');
+				toast.error(t('admin.form.unexpected'));
 			} else {
 				await update();
 			}

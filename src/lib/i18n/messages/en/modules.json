@@ -1,0 +1,57 @@
+{
+	"notInstalled": "Module \"{id}\" is not installed",
+	"broken": {
+		"coreVersion": "Requires core {range}, installed is {version}",
+		"missingDependency": "Required module “{dep}” is missing",
+		"dependencyVersion": "Requires “{dep}” {range}, available is {version}",
+		"cycle": "Circular dependency ({ids})"
+	},
+	"convention": {
+		"noDefinition": "module.ts does not export a module definition",
+		"folderMismatch": "Folder “{folder}” ≠ module ID “{id}”",
+		"noPackage": "atrium-module.json is missing (`package` in defineModule)",
+		"migrationsMismatch": "Migrations in module.ts ({declared}) ≠ files in migrations/ ({files})"
+	},
+	"missingReason": "Not installed – data and settings still exist",
+	"dependenciesInactive": "Dependencies not active: {ids}",
+	"requiredByActive": "Required by active modules: {ids}",
+	"assistTask": {
+		"draft": "Write a draft",
+		"rewrite": "Change as requested",
+		"friendly": "Friendlier",
+		"shorter": "Shorter",
+		"simple": "Plain language",
+		"spelling": "Spelling",
+		"english": "English",
+		"subject": "Suggest subject",
+		"title": "Suggest title",
+		"teaser": "Suggest teaser",
+		"altText": "Describe image",
+		"split": "Split into steps",
+		"packingList": "Suggest packing list",
+		"summarize": "Summarize",
+		"continue": "Continue writing",
+		"todos": "Derive tasks"
+	},
+	"notificationChannel": {
+		"off": "Off",
+		"email": "Email",
+		"both": "Both",
+		"push": "Push"
+	},
+	"package": {
+		"invalidRange": "Invalid version range",
+		"invalidSource": "Invalid source (github:owner/repo/path#ref)",
+		"invalidId": "Invalid module ID",
+		"versionSemver": "Version must be SemVer",
+		"invalidPermission": "Invalid permission",
+		"invalidPackageName": "Invalid package name",
+		"exactVersion": "Exact version required",
+		"selfDependency": "Module depends on itself",
+		"alsoHardDependency": "Also a hard dependency",
+		"foreignPermission": "Permission “{permission}” does not belong to the module",
+		"invalidPath": "Invalid path",
+		"duplicateIds": "Duplicate module IDs",
+		"root": "(root)"
+	}
+}

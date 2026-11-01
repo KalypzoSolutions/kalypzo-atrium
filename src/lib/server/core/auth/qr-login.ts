@@ -16,6 +16,7 @@ import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { hit } from '../rate-limit';
 import { maskEmail } from './mask-email';
+import { t } from '$lib/i18n';
 
 /** Gültigkeit eines angezeigten Codes */
 export const QR_TTL_SEC = 120;
@@ -41,7 +42,7 @@ function sameHash(a: string, b: string): boolean {
 /** Neue Anfrage für den anzeigenden Browser (Rate-Limit je IP) */
 export async function createQrLogin(meta: { ip: string | null; userAgent: string | null }) {
 	if (!hit(`qr-login:create:${meta.ip ?? '-'}`, 30, 600).allowed) {
-		throw errors.rateLimited('Zu viele QR-Codes angefordert. Bitte kurz warten.');
+		throw errors.rateLimited(t('auth.qrTooManyCodes'));
 	}
 	const db = getDb();
 	await db
@@ -142,7 +143,7 @@ export async function decideQrLogin(
 	const userId = requireUserCtx(ctx);
 	if (!hit(`qr-login:decide:${userId}`, 20, 600).allowed) throw errors.rateLimited();
 	const row = await byToken(token);
-	if (!row) throw errors.notFound('Dieser QR-Code ist ungültig.');
+	if (!row) throw errors.notFound(t('auth.qrInvalid'));
 	const now = new Date();
 	const updated = await getDb()
 		.update(schema.loginQrRequest)
@@ -165,7 +166,7 @@ export async function decideQrLogin(
 		)
 		.returning({ id: schema.loginQrRequest.id });
 	if (!updated.length) {
-		throw errors.conflict('Dieser QR-Code ist abgelaufen oder wurde bereits verwendet.');
+		throw errors.conflict(t('auth.qrExpiredOrUsed'));
 	}
 	await logAudit({
 		action: approve ? 'core.auth.qr_login_approved' : 'core.auth.qr_login_denied',

@@ -167,14 +167,14 @@ describe('renderTemplatePreview', () => {
 	});
 
 	it('hochkant-Vorlage -> 794x1123 und width:210mm', async () => {
-		await pdf.renderTemplatePreview({ template: 'stamm-brief' });
+		await pdf.renderTemplatePreview({ template: 'brief' });
 		expect(previewSize).toEqual({ width: 794, height: 1123 });
 		expect(previewHtml).toContain('width:210mm');
 		expect(previewHtml).not.toContain('width:297mm');
 	});
 
-	it('Quer-Vorlage stamm-briefkopf-quer -> 1123x794 und width:297mm', async () => {
-		await pdf.renderTemplatePreview({ template: 'stamm-briefkopf-quer' });
+	it('Quer-Vorlage briefkopf-quer -> 1123x794 und width:297mm', async () => {
+		await pdf.renderTemplatePreview({ template: 'briefkopf-quer' });
 		expect(previewSize).toEqual({ width: 1123, height: 794 });
 		expect(previewHtml).toContain('width:297mm');
 		expect(previewHtml).not.toContain('width:210mm');
@@ -182,23 +182,23 @@ describe('renderTemplatePreview', () => {
 
 	it('Quer-Vorlage hat kein Adressfeld -> only adressfeld ist 400', async () => {
 		await expect(
-			pdf.renderTemplatePreview({ template: 'stamm-briefkopf-quer', only: 'adressfeld' })
+			pdf.renderTemplatePreview({ template: 'briefkopf-quer', only: 'adressfeld' })
 		).rejects.toMatchObject({ code: 'bad_request' });
 	});
 
-	it('describeTemplates liefert die Ausrichtung', () => {
-		const all = pdf.describeTemplates();
-		const quer = all.find((t) => t.id === 'stamm-briefkopf-quer');
+	it('describeTemplates liefert die Ausrichtung', async () => {
+		const all = await pdf.describeTemplates();
+		const quer = all.find((t) => t.id === 'briefkopf-quer');
 		expect(quer).toBeDefined();
 		expect(quer!.orientation).toBe('landscape');
 		expect(quer!.parts.map((p) => p.id)).toEqual(['briefkopf', 'fusszeile']);
-		expect(all.find((t) => t.id === 'stamm-brief')?.orientation).toBe('portrait');
+		expect(all.find((t) => t.id === 'brief')?.orientation).toBe('portrait');
 		expect(all.find((t) => t.id === 'testbrief')?.orientation).toBe('portrait');
 	});
 
-	it('stamm-Vorlagen sind registriert und renderbar', async () => {
+	it('Briefvorlagen sind registriert und renderbar (auch unter alter ID)', async () => {
 		const ids = pdf.listTemplates().map((t) => t.id);
-		for (const id of ['stamm-brief', 'stamm-briefkopf']) {
+		for (const id of ['brief', 'briefkopf']) {
 			expect(ids).toContain(id);
 			await pdf.generate(ctxWith(), {
 				title: 'T',
@@ -208,6 +208,10 @@ describe('renderTemplatePreview', () => {
 			});
 			expect(rendered!.options.displayHeaderFooter).toBe(false);
 		}
-		expect(pdf.describeTemplates().length).toBe(ids.length);
+		await pdf.generate(ctxWith(), { title: 'T', template: 'stamm-brief', content: [] });
+		expect(rendered!.options.displayHeaderFooter).toBe(false);
+		const all = await pdf.describeTemplates();
+		expect(all.length).toBe(ids.length);
+		expect(all.every((t) => t.origin.type === 'core')).toBe(true);
 	});
 });

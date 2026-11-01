@@ -28,6 +28,7 @@
 		readConsoleResult
 	} from '$lib/api-docs/console';
 	import { exampleJson } from '$lib/api-docs/example';
+	import { t } from '$lib/i18n';
 
 	let { entry }: { entry: ApiCatalogEntry } = $props();
 
@@ -153,14 +154,12 @@
 			result = await readConsoleResult(res, startedAt);
 		} catch (err) {
 			if (err instanceof DOMException && err.name === 'AbortError') {
-				networkError = timedOut
-					? 'Zeitüberschreitung: keine Antwort innerhalb von 30 Sekunden.'
-					: 'Anfrage abgebrochen.';
+				networkError = timedOut ? t('api-docs.console.timeout') : t('api-docs.console.aborted');
 			} else {
 				networkError =
 					err instanceof Error && err.message
-						? `Netzwerkfehler: ${err.message}`
-						: 'Netzwerkfehler: Der Server ist nicht erreichbar.';
+						? t('api-docs.console.networkError', { message: err.message })
+						: t('api-docs.console.unreachable');
 			}
 		} finally {
 			clearTimer();
@@ -176,9 +175,9 @@
 	async function copy(text: string, what: string) {
 		try {
 			await navigator.clipboard.writeText(text);
-			toast.success(`${what} kopiert.`);
+			toast.success(t('api-docs.console.copied', { what }));
 		} catch {
-			toast.error('Kopieren nicht möglich.');
+			toast.error(t('api-docs.console.copyFailed'));
 		}
 	}
 
@@ -192,21 +191,19 @@
 	{#if initial.multipart}
 		<Alert>
 			<Info aria-hidden="true" />
-			<AlertDescription>Multipart-Uploads lassen sich hier nicht ausprobieren.</AlertDescription>
+			<AlertDescription>{t('api-docs.console.multipartHint')}</AlertDescription>
 		</Alert>
 	{:else}
 		{#if mutating}
 			<Alert variant="warning">
 				<TriangleAlert aria-hidden="true" />
 				<AlertDescription>
-					Anfragen laufen mit deiner Anmeldung und deinen Rechten. Schreibende Anfragen ändern echte
-					Daten.
+					{t('api-docs.console.sessionHint')}
 				</AlertDescription>
 			</Alert>
 		{:else}
 			<p class="text-xs text-muted-foreground">
-				Anfragen laufen mit deiner Anmeldung und deinen Rechten. Schreibende Anfragen ändern echte
-				Daten.
+				{t('api-docs.console.sessionHint')}
 			</p>
 		{/if}
 
@@ -214,7 +211,7 @@
 			<Alert>
 				<Info aria-hidden="true" />
 				<AlertDescription>
-					Das Modul „{initial.moduleName}“ ist nicht aktiv – die Anfrage wird mit 404 abgelehnt.
+					{t('api-docs.console.moduleInactive', { name: initial.moduleName })}
 				</AlertDescription>
 			</Alert>
 		{/if}
@@ -222,8 +219,9 @@
 			<Alert>
 				<Info aria-hidden="true" />
 				<AlertDescription>
-					Dir fehlt das Recht <code class="font-mono text-xs">{initial.permission}</code> – die Anfrage
-					wird mit 403 abgelehnt.
+					{t('api-docs.console.missingPermissionBefore')}
+					<code class="font-mono text-xs">{initial.permission}</code>
+					{t('api-docs.console.missingPermissionAfter')}
 				</AlertDescription>
 			</Alert>
 		{/if}
@@ -237,7 +235,7 @@
 		>
 			{#if paramNames.length > 0}
 				<fieldset class="grid gap-3">
-					<legend class="mb-1 text-sm font-medium">Pfadparameter</legend>
+					<legend class="mb-1 text-sm font-medium">{t('api-docs.console.pathParams')}</legend>
 					{#each paramNames as name (name)}
 						{@const id = `${idBase}-param-${name}`}
 						{@const err = fieldErrors[`params.${name}`]}
@@ -258,7 +256,7 @@
 
 			{#if queryProps.length > 0}
 				<fieldset class="grid gap-3">
-					<legend class="mb-1 text-sm font-medium">Query-Parameter</legend>
+					<legend class="mb-1 text-sm font-medium">{t('api-docs.console.queryParams')}</legend>
 					{#each queryProps as [name, schema] (name)}
 						{@const id = `${idBase}-query-${name}`}
 						{@const err = fieldErrors[`query.${name}`]}
@@ -290,7 +288,7 @@
 				{@const err = fieldErrors['body']}
 				<div class="grid gap-1.5">
 					<div class="flex items-center justify-between gap-2">
-						<label for={id} class="text-sm font-medium">Body (JSON)</label>
+						<label for={id} class="text-sm font-medium">{t('api-docs.console.body')}</label>
 						<Button
 							type="button"
 							variant="ghost"
@@ -300,7 +298,7 @@
 								fieldErrors = {};
 							}}
 						>
-							Beispiel einsetzen
+							{t('api-docs.console.insertExample')}
 						</Button>
 					</div>
 					<Textarea
@@ -323,10 +321,12 @@
 			<div class="flex flex-wrap items-center gap-2">
 				<Button type="submit" disabled={busy}>
 					<Send aria-hidden="true" />
-					{busy ? 'Sendet …' : 'Senden'}
+					{busy ? t('api-docs.console.sending') : t('api-docs.console.send')}
 				</Button>
 				{#if busy}
-					<Button type="button" variant="outline" onclick={abort}>Abbrechen</Button>
+					<Button type="button" variant="outline" onclick={abort}
+						>{t('api-docs.console.cancel')}</Button
+					>
 				{/if}
 				<span class="font-mono text-xs text-muted-foreground">
 					{initial.method}
@@ -344,23 +344,31 @@
 
 		{#if result}
 			{@const res = result}
-			<section class="grid gap-2 rounded-lg border p-3" aria-label="Antwort" aria-live="polite">
+			<section
+				class="grid gap-2 rounded-lg border p-3"
+				aria-label={t('api-docs.console.response')}
+				aria-live="polite"
+			>
 				<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
 					<Badge variant="outline" class={statusVariant}>{res.status}</Badge>
-					<span class="text-muted-foreground">{Math.round(res.durationMs)} ms</span>
+					<span class="text-muted-foreground"
+						>{t('api-docs.console.duration', { ms: Math.round(res.durationMs) })}</span
+					>
 					{#if res.rateLimitRemaining !== null}
-						<span class="text-muted-foreground">Rate-Limit-Rest: {res.rateLimitRemaining}</span>
+						<span class="text-muted-foreground"
+							>{t('api-docs.console.rateLimitRest', { count: res.rateLimitRemaining })}</span
+						>>
 					{/if}
 					{#if res.requestId}
 						<span class="flex items-center gap-1 text-muted-foreground">
-							Request-ID:
+							{t('api-docs.console.requestId')}
 							<code class="font-mono">{res.requestId}</code>
 							<Button
 								type="button"
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Request-ID kopieren"
-								onclick={() => copy(res.requestId ?? '', 'Request-ID')}
+								aria-label={t('api-docs.console.copyRequestId')}
+								onclick={() => copy(res.requestId ?? '', t('api-docs.console.requestIdLabel'))}
 							>
 								<Copy aria-hidden="true" />
 							</Button>
@@ -370,15 +378,15 @@
 				<div class="relative">
 					<pre
 						class="max-h-96 overflow-auto rounded-md bg-muted p-3 pr-10 font-mono text-xs break-words whitespace-pre-wrap">{res.bodyText ||
-							'(leerer Body)'}</pre>
+							t('api-docs.console.emptyBody')}</pre>
 					{#if res.bodyText}
 						<Button
 							type="button"
 							variant="ghost"
 							size="icon-sm"
 							class="absolute top-1.5 right-1.5"
-							aria-label="Antwort kopieren"
-							onclick={() => copy(res.bodyText, 'Antwort')}
+							aria-label={t('api-docs.console.copyResponse')}
+							onclick={() => copy(res.bodyText, t('api-docs.console.response'))}
 						>
 							<Copy aria-hidden="true" />
 						</Button>
@@ -398,17 +406,17 @@
 					class="size-4 transition-transform {showCurl ? 'rotate-90' : ''}"
 					aria-hidden="true"
 				/>
-				curl-Befehl
+				{t('api-docs.console.curl')}
 			</button>
 			{#if showCurl && !curl}
 				<p class="text-xs text-muted-foreground">
-					Fülle zuerst die Pflichtfelder aus und prüfe den Body – dann erscheint hier der Befehl.
+					{t('api-docs.console.curlMissing')}
 				</p>
 			{:else if showCurl}
 				<p class="text-xs text-muted-foreground">
-					Für Skripte mit einem API-Key statt deiner Anmeldung (<code class="font-mono"
-						>$EPK_KEY</code
-					>).
+					{t('api-docs.console.curlHintBefore')}<code class="font-mono">$EPK_KEY</code>{t(
+						'api-docs.console.curlHintAfter'
+					)}
 				</p>
 				<div class="relative">
 					<pre
@@ -418,8 +426,8 @@
 						variant="ghost"
 						size="icon-sm"
 						class="absolute top-1.5 right-1.5"
-						aria-label="curl-Befehl kopieren"
-						onclick={() => copy(curl, 'curl-Befehl')}
+						aria-label={t('api-docs.console.copyCurl')}
+						onclick={() => copy(curl, t('api-docs.console.curl'))}
 					>
 						<Copy aria-hidden="true" />
 					</Button>
@@ -431,9 +439,9 @@
 
 <ConfirmDialog
 	bind:open={confirmOpen}
-	title={`${initial.method} ${initial.path} wirklich ausführen?`}
-	description="Die Anfrage läuft mit deiner Anmeldung und ändert echte Daten."
-	confirmLabel="Ausführen"
+	title={t('api-docs.console.confirmTitle', { method: initial.method, path: initial.path })}
+	description={t('api-docs.console.confirmDescription')}
+	confirmLabel={t('api-docs.console.confirmLabel')}
 	destructive={initial.method === 'DELETE'}
 	onconfirm={send}
 />

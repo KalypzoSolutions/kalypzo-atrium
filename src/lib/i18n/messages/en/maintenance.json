@@ -1,0 +1,12 @@
+{
+	"lockBusy": "A maintenance task is already running ({name})",
+	"lock": {
+		"backup": "Backup",
+		"restore": "Restore",
+		"reset": "Reset",
+		"resetExport": "Backup before reset"
+	},
+	"tooManyAttempts": "Too many attempts. Please try again later.",
+	"wrongPassword": "Password is incorrect",
+	"totpInvalid": "Confirmation code (2FA) is missing or invalid"
+}

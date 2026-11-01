@@ -11,6 +11,7 @@
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { errors } from '../errors';
+import { t } from '$lib/i18n';
 
 export const MAX_PDF_RASTER_BYTES = 50 * 1024 * 1024;
 /** Obergrenze der gerenderten Fläche (Schutz vor riesigen Seitenformaten) */
@@ -60,8 +61,9 @@ export async function renderPdfPage(
 	bytes: Uint8Array,
 	options: RenderPdfPageOptions = {}
 ): Promise<RenderedPdfPage> {
-	if (bytes.byteLength > MAX_PDF_RASTER_BYTES) throw errors.tooLarge('Das PDF ist zu groß.');
-	if (!isPdf(bytes)) throw errors.validation({ file: 'Kein PDF' }, 'Die Datei ist kein PDF.');
+	if (bytes.byteLength > MAX_PDF_RASTER_BYTES) throw errors.tooLarge(t('pdf.raster.tooLarge'));
+	if (!isPdf(bytes))
+		throw errors.validation({ file: t('pdf.raster.notPdfShort') }, t('pdf.raster.notPdf'));
 	const pageNo = Math.max(1, Math.floor(options.page ?? 1));
 	const maxEdge = Math.min(4000, Math.max(16, Math.floor(options.maxEdge ?? 800)));
 	const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -92,15 +94,12 @@ async function renderNow(
 	});
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	const timeout = new Promise<never>((_, reject) => {
-		timer = setTimeout(
-			() => reject(errors.unavailable('Die PDF-Vorschau hat zu lange gedauert.')),
-			timeoutMs
-		);
+		timer = setTimeout(() => reject(errors.unavailable(t('pdf.raster.timeout'))), timeoutMs);
 	});
 	try {
 		const work = (async () => {
 			const pdf = await task.promise;
-			if (pageNo > pdf.numPages) throw errors.notFound('Seite nicht vorhanden');
+			if (pageNo > pdf.numPages) throw errors.notFound(t('pdf.raster.pageMissing'));
 			const page = await pdf.getPage(pageNo);
 			const unit = page.getViewport({ scale: 1 });
 			let scale = maxEdge / Math.max(unit.width, unit.height, 1);

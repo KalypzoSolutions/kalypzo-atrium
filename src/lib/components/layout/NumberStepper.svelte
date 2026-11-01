@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -106,7 +107,7 @@
 		type="button"
 		data-slot="number-stepper-button"
 		class={btn}
-		aria-label="{label} verringern"
+		aria-label={t('layout.stepper.decrease', { label })}
 		disabled={disabled || value <= min}
 		onclick={() => set(value - step)}
 	>
@@ -136,7 +137,7 @@
 		type="button"
 		data-slot="number-stepper-button"
 		class={btn}
-		aria-label="{label} erhöhen"
+		aria-label={t('layout.stepper.increase', { label })}
 		disabled={disabled || value >= max}
 		onclick={() => set(value + step)}
 	>

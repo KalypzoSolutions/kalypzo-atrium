@@ -4,6 +4,7 @@
  * laufen die Quellen bei PGlite nacheinander, mit echtem Pool parallel mit Zeitbudget; Fehler einer Quelle
  * überspringen nur diese. Vertrag (Client + Server): `$lib/sdk/types/embeds.ts`.
  */
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import type { EmbedHit, EmbedInfo, EmbedKind, EmbedRef } from '$lib/sdk/types/embeds';
 import { databaseAllowsParallelQueries } from '../database/client';
@@ -101,7 +102,7 @@ export async function searchEmbeds(
 	const query = normalizeQuery(rawQuery);
 	if (!query || (!ctx.userId && ctx.actor.type !== 'system')) return [];
 	const list = await sources(ctx);
-	const groups = await runAll(list, 'Suche', [] as EmbedHit[], async (s) => {
+	const groups = await runAll(list, 'search', [] as EmbedHit[], async (s) => {
 		const hits = await s.provider.search(ctx, query, EMBED_LIMIT_PER_KIND);
 		const seen = new Set<string>();
 		const out: EmbedHit[] = [];
@@ -131,9 +132,9 @@ function unavailable(ref: EmbedRef, provider?: ModuleEmbedProvider): EmbedInfo {
 		kind: ref.kind,
 		refId: ref.refId,
 		available: false,
-		title: 'Nicht verfügbar',
+		title: t('embeds.unavailable'),
 		icon: provider?.icon ?? 'box',
-		kindLabel: provider?.label ?? 'Eingebetteter Inhalt',
+		kindLabel: provider?.label ?? t('embeds.embeddedContent'),
 		embedPath: null,
 		openHref: null,
 		canEdit: false
@@ -164,7 +165,7 @@ export async function describeEmbeds(
 	}
 	const active = [...wanted.keys()].map((k) => byKey.get(k)!);
 	const empty = new Map<string, { title: string; canEdit: boolean; path: string }>();
-	const results = await runAll(active, 'Beschreibung', empty, (s) =>
+	const results = await runAll(active, 'describe', empty, (s) =>
 		s.provider.describe(ctx, [...wanted.get(`${s.module}:${s.provider.kind}`)!])
 	);
 	const found = new Map<string, Map<string, { title: string; canEdit: boolean; path: string }>>();

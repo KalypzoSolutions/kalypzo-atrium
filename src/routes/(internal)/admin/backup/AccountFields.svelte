@@ -1,5 +1,6 @@
 <!-- Konto-Passwort und (bei aktiver 2FA) Authenticator-Code zur Bestätigung -->
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { FormField } from '$lib/components/layout';
 	import { Input } from '$lib/components/ui/input';
 
@@ -20,7 +21,11 @@
 	} = $props();
 </script>
 
-<FormField label="Dein Konto-Passwort *" id="{idPrefix}-password" error={errors.password}>
+<FormField
+	label={t('admin-backup.account.password')}
+	id="{idPrefix}-password"
+	error={errors.password}
+>
 	<Input
 		id="{idPrefix}-password"
 		type="password"
@@ -34,10 +39,10 @@
 </FormField>
 {#if twoFactorEnabled}
 	<FormField
-		label="6-stelliger Code *"
+		label={t('admin-backup.account.totp')}
 		id="{idPrefix}-totp"
 		error={errors.totp}
-		hint="Code aus deiner Authenticator-App"
+		hint={t('admin-backup.account.totpHint')}
 	>
 		<Input
 			id="{idPrefix}-totp"

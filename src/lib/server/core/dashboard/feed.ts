@@ -4,6 +4,7 @@
  * Ablauf wie bei der globalen Suche: mit echtem Pool parallel (Zeitbudget je Quelle), mit PGlite
  * nacheinander; Fehler einer Quelle überspringen nur diese.
  */
+import { intlLocale, localized } from '$lib/i18n';
 import { addDays, isRealDate, todayBerlin } from '$lib/sdk/dates';
 import type { RequestContext } from '$lib/sdk/types';
 import {
@@ -31,7 +32,8 @@ const CORE_KIND_KEYS = new Set(CORE_AGENDA_KINDS.map((k) => k.key));
 
 /** Arten für die Legende: Core zuerst, dann die der Module (erste Anmeldung eines Schlüssels gewinnt) */
 export function agendaKindsFor(defs: ModuleDefinition[]): DashboardAgendaKindInfo[] {
-	const out = [...CORE_AGENDA_KINDS];
+	// Kopie mit aufgelösten Bezeichnungen (Sprache des Requests)
+	const out = CORE_AGENDA_KINDS.map((k) => ({ ...k }));
 	for (const d of defs) {
 		for (const k of d.dashboard?.agendaKinds ?? []) {
 			if (!out.some((o) => o.key === k.key))
@@ -68,7 +70,7 @@ export function sortTodos<T extends Pick<DashboardFeedTodo, 'severity' | 'due' |
 		(a, b) =>
 			SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] ||
 			(a.due ?? '9999-12-31').localeCompare(b.due ?? '9999-12-31') ||
-			a.title.localeCompare(b.title, 'de')
+			a.title.localeCompare(b.title, intlLocale())
 	);
 }
 
@@ -80,7 +82,7 @@ export function sortAgenda<T extends Pick<DashboardFeedAgendaItem, 'date' | 'sta
 		(a, b) =>
 			a.date.localeCompare(b.date) ||
 			(a.startTime ?? '').localeCompare(b.startTime ?? '') ||
-			a.title.localeCompare(b.title, 'de')
+			a.title.localeCompare(b.title, intlLocale())
 	);
 }
 
@@ -100,7 +102,7 @@ function cleanTodos(def: ModuleDefinition, raw: unknown[], limit: number): Dashb
 		out.push({
 			id,
 			moduleId: def.manifest.id,
-			moduleName: def.manifest.name,
+			moduleName: localized(def.manifest.name),
 			title,
 			detail: optText(t.detail, 200),
 			due: date(t.due),
@@ -241,7 +243,7 @@ export async function collectDashboardFeed(
 		to,
 		todos: [],
 		agenda: [],
-		kinds: [...CORE_AGENDA_KINDS],
+		kinds: CORE_AGENDA_KINDS.map((k) => ({ ...k })),
 		failed: []
 	};
 	if (!ctx.userId) return empty;
@@ -280,8 +282,9 @@ export async function collectDashboardFeed(
 		todos: sortTodos(todos.items).slice(0, DASHBOARD_TODO_LIMIT),
 		agenda: sortAgenda(agenda.items).slice(0, DASHBOARD_AGENDA_LIMIT),
 		kinds: agendaKindsFor(defs),
-		failed: [...new Set([...todos.failed, ...agenda.failed])].map(
-			(id) => defs.find((d) => d.manifest.id === id)?.manifest.name ?? id
-		)
+		failed: [...new Set([...todos.failed, ...agenda.failed])].map((id) => {
+			const name = defs.find((d) => d.manifest.id === id)?.manifest.name;
+			return name === undefined ? id : localized(name);
+		})
 	};
 }

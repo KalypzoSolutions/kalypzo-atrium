@@ -12,25 +12,26 @@
 		CardTitle
 	} from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
+	import { t } from '$lib/i18n';
 
 	let { form } = $props();
 	let loading = $state(false);
 </script>
 
-<PageTitle title="Passwort vergessen" />
+<PageTitle title={t('password.forgot.title')} />
 
 <div class="flex min-h-dvh flex-col bg-muted/40">
 	<main class="flex flex-1 items-center justify-center p-4 py-10">
 		<Card class="w-full max-w-sm">
 			<CardHeader>
-				<CardTitle level={1} class="text-section">Passwort vergessen</CardTitle>
-				<CardDescription>Wir senden dir einen Link zum Zurücksetzen.</CardDescription>
+				<CardTitle level={1} class="text-section">{t('password.forgot.title')}</CardTitle>
+				<CardDescription>{t('password.forgot.subtitle')}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{#if form?.sent}
 					<Alert
 						><AlertDescription>
-							Falls ein Konto mit dieser Adresse existiert, wurde eine E-Mail versendet.
+							{t('password.forgot.sent')}
 						</AlertDescription></Alert
 					>
 				{:else}
@@ -50,17 +51,17 @@
 							};
 						}}
 					>
-						<FormField label="E-Mail" id="email">
+						<FormField label={t('password.forgot.email')} id="email">
 							<Input id="email" name="email" type="email" autocomplete="email" required />
 						</FormField>
-						<Button type="submit" disabled={loading}>Link anfordern</Button>
+						<Button type="submit" disabled={loading}>{t('password.forgot.submit')}</Button>
 					</form>
 				{/if}
 				<a
 					href="/login"
 					class="mt-4 block text-center text-sm text-muted-foreground hover:underline"
 				>
-					Zurück zur Anmeldung
+					{t('password.backToLogin')}
 				</a>
 			</CardContent>
 		</Card>

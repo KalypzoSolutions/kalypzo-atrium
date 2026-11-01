@@ -9,6 +9,7 @@ import type {
 	PdfResult,
 	RequestContext
 } from '$lib/sdk/types';
+import { getLocale, intlLocale, t } from '$lib/i18n';
 import { env } from '../env';
 import { errors } from '../errors';
 import { safeFileName } from '$lib/sdk/file-names';
@@ -16,9 +17,6 @@ import { getSettings } from '../settings/service';
 import { readFileByIdUnchecked, upload } from '../storage';
 import {
 	escapeHtml,
-	describeTemplates,
-	getTemplate,
-	listTemplates,
 	registerTemplate,
 	renderBlocks,
 	type PdfLayoutData,
@@ -26,10 +24,12 @@ import {
 	type PdfTemplateInput
 } from './templates';
 import { loadTemplates } from './load-templates';
-import { sampleContent, SAMPLE_RECIPIENT } from './sample';
+import { activeModuleHook, describeTemplates, listTemplates, resolveTemplate } from './resolve';
+import { sampleContent, sampleRecipient } from './sample';
 
-export { registerTemplate, listTemplates, describeTemplates, escapeHtml };
+export { registerTemplate, listTemplates, describeTemplates, resolveTemplate, escapeHtml };
 export type { PdfTemplate, PdfLayoutData, PdfTemplateInput };
+export type { EffectiveTemplateDescription } from './resolve';
 
 loadTemplates();
 
@@ -127,7 +127,7 @@ const chromiumRenderer: PdfRenderer = async (html, o) => {
 	try {
 		browser = await getBrowser();
 	} catch {
-		throw errors.unavailable('PDF-Engine (Chromium) konnte nicht gestartet werden');
+		throw errors.unavailable(t('pdf.errors.engineUnavailable'));
 	}
 	const context = await browser.newContext({ javaScriptEnabled: false, acceptDownloads: false });
 	try {
@@ -177,7 +177,7 @@ export function buildDocumentHtml(
 	input?: PdfTemplateInput
 ): string {
 	return `<!doctype html>
-<html lang="de"><head><meta charset="utf-8" />
+<html lang="${getLocale()}"><head><meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'" />
 <title>${escapeHtml(data.title)}</title>
 <style>${template.css(data)}</style></head>
@@ -186,7 +186,7 @@ export function buildDocumentHtml(
 
 /** PDF-Dateiname aus dem Titel (ASCII, `-` statt Sonderzeichen, ≤ 80 Zeichen + `.pdf`) */
 export function sanitizeFileName(title: string): string {
-	return `${safeFileName(title, { replacement: '-', maxLength: 80, fallback: 'dokument' })}.pdf`;
+	return `${safeFileName(title, { replacement: '-', maxLength: 80, fallback: t('pdf.fileNameFallback') })}.pdf`;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -210,15 +210,15 @@ const CONTROL_CHARS = /\p{Cc}/u;
 export function validateRecipient(recipient: string[] | undefined): string[] | undefined {
 	if (recipient === undefined) return undefined;
 	if (!Array.isArray(recipient) || recipient.length > MAX_RECIPIENT_LINES) {
-		throw errors.badRequest('Ungültige Empfängeradresse');
+		throw errors.badRequest(t('pdf.errors.invalidRecipient'));
 	}
 	return recipient.map((line) => {
-		if (typeof line !== 'string') throw errors.badRequest('Ungültige Empfängeradresse');
-		const t = line.trim();
-		if (!t || t.length > MAX_RECIPIENT_LINE || CONTROL_CHARS.test(t)) {
-			throw errors.badRequest('Ungültige Empfängeradresse');
+		if (typeof line !== 'string') throw errors.badRequest(t('pdf.errors.invalidRecipient'));
+		const value = line.trim();
+		if (!value || value.length > MAX_RECIPIENT_LINE || CONTROL_CHARS.test(value)) {
+			throw errors.badRequest(t('pdf.errors.invalidRecipient'));
 		}
-		return t;
+		return value;
 	});
 }
 
@@ -231,6 +231,7 @@ async function loadLayout(
 ): Promise<{ s: Awaited<ReturnType<typeof getSettings>>; data: PdfLayoutData }> {
 	const s = await getSettings([
 		'core.organization.name',
+		'core.system.name',
 		'core.organization.address',
 		'core.organization.email',
 		'core.organization.phone',
@@ -249,19 +250,21 @@ async function loadLayout(
 	const data: PdfLayoutData = {
 		title,
 		organization: {
-			name: String(s['core.organization.name'] ?? ''),
+			name: String(s['core.organization.name'] || s['core.system.name'] || ''),
 			address: String(s['core.organization.address'] ?? ''),
 			email: String(s['core.organization.email'] ?? ''),
 			phone: String(s['core.organization.phone'] ?? '')
 		},
 		logoDataUrl: s['core.pdf.showLogo']
-			? await loadLogo(String(s['core.design.logoFileId'] ?? ''))
+			? ((await loadLogo(String(s['core.design.logoFileId'] ?? ''))) ??
+				(await activeModuleHook('brandingLogo'))?.value ??
+				null)
 			: null,
 		headerText: String(s['core.pdf.headerText'] ?? ''),
 		footerText: String(s['core.pdf.footerText'] ?? ''),
 		accentColor: String(s['core.design.accentColor'] ?? '#2563eb'),
 		createdAt: new Date(),
-		locale: 'de-DE'
+		locale: intlLocale()
 	};
 	return { s, data };
 }
@@ -277,7 +280,7 @@ const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 function checkAttachmentLimits(list: PdfAttachment[]): void {
 	const total = list.reduce((a, x) => a + (x.data?.byteLength ?? 0), 0);
 	if (list.length > MAX_ATTACHMENTS || total > MAX_ATTACHMENT_BYTES) {
-		throw errors.badRequest('Zu viele oder zu große Anlagen');
+		throw errors.badRequest(t('pdf.errors.attachmentsTooLarge'));
 	}
 }
 
@@ -329,13 +332,13 @@ async function appendAttachments(
 		}
 		const body =
 			attachmentBody(att, o.landscape) ??
-			'<p style="font-size:11pt;color:#b91c1c;">Anlage nicht lesbar</p>';
+			`<p style="font-size:11pt;color:#b91c1c;">${escapeHtml(t('pdf.attachmentUnreadable'))}</p>`;
 		plans.push({ kind: 'html', att, body });
 	}
 
 	const renderSections = async (sections: string[]): Promise<PDFDocument> => {
 		const html = `<!doctype html>
-<html lang="de"><head><meta charset="utf-8" />
+<html lang="${getLocale()}"><head><meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'" />
 <title>${escapeHtml(o.title)}</title>
 <style>* { box-sizing: border-box; } body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 0; }</style></head>
@@ -353,7 +356,7 @@ async function appendAttachments(
 			if (doc.getPageCount() < 1) throw new Error('leer');
 			return doc;
 		} catch {
-			throw errors.unavailable('PDF-Anlagen konnten nicht erzeugt werden');
+			throw errors.unavailable(t('pdf.errors.attachmentsFailed'));
 		}
 	};
 
@@ -382,7 +385,7 @@ async function appendAttachments(
 	try {
 		mainDoc = await PDFDocument.load(main);
 	} catch {
-		throw errors.unavailable('PDF konnte nicht mit Anlagen zusammengeführt werden');
+		throw errors.unavailable(t('pdf.errors.attachmentsMergeFailed'));
 	}
 	const out = await PDFDocument.create();
 	const font = await out.embedStandardFont(StandardFonts.HelveticaBold);
@@ -423,10 +426,10 @@ const MAX_MERGE_BYTES = 200 * 1024 * 1024;
 /** Hängt mehrere PDF-Dokumente (Seiten unverändert) zu einem Dokument zusammen. */
 export async function mergePdfs(buffers: Uint8Array[]): Promise<Uint8Array> {
 	if (!buffers.length || buffers.length > MAX_MERGE_DOCUMENTS) {
-		throw errors.badRequest('Ungültige Anzahl von Dokumenten');
+		throw errors.badRequest(t('pdf.errors.invalidDocumentCount'));
 	}
 	if (buffers.reduce((a, b) => a + b.byteLength, 0) > MAX_MERGE_BYTES) {
-		throw errors.tooLarge('Dokumente sind zu groß zum Zusammenführen');
+		throw errors.tooLarge(t('pdf.errors.mergeTooLarge'));
 	}
 	const out = await PDFDocument.create();
 	for (const buf of buffers) {
@@ -434,7 +437,7 @@ export async function mergePdfs(buffers: Uint8Array[]): Promise<Uint8Array> {
 		try {
 			doc = await PDFDocument.load(buf);
 		} catch {
-			throw errors.unavailable('PDF konnte nicht zusammengeführt werden');
+			throw errors.unavailable(t('pdf.errors.mergeFailed'));
 		}
 		for (const p of await out.copyPages(doc, doc.getPageIndices())) out.addPage(p);
 	}
@@ -452,7 +455,7 @@ export async function generateMany(
 ): Promise<PdfResult> {
 	assertIdentity(ctx);
 	if (!inputs.length || inputs.length > MAX_MERGE_DOCUMENTS) {
-		throw errors.badRequest('Ungültige Anzahl von Dokumenten');
+		throw errors.badRequest(t('pdf.errors.invalidDocumentCount'));
 	}
 	const buffers: Uint8Array[] = [];
 	for (const input of inputs) {
@@ -471,14 +474,15 @@ export async function generateMany(
 export async function generate(ctx: RequestContext, input: PdfGenerateInput): Promise<PdfResult> {
 	assertIdentity(ctx);
 	if (!input.title.trim() || input.title.length > MAX_TITLE) {
-		throw errors.badRequest('Ungültiger Dokumenttitel');
+		throw errors.badRequest(t('pdf.errors.invalidTitle'));
 	}
-	if (input.content.length > MAX_BLOCKS) throw errors.badRequest('Dokument ist zu umfangreich');
-	if (input.store && !input.module)
-		throw errors.badRequest('`module` ist für das Speichern erforderlich');
+	if (input.content.length > MAX_BLOCKS) throw errors.badRequest(t('pdf.errors.documentTooLarge'));
+	if (input.store && !input.module) throw errors.badRequest(t('pdf.errors.moduleRequired'));
 
-	const template = getTemplate(input.template ?? 'default');
-	if (!template) throw errors.badRequest(`Unbekanntes PDF-Template: ${input.template}`);
+	const template = (await resolveTemplate(input.template ?? 'default'))?.template;
+	if (!template) {
+		throw errors.badRequest(t('pdf.errors.unknownTemplate', { id: String(input.template) }));
+	}
 
 	const recipient = validateRecipient(input.recipient);
 	const { s, data } = await loadLayout(input.title);
@@ -487,7 +491,7 @@ export async function generate(ctx: RequestContext, input: PdfGenerateInput): Pr
 	const format = page
 		? (page.format ?? 'A4')
 		: (input.format ?? (s['core.pdf.defaultFormat'] as PdfFormat));
-	if (!FORMATS.includes(format)) throw errors.badRequest('Ungültiges Seitenformat');
+	if (!FORMATS.includes(format)) throw errors.badRequest(t('pdf.errors.invalidFormat'));
 	// Festes Seitenlayout bestimmt die Ausrichtung selbst (sonst passt der Briefkopf nicht)
 	const orientation: PdfOrientation = page
 		? (page.orientation ?? 'portrait')
@@ -501,7 +505,7 @@ export async function generate(ctx: RequestContext, input: PdfGenerateInput): Pr
 				left: input.margins?.left ?? String(s['core.pdf.marginLeft'])
 			};
 	for (const m of Object.values(margins)) {
-		if (!CSS_LENGTH.test(m)) throw errors.badRequest('Ungültiger Seitenrand');
+		if (!CSS_LENGTH.test(m)) throw errors.badRequest(t('pdf.errors.invalidMargin'));
 	}
 
 	const showHeader = input.showHeader ?? true;
@@ -576,7 +580,7 @@ const chromiumPreviewRenderer: PreviewRenderer = async (html, { width, height })
 	try {
 		browser = await getBrowser();
 	} catch {
-		throw errors.unavailable('PDF-Engine (Chromium) konnte nicht gestartet werden');
+		throw errors.unavailable(t('pdf.errors.engineUnavailable'));
 	}
 	const context = await browser.newContext({
 		javaScriptEnabled: false,
@@ -611,13 +615,13 @@ export function setPreviewRendererForTests(fn: PreviewRenderer | undefined): voi
 }
 
 export async function renderTemplatePreview(options: PreviewOptions): Promise<Uint8Array> {
-	const template = getTemplate(options.template);
-	if (!template) throw errors.notFound('Vorlage nicht gefunden');
+	const template = (await resolveTemplate(options.template))?.template;
+	if (!template) throw errors.notFound(t('pdf.errors.templateNotFound'));
 	if (options.only !== undefined && !template.parts?.some((p) => p.id === options.only)) {
-		throw errors.badRequest('Unbekannter Bestandteil');
+		throw errors.badRequest(t('pdf.errors.unknownPart'));
 	}
-	const recipient = validateRecipient(options.recipient ?? SAMPLE_RECIPIENT);
-	const { data } = await loadLayout('Vorschau');
+	const recipient = validateRecipient(options.recipient ?? sampleRecipient());
+	const { data } = await loadLayout(t('pdf.previewTitle'));
 	const m = template.page?.margins;
 	const padding = m ? `${m.top} ${m.right} ${m.bottom} ${m.left}` : '0';
 	const base = buildDocumentHtml(template, data, sampleContent(), {

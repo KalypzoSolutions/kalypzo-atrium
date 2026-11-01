@@ -18,6 +18,7 @@ import {
 	type UploadCreateInput,
 	type UploadProgress
 } from './types';
+import { intlLocale, t } from '$lib/i18n';
 
 /** Toleranz über der Chunkgröße (Client rundet evtl. anders) */
 const CHUNK_TOLERANCE = 64 * 1024;
@@ -61,15 +62,15 @@ function sweepUploads(): void {
 
 function formatBytes(n: number): string {
 	if (n >= 1024 ** 3)
-		return `${(n / 1024 ** 3).toLocaleString('de-DE', { maximumFractionDigits: 1 })} GB`;
-	return `${Math.round(n / 1024 ** 2).toLocaleString('de-DE')} MB`;
+		return `${(n / 1024 ** 3).toLocaleString(intlLocale(), { maximumFractionDigits: 1 })} GB`;
+	return `${Math.round(n / 1024 ** 2).toLocaleString(intlLocale())} MB`;
 }
 
 function sessionFor(ctx: RequestContext, uploadId: string): UploadSession {
 	sweepUploads();
 	const u = typeof uploadId === 'string' ? uploads.get(uploadId) : undefined;
 	if (!u || u.userId !== ctx.userId) {
-		throw errors.notFound('Upload nicht gefunden oder abgelaufen');
+		throw errors.notFound(t('backup.upload.notFound'));
 	}
 	return u;
 }
@@ -90,7 +91,7 @@ export async function createUpload(
 	const { size } = parsed.data;
 	const max = maxBackupBytes();
 	if (size > max) {
-		throw errors.tooLarge(`Die Sicherungsdatei ist zu groß (höchstens ${formatBytes(max)})`);
+		throw errors.tooLarge(t('backup.upload.tooLarge', { max: formatBytes(max) }));
 	}
 	sweepUploads();
 	await assertFreeSpace(size + 64 * 1024 * 1024);
@@ -130,7 +131,7 @@ async function readBody(body: ReadableStream<Uint8Array>, expected: number): Pro
 			if (done) break;
 			if (!value?.length) continue;
 			if (off + value.length > expected) {
-				throw errors.badRequest('Das Stück ist größer als angegeben');
+				throw errors.badRequest(t('backup.upload.chunkLarger'));
 			}
 			out.set(value, off);
 			off += value.length;
@@ -138,7 +139,7 @@ async function readBody(body: ReadableStream<Uint8Array>, expected: number): Pro
 	} finally {
 		reader.releaseLock();
 	}
-	if (off !== expected) throw errors.badRequest('Das Stück ist unvollständig');
+	if (off !== expected) throw errors.badRequest(t('backup.upload.chunkIncomplete'));
 	return out;
 }
 
@@ -152,18 +153,18 @@ export async function appendUpload(
 ): Promise<UploadProgress> {
 	await requireBackupUser(ctx);
 	const u = sessionFor(ctx, uploadId);
-	if (u.busy || u.held > 0) throw errors.conflict('Der Upload wird gerade verarbeitet');
+	if (u.busy || u.held > 0) throw errors.conflict(t('backup.upload.busy'));
 	if (!Number.isSafeInteger(offset) || offset !== u.received) {
-		throw new CoreError('conflict', 'Upload-Position stimmt nicht', progressOf(u));
+		throw new CoreError('conflict', t('backup.upload.position'), progressOf(u));
 	}
 	if (!body || !Number.isSafeInteger(contentLength) || contentLength <= 0) {
-		throw errors.badRequest('Leeres oder ungültiges Stück');
+		throw errors.badRequest(t('backup.upload.chunkEmpty'));
 	}
 	if (contentLength > UPLOAD_CHUNK_BYTES + CHUNK_TOLERANCE) {
-		throw errors.tooLarge('Das Stück ist zu groß');
+		throw errors.tooLarge(t('backup.upload.chunkTooLarge'));
 	}
 	if (u.received + contentLength > u.size) {
-		throw errors.badRequest('Das Stück geht über die angekündigte Dateigröße hinaus');
+		throw errors.badRequest(t('backup.upload.chunkBeyond'));
 	}
 	u.busy = true;
 	try {
@@ -189,7 +190,7 @@ export async function appendUpload(
 export function uploadPath(ctx: RequestContext, uploadId: string): string {
 	const u = sessionFor(ctx, uploadId);
 	if (u.busy || u.received !== u.size) {
-		throw errors.conflict('Der Upload ist noch nicht vollständig');
+		throw errors.conflict(t('backup.upload.incomplete'));
 	}
 	u.expiresAt = clock() + BACKUP_LIMITS.uploadTtlMs;
 	return u.path;

@@ -1,0 +1,19 @@
+{
+	"suggestions": {
+		"outdoor": "Outdoors & trips",
+		"organisation": "Organization",
+		"media": "Media",
+		"community": "Community"
+	},
+	"picker": {
+		"search": "Search icon",
+		"placeholder": "Search icon, e.g. tent, cash, photo …",
+		"results": "{count, plural, one {# result} other {# results}}",
+		"all": "All icons ({count})",
+		"loadFailed": "The icons could not be loaded.",
+		"retry": "Try again",
+		"loading": "Loading icons …",
+		"none": "No icons found.",
+		"more": "Show more ({count})"
+	}
+}

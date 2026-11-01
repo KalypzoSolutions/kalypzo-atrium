@@ -7,7 +7,8 @@
 	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import Copy from '@lucide/svelte/icons/copy';
 	import { DashboardCard } from '$lib/components/layout';
-	import { formatEuro } from '$lib/components/layout/money';
+	import { t } from '$lib/i18n';
+	import { formatMoney } from '$lib/i18n/intl';
 	import { Button } from '$lib/components/ui/button';
 	import type { DashboardFeed, DashboardFeedTodo } from '$lib/sdk/types/dashboard';
 	import type { DashboardWidgetProps } from '$lib/sdk/types/module-ui';
@@ -31,7 +32,7 @@
 			feed = await loadDashboardFeed(fresh);
 			onstatus?.('ready');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Die Liste konnte nicht geladen werden.';
+			error = e instanceof Error ? e.message : t('widgets.todos.loadFailed');
 			onstatus?.('error');
 		} finally {
 			loading = false;
@@ -44,10 +45,14 @@
 
 	const todos = $derived(feed?.todos ?? []);
 	const shown = $derived(showAll ? todos : todos.slice(0, LIMIT));
-	const keyOf = (t: DashboardFeedTodo) => `${t.moduleId}:${t.id}`;
+	const keyOf = (todo: DashboardFeedTodo) => `${todo.moduleId}:${todo.id}`;
 	const failedNames = $derived(feed?.failed.length ? feed.failed.join(', ') : '');
 
-	const SEVERITY_LABEL = { overdue: 'Überfällig', due: 'Bald fällig', info: 'Hinweis' } as const;
+	const SEVERITY_LABEL = {
+		overdue: 'widgets.todos.severity.overdue',
+		due: 'widgets.todos.severity.due',
+		info: 'widgets.todos.severity.info'
+	} as const;
 	const iban = (v: string) =>
 		v
 			.replace(/\s+/g, '')
@@ -57,15 +62,15 @@
 	async function copy(value: string, label: string) {
 		try {
 			await navigator.clipboard.writeText(value);
-			toast.success(`${label} kopiert`);
+			toast.success(t('widgets.todos.copied', { label }));
 		} catch {
-			toast.error('Kopieren nicht möglich');
+			toast.error(t('widgets.todos.copyFailed'));
 		}
 	}
 </script>
 
 <DashboardCard
-	title="Zu erledigen"
+	title={t('widgets.todos.title')}
 	icon={ListChecks}
 	{loading}
 	{error}
@@ -74,7 +79,10 @@
 >
 	{#snippet actions()}
 		{#if todos.length}
-			<span class="text-xs text-muted-foreground tabular-nums" aria-label="{todos.length} offen">
+			<span
+				class="text-xs text-muted-foreground tabular-nums"
+				aria-label={t('widgets.todos.openCount', { count: todos.length })}
+			>
 				{todos.length}
 			</span>
 		{/if}
@@ -82,45 +90,45 @@
 	{#if feed}
 		{#if !todos.length}
 			<p class="py-2" data-testid="todos-empty">
-				<span class="block font-medium">Alles erledigt.</span>
+				<span class="block font-medium">{t('widgets.todos.allDone')}</span>
 				<span class="text-muted-foreground">
-					Neue Rechnungen, Fristen und Aufgaben erscheinen hier.
+					{t('widgets.todos.allDoneHint')}
 				</span>
 			</p>
 		{:else}
 			<ul class="divide-y" data-testid="todos-list">
-				{#each shown as t, i (keyOf(t))}
-					{@const key = keyOf(t)}
+				{#each shown as todo, i (keyOf(todo))}
+					{@const key = keyOf(todo)}
 					{@const open = openKey === key}
-					{@const due = dueLabel(t.due, feed.today)}
+					{@const due = dueLabel(todo.due, feed.today)}
 					<li class="py-2.5">
 						<div class="flex items-center gap-3">
 							<span
 								class={[
 									'size-2 shrink-0 rounded-full',
-									t.severity === 'overdue'
+									todo.severity === 'overdue'
 										? 'bg-destructive'
-										: t.severity === 'due'
+										: todo.severity === 'due'
 											? 'bg-primary'
 											: 'bg-muted-foreground/40'
 								]}
 								role="img"
-								aria-label={SEVERITY_LABEL[t.severity]}
+								aria-label={t(SEVERITY_LABEL[todo.severity])}
 							></span>
 							<div class="min-w-0 flex-1">
-								<p class="font-medium break-words">{t.title}</p>
+								<p class="font-medium break-words">{todo.title}</p>
 								<p class="text-xs text-muted-foreground">
-									{t.detail ?? ''}{t.detail && due ? ' · ' : ''}{#if due}<span
-											class={t.severity === 'overdue' ? 'text-destructive' : ''}>{due}</span
+									{todo.detail ?? ''}{todo.detail && due ? ' · ' : ''}{#if due}<span
+											class={todo.severity === 'overdue' ? 'text-destructive' : ''}>{due}</span
 										>{/if}
 								</p>
 							</div>
-							{#if t.amountCents !== undefined}
+							{#if todo.amountCents !== undefined}
 								<span class="hidden shrink-0 font-semibold tabular-nums sm:block">
-									{formatEuro(t.amountCents)}
+									{formatMoney(todo.amountCents)}
 								</span>
 							{/if}
-							{#if t.payment}
+							{#if todo.payment}
 								<Button
 									size="sm"
 									variant={i === 0 ? 'default' : 'secondary'}
@@ -129,62 +137,62 @@
 									aria-controls={`pay-${key}`}
 									onclick={() => (openKey = open ? null : key)}
 								>
-									{t.action.label}
+									{todo.action.label}
 								</Button>
 							{:else}
 								<Button
 									size="sm"
 									variant={i === 0 ? 'default' : 'secondary'}
 									class="shrink-0"
-									href={t.action.href}
+									href={todo.action.href}
 								>
-									{t.action.label}
+									{todo.action.label}
 								</Button>
 							{/if}
 						</div>
-						{#if t.amountCents !== undefined}
+						{#if todo.amountCents !== undefined}
 							<p class="mt-0.5 pl-5 text-xs font-semibold tabular-nums sm:hidden">
-								{formatEuro(t.amountCents)}
+								{formatMoney(todo.amountCents)}
 							</p>
 						{/if}
-						{#if t.payment && open}
-							{@const pay = t.payment}
+						{#if todo.payment && open}
+							{@const pay = todo.payment}
 							<dl
 								id={`pay-${key}`}
 								class="mt-2 ml-5 grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 rounded-md bg-muted/60 p-3 text-xs"
 							>
-								<dt class="text-muted-foreground">Empfänger</dt>
+								<dt class="text-muted-foreground">{t('widgets.todos.recipient')}</dt>
 								<dd class="col-span-2 min-w-0 break-words">{pay.holder}</dd>
-								<dt class="text-muted-foreground">IBAN</dt>
+								<dt class="text-muted-foreground">{t('widgets.todos.iban')}</dt>
 								<dd class="min-w-0 font-mono break-all">{iban(pay.iban)}</dd>
 								<Button
 									variant="ghost"
 									size="icon-xs"
-									aria-label="IBAN kopieren"
-									onclick={() => copy(pay.iban.replace(/\s+/g, ''), 'IBAN')}
+									aria-label={t('widgets.todos.copyIban')}
+									onclick={() => copy(pay.iban.replace(/\s+/g, ''), t('widgets.todos.iban'))}
 								>
 									<Copy />
 								</Button>
 								{#if pay.bic}
-									<dt class="text-muted-foreground">BIC</dt>
+									<dt class="text-muted-foreground">{t('widgets.todos.bic')}</dt>
 									<dd class="col-span-2 font-mono">{pay.bic}</dd>
 								{/if}
-								<dt class="text-muted-foreground">Betrag</dt>
-								<dd class="col-span-2 tabular-nums">{formatEuro(pay.amountCents)}</dd>
-								<dt class="text-muted-foreground">Zweck</dt>
+								<dt class="text-muted-foreground">{t('widgets.todos.amount')}</dt>
+								<dd class="col-span-2 tabular-nums">{formatMoney(pay.amountCents)}</dd>
+								<dt class="text-muted-foreground">{t('widgets.todos.reference')}</dt>
 								<dd class="min-w-0 break-words">{pay.reference}</dd>
 								<Button
 									variant="ghost"
 									size="icon-xs"
-									aria-label="Verwendungszweck kopieren"
-									onclick={() => copy(pay.reference, 'Verwendungszweck')}
+									aria-label={t('widgets.todos.copyReference')}
+									onclick={() => copy(pay.reference, t('widgets.todos.referenceLong'))}
 								>
 									<Copy />
 								</Button>
-								{#if t.action.href !== '/dashboard'}
+								{#if todo.action.href !== '/dashboard'}
 									<dd class="col-span-3 pt-1">
-										<a class="text-link underline-offset-2 hover:underline" href={t.action.href}>
-											Rechnung ansehen
+										<a class="text-link underline-offset-2 hover:underline" href={todo.action.href}>
+											{t('widgets.todos.viewInvoice')}
 										</a>
 									</dd>
 								{/if}
@@ -195,13 +203,15 @@
 			</ul>
 			{#if todos.length > LIMIT}
 				<Button variant="ghost" size="sm" class="-ml-2" onclick={() => (showAll = !showAll)}>
-					{showAll ? 'Weniger anzeigen' : `Alle ${todos.length} anzeigen`}
+					{showAll
+						? t('widgets.todos.showLess')
+						: t('widgets.todos.showAll', { count: todos.length })}
 				</Button>
 			{/if}
 		{/if}
 		{#if failedNames}
 			<p class="pt-2 text-xs text-muted-foreground">
-				Nicht geladen: {failedNames}. Bitte später erneut versuchen.
+				{t('widgets.todos.failed', { names: failedNames })}
 			</p>
 		{/if}
 	{/if}

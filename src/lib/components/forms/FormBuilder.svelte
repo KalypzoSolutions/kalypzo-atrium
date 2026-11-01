@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { tick } from 'svelte';
 	import { flip } from 'svelte/animate';
 	import { Input } from '$lib/components/ui/input';
@@ -140,7 +141,11 @@
 		if (!changed) return;
 		commit(order);
 		const pos = order.findIndex((f) => f.id === id);
-		announce = `„${order[pos]?.label}“ steht jetzt an Position ${pos + 1} von ${order.length}.`;
+		announce = t('form-builder.builder.movedTo', {
+			label: order[pos]?.label ?? '',
+			pos: pos + 1,
+			total: order.length
+		});
 	}
 
 	function cancelDrag() {
@@ -194,7 +199,7 @@
 		const field = spec.create(id, key);
 		commit([...definition.fields, field]);
 		expanded[id] = true;
-		announce = `Feld „${field.label || spec.label}“ hinzugefügt.`;
+		announce = t('form-builder.builder.added', { label: field.label || spec.label });
 		await focusCard(id, '[data-focus-first]');
 	}
 
@@ -210,7 +215,7 @@
 				src.key,
 				definition.fields.map((f) => f.key)
 			),
-			label: src.label ? `${src.label} (Kopie)` : src.label,
+			label: src.label ? t('form-builder.builder.copySuffix', { label: src.label }) : src.label,
 			locked: undefined,
 			mandatory: undefined,
 			hidden: undefined
@@ -219,7 +224,7 @@
 		next.splice(i + 1, 0, copy);
 		commit(next);
 		expanded[id] = true;
-		announce = `Feld „${src.label}“ dupliziert.`;
+		announce = t('form-builder.builder.duplicated', { label: src.label });
 		focusCard(id, '[data-focus-first]');
 	}
 
@@ -233,7 +238,11 @@
 		next[i] = f;
 		next[j] = a;
 		commit(next);
-		announce = `„${f.label}“ steht jetzt an Position ${j + 1} von ${next.length}.`;
+		announce = t('form-builder.builder.movedTo', {
+			label: f.label,
+			pos: j + 1,
+			total: next.length
+		});
 		const dir = d < 0 ? 'up' : 'down';
 		await tick();
 		if (focusOn === 'grip') {
@@ -264,7 +273,7 @@
 		if (!f) return;
 		commit(definition.fields.filter((x) => x.id !== f.id));
 		delete expanded[f.id];
-		announce = `Feld „${f.label}“ gelöscht.`;
+		announce = t('form-builder.builder.deleted', { label: f.label });
 	}
 
 	function onTab(v: string) {
@@ -278,18 +287,21 @@
 	<Tabs.Root bind:value={tab} onValueChange={onTab}>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<Tabs.List>
-				<Tabs.Trigger value="edit">Bearbeiten</Tabs.Trigger>
-				<Tabs.Trigger value="preview">Vorschau</Tabs.Trigger>
+				<Tabs.Trigger value="edit">{t('form-builder.builder.tabEdit')}</Tabs.Trigger>
+				<Tabs.Trigger value="preview">{t('form-builder.builder.tabPreview')}</Tabs.Trigger>
 			</Tabs.List>
 			<Button variant="ghost" size="sm" onclick={() => (fullscreen = true)}>
-				<Maximize2 /> Vollbild-Vorschau
+				<Maximize2 />
+				{t('form-builder.builder.fullscreen')}
 			</Button>
 		</div>
 
 		<Tabs.Content value="edit" class="space-y-5 pt-4">
 			<div class="grid gap-3">
 				<div class="space-y-1.5">
-					<label for="{uid}-title" class="text-sm font-medium">Titel (optional)</label>
+					<label for="{uid}-title" class="text-sm font-medium"
+						>{t('form-builder.builder.title')}</label
+					>
 					<Input
 						id="{uid}-title"
 						autocomplete="off"
@@ -304,7 +316,9 @@
 					/>
 				</div>
 				<div class="space-y-1.5">
-					<label for="{uid}-intro" class="text-sm font-medium">Einleitung (optional)</label>
+					<label for="{uid}-intro" class="text-sm font-medium"
+						>{t('form-builder.builder.intro')}</label
+					>
 					<Textarea
 						id="{uid}-intro"
 						rows={3}
@@ -321,14 +335,13 @@
 
 			{#if fieldCount === 0}
 				<div class="rounded-xl border border-dashed p-6 text-center">
-					<p class="text-sm font-medium">Noch keine Felder</p>
+					<p class="text-sm font-medium">{t('form-builder.builder.emptyTitle')}</p>
 					<p class="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
-						Füge Felder hinzu, die Teilnehmende ausfüllen sollen, z. B. Kurztext, Auswahl oder
-						Zustimmung. Reihenfolge, Pflichtangaben und Optionen lassen sich jederzeit anpassen.
+						{t('form-builder.builder.emptyText')}
 					</p>
 				</div>
 			{:else}
-				<ol class="space-y-3" aria-label="Formularfelder">
+				<ol class="space-y-3" aria-label={t('form-builder.builder.fieldsLabel')}>
 					{#each list as f, i (f.id)}
 						{@const spec = specs.find((s) => s.type === f.type) ?? getFieldType(f.type)}
 						{@const Icon = fieldTypeIcon(spec)}
@@ -350,7 +363,7 @@
 										type="button"
 										data-grip
 										class="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring active:cursor-grabbing md:size-8"
-										aria-label="„{f.label}“ verschieben (ziehen oder Pfeiltasten)"
+										aria-label={t('form-builder.builder.dragHandle', { label: f.label })}
 										onpointerdown={(e) => startDrag(e, f.id)}
 										onkeydown={(e) => {
 											if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -379,7 +392,7 @@
 												? 'font-semibold'
 												: 'font-medium'}"
 										>
-											{f.label || '(ohne Beschriftung)'}
+											{f.label || t('form-builder.builder.noLabel')}
 											<span class="sr-only">, {spec.label}</span>
 										</span>
 										{#if note}
@@ -388,10 +401,18 @@
 									</span>
 								</button>
 								<div class="flex flex-wrap items-center gap-1">
-									{#if f.required}<Badge variant="secondary">Pflicht</Badge>{/if}
-									{#if f.locked}<Badge variant="outline">Standardfeld</Badge>{/if}
-									{#if f.hidden}<Badge variant="outline">Ausgeblendet</Badge>{/if}
-									{#if f.health}<Badge variant="outline">Gesundheitsdaten</Badge>{/if}
+									{#if f.required}<Badge variant="secondary"
+											>{t('form-builder.builder.badgeRequired')}</Badge
+										>{/if}
+									{#if f.locked}<Badge variant="outline"
+											>{t('form-builder.builder.badgeLocked')}</Badge
+										>{/if}
+									{#if f.hidden}<Badge variant="outline"
+											>{t('form-builder.builder.badgeHidden')}</Badge
+										>{/if}
+									{#if f.health}<Badge variant="outline"
+											>{t('form-builder.builder.badgeHealth')}</Badge
+										>{/if}
 								</div>
 								<div class="ml-auto flex shrink-0 items-center">
 									<Button
@@ -400,7 +421,7 @@
 										size="icon"
 										class={iconBtn}
 										data-move="up"
-										aria-label="„{f.label}“ nach oben"
+										aria-label={t('form-builder.builder.moveUp', { label: f.label })}
 										disabled={disabled || i === 0}
 										onclick={() => move(i, -1)}><ArrowUp /></Button
 									>
@@ -410,7 +431,7 @@
 										size="icon"
 										class={iconBtn}
 										data-move="down"
-										aria-label="„{f.label}“ nach unten"
+										aria-label={t('form-builder.builder.moveDown', { label: f.label })}
 										disabled={disabled || i === fieldCount - 1}
 										onclick={() => move(i, 1)}><ArrowDown /></Button
 									>
@@ -419,7 +440,7 @@
 										variant="ghost"
 										size="icon"
 										class={iconBtn}
-										aria-label="„{f.label}“ duplizieren"
+										aria-label={t('form-builder.builder.duplicate', { label: f.label })}
 										disabled={disabled || atLimit}
 										onclick={() => duplicate(i)}><Copy /></Button
 									>
@@ -429,7 +450,7 @@
 											variant="ghost"
 											size="icon"
 											class="{iconBtn} text-destructive hover:text-destructive"
-											aria-label="„{f.label}“ löschen"
+											aria-label={t('form-builder.builder.delete', { label: f.label })}
 											{disabled}
 											onclick={() => askDelete(f)}><Trash /></Button
 										>
@@ -461,11 +482,11 @@
 				<FieldPalette types={specs} disabled={disabled || atLimit} onadd={add} />
 				{#if atLimit}
 					<p class="text-xs text-muted-foreground">
-						Maximale Anzahl von {maxFields} Feldern erreicht.
+						{t('form-builder.builder.limitReached', { max: maxFields })}
 					</p>
 				{:else}
 					<p class="text-xs text-muted-foreground tabular-nums">
-						{fieldCount} / {maxFields} Felder
+						{t('form-builder.builder.fieldCount', { count: fieldCount, max: maxFields })}
 					</p>
 				{/if}
 			</div>
@@ -473,7 +494,7 @@
 
 		<Tabs.Content value="preview" class="space-y-4 pt-4">
 			<p class="text-xs text-muted-foreground">
-				Vorschau: Eingaben werden nicht gespeichert und nicht abgeschickt.
+				{t('form-builder.builder.previewHint')}
 			</p>
 			<div class="rounded-xl border bg-card p-4 sm:p-6">
 				{#if definition.title}
@@ -484,7 +505,7 @@
 				{/if}
 				<div class={definition.title || definition.intro ? 'mt-5' : ''}>
 					{#if fieldCount === 0}
-						<p class="text-sm text-muted-foreground">Das Formular hat noch keine Felder.</p>
+						<p class="text-sm text-muted-foreground">{t('form-builder.builder.noFields')}</p>
 					{:else}
 						<FormRenderer {definition} bind:values={previewValues} idPrefix="{uid}-pv" />
 					{/if}
@@ -500,9 +521,11 @@
 
 <ConfirmDialog
 	bind:open={confirmOpen}
-	title={pendingDelete ? `Feld „${pendingDelete.label}“ löschen?` : 'Feld löschen?'}
-	description="Das Feld wird aus dem Formular entfernt. Dies gilt erst nach dem Speichern."
-	confirmLabel="Löschen"
+	title={pendingDelete
+		? t('form-builder.builder.deleteTitle', { label: pendingDelete.label })
+		: t('form-builder.builder.deleteTitleGeneric')}
+	description={t('form-builder.builder.deleteText')}
+	confirmLabel={t('form-builder.builder.deleteConfirm')}
 	destructive
 	onconfirm={doDelete}
 />

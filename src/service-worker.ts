@@ -8,6 +8,10 @@
  *
  * Bewusst **kein** Offline-Cache: Seiten und Daten kommen immer frisch vom Server, damit nach einem Update
  * keine veralteten Stände angezeigt werden.
+ *
+ * Nachrichten an/von der App heißen `atrium:*` (bis Kalypzo Atrium Phase N `ep:*`; beim Empfang gelten beide, damit
+ * alte und neue Fassung von App und Service Worker während eines Updates zusammenarbeiten). Texte kommen vom Server
+ * in der Push-Nachricht (`title`, `body`, `lang`); der Service Worker hat keine eigenen Übersetzungen.
  */
 import { version } from '$service-worker';
 
@@ -18,14 +22,28 @@ interface PushData {
 	body?: string;
 	url?: string;
 	tag?: string;
+	/** Sprache der Texte (`de`, `en`); ohne Angabe die des Geräts */
+	lang?: string;
 }
+
+/** Nachrichtentyp mit neuem (`atrium:`) oder altem Präfix (`ep:`) */
+function isType(data: unknown, name: string): boolean {
+	const type = (data as { type?: unknown } | null)?.type;
+	return type === `atrium:${name}` || type === `ep:${name}`;
+}
+
+/** Gerätesprache für die wenigen eigenen Texte (ohne Übersetzungskatalog im Service Worker) */
+const deviceIsGerman = () => (sw.navigator.language || '').toLowerCase().startsWith('de');
 
 sw.addEventListener('install', () => {
 	void sw.skipWaiting();
 });
 
 sw.addEventListener('activate', (event) => {
-	event.waitUntil(sw.clients.claim());
+	// Cache der früheren Fassung (`ep-pending-navigation`) aufräumen
+	event.waitUntil(
+		Promise.all([sw.clients.claim(), caches.delete(LEGACY_PENDING_CACHE).catch(() => false)])
+	);
 });
 
 /** Nur Pfade dieser App öffnen (Schutz vor fremden Zielen im Push-Inhalt) */
@@ -48,25 +66,29 @@ sw.addEventListener('push', (event) => {
 	} catch {
 		data = { body: event.data?.text() };
 	}
-	const title = data.title || 'EP Intern';
+	const title = data.title || sw.location.hostname;
+	const lang =
+		typeof data.lang === 'string' && /^[a-z]{2}$/.test(data.lang) ? data.lang : undefined;
 	event.waitUntil(
 		sw.registration.showNotification(title, {
 			body: data.body ?? '',
 			tag: data.tag,
 			icon: '/branding/icon-192.png',
 			badge: '/icons/badge-96.png',
-			lang: 'de',
+			...(lang ? { lang } : {}),
 			data: { url: safeUrl(data.url) }
 		})
 	);
 });
 
 /**
- * Ziel eines Klicks merken, bis die App es abholt (`ep:pending-navigation`). Rückfall für Plattformen, die beim
+ * Ziel eines Klicks merken, bis die App es abholt (`atrium:pending-navigation`). Rückfall für Plattformen, die beim
  * Kaltstart der installierten App die Startseite statt der übergebenen Adresse öffnen (v. a. iOS).
  */
-const PENDING_CACHE = 'ep-pending-navigation';
-const PENDING_KEY = '/__ep-pending-navigation';
+const PENDING_CACHE = 'atrium-pending-navigation';
+const PENDING_KEY = '/__atrium-pending-navigation';
+/** Cache-Name bis Kalypzo Atrium Phase N (wird beim Aktivieren gelöscht) */
+const LEGACY_PENDING_CACHE = 'ep-pending-navigation';
 const PENDING_MAX_AGE_MS = 60_000;
 
 async function rememberPending(url: string): Promise<void> {
@@ -110,7 +132,7 @@ function askClientToNavigate(client: WindowClient, url: string): Promise<boolean
 			resolve((e.data as { ok?: boolean } | null)?.ok === true);
 		};
 		try {
-			client.postMessage({ type: 'ep:navigate', url }, [channel.port2]);
+			client.postMessage({ type: 'atrium:navigate', url }, [channel.port2]);
 		} catch {
 			clearTimeout(timer);
 			resolve(false);
@@ -161,7 +183,7 @@ sw.addEventListener('notificationclick', (event) => {
 	);
 });
 
-const NAV_CHANNEL = 'ep-navigation';
+const NAV_CHANNEL = 'atrium-navigation';
 const BROADCAST_DELAYS_MS = [0, 500, 1500, 3000];
 
 async function broadcastNavigate(url: string): Promise<void> {
@@ -176,7 +198,7 @@ async function broadcastNavigate(url: string): Promise<void> {
 		await new Promise((r) => setTimeout(r, delay - waited));
 		waited = delay;
 		if (!(await hasPending())) break; // App hat das Ziel schon geöffnet
-		channel.postMessage({ type: 'ep:navigate', url });
+		channel.postMessage({ type: 'atrium:navigate', url });
 	}
 	channel.close();
 }
@@ -191,15 +213,15 @@ async function hasPending(): Promise<boolean> {
 
 sw.addEventListener('message', (event) => {
 	const data = event.data as { type?: string } | null;
-	if (data?.type === 'ep:sw-version') {
+	if (isType(data, 'sw-version')) {
 		event.ports[0]?.postMessage({ version });
 		return;
 	}
-	if (data?.type === 'ep:pending-clear') {
+	if (isType(data, 'pending-clear')) {
 		event.waitUntil(clearPending());
 		return;
 	}
-	if (data?.type !== 'ep:pending-navigation') return;
+	if (!isType(data, 'pending-navigation')) return;
 	const port = event.ports[0];
 	if (!port) return;
 	event.waitUntil(takePending().then((url) => port.postMessage({ url })));
@@ -230,7 +252,10 @@ sw.addEventListener('pushsubscriptionchange', (event) => {
 				method: 'POST',
 				credentials: 'same-origin',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ ...sub.toJSON(), label: 'Erneuertes Gerät' })
+				body: JSON.stringify({
+					...sub.toJSON(),
+					label: deviceIsGerman() ? 'Erneuertes Gerät' : 'Renewed device'
+				})
 			});
 		})().catch(() => undefined)
 	);

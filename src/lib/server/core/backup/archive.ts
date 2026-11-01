@@ -30,6 +30,7 @@ import {
 	type ByteSink,
 	type ByteSource
 } from './types';
+import { t } from '$lib/i18n';
 
 const SIG_LOCAL = 0x04034b50;
 const SIG_CENTRAL = 0x02014b50;
@@ -38,11 +39,9 @@ const SIG_DESCRIPTOR = 0x08074b50;
 const FEED_SLICE = 32 * 1024;
 const WRITE_SLICE = 1024 * 1024;
 
-const MSG_CORRUPT = 'Die Sicherungsdatei ist beschädigt oder unvollständig.';
-const MSG_TOO_LARGE = 'Die Sicherung überschreitet die erlaubte Größe.';
-
-const corrupt = (msg = MSG_CORRUPT) => new BackupFormatError('corrupt', msg);
-const tooLarge = () => new BackupFormatError('too_large', MSG_TOO_LARGE);
+const corrupt = (msg?: string) =>
+	new BackupFormatError('corrupt', msg ?? t('backup.format.corrupt'));
+const tooLarge = () => new BackupFormatError('too_large', t('backup.format.tooLarge'));
 
 /** Erlaubter Eintragsname (nur die vier Formen aus dem Vertrag, keine Pfadtricks) */
 export function isAllowedEntryName(name: string): boolean {
@@ -61,10 +60,7 @@ export function isAllowedEntryName(name: string): boolean {
 
 function assertEntryName(name: string): void {
 	if (!isAllowedEntryName(name)) {
-		throw new BackupFormatError(
-			'invalid_entry',
-			'Die Sicherung enthält einen unerlaubten Eintrag.'
-		);
+		throw new BackupFormatError('invalid_entry', t('backup.format.forbiddenEntry'));
 	}
 }
 
@@ -104,7 +100,7 @@ export function createArchiveWriter(
 			if (busy) throw new Error('Einträge müssen nacheinander hinzugefügt werden');
 			assertEntryName(name);
 			if (names.has(name)) {
-				throw new BackupFormatError('invalid_entry', 'Doppelter Eintrag in der Sicherung.');
+				throw new BackupFormatError('invalid_entry', t('backup.format.duplicateEntry'));
 			}
 			names.add(name);
 			busy = true;
@@ -274,14 +270,11 @@ export function readArchive(source: ByteSource): AsyncIterable<ArchiveEntry> {
 					try {
 						name = new TextDecoder('utf-8', { fatal: true }).decode(nameBytes);
 					} catch {
-						throw new BackupFormatError(
-							'invalid_entry',
-							'Ungültiger Eintragsname in der Sicherung.'
-						);
+						throw new BackupFormatError('invalid_entry', t('backup.format.invalidEntryName'));
 					}
 					assertEntryName(name);
 					if (names.has(name)) {
-						throw new BackupFormatError('invalid_entry', 'Doppelter Eintrag in der Sicherung.');
+						throw new BackupFormatError('invalid_entry', t('backup.format.duplicateEntry'));
 					}
 					names.add(name);
 					if (++entries > BACKUP_LIMITS.maxEntries) throw tooLarge();
@@ -294,20 +287,14 @@ export function readArchive(source: ByteSource): AsyncIterable<ArchiveEntry> {
 						usize: u32(h, 18)
 					};
 					if (flags & 1) {
-						throw new BackupFormatError(
-							'unsupported',
-							'Verschlüsselte ZIP-Einträge werden nicht unterstützt.'
-						);
+						throw new BackupFormatError('unsupported', t('backup.format.encryptedZip'));
 					}
 					if (method !== 8 && !(method === 0 && !header.descriptor)) {
-						throw new BackupFormatError(
-							'unsupported',
-							'Nicht unterstützte Kompression in der Sicherung.'
-						);
+						throw new BackupFormatError('unsupported', t('backup.format.compression'));
 					}
 					if (!header.descriptor) {
 						if (header.csize === 0xffffffff || header.usize === 0xffffffff) {
-							throw new BackupFormatError('unsupported', 'ZIP64 wird nicht unterstützt.');
+							throw new BackupFormatError('unsupported', t('backup.format.zip64'));
 						}
 						if (header.usize > BACKUP_LIMITS.maxEntryBytes) throw tooLarge();
 					}
@@ -510,7 +497,7 @@ export function readNdjson(source: ByteSource): AsyncIterable<unknown> {
 			const tooLong = () =>
 				new BackupFormatError(
 					'too_large',
-					`Eine Datenzeile der Sicherung ist größer als ${BACKUP_LIMITS.maxLineBytes / 1024 ** 2} MB.`
+					t('backup.format.lineTooLarge', { mb: BACKUP_LIMITS.maxLineBytes / 1024 ** 2 })
 				);
 			for await (const chunk of source) {
 				let off = 0;

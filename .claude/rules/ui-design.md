@@ -59,6 +59,8 @@ paths:
 - Layout: Sidebar links (`w-56`, Einträge `py-1.5`, flache Liste nach `order`, „Administration“ aufklappbar und nach dem Laden zu), Kopfzeile `h-14`, Inhalt in `max-w`-freier
   Spalte mit `p-4…8`. Abstände `space-y-4` (innerhalb) / `space-y-6` (Abschnitte). Raster: `grid gap-4 sm:grid-cols-2 lg:grid-cols-3`.
 - Texte deutsch, du-Ansprache, kurze Sätze. Gendern mit `*` (Teilnehmende*r, Besitzer*in). UI mit echten Umlauten.
+  **Core-Oberfläche** (`src/**`): nie feste Texte, sondern `t('<bereich>.<schlüssel>')` aus `$lib/i18n` mit de + en (Englisch neutral, „you“);
+  Datum/Zahlen/Geld über `$lib/i18n/intl` (siehe `architecture.md` → Mehrsprachigkeit).
 - Formate: `de-DE`, Datum `TT.MM.JJJJ`, Beträge `1.234,50 €` (`formatEuro`), Zeiten `HH:MM`.
 
 ## Seitenaufbau (Muster)

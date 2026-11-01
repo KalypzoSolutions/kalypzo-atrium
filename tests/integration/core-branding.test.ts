@@ -1,6 +1,6 @@
 /**
  * Logo als Favicon/App-Icon: Upload wird neu kodiert (PNG ≤ 1024 px, ohne EXIF/GPS), Icons entstehen
- * daraus in fester Größe, ohne Logo greift das Wappen. Rechte: `core.settings.manage`.
+ * daraus in fester Größe, ohne Logo greifen die neutralen Icons. Rechte: `core.settings.manage`.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
@@ -57,11 +57,11 @@ afterAll(async () => {
 });
 
 describe('Logo und App-Icons', () => {
-	it('ohne Logo: Wappen (null), unbekannte Namen undefined', async () => {
+	it('ohne Logo: neutrale Icons (null), unbekannte Namen undefined', async () => {
 		const state = await brandingState();
 		expect(state.logoId).toBeNull();
 		expect(logoUrl(state)).toBeNull();
-		expect(brandVersion(state)).toBe('w');
+		expect(brandVersion(state)).toBe('n');
 		expect(await brandIcon('icon-192.png', state)).toBeNull();
 		expect(await brandIcon('../secret.png', state)).toBeUndefined();
 		expect(await brandLogo(state)).toBeNull();
@@ -120,7 +120,7 @@ describe('Logo und App-Icons', () => {
 		await expect(removeLogo(user)).rejects.toMatchObject({ status: 403 });
 	});
 
-	it('Entfernen: zurück zum Wappen', async () => {
+	it('Entfernen: zurück zu den neutralen Icons', async () => {
 		await removeLogo(admin);
 		const state = await brandingState();
 		expect(state.logoId).toBeNull();

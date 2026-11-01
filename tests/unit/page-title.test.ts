@@ -8,7 +8,7 @@ describe('documentTitle (#71)', () => {
 	it('fehlende Teile', () => {
 		expect(documentTitle('Termine', '')).toBe('Termine');
 		expect(documentTitle(null, 'Stamm')).toBe('Stamm');
-		expect(documentTitle('  ', null)).toBe('EP Intern');
+		expect(documentTitle('  ', null)).toBe('Kalypzo Atrium');
 		expect(documentTitle('Stamm', 'Stamm')).toBe('Stamm');
 	});
 });

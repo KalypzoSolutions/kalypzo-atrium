@@ -1,4 +1,5 @@
 import { daysBetween } from '$lib/sdk/dates';
+import { intlLocale, t } from '$lib/i18n';
 import type { DashboardFeed, DashboardFeedTodo } from '$lib/sdk/types/dashboard';
 
 /** Wie lange ein laufender/fertiger Abruf geteilt wird (Seite + Kacheln → ein Request) */
@@ -13,7 +14,7 @@ export function loadDashboardFeed(fresh = false): Promise<DashboardFeed> {
 	if (!fresh && cached && Date.now() - cached.at < SHARE_MS) return cached.promise;
 	const promise = fetch('/dashboard/feed', { headers: { accept: 'application/json' } }).then(
 		async (res) => {
-			if (!res.ok) throw new Error('Die Übersicht konnte nicht geladen werden.');
+			if (!res.ok) throw new Error(t('widgets.loadFailed'));
 			return ((await res.json()) as { data: DashboardFeed }).data;
 		}
 	);
@@ -25,20 +26,25 @@ export function loadDashboardFeed(fresh = false): Promise<DashboardFeed> {
 	return promise;
 }
 
-/** `2026-11-02` → `2.11.` */
+/** `2026-11-02` → `2.11.` (Englisch `02/11`) */
 export function shortDate(iso: string): string {
-	const [, m, d] = iso.split('-');
-	return `${Number(d)}.${Number(m)}.`;
+	const [y, m, d] = iso.split('-').map(Number);
+	if (!y || !m || !d) return iso;
+	return new Intl.DateTimeFormat(intlLocale(), {
+		day: 'numeric',
+		month: 'numeric',
+		timeZone: 'UTC'
+	}).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
 /** Fristtext einer Zeile: „seit 20.10. überfällig“, „heute fällig“, „morgen fällig“, „bis 2.11.“ */
 export function dueLabel(due: string | null | undefined, today: string): string {
 	if (!due) return '';
 	const d = daysBetween(today, due);
-	if (d < 0) return `seit ${shortDate(due)} überfällig`;
-	if (d === 0) return 'heute fällig';
-	if (d === 1) return 'morgen fällig';
-	return `bis ${shortDate(due)}`;
+	if (d < 0) return t('widgets.due.overdueSince', { date: shortDate(due) });
+	if (d === 0) return t('widgets.due.today');
+	if (d === 1) return t('widgets.due.tomorrow');
+	return t('widgets.due.until', { date: shortDate(due) });
 }
 
 /**
@@ -46,16 +52,20 @@ export function dueLabel(due: string | null | undefined, today: string): string 
  * `null`, wenn nichts ansteht.
  */
 export function feedFinding(todos: DashboardFeedTodo[], today: string): string | null {
-	const overdue = todos.filter((t) => t.severity === 'overdue');
+	const overdue = todos.filter((todo) => todo.severity === 'overdue');
 	if (overdue.length) {
 		const oldest = overdue.reduce((a, b) => ((a.due ?? today) <= (b.due ?? today) ? a : b));
 		const days = oldest.due ? daysBetween(oldest.due, today) : 0;
-		const since = days === 1 ? 'seit gestern' : days > 1 ? `seit ${days} Tagen` : '';
-		if (overdue.length === 1) return `${oldest.title}: ${since ? `${since} ` : ''}überfällig.`;
-		return `${overdue.length} Dinge sind überfällig${since ? `, das älteste ${since}` : ''}.`;
+		const since = days >= 1 ? t('widgets.finding.since', { days }) : '';
+		if (overdue.length === 1) {
+			return since
+				? t('widgets.finding.oneOverdueSince', { title: oldest.title, since })
+				: t('widgets.finding.oneOverdue', { title: oldest.title });
+		}
+		return since
+			? t('widgets.finding.manyOverdueSince', { count: overdue.length, since })
+			: t('widgets.finding.manyOverdue', { count: overdue.length });
 	}
 	if (!todos.length) return null;
-	return todos.length === 1
-		? 'Eine Sache steht an, nichts ist überfällig.'
-		: `${todos.length} Dinge stehen an, nichts ist überfällig.`;
+	return t('widgets.finding.upcoming', { count: todos.length });
 }

@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Generischer Live-Hub (Server-Sent Events) für Module: je Objekt die offenen Verbindungen (eine je Browser-Tab =
  * `client`), Heartbeat, Wiederverbinden mit derselben Kennung, Grenze je Konto und regelmäßige Zugriffsprüfung.
@@ -173,7 +174,7 @@ export function createLiveHub<L extends string, P>(options: LiveHubOptions<L, P>
 		// fremde Kennung übernehmen (Kennungen stehen in `hello`) wäre ein Rauswurf anderer Personen
 		const existing = objects.get(objectId)?.get(client);
 		if (existing && existing.userId !== subject) {
-			throw errors.conflict('Diese Verbindungskennung ist bereits vergeben');
+			throw errors.conflict(t('sdk.live.clientTaken'));
 		}
 		const authHeaders = authHeadersOf(input.request);
 		let sub: LiveSubscriber<L, P> | null = null;

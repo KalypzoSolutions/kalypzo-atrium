@@ -2,7 +2,7 @@
  * Gemeinsame Typen der Freigabe-Bausteine (ShareDialog, ShareMenu, SharePanel).
  *
  * Ohne `type` ist ein Eintrag ein Benutzerkonto (bisheriges Verhalten, Schlüssel = `userId`).
- * Mit `type` (Stamm, Gruppe, Rolle, Benutzer*in, Mitglied) ist der Schlüssel `typ:id`
+ * Mit `type` (alle, Gruppe, Rolle, Benutzer*in, Mitglied) ist der Schlüssel `typ:id`
  * (siehe `shareKey`); diesen Schlüssel bekommen `onchange`/`onremove`.
  */
 export type ShareTargetType = 'everyone' | 'group' | 'role' | 'user' | 'member';

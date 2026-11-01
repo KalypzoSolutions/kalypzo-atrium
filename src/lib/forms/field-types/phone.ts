@@ -1,19 +1,24 @@
+import { t } from '$lib/i18n';
 import { z } from 'zod';
 import type { FieldTypeSpec } from '../registry';
 import type { PhoneField } from '../types';
-
-const MSG = 'Bitte eine gültige Telefonnummer eingeben';
+import { msg } from './shared';
 
 export const phoneFieldType: FieldTypeSpec<PhoneField> = {
 	type: 'phone',
-	label: 'Telefon',
-	description: 'Telefonnummer',
+	get label() {
+		return t('forms.types.phone.label');
+	},
+	get description() {
+		return t('forms.types.phone.description');
+	},
 	icon: 'users',
 	hasValue: true,
-	create: (id, key) => ({ id, key, type: 'phone', label: 'Telefonnummer' }),
+	create: (id, key) => ({ id, key, type: 'phone', label: t('forms.defaults.phoneLabel') }),
 	schema() {
+		const MSG = msg('forms.validation.phoneInvalid');
 		return z
-			.string({ error: MSG })
+			.string(MSG)
 			.trim()
 			.transform((v) => v.replace(/\s+/g, ' '))
 			.pipe(

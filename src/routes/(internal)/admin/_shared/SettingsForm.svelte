@@ -7,6 +7,8 @@
 	import { Input } from '$lib/components/ui/input';
 	import { SelectField } from '$lib/components/ui/select-field';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import { t } from '$lib/i18n';
+	import { formatNumber } from '$lib/i18n/intl';
 	import { cn } from '$lib/utils';
 	import { submitHandler } from './form-utils';
 	import type { FieldDescriptor } from './group-form.server';
@@ -17,7 +19,12 @@
 		canEdit: boolean;
 		submitLabel?: string;
 	}
-	let { fields, action = '?/save', canEdit, submitLabel = 'Speichern' }: Props = $props();
+	let {
+		fields,
+		action = '?/save',
+		canEdit,
+		submitLabel = t('admin-settings.form.save')
+	}: Props = $props();
 
 	let busy = $state(false);
 	let error = $state('');
@@ -74,12 +81,15 @@
 						name={`f:${f.key}`}
 						autocomplete="new-password"
 						disabled={!canEdit}
-						placeholder={f.isSet ? 'gesetzt – leer lassen, um beizubehalten' : 'nicht gesetzt'}
+						placeholder={f.isSet
+							? t('admin-settings.form.secretSet')
+							: t('admin-settings.form.secretNotSet')}
 					/>
 					{#if f.isSet && canEdit}
 						<div class="flex items-center gap-2">
 							<Checkbox id={`${id}-clear`} name={`clear:${f.key}`} />
-							<label class="text-xs text-muted-foreground" for={`${id}-clear`}>Wert entfernen</label
+							<label class="text-xs text-muted-foreground" for={`${id}-clear`}
+								>{t('admin-settings.form.clearValue')}</label
 							>
 						</div>
 					{/if}
@@ -97,7 +107,7 @@
 						{id}
 						name={`f:${f.key}`}
 						label={f.label}
-						options={(f.options ?? []).map((o) => ({ value: o, label: o }))}
+						options={(f.options ?? []).map((o) => ({ value: o, label: f.optionLabels?.[o] ?? o }))}
 						bind:value={() => selectValue(f), (v) => (selected[f.key] = v)}
 						disabled={!canEdit}
 					/>
@@ -117,7 +127,7 @@
 							<span
 								class="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
 								style={`--accent-color:${color}`}
-								aria-hidden="true">Vorschau</span
+								aria-hidden="true">{t('admin-settings.form.preview')}</span
 							>
 						{/if}
 					</div>
@@ -126,11 +136,9 @@
 							class={cn('text-xs', ratio < 4.5 ? 'text-warning' : 'text-muted-foreground')}
 							aria-live="polite"
 						>
-							Kontrast der Schrift auf Primärknöpfen: {ratio.toLocaleString('de-DE', {
-								maximumFractionDigits: 1
-							})} : 1{ratio < 4.5
-								? ' – knapp unter dem Mindestwert 4,5 : 1. Wähle eine hellere oder dunklere Farbe.'
-								: ''}
+							{t('admin-settings.form.contrast', {
+								ratio: formatNumber(Math.round(ratio * 10) / 10)
+							})}{ratio < 4.5 ? t('admin-settings.form.contrastLow') : ''}
 						</p>
 					{/if}
 				{:else if f.kind === 'list'}
@@ -139,7 +147,7 @@
 						name={`f:${f.key}`}
 						class="min-h-24 font-mono"
 						disabled={!canEdit}
-						placeholder="Ein Eintrag pro Zeile"
+						placeholder={t('admin-settings.form.listPlaceholder')}
 						value={listText(f.value)}
 					/>
 				{:else if f.kind === 'json'}
@@ -168,10 +176,12 @@
 
 	{#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
 	{#if canEdit}
-		<Button type="submit" disabled={busy}>{busy ? 'Speichert …' : submitLabel}</Button>
+		<Button type="submit" disabled={busy}
+			>{busy ? t('admin-settings.form.saving') : submitLabel}</Button
+		>
 	{:else}
 		<p class="text-sm text-muted-foreground">
-			Du hast keine Berechtigung, diese Einstellungen zu ändern.
+			{t('admin-settings.form.noPermission')}
 		</p>
 	{/if}
 </form>

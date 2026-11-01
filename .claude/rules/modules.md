@@ -40,6 +40,12 @@ modules/<id>/
 - Migrationen in `module.ts` müssen genau den Dateien `migrations/*.sql` (Namensreihenfolge) entsprechen. Katalog `modules/atrium-modules.json`
   um neue Module ergänzen. Test `tests/unit/module-packages.test.ts`; Schema `src/lib/server/core/modules/package/schema.ts`.
 
+## Mehrsprachigkeit (seit 2026-11-01, Phase N)
+- Fachmodule dürfen deutsch bleiben (Rückfall). Übersetzen: `messages/de.json` + `en.json` im Modul, `t('<id>.<schlüssel>')` aus `$lib/sdk/i18n`,
+  nie auf Modulebene; Manifest-Texte dürfen `{ de, en }` sein. Core-Bausteine (`DataTable`, `ConfirmDialog` …) liefern ihre Standardtexte selbst
+  übersetzt; Texte, die das Modul übergibt, bleiben, wie sie sind. `BUSY_SAVE` & Co. sind fest deutsch – in übersetzten Modulen `busySave()`.
+- Briefvorlagen heißen `brief`, `briefkopf`, `briefkopf-quer` (alte IDs `stamm-*` sind Aliase); das Stammes-Aussehen liefert `ep-stamm`.
+
 ## Manifest und Rechte
 - `id`: `[a-z][a-z0-9-]{1,30}`, nicht `core|api|auth|admin|system`. Neue Module starten **deaktiviert**; Aktivierung in `/admin/modules`.
 - Berechtigungen: `<id>.<ressource>.<aktion>`, je Segment `[a-z][a-z0-9-]*` (**kein `_`**). Alle im Manifest deklarieren,

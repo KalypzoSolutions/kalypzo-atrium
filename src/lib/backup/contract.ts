@@ -3,13 +3,38 @@
  * Keine Server-Imports. Eingaben der Routen als Zod-Schemas, Antworten als DTO-Typen.
  */
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 
-export const BACKUP_FORMAT = 'ep-intern-backup';
+export const BACKUP_FORMAT = 'atrium-backup';
+/** Kennungen älterer Sicherungen (EP Intern) – beim Import weiter angenommen */
+export const LEGACY_BACKUP_FORMATS = ['ep-intern-backup'] as const;
 export const BACKUP_FORMAT_VERSION = 1;
-export const BACKUP_FILE_EXT = '.epbackup';
+export const BACKUP_FILE_EXT = '.atriumbackup';
+/** Endungen älterer Sicherungen (EP Intern) – beim Import weiter angenommen */
+export const LEGACY_BACKUP_FILE_EXTS = ['.epbackup'] as const;
+/** Alle Endungen, die der Import annimmt (`accept` im Dateifeld) */
+export const BACKUP_FILE_EXTS: readonly string[] = [BACKUP_FILE_EXT, ...LEGACY_BACKUP_FILE_EXTS];
 
+/** Hat der Dateiname eine Endung einer Sicherung (neu oder alt)? */
+export function isBackupFileName(name: string): boolean {
+	const lower = name.toLowerCase();
+	return BACKUP_FILE_EXTS.some((ext) => lower.endsWith(ext));
+}
+
+/** Deutsche Bestätigungswörter – werden in jeder Sprache zusätzlich angenommen (Tests, Gewohnheit) */
 export const RESTORE_CONFIRM_WORD = 'WIEDERHERSTELLEN';
 export const MERGE_CONFIRM_WORD = 'ZUSAMMENFÜHREN';
+
+/** Bestätigungswort in der aktuellen Sprache (Anzeige und Prüfung) */
+export function confirmWord(mode: 'restore' | 'merge'): string {
+	return mode === 'restore' ? t('backup.confirm.restore') : t('backup.confirm.merge');
+}
+
+/** Eingabe = Wort der aktuellen Sprache oder das deutsche Wort */
+export function isConfirmWord(mode: 'restore' | 'merge', input: string): boolean {
+	const de = mode === 'restore' ? RESTORE_CONFIRM_WORD : MERGE_CONFIRM_WORD;
+	return input === confirmWord(mode) || input === de;
+}
 
 /** Mindestlänge des Sicherungs-Passworts */
 export const BACKUP_MIN_PASSWORD = 12;
@@ -32,14 +57,14 @@ export const CORE_SCOPE_KEYS = [
 	'core:ai-usage'
 ] as const;
 
-const scopeKey = z
-	.string()
-	.regex(/^(core:[a-z][a-z0-9-]*|[a-z][a-z0-9-]{1,30})$/, 'Ungültiger Bereich');
+const scopeKey = z.string().regex(/^(core:[a-z][a-z0-9-]*|[a-z][a-z0-9-]{1,30})$/, {
+	error: () => t('backup.input.invalidScope')
+});
 
 const totp = z
 	.string()
 	.trim()
-	.regex(/^\d{6}$/, 'Bitte den 6-stelligen Code eingeben')
+	.regex(/^\d{6}$/, { error: () => t('backup.input.totp') })
 	.optional();
 
 // ---------------------------------------------------------------------------
@@ -48,13 +73,21 @@ const totp = z
 
 export const exportInput = z
 	.object({
-		scopes: z.array(scopeKey).min(1, 'Bitte mindestens einen Bereich wählen').max(100),
+		scopes: z
+			.array(scopeKey)
+			.min(1, { error: () => t('backup.input.chooseScope') })
+			.max(100),
 		includeFiles: z.boolean(),
 		backupPassword: z
 			.string()
-			.min(BACKUP_MIN_PASSWORD, `Mindestens ${BACKUP_MIN_PASSWORD} Zeichen`)
+			.min(BACKUP_MIN_PASSWORD, {
+				error: () => t('backup.input.minChars', { count: BACKUP_MIN_PASSWORD })
+			})
 			.max(200),
-		password: z.string().min(1, 'Bitte das Passwort eingeben').max(200),
+		password: z
+			.string()
+			.min(1, { error: () => t('backup.input.password') })
+			.max(200),
 		totp
 	})
 	.strict();
@@ -71,8 +104,14 @@ export type UploadCreateInput = z.infer<typeof uploadCreateInput>;
 export const analyzeInput = z
 	.object({
 		uploadId: z.string().min(10).max(100),
-		backupPassword: z.string().min(1, 'Bitte das Sicherungs-Passwort eingeben').max(200),
-		password: z.string().min(1, 'Bitte das Passwort eingeben').max(200),
+		backupPassword: z
+			.string()
+			.min(1, { error: () => t('backup.input.backupPassword') })
+			.max(200),
+		password: z
+			.string()
+			.min(1, { error: () => t('backup.input.password') })
+			.max(200),
 		totp
 	})
 	.strict();
@@ -82,7 +121,10 @@ export const executeInput = z
 	.object({
 		token: z.string().min(10).max(200),
 		mode: z.enum(['restore', 'merge']),
-		scopes: z.array(scopeKey).min(1, 'Bitte mindestens einen Bereich wählen').max(100),
+		scopes: z
+			.array(scopeKey)
+			.min(1, { error: () => t('backup.input.chooseScope') })
+			.max(100),
 		/** `core.smtp.*` aus der Sicherung übernehmen (Standard: nein) */
 		takeSmtp: z.boolean().default(false),
 		/** Aktiv/inaktiv der Module aus der Sicherung übernehmen (nur Wiederherstellen) */

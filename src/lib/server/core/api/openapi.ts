@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import {
 	extendZodWithOpenApi,
 	OpenApiGeneratorV31,
@@ -5,6 +6,7 @@ import {
 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 import { allEndpoints } from './registry';
+import { endpointText, translateDocumentTexts } from './text';
 
 extendZodWithOpenApi(z);
 
@@ -29,7 +31,7 @@ export function buildOpenApiDocument(version = '1.0.0') {
 	registry.registerComponent('securitySchemes', 'bearerAuth', {
 		type: 'http',
 		scheme: 'bearer',
-		description: 'API-Key (Prefix `epk_`) als Bearer-Token'
+		description: t('api.openapi.bearer')
 	});
 	registry.registerComponent('securitySchemes', 'sessionCookie', {
 		type: 'apiKey',
@@ -51,14 +53,19 @@ export function buildOpenApiDocument(version = '1.0.0') {
 				}
 			};
 		}
-		const tags = e.moduleId === 'core' ? (e.tags ?? ['Core']) : [`Modul: ${e.moduleId}`];
+		const tags =
+			e.moduleId === 'core'
+				? (e.tags ?? ['api.tags.core']).map((tag) => endpointText(tag))
+				: [t('api.openapi.moduleTag', { id: e.moduleId })];
 		registry.registerPath({
 			method: e.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete',
 			path: toOpenApiPath(e.fullPath),
-			summary: e.summary,
+			summary: endpointText(e.summary),
 			description:
-				(e.description ?? '') +
-				(e.permission ? `\n\nErforderliche Berechtigung: \`${e.permission}\`` : ''),
+				(endpointText(e.description) ?? '') +
+				(e.permission
+					? `\n\n${t('api.openapi.requiredPermission', { permission: e.permission })}`
+					: ''),
 			tags,
 			security:
 				e.permission === null && !e.authenticated
@@ -67,7 +74,7 @@ export function buildOpenApiDocument(version = '1.0.0') {
 			request,
 			responses: {
 				200: {
-					description: 'Erfolg',
+					description: t('api.openapi.success'),
 					content: {
 						'application/json': {
 							schema: z.object({ data: (e.response as z.ZodType | undefined) ?? z.unknown() })
@@ -75,19 +82,19 @@ export function buildOpenApiDocument(version = '1.0.0') {
 					}
 				},
 				400: {
-					description: 'Ungültige Anfrage',
+					description: t('api.openapi.badRequest'),
 					content: { 'application/json': { schema: ErrorSchema } }
 				},
 				401: {
-					description: 'Nicht authentifiziert',
+					description: t('api.openapi.unauthenticated'),
 					content: { 'application/json': { schema: ErrorSchema } }
 				},
 				403: {
-					description: 'Keine Berechtigung',
+					description: t('api.openapi.forbidden'),
 					content: { 'application/json': { schema: ErrorSchema } }
 				},
 				422: {
-					description: 'Validierung fehlgeschlagen',
+					description: t('api.openapi.validation'),
 					content: { 'application/json': { schema: ErrorSchema } }
 				},
 				429: { description: 'Rate Limit', content: { 'application/json': { schema: ErrorSchema } } }
@@ -95,14 +102,15 @@ export function buildOpenApiDocument(version = '1.0.0') {
 		});
 	}
 
-	return new OpenApiGeneratorV31(registry.definitions).generateDocument({
+	const doc = new OpenApiGeneratorV31(registry.definitions).generateDocument({
 		openapi: '3.1.0',
 		info: {
-			title: 'EP Intern API',
+			title: 'Kalypzo Atrium API',
 			version,
-			description:
-				'Versionierte REST-API des EP-Intern-Core. Authentifizierung per API-Key oder Session.'
+			description: t('api.openapi.description')
 		},
 		servers: [{ url: '/api/v1' }]
 	});
+	// Schlüssel aus Zod-`describe` (Core-Schemas) in der Sprache des Requests
+	return translateDocumentTexts(doc);
 }

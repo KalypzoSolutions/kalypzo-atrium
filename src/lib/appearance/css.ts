@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Theme → CSS (rein, Client + Server). Ausgaben entstehen nur aus validierten `#rrggbb`-Farben, Zahlen
  * und festen Schlüsselwörtern – sie dürfen daher ins `style`-Attribut von `<html>` (`%app.style%`).
@@ -189,7 +190,7 @@ export function deriveDark(mode: ThemeMode): ThemeMode {
 }
 
 /** Ausgangspunkt für ein neues Theme */
-export function blankTheme(id: string, name = 'Neues Theme'): UserTheme {
+export function blankTheme(id: string, name = t('appearance.newTheme')): UserTheme {
 	const light: ThemeMode = {
 		background: {
 			kind: 'linear',

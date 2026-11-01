@@ -1,11 +1,14 @@
 /**
- * Logo des Stammes als Favicon, App-Icon (PWA, iOS, Push) und Bild in Seitenleiste/Login (nur Server).
+ * Logo der Organisation als Favicon, App-Icon (PWA, iOS, Push) und Bild in Seitenleiste/Login (nur Server).
  *
  * Gespeichert wird nur das Logo (`core.design.logoFileId`, Storage `core/branding/…`, beim Hochladen per
  * `processImage` neu kodiert: PNG ≤ 1024 px, ohne Metadaten). Die Icons entstehen bei Bedarf daraus (sharp,
  * quadratisch mit Rand, bei Apple/maskierbar auf `core.design.iconBackground`) und werden im Prozess
- * gecacht. Ohne Logo oder ohne Speicher liefern die Routen das Wappen aus `static/icons/`.
+ * gecacht. Ohne hochgeladenes Logo gilt das Logo eines **aktiven** Moduls mit `brandingLogo` (z. B. ein Profil-Modul
+ * einer Organisation, Icons ebenso daraus); sonst liefern die Routen die neutralen Icons aus `static/icons/`.
  */
+import { createHash } from 'node:crypto';
+import { t } from '$lib/i18n';
 import sharp from 'sharp';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from './audit/service';
@@ -13,6 +16,7 @@ import { matchesImageSignature } from './auth/profile';
 import { errors } from './errors';
 import { processImage } from './images';
 import { requirePermission } from './permissions/service';
+import { activeModuleHook } from './pdf/resolve';
 import { getSetting, setSetting } from './settings/service';
 import { readFileByIdUnchecked, upload } from './storage';
 
@@ -28,7 +32,7 @@ interface IconSpec {
 	pad: number;
 	/** Fläche in der Icon-Hintergrundfarbe (sonst transparent) */
 	filled: boolean;
-	/** Datei unter `static/icons/`, wenn kein Logo gesetzt ist */
+	/** Datei unter `static/icons/`, wenn kein Logo gesetzt ist (neutrales Signet des Core) */
 	fallback: string;
 }
 
@@ -43,8 +47,31 @@ export const BRAND_ICONS: Record<string, IconSpec> = {
 };
 
 export interface BrandingState {
+	/** Hochgeladenes Logo (`core.design.logoFileId`) */
 	logoId: string | null;
 	background: string;
+	/** Ersatz-Logo eines aktiven Moduls (`ModuleDefinition.brandingLogo`), nur ohne hochgeladenes Logo */
+	moduleLogo?: { moduleId: string; dataUrl: string; hash: string } | null;
+}
+
+const PNG_DATA_URL = /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/;
+
+/** Kurzer Inhalts-Hash je Data-URL (Cache-Schlüssel, Version in URLs), einmal je Prozess berechnet */
+const hashes = new Map<string, string>();
+function shortHash(dataUrl: string): string {
+	let h = hashes.get(dataUrl);
+	if (!h) {
+		h = createHash('sha256').update(dataUrl).digest('hex').slice(0, 10);
+		if (hashes.size > 8) hashes.clear();
+		hashes.set(dataUrl, h);
+	}
+	return h;
+}
+
+async function moduleLogoState(): Promise<BrandingState['moduleLogo']> {
+	const hit = await activeModuleHook('brandingLogo');
+	if (!hit || !PNG_DATA_URL.test(hit.value)) return null;
+	return { moduleId: hit.moduleId, dataUrl: hit.value, hash: shortHash(hit.value) };
 }
 
 /** Aktuelles Logo + Icon-Hintergrund (Fehler beim Lesen = kein Logo) */
@@ -54,22 +81,31 @@ export async function brandingState(): Promise<BrandingState> {
 			getSetting<string>('core.design.logoFileId'),
 			getSetting<string>('core.design.iconBackground')
 		]);
+		const logoId = typeof id === 'string' && UUID_RE.test(id) ? id : null;
 		return {
-			logoId: typeof id === 'string' && UUID_RE.test(id) ? id : null,
-			background: typeof bg === 'string' && HEX_RE.test(bg) ? bg : '#ffffff'
+			logoId,
+			background: typeof bg === 'string' && HEX_RE.test(bg) ? bg : '#ffffff',
+			moduleLogo: logoId ? null : await moduleLogoState()
 		};
 	} catch {
-		return { logoId: null, background: '#ffffff' };
+		return { logoId: null, background: '#ffffff', moduleLogo: null };
 	}
 }
 
 /** Kurze Version für Cache-Busting in URLs (`?v=`) */
 export function brandVersion(state: BrandingState): string {
-	return state.logoId ? `${state.logoId.slice(0, 8)}${state.background.slice(1)}` : 'w';
+	if (state.logoId) return `${state.logoId.slice(0, 8)}${state.background.slice(1)}`;
+	if (state.moduleLogo) return `m${state.moduleLogo.hash}${state.background.slice(1)}`;
+	return 'n';
 }
 
-/** Adresse des Logos für Seitenleiste/Login, `null` ohne Logo */
+/** Adresse des wirksamen Logos (hochgeladen oder aus einem Modul) für Seitenleiste/Login, `null` ohne Logo */
 export function logoUrl(state: BrandingState): string | null {
+	return state.logoId || state.moduleLogo ? `/branding/logo.png?v=${brandVersion(state)}` : null;
+}
+
+/** Adresse nur des **hochgeladenen** Logos (Verwaltung: Vorschau und „Entfernen“), `null` ohne Upload */
+export function uploadedLogoUrl(state: BrandingState): string | null {
 	return state.logoId ? `/branding/logo.png?v=${brandVersion(state)}` : null;
 }
 
@@ -143,18 +179,44 @@ export async function renderIcon(logo: Uint8Array, spec: IconSpec, background: s
 	return new Uint8Array(out);
 }
 
-/** Icon für `/branding/<name>`; `null` = kein Logo (Wappen ausliefern), unbekannter Name → `undefined` */
+/** Logo-PNG eines Moduls (Data-URL) als Bytes, gecacht */
+function moduleLogoBytes(m: NonNullable<BrandingState['moduleLogo']>): Uint8Array {
+	const key = `module-logo:${m.hash}`;
+	const hit = cache.get(key);
+	if (hit) return hit;
+	return remember(
+		key,
+		new Uint8Array(Buffer.from(m.dataUrl.slice(m.dataUrl.indexOf(',') + 1), 'base64'))
+	);
+}
+
+/** Wirksames Logo (hochgeladen, sonst Modul) mit Cache-Schlüssel */
+async function effectiveLogo(
+	state: BrandingState
+): Promise<{ key: string; bytes: Uint8Array } | null> {
+	if (state.logoId) {
+		const bytes = await logoBytes(state.logoId);
+		return bytes ? { key: state.logoId, bytes } : null;
+	}
+	if (state.moduleLogo) {
+		return { key: `m${state.moduleLogo.hash}`, bytes: moduleLogoBytes(state.moduleLogo) };
+	}
+	return null;
+}
+
+/** Icon für `/branding/<name>`; `null` = kein Logo (neutrale Icons ausliefern), unbekannter Name → `undefined` */
 export async function brandIcon(
 	name: string,
 	state: BrandingState
 ): Promise<Uint8Array | null | undefined> {
 	const spec = BRAND_ICONS[name];
 	if (!spec) return undefined;
-	if (!state.logoId) return null;
-	const key = `icon:${state.logoId}:${state.background}:${name}`;
+	if (!state.logoId && !state.moduleLogo) return null;
+	const sourceKey = state.logoId ?? `m${state.moduleLogo!.hash}`;
+	const key = `icon:${sourceKey}:${state.background}:${name}`;
 	const hit = cache.get(key);
 	if (hit) return hit;
-	const logo = await logoBytes(state.logoId);
+	const logo = (await effectiveLogo(state))?.bytes;
 	if (!logo) return null;
 	try {
 		return remember(key, await renderIcon(logo, spec, state.background));
@@ -164,9 +226,9 @@ export async function brandIcon(
 	}
 }
 
-/** Logo als PNG für Seitenleiste und Login (`null` = kein Logo) */
+/** Wirksames Logo als PNG für Seitenleiste und Login (`null` = kein Logo) */
 export async function brandLogo(state: BrandingState): Promise<Uint8Array | null> {
-	return state.logoId ? logoBytes(state.logoId) : null;
+	return (await effectiveLogo(state))?.bytes ?? null;
 }
 
 // --- Verwaltung ---------------------------------------------------------------------------
@@ -182,14 +244,14 @@ export async function setLogo(
 	await requirePermission(ctx, 'core.settings.manage');
 	const type = file.contentType.split(';')[0]!.trim().toLowerCase();
 	if (!(LOGO_TYPES as readonly string[]).includes(type)) {
-		throw errors.badRequest('Erlaubt sind PNG, JPEG und WebP');
+		throw errors.badRequest(t('branding.errors.types'));
 	}
-	if (file.data.byteLength === 0) throw errors.badRequest('Bitte wähle eine Bilddatei aus');
+	if (file.data.byteLength === 0) throw errors.badRequest(t('branding.errors.empty'));
 	if (file.data.byteLength > LOGO_MAX_BYTES) {
-		throw errors.tooLarge('Das Logo darf höchstens 5 MB groß sein');
+		throw errors.tooLarge(t('branding.errors.tooLarge'));
 	}
 	if (!matchesImageSignature(file.data, type)) {
-		throw errors.badRequest('Die Datei ist kein gültiges PNG-, JPEG- oder WebP-Bild');
+		throw errors.badRequest(t('branding.errors.invalid'));
 	}
 	const processed = await processImage(file.data, {
 		variants: [{ name: 'logo', maxEdge: LOGO_MAX_EDGE, format: 'png' }],
@@ -207,7 +269,7 @@ export async function setLogo(
 	return stored.id;
 }
 
-/** Logo entfernen (PDFs, Favicon und App-Icons fallen auf das Wappen zurück) */
+/** Logo entfernen (PDFs, Favicon und App-Icons fallen auf das Modul-Logo bzw. die neutralen Icons zurück) */
 export async function removeLogo(ctx: RequestContext): Promise<void> {
 	await requirePermission(ctx, 'core.settings.manage');
 	await setSetting(ctx, 'core.design.logoFileId', '');

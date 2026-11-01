@@ -1,3 +1,5 @@
+import { t } from '$lib/i18n';
+
 /** Einheitliche Fehlerklassen des Core. Werden vom API-Router und den Hooks auf HTTP abgebildet. */
 export type CoreErrorCode =
 	| 'bad_request'
@@ -43,19 +45,18 @@ export class CoreError extends Error {
 }
 
 export const errors = {
-	badRequest: (m = 'Ungültige Anfrage', d?: unknown) => new CoreError('bad_request', m, d),
-	validation: (d: unknown, m = 'Validierung fehlgeschlagen') =>
-		new CoreError('validation_failed', m, d),
-	unauthenticated: (m = 'Authentifizierung erforderlich') => new CoreError('unauthenticated', m),
-	forbidden: (m = 'Keine Berechtigung') => new CoreError('forbidden', m),
-	notFound: (m = 'Nicht gefunden') => new CoreError('not_found', m),
-	methodNotAllowed: (m = 'Methode nicht erlaubt') => new CoreError('method_not_allowed', m),
-	conflict: (m = 'Konflikt') => new CoreError('conflict', m),
-	rateLimited: (m = 'Zu viele Anfragen') => new CoreError('rate_limited', m),
-	moduleDisabled: (id: string) => new CoreError('module_disabled', `Modul "${id}" ist nicht aktiv`),
-	tooLarge: (m = 'Datei ist zu groß') => new CoreError('payload_too_large', m),
-	unavailable: (m = 'Dienst nicht konfiguriert oder nicht erreichbar') =>
-		new CoreError('unavailable', m)
+	badRequest: (m = t('errors.badRequest'), d?: unknown) => new CoreError('bad_request', m, d),
+	validation: (d: unknown, m = t('errors.validation')) => new CoreError('validation_failed', m, d),
+	unauthenticated: (m = t('errors.unauthenticated')) => new CoreError('unauthenticated', m),
+	forbidden: (m = t('errors.forbidden')) => new CoreError('forbidden', m),
+	notFound: (m = t('errors.notFound')) => new CoreError('not_found', m),
+	methodNotAllowed: (m = t('errors.methodNotAllowed')) => new CoreError('method_not_allowed', m),
+	conflict: (m = t('errors.conflict')) => new CoreError('conflict', m),
+	rateLimited: (m = t('errors.rateLimited')) => new CoreError('rate_limited', m),
+	moduleDisabled: (id: string) =>
+		new CoreError('module_disabled', t('errors.moduleDisabled', { id })),
+	tooLarge: (m = t('errors.tooLarge')) => new CoreError('payload_too_large', m),
+	unavailable: (m = t('errors.unavailable')) => new CoreError('unavailable', m)
 };
 
 export function isCoreError(e: unknown): e is CoreError {

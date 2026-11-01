@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import ZoomIn from '@lucide/svelte/icons/zoom-in';
 	import ZoomOut from '@lucide/svelte/icons/zoom-out';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
@@ -8,7 +9,7 @@
 	import { ColorPicker } from '$lib/components/ui/color-picker';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Slider } from '$lib/components/ui/slider';
-	import { BUSY_LOAD, BUSY_SAVE } from './busy';
+	import { busyLoad, busySave } from './busy';
 	import {
 		DEFAULT_CROP_BACKGROUND,
 		TRANSPARENT_CROP_BACKGROUND,
@@ -38,7 +39,7 @@
 		aspect = 1,
 		shape = 'rect',
 		maxEdge = 1600,
-		title = 'Bild zuschneiden',
+		title = t('crop.title'),
 		background = DEFAULT_CROP_BACKGROUND,
 		onconfirm,
 		oncancel
@@ -116,11 +117,11 @@
 	function onload() {
 		if (!imgEl) return;
 		natural = { width: imgEl.naturalWidth, height: imgEl.naturalHeight };
-		if (!natural.width || !natural.height) loadError = 'Bild konnte nicht gelesen werden.';
+		if (!natural.width || !natural.height) loadError = t('crop.readFailed');
 	}
 
 	function onerror() {
-		loadError = 'Bild konnte nicht gelesen werden.';
+		loadError = t('crop.readFailed');
 	}
 
 	function setZoom(z: number, point: Point = { x: 0, y: 0 }) {
@@ -258,7 +259,7 @@
 			open = false;
 			onconfirm(out);
 		} catch {
-			loadError = 'Der Ausschnitt konnte nicht erzeugt werden.';
+			loadError = t('crop.createFailed');
 		} finally {
 			busy = false;
 		}
@@ -282,8 +283,7 @@
 		<Dialog.Header>
 			<Dialog.Title>{title}</Dialog.Title>
 			<Dialog.Description>
-				Ziehe das Bild, um den Ausschnitt zu wählen, und zoome mit dem Regler – auch über das Bild
-				hinaus.
+				{t('crop.description')}
 			</Dialog.Description>
 		</Dialog.Header>
 
@@ -303,7 +303,7 @@
 			style="aspect-ratio: {ratio}; max-width: max(12rem, calc((100dvh - 21rem) * {ratio}));"
 			role="application"
 			tabindex="0"
-			aria-label="Bildausschnitt. Mit den Pfeiltasten verschieben, mit Plus und Minus zoomen, 0 setzt zurück."
+			aria-label={t('crop.stageLabel')}
 			{onpointerdown}
 			{onpointermove}
 			{onpointerup}
@@ -342,7 +342,7 @@
 				</div>
 				{#if !ready && !loadError}
 					<p class="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
-						{BUSY_LOAD}
+						{busyLoad()}
 					</p>
 				{/if}
 			</div>
@@ -353,7 +353,7 @@
 				type="button"
 				variant="ghost"
 				size="icon-sm"
-				aria-label="Verkleinern"
+				aria-label={t('crop.zoomOut')}
 				disabled={!ready || crop.zoom <= minZ + 0.001}
 				onclick={() => setZoom(crop.zoom / 1.2)}
 			>
@@ -364,7 +364,7 @@
 				min={minZ}
 				max={MAX_CROP_ZOOM}
 				step={0.01}
-				label="Zoom"
+				label={t('crop.zoom')}
 				disabled={!ready}
 				onchange={(z) => setZoom(z)}
 			/>
@@ -372,7 +372,7 @@
 				type="button"
 				variant="ghost"
 				size="icon-sm"
-				aria-label="Vergrößern"
+				aria-label={t('crop.zoomIn')}
 				disabled={!ready || crop.zoom >= MAX_CROP_ZOOM}
 				onclick={() => setZoom(crop.zoom * 1.2)}
 			>
@@ -384,7 +384,7 @@
 				type="button"
 				variant="ghost"
 				size="icon-sm"
-				aria-label="Ausschnitt zurücksetzen"
+				aria-label={t('crop.reset')}
 				disabled={!ready}
 				onclick={reset}
 			>
@@ -393,27 +393,27 @@
 		</div>
 
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-			<label for="crop-background" class="text-sm font-medium">Hintergrund</label>
+			<label for="crop-background" class="text-sm font-medium">{t('crop.background')}</label>
 			<ColorPicker
 				id="crop-background"
-				label="Hintergrundfarbe"
+				label={t('crop.backgroundColor')}
 				bind:value={bg}
 				presets={bgPresets}
 				disabled={!ready || transparent}
 			/>
 			<label class="flex items-center gap-2 text-sm">
 				<Checkbox bind:checked={transparent} disabled={!ready} />
-				Transparent
+				{t('crop.transparent')}
 			</label>
 			<span class="w-full text-xs text-muted-foreground">
-				für Ränder beim Herauszoomen und durchsichtige Bilder
+				{t('crop.backgroundHint')}
 			</span>
 		</div>
 
 		<Dialog.Footer>
-			<Button type="button" variant="outline" onclick={cancel}>Abbrechen</Button>
+			<Button type="button" variant="outline" onclick={cancel}>{t('crop.cancel')}</Button>
 			<Button type="button" disabled={!ready || busy} onclick={confirm}>
-				{busy ? BUSY_SAVE : 'Übernehmen'}
+				{busy ? busySave() : t('crop.apply')}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

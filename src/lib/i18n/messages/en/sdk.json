@@ -1,0 +1,37 @@
+{
+	"upload": {
+		"invalidForm": "Invalid form data",
+		"empty": "The file is empty",
+		"tooLarge": "The file is too large (at most {mb} MB).",
+		"typeNotAllowedList": "File type not allowed ({types})",
+		"typeNotAllowed": "File type not allowed",
+		"required": "Please choose a file"
+	},
+	"file": {
+		"contentMismatch": "The file content does not match the file type"
+	},
+	"live": {
+		"clientTaken": "This connection ID is already taken"
+	},
+	"unknown": "Unknown",
+	"colors": {
+		"blue": "Blue",
+		"green": "Green",
+		"teal": "Teal",
+		"yellow": "Yellow",
+		"orange": "Orange",
+		"red": "Red",
+		"pink": "Pink",
+		"purple": "Purple",
+		"brown": "Brown",
+		"gray": "Gray"
+	},
+	"style": {
+		"invalidColor": "Color in the format #RRGGBB",
+		"invalidIcon": "Invalid icon"
+	},
+	"assist": {
+		"unavailable": "The writing assistant is currently unavailable",
+		"incomplete": "The response did not arrive completely"
+	}
+}

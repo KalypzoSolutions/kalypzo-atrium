@@ -1,0 +1,280 @@
+{
+	"core.modules.githubToken": {
+		"label": "GitHub-Token",
+		"description": "Optional: für private Repositorys und höhere Abruflimits (nur Lesezugriff nötig)."
+	},
+	"core.modules.allowedSources": {
+		"label": "Erlaubte Quellen",
+		"description": "Optional: je Zeile `owner/repo` oder `owner/*`. Leer = alle GitHub-Quellen und ZIP-Dateien erlaubt; sonst keine ZIP-Dateien."
+	},
+	"core.system.name": {
+		"label": "Systemname"
+	},
+	"core.system.locale": {
+		"label": "Sprache",
+		"description": "Sprache für alle, die keine eigene gewählt haben. „Automatisch“ folgt der Browsersprache (sonst Deutsch)."
+	},
+	"core.org.everyoneLabel": {
+		"label": "Bezeichnung für „alle“",
+		"description": "So heißt die Freigabe an alle Personen, z. B. „Alle“, „Verein“ oder „Team“. Leer = „Alle“ in der jeweiligen Sprache."
+	},
+	"core.organization.name": {
+		"label": "Organisation"
+	},
+	"core.organization.address": {
+		"label": "Anschrift"
+	},
+	"core.organization.email": {
+		"label": "Kontakt-E-Mail"
+	},
+	"core.organization.phone": {
+		"label": "Telefon"
+	},
+	"core.legal.privacyUrl": {
+		"label": "Datenschutzerklärung (URL)",
+		"description": "Link auf die Datenschutzerklärung der Organisation. Erscheint auf der Anmeldeseite und allen öffentlichen Seiten; Anmeldeformulare ohne eigenen Link nutzen ihn."
+	},
+	"core.legal.imprintUrl": {
+		"label": "Impressum (URL)",
+		"description": "Link auf das Impressum. Erscheint auf der Anmeldeseite und allen öffentlichen Seiten."
+	},
+	"core.retention.apiLogDays": {
+		"label": "API-Protokoll aufbewahren (Tage)",
+		"description": "Einträge im API-Zugriffsprotokoll (Pfad, IP-Adresse, Akteur) werden danach gelöscht. 1–3650 Tage."
+	},
+	"core.retention.auditIpDays": {
+		"label": "IP-Adressen im Audit-Log aufbewahren (Tage)",
+		"description": "Danach wird die IP-Adresse aus Audit-Einträgen entfernt; der Eintrag selbst bleibt. 1–3650 Tage."
+	},
+	"core.retention.auditDays": {
+		"label": "Audit-Log aufbewahren (Tage)",
+		"description": "Audit-Einträge werden danach gelöscht. 0 = nie löschen, sonst mindestens 30 Tage (höchstens 36500)."
+	},
+	"core.design.logoFileId": {
+		"label": "Logo (Datei-ID im Storage)"
+	},
+	"core.design.iconBackground": {
+		"label": "Hintergrund der App-Icons",
+		"description": "Füllfarbe hinter dem Logo bei App-Icons auf dem Home-Bildschirm (iOS, Android). Favicon und Logo bleiben durchsichtig."
+	},
+	"core.design.accentColor": {
+		"label": "Akzentfarbe"
+	},
+	"core.smtp.host": {
+		"label": "SMTP-Host"
+	},
+	"core.smtp.port": {
+		"label": "SMTP-Port"
+	},
+	"core.smtp.secure": {
+		"label": "TLS direkt (Port 465)"
+	},
+	"core.smtp.user": {
+		"label": "SMTP-Benutzer"
+	},
+	"core.smtp.password": {
+		"label": "SMTP-Passwort"
+	},
+	"core.smtp.from": {
+		"label": "Absenderadresse"
+	},
+	"core.mail.layoutEnabled": {
+		"label": "Einheitliches Layout für E-Mails verwenden",
+		"description": "Kopf mit Logo und Name der Organisation, Signatur und Fußzeile für alle ausgehenden E-Mails."
+	},
+	"core.mail.showEmblem": {
+		"label": "Emblem im Kopf anzeigen"
+	},
+	"core.mail.signature": {
+		"label": "Signatur",
+		"description": "Wird unter jeden Nachrichtentext gesetzt, z. B. „Viele Grüße“. Leer = keine Signatur."
+	},
+	"core.mail.footerText": {
+		"label": "Fußzeile",
+		"description": "Kleingedruckter Hinweis unter jeder E-Mail (z. B. Vereinsnachweis). Leer = keine Fußzeile."
+	},
+	"core.storage.endpoint": {
+		"label": "S3-Endpoint (leer = AWS)"
+	},
+	"core.storage.region": {
+		"label": "Region"
+	},
+	"core.storage.bucket": {
+		"label": "Bucket"
+	},
+	"core.storage.accessKeyId": {
+		"label": "Access Key ID"
+	},
+	"core.storage.secretAccessKey": {
+		"label": "Secret Access Key"
+	},
+	"core.storage.forcePathStyle": {
+		"label": "Path-Style-URLs (MinIO)"
+	},
+	"core.storage.maxFileSizeMb": {
+		"label": "Max. Dateigröße (MB)"
+	},
+	"core.storage.allowedContentTypes": {
+		"label": "Erlaubte Dateitypen (leer = Standardliste)"
+	},
+	"core.ai.apiKey": {
+		"label": "OpenAI API-Key"
+	},
+	"core.ai.baseUrl": {
+		"label": "API Base-URL (optional)"
+	},
+	"core.ai.defaultModel": {
+		"label": "Standardmodell"
+	},
+	"core.ai.allowedModels": {
+		"label": "Erlaubte Modelle (leer = alle)"
+	},
+	"core.ai.allowedModules": {
+		"label": "Module mit KI-Zugriff (leer = alle)"
+	},
+	"core.ai.monthlyTokenLimit": {
+		"label": "Monatliches Token-Limit je Modul (0 = unbegrenzt)"
+	},
+	"core.ai.monthlyCostLimitUsd": {
+		"label": "Monatliches Kostenlimit je Modul in USD (0 = unbegrenzt)"
+	},
+	"core.ai.requestsPerMinute": {
+		"label": "Max. Anfragen pro Minute (gesamt)"
+	},
+	"core.ai.pricing": {
+		"label": "Preise je 1M Tokens in USD (Modell -> input/output)"
+	},
+	"core.ai.userMonthlyTokenLimit": {
+		"label": "Schreibhilfe: Token-Limit je Person und Monat (0 = unbegrenzt)"
+	},
+	"core.ai.style.address": {
+		"label": "Schreibhilfe: Anrede (Standard, je Text änderbar)"
+	},
+	"core.ai.style.tone": {
+		"label": "Schreibhilfe: Ton",
+		"description": "Wie Texte der Organisation klingen sollen, z. B. „freundlich, locker, klar“."
+	},
+	"core.ai.style.greeting": {
+		"label": "Schreibhilfe: Grußformel"
+	},
+	"core.ai.style.context": {
+		"label": "Schreibhilfe: Wer schreibt?",
+		"description": "Kurze Beschreibung der Organisation und der Lesenden, z. B. „ein Sportverein, Texte für Mitglieder und Eltern“. Leer = allgemein."
+	},
+	"core.ai.style.notes": {
+		"label": "Schreibhilfe: Weitere Hinweise zum Stil",
+		"description": "Gilt für alle Vorschläge, z. B. „Vereinsname: …“ oder „keine Emojis“."
+	},
+	"core.ai.assist.allowInbox": {
+		"label": "Schreibhilfe: Eingegangene Mails für Antwortentwürfe übermitteln",
+		"description": "Der Mailtext geht an den KI-Anbieter (E-Mail-Adressen, Telefonnummern und IBANs werden vorher maskiert)."
+	},
+	"core.ai.assist.allowImages": {
+		"label": "Schreibhilfe: Galeriebilder für Bildbeschreibungen übermitteln",
+		"description": "Das Bild geht ohne Metadaten an den KI-Anbieter."
+	},
+	"core.pdf.defaultFormat": {
+		"label": "Standard-Seitenformat"
+	},
+	"core.pdf.defaultOrientation": {
+		"label": "Standard-Ausrichtung"
+	},
+	"core.pdf.marginTop": {
+		"label": "Rand oben"
+	},
+	"core.pdf.marginRight": {
+		"label": "Rand rechts"
+	},
+	"core.pdf.marginBottom": {
+		"label": "Rand unten"
+	},
+	"core.pdf.marginLeft": {
+		"label": "Rand links"
+	},
+	"core.pdf.headerText": {
+		"label": "Kopfzeile (rechts)"
+	},
+	"core.pdf.footerText": {
+		"label": "Fußzeile (Mitte)"
+	},
+	"core.pdf.showLogo": {
+		"label": "Logo im Header"
+	},
+	"core.push.enabled": {
+		"label": "Push-Benachrichtigungen",
+		"description": "Erlaubt Benachrichtigungen direkt aufs Gerät (Web Push, auch als App auf dem Home-Bildschirm). Aus: alles geht per E-Mail."
+	},
+	"core.push.vapidPublicKey": {
+		"label": "Öffentlicher Push-Schlüssel (VAPID)",
+		"description": "Wird automatisch erzeugt."
+	},
+	"core.push.vapidPrivateKey": {
+		"label": "Privater Push-Schlüssel (VAPID)",
+		"description": "Wird automatisch erzeugt und verschlüsselt gespeichert."
+	},
+	"core.user.theme": {
+		"label": "Darstellung"
+	},
+	"core.user.locale": {
+		"label": "Sprache",
+		"description": "Leer = Sprache des Systems."
+	},
+	"core.user.accentColor": {
+		"label": "Eigene Akzentfarbe",
+		"description": "Leer = Akzentfarbe des Systems."
+	},
+	"core.user.themes": {
+		"label": "Eigene Themes",
+		"description": "Persönliche Themes (Akzentfarbe und Hintergrund je Modus)."
+	},
+	"core.user.activeTheme": {
+		"label": "Aktives Theme",
+		"description": "Leer = kein Theme, `preset:<name>` = Vorschlag, sonst ID eines eigenen Themes."
+	},
+	"core.user.themeFavorites": {
+		"label": "Favorisierte Themes",
+		"description": "Mit Stern markierte Themes; nur sie erscheinen in der Kopfzeile."
+	},
+	"core.user.density": {
+		"label": "Dichte"
+	},
+	"core.user.startPage": {
+		"label": "Startseite",
+		"description": "Seite nach der Anmeldung (nur erlaubte Seiten werden verwendet)."
+	},
+	"core.user.pageSize": {
+		"label": "Einträge pro Seite"
+	},
+	"core.user.dashboard": {
+		"label": "Dashboard-Anordnung",
+		"description": "Reihenfolge und ausgeblendete Kacheln (`<modul>:<kachel>`); leer = Standard."
+	},
+	"validation": {
+		"auditDays": "Bitte 0 (nie) oder mindestens 30 Tage angeben"
+	},
+	"errors": {
+		"unknown": "Unbekannte Einstellung: {key}",
+		"userIdRequired": "Benutzerspezifische Einstellung benötigt eine Benutzer-ID",
+		"permissionMissing": "Berechtigung fehlt: {permission}",
+		"tooMany": "Höchstens {max} Einstellungen auf einmal",
+		"ownOnly": "Nur eigene Einstellungen änderbar",
+		"notClearable": "Diese Einstellung kann nicht gelöscht werden",
+		"invalidValue": "Ungültiger Wert für {key}",
+		"invalidMany": "Ungültige Einstellungen"
+	},
+	"options": {
+		"locale": {
+			"auto": "Automatisch (Browsersprache)",
+			"system": "Sprache des Systems"
+		},
+		"orientation": {
+			"portrait": "Hochformat",
+			"landscape": "Querformat"
+		},
+		"address": {
+			"du": "du",
+			"ihr": "ihr",
+			"Sie": "Sie"
+		}
+	}
+}

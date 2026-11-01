@@ -1,0 +1,26 @@
+{
+	"accountLocked": {
+		"subject": "{system}: Sign-in temporarily locked",
+		"text": "Hello {name},\n\nthere were a lot of failed sign-in attempts for your account in a short time. Sign-in is therefore locked for everyone for about {minutes} minutes.\n\nIf this wasn't you, please change your password once the lock has expired, turn on two-factor authentication and contact the administrators."
+	},
+	"resetPassword": {
+		"subject": "{system}: Reset your password",
+		"text": "Hello {name},\n\nyou can reset your password using the following link (valid for 1 hour):\n{url}\n\nIf you didn't request this, simply ignore this message."
+	},
+	"verifyAccount": {
+		"subject": "{system}: Confirm your email address",
+		"text": "Hello {name},\n\nplease confirm your email address using the following link (valid for 1 hour). You can only sign in after that:\n{url}\n\nIf you didn't create an account, ignore this message."
+	},
+	"verifyNewEmail": {
+		"subject": "{system}: Confirm your new email address",
+		"text": "Hello {name},\n\nplease use the following link to confirm that this address should be used for your account from now on (valid for 1 hour). You need to be signed in in this browser:\n{url}\n\nIf you didn't request this, ignore this message."
+	},
+	"emailChangeRequested": {
+		"subject": "{system}: Change of your email address requested",
+		"text": "Hello {name},\n\na change of your account's email address to {email} was requested. The change only takes effect once the link in the confirmation email sent to the new address is opened.\n\nIf this wasn't you, please change your password immediately and contact the administrators."
+	},
+	"emailChangedByAdmin": {
+		"subject": "{system}: The email address of your account was changed",
+		"text": "Hello {name},\n\nthe administrators changed the email address of your account to {email}. From now on all messages, including password reset links, go to this address. All previous sessions have been ended.\n\nIf this change wasn't agreed with you, please contact the administrators right away."
+	}
+}

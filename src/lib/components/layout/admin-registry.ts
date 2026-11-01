@@ -1,7 +1,12 @@
 /**
  * Verwaltungsbereich (`/admin`): Abschnitte, Seiten, Reiter und Suchbegriffe – EINE Quelle für Seitenleiste,
  * Übersicht, Befehlspalette und Reiterleisten. Rein und client-tauglich.
+ *
+ * Texte (Phase N): `label`, `description` und `keywords` sind Getter und übersetzen beim Zugriff
+ * (`messages/<sprache>/admin.json`, `admin.sections.<id>` bzw. `admin.entries.<id mit - statt .>`). Suchbegriffe
+ * stehen kommagetrennt je Sprache; die deutschen treffen in jeder Sprache zusätzlich.
  */
+import { getLocale, t, tl } from '$lib/i18n';
 import type { ModuleNavEntry } from './nav';
 
 export type AdminSectionId = 'people' | 'settings' | 'modules' | 'api' | 'maintenance';
@@ -35,39 +40,63 @@ export interface AdminEntry {
 	navHint?: string;
 }
 
-export const ADMIN_HOME = { label: 'Übersicht', href: '/admin', icon: 'layout-grid' } as const;
+/** Kommagetrennte Suchbegriffe → Liste */
+const splitKeywords = (s: string) =>
+	s
+		.split(',')
+		.map((k) => k.trim())
+		.filter(Boolean);
+
+/** Suchbegriffe in der aktuellen Sprache plus die deutschen (ohne Doppelungen) */
+function keywordsFor(key: string): string[] {
+	const own = splitKeywords(t(key));
+	if (getLocale() === 'de') return own;
+	return [...new Set([...own, ...splitKeywords(tl('de', key))])];
+}
+
+function section(id: AdminSectionId, icon: string): AdminSection {
+	return {
+		id,
+		icon,
+		get label() {
+			return t(`admin.sections.${id}.label`);
+		},
+		get description() {
+			return t(`admin.sections.${id}.description`);
+		}
+	};
+}
+
+function entry(def: Omit<AdminEntry, 'label' | 'description' | 'keywords'>): AdminEntry {
+	const base = `admin.entries.${def.id.replace(/\./g, '-')}`;
+	return {
+		...def,
+		get label() {
+			return t(`${base}.label`);
+		},
+		get description() {
+			return t(`${base}.description`);
+		},
+		get keywords() {
+			return keywordsFor(`${base}.keywords`);
+		}
+	};
+}
+
+export const ADMIN_HOME = {
+	get label() {
+		return t('admin.home');
+	},
+	href: '/admin',
+	icon: 'layout-grid'
+} as const;
 
 export const ADMIN_SECTIONS: readonly AdminSection[] = [
-	{
-		id: 'people',
-		label: 'Personen & Rechte',
-		icon: 'users',
-		description: 'Benutzerkonten, Rollen und was sie dürfen.'
-	},
-	{
-		id: 'settings',
-		label: 'Einstellungen',
-		icon: 'settings',
-		description: 'Organisation, Design, E-Mail, Speicher, KI, PDF und Modul-Einstellungen.'
-	},
-	{
-		id: 'modules',
-		label: 'Module',
-		icon: 'puzzle',
-		description: 'Module aktivieren und ihre eigenen Einstellungsseiten.'
-	},
-	{
-		id: 'api',
-		label: 'Schnittstellen',
-		icon: 'terminal',
-		description: 'API-Keys für externe Dienste und die Übersicht aller Endpunkte.'
-	},
-	{
-		id: 'maintenance',
-		label: 'Protokoll & Wartung',
-		icon: 'scroll-text',
-		description: 'Audit-Log, Datensicherung und Zurücksetzen von Daten.'
-	}
+	section('people', 'users'),
+	section('settings', 'settings'),
+	section('modules', 'puzzle'),
+	section('api', 'terminal'),
+	section('maintenance', 'scroll-text')
 ];
 
 const SETTINGS_ANY = [
@@ -80,260 +109,186 @@ const SETTINGS_ANY = [
 
 export const ADMIN_ENTRIES: readonly AdminEntry[] = [
 	// Personen & Rechte
-	{
+	entry({
 		id: 'users',
 		section: 'people',
-		label: 'Benutzer',
-		description: 'Konten anlegen, sperren, Rollen zuweisen.',
 		href: '/admin/users',
 		icon: 'users',
 		permission: 'core.users.view',
-		keywords: ['Konto', 'Konten', 'Benutzer*innen', 'Passwort', 'deaktivieren', 'E-Mail-Adresse'],
 		nav: true
-	},
-	{
+	}),
+	entry({
 		id: 'roles',
 		section: 'people',
-		label: 'Rollen',
-		description: 'Rollen und ihre Rechte bearbeiten.',
 		href: '/admin/roles',
 		icon: 'shield',
 		permission: 'core.roles.view',
-		keywords: ['Rolle', 'Administrator', 'Mitglied', 'Rechte vergeben'],
 		nav: true
-	},
-	{
+	}),
+	entry({
 		id: 'roles.permissions',
 		section: 'people',
-		label: 'Berechtigungen',
-		description: 'Alle Rechte mit Modul und zugehörigen Rollen.',
 		href: '/admin/roles/permissions',
 		icon: 'key-round',
 		permission: 'core.roles.view',
-		keywords: ['Recht', 'Rechte', 'Permission', 'Zugriff'],
 		parent: 'roles'
-	},
+	}),
 	// Einstellungen
-	{
+	entry({
 		id: 'settings',
 		section: 'settings',
-		label: 'Einstellungen',
-		description: 'Alle Systemeinstellungen an einem Ort.',
 		href: '/admin/settings',
 		icon: 'settings',
 		anyPermission: SETTINGS_ANY,
-		keywords: ['Konfiguration', 'System'],
 		nav: true
-	},
-	{
+	}),
+	entry({
 		id: 'settings.general',
 		section: 'settings',
-		label: 'Allgemein',
-		description: 'Systemname, Name, Anschrift und Kontakt der Organisation.',
 		href: '/admin/settings/general',
 		icon: 'settings',
 		permission: 'core.settings.view',
-		keywords: ['Systemname', 'Organisation', 'Stamm', 'Anschrift', 'Adresse', 'Telefon', 'Kontakt'],
 		parent: 'settings'
-	},
-	{
+	}),
+	entry({
 		id: 'settings.design',
 		section: 'settings',
-		label: 'Design',
-		description: 'Logo und Akzentfarbe.',
 		href: '/admin/settings/design',
 		icon: 'sparkles',
 		permission: 'core.settings.view',
-		keywords: ['Logo', 'Akzentfarbe', 'Farbe', 'Erscheinungsbild', 'Branding'],
 		parent: 'settings'
-	},
-	{
+	}),
+	entry({
 		id: 'settings.mail',
 		section: 'settings',
-		label: 'E-Mail-Versand',
-		description: 'SMTP-Server, Zugangsdaten, Absender und Test-E-Mail.',
 		href: '/admin/settings/mail',
 		icon: 'mail',
 		permission: 'core.settings.view',
-		keywords: ['SMTP', 'Mailserver', 'Absender', 'Port', 'TLS', 'Test-E-Mail', 'Passwort'],
 		parent: 'settings'
-	},
-	{
+	}),
+	entry({
 		id: 'settings.mail-layout',
 		section: 'settings',
-		label: 'E-Mail-Layout',
-		description: 'Aussehen ausgehender E-Mails mit Vorschau.',
 		href: '/admin/settings/mail-layout',
 		icon: 'mail',
 		permission: 'core.settings.view',
-		keywords: ['Signatur', 'Fußzeile', 'Wappen', 'Vorschau', 'Mail-Vorlage'],
 		parent: 'settings'
-	},
-	{
+	}),
+	entry({
 		id: 'settings.storage',
 		section: 'settings',
-		label: 'Speicher',
-		description: 'S3-Speicher für Dateien, Belege und Bilder.',
 		href: '/admin/settings/storage',
 		icon: 'hard-drive',
 		permission: 'core.storage.manage',
-		keywords: ['Storage', 'S3', 'MinIO', 'Bucket', 'Dateien', 'Upload', 'Endpoint'],
 		parent: 'settings'
-	},
-	{
+	}),
+	entry({
 		id: 'settings.notifications',
 		section: 'settings',
-		label: 'Benachrichtigungen',
-		description: 'Push-Benachrichtigungen (Web Push) ein- und ausschalten, Schlüssel.',
 		href: '/admin/settings/notifications',
 		icon: 'bell',
 		permission: 'core.settings.view',
-		keywords: ['Push', 'Web Push', 'VAPID', 'Handy', 'App', 'Benachrichtigung', 'Mitteilung'],
 		parent: 'settings'
-	},
-	{
+	}),
+	entry({
 		id: 'settings.ai',
 		section: 'settings',
-		label: 'KI',
-		description: 'KI-Anbieter, Modell, Limits und Nutzung.',
 		href: '/admin/settings/ai',
 		icon: 'sparkles',
 		anyPermission: ['core.ai.view', 'core.ai.manage'],
-		keywords: ['Künstliche Intelligenz', 'Claude', 'Modell', 'API-Schlüssel', 'Kosten', 'Budget'],
 		parent: 'settings'
-	},
-	{
+	}),
+	entry({
 		id: 'settings.pdf',
 		section: 'settings',
-		label: 'PDF',
-		description: 'PDF-Einstellungen, Briefvorlagen mit Vorschau, Test-PDF.',
 		href: '/admin/settings/pdf',
 		icon: 'file-text',
 		permission: 'core.pdf.manage',
-		keywords: ['Briefkopf', 'Vorlage', 'Brief', 'Dokument', 'Papierformat'],
 		parent: 'settings'
-	},
-	{
+	}),
+	entry({
 		id: 'settings.modules',
 		section: 'settings',
-		label: 'Module',
-		description: 'Einstellungen der aktiven Module (z. B. Bankdaten, Stammesname).',
 		href: '/admin/settings/modules',
 		icon: 'puzzle',
 		permission: 'core.settings.view',
-		keywords: [
-			'Modul-Einstellungen',
-			'Bankdaten',
-			'IBAN',
-			'BIC',
-			'Kontoinhaber',
-			'Stammesname',
-			'Adresssuche'
-		],
 		parent: 'settings'
-	},
+	}),
 	// Module
-	{
+	entry({
 		id: 'modules',
 		section: 'modules',
-		label: 'Module',
-		description: 'Module aktivieren, deaktivieren und installieren.',
 		href: '/admin/modules',
 		icon: 'puzzle',
 		permission: 'core.modules.view',
-		keywords: ['aktivieren', 'deaktivieren', 'Erweiterung', 'Version'],
 		nav: true
-	},
-	{
+	}),
+	entry({
 		id: 'modules.install',
 		section: 'modules',
-		label: 'Installieren',
-		description: 'Module per GitHub-Link oder ZIP-Datei installieren und aktualisieren.',
 		href: '/admin/modules/install',
 		icon: 'download',
 		permission: 'core.modules.install',
-		keywords: ['GitHub', 'ZIP', 'hochladen', 'Update', 'Quelle', 'Repository'],
 		parent: 'modules'
-	},
-	{
+	}),
+	entry({
 		id: 'modules.history',
 		section: 'modules',
-		label: 'Verlauf',
-		description: 'Installationen und Aktualisierungen von Modulen.',
 		href: '/admin/modules/history',
 		icon: 'history',
 		permission: 'core.modules.view',
-		keywords: ['Installationen', 'Protokoll', 'Commit'],
 		parent: 'modules'
-	},
+	}),
 	// Schnittstellen
-	{
+	entry({
 		id: 'api',
 		section: 'api',
-		label: 'API-Keys',
-		description: 'Schlüssel für externe Dienste (z. B. Stammeswebsite).',
 		href: '/admin/api',
 		icon: 'key-round',
 		permission: 'core.api.view',
-		keywords: ['API-Schlüssel', 'Token', 'Scope', 'Website', 'Zugang'],
 		nav: true
-	},
-	{
+	}),
+	entry({
 		id: 'api.docs',
 		section: 'api',
-		label: 'API-Übersicht',
-		description: 'Alle REST-Endpunkte mit Rechten, Schemas und Konsole.',
 		href: '/admin/api/docs',
 		icon: 'terminal',
 		permission: 'core.api.view',
-		keywords: ['REST', 'Endpunkte', 'Dokumentation', 'OpenAPI', 'Konsole'],
 		parent: 'api'
-	},
+	}),
 	// Protokoll & Wartung
-	{
+	entry({
 		id: 'audit',
 		section: 'maintenance',
-		label: 'Audit-Log',
-		description: 'Wer hat wann was geändert.',
 		href: '/admin/audit',
 		icon: 'scroll-text',
 		permission: 'core.audit.view',
-		keywords: ['Protokoll', 'Verlauf', 'Logins', 'Änderungen', 'Log'],
 		nav: true
-	},
-	{
+	}),
+	entry({
 		id: 'reset',
 		section: 'maintenance',
-		label: 'Zurücksetzen',
-		description: 'Daten einzelner Bereiche oder des ganzen Systems löschen (mit Sicherung).',
 		href: '/admin/reset',
 		icon: 'rotate-ccw',
 		permission: 'core.system.reset',
-		keywords: ['Reset', 'Löschen'],
 		nav: true
-	},
-	{
+	}),
+	entry({
 		id: 'backup',
 		section: 'maintenance',
-		label: 'Datensicherung',
-		description: 'Alle Daten verschlüsselt sichern und wiederherstellen oder zusammenführen.',
 		href: '/admin/backup',
 		icon: 'database-backup',
 		permission: 'core.system.backup',
-		keywords: ['Sicherung', 'Backup', 'Export', 'Import', 'Wiederherstellen', 'Umzug'],
 		nav: true
-	},
-	{
+	}),
+	entry({
 		id: 'privacy',
 		section: 'people',
-		label: 'Datenauskunft',
-		description: 'Alle Daten einer Person exportieren (Auskunft und Datenübertragbarkeit, DSGVO).',
 		href: '/admin/privacy',
 		icon: 'shield',
 		permission: 'core.privacy.export',
-		keywords: ['DSGVO', 'Auskunft', 'Datenschutz', 'Art. 15', 'Art. 20', 'Export', 'Betroffene'],
 		nav: true
-	}
+	})
 ];
 
 export function canSeeAdminEntry(permissions: readonly string[], e: AdminEntry): boolean {
@@ -357,12 +312,14 @@ export function moduleAdminEntries(navigation: readonly ModuleNavEntry[]): Admin
 			id: `module:${n.moduleId}:${n.path}`,
 			section: 'modules' as const,
 			label: several ? n.label : name,
-			description: several ? `${n.label} des Moduls ${name}` : `Einstellungen des Moduls ${name}`,
+			description: several
+				? t('admin.moduleEntry.pageOf', { page: n.label, module: name })
+				: t('admin.moduleEntry.settingsOf', { module: name }),
 			href: n.path,
 			icon: n.icon,
-			keywords: [n.label, name, n.moduleId, 'Modul-Einstellungen'],
+			keywords: [n.label, name, n.moduleId, ...keywordsFor('admin.moduleEntry.keywords')],
 			nav: true,
-			navHint: several ? name : 'Einstellungen'
+			navHint: several ? name : t('admin.moduleEntry.hint')
 		};
 	});
 }

@@ -1,0 +1,12 @@
+{
+	"invalidKey": "Invalid key",
+	"invalidId": "Invalid ID",
+	"tooMany": "At most {max} entries",
+	"endpoints": {
+		"search": "Search embeddable content (from 2 characters, at most 10 per kind)",
+		"kinds": "Kinds of embeddable content the person may use",
+		"describe": "Resolve embedded content per viewer (title, access, paths)"
+	},
+	"unavailable": "Not available",
+	"embeddedContent": "Embedded content"
+}

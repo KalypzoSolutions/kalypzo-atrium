@@ -1,0 +1,53 @@
+{
+	"tabKeys": "API-Keys",
+	"headerTitle": "Schnittstellen",
+	"headerDescription": "API-Keys für externe Dienste und die Übersicht aller REST-Endpunkte.",
+	"tabsLabel": "Bereiche der Schnittstellen",
+	"title": "API-Keys",
+	"description": "Schlüssel für externe Dienste. Wirksame Rechte sind die Schnittmenge aus Scopes und deinen eigenen Berechtigungen.",
+	"create": "API-Key erstellen",
+	"empty": "Noch keine API-Keys vorhanden.",
+	"col": {
+		"name": "Name",
+		"prefix": "Präfix",
+		"scopes": "Scopes",
+		"status": "Status",
+		"expires": "Läuft ab",
+		"lastUsed": "Zuletzt benutzt",
+		"actions": "Aktionen"
+	},
+	"scopeCount": "{count} Scopes",
+	"status": {
+		"revoked": "Widerrufen",
+		"expired": "Abgelaufen",
+		"active": "Aktiv"
+	},
+	"revoke": "Widerrufen",
+	"copied": "In die Zwischenablage kopiert",
+	"copyFailed": "Kopieren nicht möglich – bitte manuell markieren",
+	"createDescription": "Der Schlüssel wird nach dem Erstellen nur ein einziges Mal angezeigt.",
+	"name": "Name",
+	"namePlaceholder": "z. B. Buchhaltung-Export",
+	"expiresAt": "Ablaufdatum (optional)",
+	"scopes": "Scopes",
+	"scopeFilter": "Scopes filtern …",
+	"scopeFilterLabel": "Scopes filtern",
+	"noScopes": "Keine Scopes gefunden.",
+	"cancel": "Abbrechen",
+	"creating": "Erstelle …",
+	"createSubmit": "Erstellen",
+	"createdTitle": "API-Key „{name}“ erstellt",
+	"createdDescription": "Kopiere den Schlüssel jetzt und bewahre ihn sicher auf. Er kann später nicht mehr angezeigt werden.",
+	"keyLabel": "API-Key",
+	"copy": "Kopieren",
+	"done": "Fertig, ich habe den Schlüssel gespeichert",
+	"revokeTitle": "API-Key widerrufen?",
+	"revokeDescription": "„{name}“ ({prefix}…) wird sofort ungültig. Das kann nicht rückgängig gemacht werden.",
+	"server": {
+		"nameMin": "Name muss mindestens 2 Zeichen lang sein",
+		"scopeRequired": "Mindestens ein Scope ist erforderlich",
+		"invalidDate": "Ungültiges Datum",
+		"created": "API-Key erstellt",
+		"revoked": "API-Key widerrufen"
+	}
+}

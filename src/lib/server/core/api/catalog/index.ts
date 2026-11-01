@@ -6,18 +6,20 @@ import type {
 	ApiMethod,
 	ApiRateLimit
 } from '$lib/api-docs/types';
+import { intlLocale, localized } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { allDefinitions } from '../../modules/registry';
 import { enabledModuleIds } from '../../modules/state';
 import { has } from '../../permissions/service';
 import { allEndpoints } from '../registry';
+import { endpointText } from '../text';
 import type { RegisteredEndpoint } from '../types';
 import { deriveErrors } from './errors';
 import { ANON_RATE_LIMIT, DEFAULT_RATE_LIMIT } from './limits';
 import { getEndpointSchemas } from './schemas';
 
 const CORE_ID = 'core';
-const CORE_NAME = 'Core';
+const CORE_TAG = 'api.tags.core';
 
 function accessOf(e: RegisteredEndpoint): ApiAccess {
 	if (e.permission !== null) return 'permission';
@@ -32,8 +34,9 @@ function rateLimitOf(e: RegisteredEndpoint, access: ApiAccess): ApiRateLimit {
 	return { limit: fallback.limit, windowSec: fallback.windowSec, isDefault: true };
 }
 
-function coreGroupLabel(e: RegisteredEndpoint): string {
-	return e.tags?.[0] ?? CORE_NAME;
+/** Erster Tag (bei Core-Endpunkten ein i18n-Schlüssel); dient als Gruppen-ID, Anzeige übersetzt */
+function coreGroupTag(e: RegisteredEndpoint): string {
+	return e.tags?.[0] ?? CORE_TAG;
 }
 
 /**
@@ -45,7 +48,8 @@ export async function buildApiCatalog(ctx: RequestContext): Promise<ApiCatalog> 
 	const endpoints = allEndpoints();
 	const enabled = await enabledModuleIds();
 	const moduleNames = new Map<string, string>();
-	for (const def of allDefinitions()) moduleNames.set(def.manifest.id, def.manifest.name);
+	for (const def of allDefinitions())
+		moduleNames.set(def.manifest.id, localized(def.manifest.name));
 
 	const coreGroups: ApiCatalogGroup[] = [];
 	const coreGroupIds = new Set<string>();
@@ -53,17 +57,19 @@ export async function buildApiCatalog(ctx: RequestContext): Promise<ApiCatalog> 
 
 	const entries: ApiCatalogEntry[] = endpoints.map((e) => {
 		const isCore = e.moduleId === CORE_ID;
-		const moduleName = isCore ? CORE_NAME : (moduleNames.get(e.moduleId) ?? e.moduleId);
+		const moduleName = isCore
+			? endpointText(CORE_TAG)
+			: (moduleNames.get(e.moduleId) ?? e.moduleId);
 		const access = accessOf(e);
 		const permission = e.permission ?? null;
 
 		let group: string;
 		if (isCore) {
-			const label = coreGroupLabel(e);
-			group = `core:${label}`;
+			const tag = coreGroupTag(e);
+			group = `core:${tag}`;
 			if (!coreGroupIds.has(group)) {
 				coreGroupIds.add(group);
-				coreGroups.push({ id: group, label });
+				coreGroups.push({ id: group, label: endpointText(tag) });
 			}
 		} else {
 			group = `module:${e.moduleId}`;
@@ -82,8 +88,8 @@ export async function buildApiCatalog(ctx: RequestContext): Promise<ApiCatalog> 
 			moduleName,
 			moduleEnabled: isCore || enabled.has(e.moduleId),
 			group,
-			summary: e.summary,
-			description: e.description ?? null,
+			summary: endpointText(e.summary),
+			description: endpointText(e.description) ?? null,
 			access,
 			permission,
 			sessionOnly: e.sessionOnly === true,
@@ -102,7 +108,7 @@ export async function buildApiCatalog(ctx: RequestContext): Promise<ApiCatalog> 
 	});
 
 	const sortedModuleGroups = [...moduleGroups.values()].sort((a, b) =>
-		a.label.localeCompare(b.label, 'de')
+		a.label.localeCompare(b.label, intlLocale())
 	);
 
 	return {

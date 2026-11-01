@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /** Enthält Steuerzeichen (optional Zeilenumbruch/Tab erlaubt). */
 export function hasControlChars(value: string, allowMultiline: boolean): boolean {
 	for (let i = 0; i < value.length; i++) {
@@ -13,4 +14,10 @@ export function clampLength(value: number | undefined, fallback: number, max: nu
 	return Math.max(1, Math.min(v, max));
 }
 
-export const NO_CONTROL = 'Enthält ungültige Zeichen';
+/** Fehlermeldung „ungültige Zeichen“ – erst beim Prüfen übersetzt. */
+export const NO_CONTROL = { error: () => t('forms.validation.invalidChars') };
+
+/** Zod-Fehlerparameter, der erst beim Prüfen übersetzt wird (Sprache des Requests). */
+export function msg(key: string, params?: Record<string, string>): { error: () => string } {
+	return { error: () => t(key, params) };
+}

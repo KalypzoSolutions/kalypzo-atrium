@@ -14,12 +14,13 @@
 		FormField,
 		SummaryList
 	} from '$lib/components/layout';
+	import { intlLocale, t } from '$lib/i18n';
 	import { callAction, submitter } from './actions';
 	import type { ProfileData } from './types';
 
 	let { data }: { data: ProfileData } = $props();
 
-	const dateFmt = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long' });
+	const dateFmt = new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'long' });
 
 	// --- Name
 	let name = $state(untrack(() => data.profile.name));
@@ -57,7 +58,7 @@
 
 	const summary = $derived([
 		{
-			label: 'Mitglied seit',
+			label: t('profile.account.memberSince'),
 			value: data.createdAt ? dateFmt.format(new Date(data.createdAt)) : '–'
 		}
 	]);
@@ -65,7 +66,9 @@
 
 <div class="space-y-6">
 	<Card>
-		<CardHeader><CardTitle class="font-semibold">Profil</CardTitle></CardHeader>
+		<CardHeader
+			><CardTitle class="font-semibold">{t('profile.account.profile')}</CardTitle></CardHeader
+		>
 		<CardContent class="max-w-2xl space-y-6">
 			<div class="flex flex-wrap items-center gap-4">
 				<EntityAvatar name={data.profile.name} src={data.profile.image ?? null} size={72} />
@@ -77,10 +80,12 @@
 							avatarError = null;
 							avatarFile = null;
 							avatarOpen = true;
-						}}>Bild ändern</Button
+						}}>{t('profile.account.changePicture')}</Button
 					>
 					{#if data.profile.image}
-						<Button variant="ghost" size="sm" onclick={() => (removeOpen = true)}>Entfernen</Button>
+						<Button variant="ghost" size="sm" onclick={() => (removeOpen = true)}
+							>{t('profile.account.remove')}</Button
+						>
 					{/if}
 				</div>
 			</div>
@@ -101,7 +106,7 @@
 					{ setBusy: (b) => (nameBusy = b) }
 				)}
 			>
-				<FormField label="Name" id="profile-name" error={nameError}>
+				<FormField label={t('profile.account.name')} id="profile-name" error={nameError}>
 					<Input
 						id="profile-name"
 						name="name"
@@ -113,12 +118,12 @@
 					/>
 				</FormField>
 				<Button type="submit" class="w-fit" disabled={!nameDirty || nameBusy}>
-					{nameBusy ? 'Speichert …' : 'Speichern'}
+					{nameBusy ? t('profile.saving') : t('profile.save')}
 				</Button>
 			</form>
 
 			<div class="grid gap-1.5">
-				<p class="text-sm font-medium">E-Mail-Adresse</p>
+				<p class="text-sm font-medium">{t('profile.account.email')}</p>
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<span class="min-w-0 text-sm break-all">{data.profile.email}</span>
 					<Button
@@ -127,7 +132,7 @@
 						onclick={() => {
 							emailError = null;
 							emailOpen = true;
-						}}>E-Mail ändern</Button
+						}}>{t('profile.account.changeEmail')}</Button
 					>
 				</div>
 			</div>
@@ -135,20 +140,22 @@
 	</Card>
 
 	<Card>
-		<CardHeader><CardTitle class="font-semibold">Kontodaten</CardTitle></CardHeader>
+		<CardHeader
+			><CardTitle class="font-semibold">{t('profile.account.accountData')}</CardTitle></CardHeader
+		>
 		<CardContent class="max-w-2xl space-y-3">
 			<SummaryList rows={summary} />
 			<div class="grid gap-1.5">
-				<p class="text-sm">Rollen</p>
+				<p class="text-sm">{t('profile.account.roles')}</p>
 				<div class="flex flex-wrap gap-1.5">
 					{#each data.roles as role (role)}
 						<Badge variant="secondary">{role}</Badge>
 					{:else}
-						<span class="text-sm text-muted-foreground">Keine Rolle zugewiesen.</span>
+						<span class="text-sm text-muted-foreground">{t('profile.account.noRoles')}</span>
 					{/each}
 				</div>
 				<p class="text-xs text-muted-foreground">
-					Rollen vergibt die Administration, einige kommen über Ämter.
+					{t('profile.account.rolesHint')}
 				</p>
 			</div>
 		</CardContent>
@@ -158,10 +165,8 @@
 <Dialog.Root bind:open={avatarOpen}>
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
-			<Dialog.Title>Profilbild ändern</Dialog.Title>
-			<Dialog.Description
-				>PNG, JPEG oder WebP. Nach der Auswahl wählst du den Ausschnitt.</Dialog.Description
-			>
+			<Dialog.Title>{t('profile.account.pictureDialogTitle')}</Dialog.Title>
+			<Dialog.Description>{t('profile.account.pictureDialogDescription')}</Dialog.Description>
 		</Dialog.Header>
 		<form
 			method="POST"
@@ -194,17 +199,17 @@
 						bind:file={avatarFile}
 						accept="image/png,image/jpeg,image/webp"
 						maxBytes={2 * 1024 * 1024}
-						crop={{ shape: 'circle', maxEdge: 512, title: 'Profilbild zuschneiden' }}
+						crop={{ shape: 'circle', maxEdge: 512, title: t('profile.account.cropTitle') }}
 						disabled={avatarBusy}
 					/>
 				</div>
 			</div>
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (avatarOpen = false)}>
-					Abbrechen
+					{t('profile.cancel')}
 				</Button>
 				<Button type="submit" disabled={!avatarFile || avatarBusy}>
-					{avatarBusy ? 'Lädt hoch …' : 'Speichern'}
+					{avatarBusy ? t('profile.account.uploading') : t('profile.save')}
 				</Button>
 			</Dialog.Footer>
 		</form>
@@ -213,9 +218,9 @@
 
 <ConfirmDialog
 	bind:open={removeOpen}
-	title="Profilbild entfernen?"
-	description="Danach siehst du wieder deine Initialen."
-	confirmLabel="Entfernen"
+	title={t('profile.account.removeTitle')}
+	description={t('profile.account.removeDescription')}
+	confirmLabel={t('profile.account.remove')}
 	destructive
 	onconfirm={removeAvatar}
 />
@@ -223,10 +228,9 @@
 <Dialog.Root bind:open={emailOpen}>
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
-			<Dialog.Title>E-Mail-Adresse ändern</Dialog.Title>
+			<Dialog.Title>{t('profile.account.emailDialogTitle')}</Dialog.Title>
 			<Dialog.Description>
-				Wir schicken einen Bestätigungslink an die neue Adresse. Erst nach dem Klick wechselt deine
-				Adresse.
+				{t('profile.account.emailDialogDescription')}
 			</Dialog.Description>
 		</Dialog.Header>
 		<form
@@ -246,10 +250,10 @@
 					><AlertDescription role="alert">{emailError}</AlertDescription></Alert
 				>
 			{/if}
-			<FormField label="Neue E-Mail-Adresse" id="new-email">
+			<FormField label={t('profile.account.newEmail')} id="new-email">
 				<Input id="new-email" name="newEmail" type="email" autocomplete="email" required />
 			</FormField>
-			<FormField label="Aktuelles Passwort" id="email-password">
+			<FormField label={t('profile.account.currentPassword')} id="email-password">
 				<Input
 					id="email-password"
 					name="password"
@@ -260,10 +264,10 @@
 			</FormField>
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (emailOpen = false)}>
-					Abbrechen
+					{t('profile.cancel')}
 				</Button>
 				<Button type="submit" disabled={emailBusy}>
-					{emailBusy ? 'Sendet …' : 'Bestätigungslink senden'}
+					{emailBusy ? t('profile.account.sending') : t('profile.account.sendLink')}
 				</Button>
 			</Dialog.Footer>
 		</form>

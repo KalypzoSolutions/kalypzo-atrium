@@ -1,4 +1,5 @@
 import type { Actions } from '@sveltejs/kit';
+import { t } from '$lib/i18n';
 import { loadFields, saveFields } from '../../_shared/group-form.server';
 import { requirePerm, toFail } from '../../_shared/server-utils';
 import { rotateVapidKeys, totalDevices, vapidKeys } from '$lib/server/core/notifications/push';
@@ -33,7 +34,7 @@ export const actions: Actions = {
 			const r = await rotateVapidKeys(locals.ctx);
 			return {
 				success: true,
-				message: `Neue Schlüssel erzeugt – ${r.removedDevices} Geräte müssen Push neu aktivieren`
+				message: t('admin-settings.notifications.rotated', { count: r.removedDevices })
 			};
 		} catch (e) {
 			return toFail(e);

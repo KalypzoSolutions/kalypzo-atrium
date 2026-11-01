@@ -1,0 +1,158 @@
+{
+	"access": {
+		"onlyUsers": "Backups are only available to signed-in users",
+		"adminOnlyCore": "Only administrators may restore or merge accounts, roles and API keys.",
+		"adminOnlyModule": "Only administrators may restore or merge “{name}” ({reason})."
+	},
+	"account": {
+		"tooLarge": "The user data in the backup is too large to check your own account.",
+		"otherPassword": "Your account is in the backup with a different password. Users can only be restored if your current password is also valid in the backup.",
+		"inactive": "Your account is deactivated in the backup. Users cannot be restored this way.",
+		"noRight": "Your account has no backup permission in the backup. Users cannot be restored this way."
+	},
+	"format": {
+		"corrupt": "The backup file is damaged or incomplete.",
+		"tooLarge": "The backup exceeds the allowed size.",
+		"wrongPassword": "The backup password is wrong or the file is damaged.",
+		"notBackup": "The file is not a valid backup.",
+		"unsupported": "This backup uses unsupported parameters.",
+		"versionUnsupported": "This version of the backup format is not supported.",
+		"forbiddenEntry": "The backup contains a forbidden entry.",
+		"duplicateEntry": "Duplicate entry in the backup.",
+		"invalidEntryName": "Invalid entry name in the backup.",
+		"encryptedZip": "Encrypted ZIP entries are not supported.",
+		"compression": "Unsupported compression in the backup.",
+		"zip64": "ZIP64 is not supported.",
+		"lineTooLarge": "A data row in the backup is larger than {mb} MB.",
+		"tableLineTooLarge": "A data row in table {table} is larger than {mb} MB.",
+		"entryTooLarge": "An entry in the backup is too large.",
+		"unknownFormat": "The backup has an unknown format or comes from a different version.",
+		"unknownFile": "The backup contains an unknown file.",
+		"unexpectedSecret": "Unexpected encrypted value in {column}",
+		"wrongPurpose": "Encrypted value in {column} has the wrong purpose"
+	},
+	"compat": {
+		"tableMissing": "Table {table} is missing on this server",
+		"unknownColumns": "Unknown columns in {table}: {columns}",
+		"coreVersionUnknown": "The core version of this server could not be determined; compatibility was only checked against the tables.",
+		"newerVersion": "Backup comes from a newer version",
+		"unknownScope": "Unknown area",
+		"moduleNotInstalledSource": "Module is not installed on this server – install {version} from the saved source first",
+		"moduleNotInstalled": "Module is not installed on this server",
+		"moduleDataMissing": "Module data is missing from the backup",
+		"migrationMismatch": "Migration {name} does not match this server",
+		"newerThanModule": "Backup is newer than this module",
+		"migrationDiffers": "Migration {name} differs from this server",
+		"unexpectedTable": "Unexpected table {table} in the module",
+		"olderState": "{name}: The backup is older; newer migrations will be applied after inserting."
+	},
+	"input": {
+		"invalidScope": "Invalid area",
+		"totp": "Please enter the 6-digit code",
+		"chooseScope": "Please choose at least one area",
+		"minChars": "At least {count} characters",
+		"password": "Please enter your password",
+		"backupPassword": "Please enter the backup password",
+		"typeExactly": "Please type exactly \"{word}\""
+	},
+	"confirm": {
+		"restore": "RESTORE",
+		"merge": "MERGE"
+	},
+	"export": {
+		"tableTooLarge": "Table {table} is too large for the backup",
+		"unknownScopes": "Unknown area: {scopes}",
+		"fileNamePrefix": "atrium-backup",
+		"fileInvalidKey": "File {key} has an invalid key and was skipped",
+		"fileUnreadable": "File {key} could not be read and was skipped",
+		"fileMissing": "File {key} is missing from storage and was skipped",
+		"fileCorrupt": "File {key} is damaged (checksum) and was skipped",
+		"undecryptable": "{count, plural, one {# encrypted value could not be decrypted and was} other {# encrypted values could not be decrypted and were}} copied unchanged",
+		"downloadNotFound": "Download not found or expired"
+	},
+	"noSpace": "Not enough disk space for the backup",
+	"upload": {
+		"notFound": "Upload not found or expired",
+		"tooLarge": "The backup file is too large (at most {max})",
+		"chunkLarger": "The chunk is larger than announced",
+		"chunkIncomplete": "The chunk is incomplete",
+		"busy": "The upload is currently being processed",
+		"position": "Upload position does not match",
+		"chunkEmpty": "Empty or invalid chunk",
+		"chunkTooLarge": "The chunk is too large",
+		"chunkBeyond": "The chunk goes beyond the announced file size",
+		"incomplete": "The upload is not complete yet"
+	},
+	"restore": {
+		"unexpected": "Unexpected error",
+		"tooManyAttempts": "Too many attempts. Please try again later.",
+		"secretChanged": "The backup comes from a server with a different key: secrets will be re-encrypted and key-bound check values recalculated.",
+		"noStorage": "No file storage configured: files from the backup will be skipped when restoring.",
+		"filesMissingAtBackup": "{count, plural, one {# file was} other {# files were}} already missing when the backup was created.",
+		"previewExpired": "Preview expired, please start again",
+		"notInBackup": "Not in the backup: {scopes}",
+		"notRestorable": "Cannot be restored: {scopes}",
+		"notRestorableReason": "Cannot be restored: {scopes} ({reason})",
+		"failed": "The restore failed, no data was changed: {error}",
+		"reconcileFailed": "Sync {job} could not be run ({error}); it will run on the next tick.",
+		"runNotFound": "Run not found",
+		"cyclicFk": "Table {table} has cyclic foreign keys that cannot be resolved",
+		"noStorageSkipped": "No file storage configured: files were skipped, the records were restored anyway.",
+		"uploadFailed": "File {key} could not be uploaded",
+		"tableMissingSkipped": "Table {table} is missing on this server and was skipped",
+		"columnsDropped": "{table}: columns {columns} were not taken over",
+		"tableTooLarge": "Table {table} is too large to restore",
+		"missingRefs": "{table}: {count, plural, one {# reference} other {# references}} could not be restored (target missing)",
+		"rehashUnrecoverable": "{count, plural, one {# check value} other {# check values}} could not be restored with the new key (e.g. old share links were revoked)",
+		"noBackupRight": "After the restore, your own account lacks the backup permission. No additional permissions were granted – please ask an administrator for the right role.",
+		"moduleStaysInactive": "Module {id} stays inactive: dependencies not active ({modules})",
+		"moduleStaysActive": "Module {id} stays active: needed by active modules ({modules})",
+		"oldFilesNotDeleted": "{count, plural, one {# old file} other {# old files}} could not be deleted from storage"
+	},
+	"phase": {
+		"prepare": "Preparing",
+		"reconcile": "Syncing",
+		"done": "Done",
+		"finish": "Finishing",
+		"checkFiles": "Checking files",
+		"uploadFiles": "Uploading files",
+		"deleteData": "Deleting data",
+		"insertData": "Inserting data"
+	},
+	"scope": {
+		"users": {
+			"label": "Users",
+			"description": "User accounts with sign-in data, two-factor settings, personal settings, role assignments, individual permissions and profile pictures.",
+			"impliesApiKeys": "API keys belong to user accounts"
+		},
+		"roles": {
+			"label": "Roles",
+			"description": "Roles with their permissions and assignments."
+		},
+		"apiKeys": {
+			"label": "API keys",
+			"description": "API keys of all users (stored checksums only, no plain-text keys)."
+		},
+		"settings": {
+			"label": "Settings",
+			"description": "Global settings incl. module settings and credentials, plus the origin of installed modules (source, commit) with history."
+		},
+		"audit": {
+			"label": "Audit log",
+			"description": "All audit entries."
+		},
+		"apiLog": {
+			"label": "API log",
+			"description": "Log of API calls."
+		},
+		"jobs": {
+			"label": "Job runs",
+			"description": "Last runs of the background jobs."
+		},
+		"aiUsage": {
+			"label": "AI usage",
+			"description": "Recorded AI usage and costs."
+		},
+		"moduleDescription": "All data and files of the module {name}."
+	}
+}

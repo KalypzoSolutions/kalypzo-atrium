@@ -15,6 +15,7 @@ import type {
 import { ASSIST_LIST_TASKS, ASSIST_VARIANT_TASKS } from '$lib/sdk/types/assist';
 import { auditFromContext } from '../../audit/service';
 import { logError } from '../../db-errors';
+import { t } from '$lib/i18n';
 import { errors } from '../../errors';
 import { allDefinitions, getDefinition } from '../../modules/registry';
 import { enabledModuleIds } from '../../modules/state';
@@ -49,6 +50,9 @@ async function loadAssistSettings(): Promise<AssistSettings> {
 		'core.ai.style.tone',
 		'core.ai.style.greeting',
 		'core.ai.style.notes',
+		'core.ai.style.context',
+		'core.organization.name',
+		'core.system.name',
 		'core.ai.assist.allowInbox',
 		'core.ai.assist.allowImages',
 		'core.ai.userMonthlyTokenLimit'
@@ -58,8 +62,10 @@ async function loadAssistSettings(): Promise<AssistSettings> {
 		style: {
 			address: (['du', 'ihr', 'Sie'].includes(address) ? address : 'du') as AssistAddress,
 			tone: String(s['core.ai.style.tone'] ?? ''),
-			greeting: String(s['core.ai.style.greeting'] ?? 'Gut Pfad!'),
-			notes: String(s['core.ai.style.notes'] ?? '')
+			greeting: String(s['core.ai.style.greeting'] ?? ''),
+			notes: String(s['core.ai.style.notes'] ?? ''),
+			context: String(s['core.ai.style.context'] ?? ''),
+			organization: String(s['core.organization.name'] || s['core.system.name'] || '')
 		},
 		allowInbox: s['core.ai.assist.allowInbox'] === true,
 		allowImages: s['core.ai.assist.allowImages'] === true,
@@ -72,7 +78,7 @@ async function resolvePurpose(module: string, purpose: string): Promise<ModuleAs
 	const enabled = await enabledModuleIds();
 	const def = enabled.has(module) ? getDefinition(module) : undefined;
 	const found = def?.assist?.purposes?.[purpose];
-	if (!found) throw errors.notFound('Diese Textstelle kennt die Schreibhilfe nicht');
+	if (!found) throw errors.notFound(t('ai.assist.unknownPurpose'));
 	return found;
 }
 
@@ -83,7 +89,7 @@ async function resolveContext(
 ): Promise<ModuleAssistContext> {
 	const key = `${ref.module}:${ref.kind}`;
 	if (!purpose.contexts?.includes(key)) {
-		throw errors.badRequest('Dieser Kontext ist für die Textstelle nicht vorgesehen');
+		throw errors.badRequest(t('ai.assist.contextNotAllowed'));
 	}
 	const enabled = await enabledModuleIds();
 	const provider = enabled.has(ref.module)
@@ -163,12 +169,12 @@ export async function prepareAssist(
 ): Promise<(onDelta?: (text: string) => void, signal?: AbortSignal) => Promise<AssistResult>> {
 	const purpose = await resolvePurpose(req.module, req.purpose);
 	if (!purpose.tasks.includes(req.task)) {
-		throw errors.badRequest('Diese Aktion ist für die Textstelle nicht vorgesehen');
+		throw errors.badRequest(t('ai.assist.taskNotAllowed'));
 	}
 	if (req.task === 'rewrite' && !req.instruction?.trim()) {
 		throw errors.validation(
-			{ instruction: 'Bitte beschreibe, was geändert werden soll' },
-			'Bitte beschreibe, was geändert werden soll'
+			{ instruction: t('ai.assist.instructionRequired') },
+			t('ai.assist.instructionRequired')
 		);
 	}
 	await assertAiAccess(ctx, req.module);
@@ -176,9 +182,7 @@ export async function prepareAssist(
 	if (settings.userLimit > 0 && ctx.userId) {
 		const used = await actorTokensThisMonth(ctx.userId);
 		if (used >= settings.userLimit) {
-			throw errors.rateLimited(
-				'Dein monatliches Kontingent für die Schreibhilfe ist aufgebraucht. Die Verwaltung kann es erhöhen.'
-			);
+			throw errors.rateLimited(t('ai.assist.userLimit'));
 		}
 	}
 
@@ -187,12 +191,12 @@ export async function prepareAssist(
 	if (context?.document && !settings.allowInbox) delete context.document;
 	if (context?.images?.length && !settings.allowImages) {
 		if (req.task === 'alt-text') {
-			throw errors.forbidden('Bilder dürfen laut Einstellungen nicht an die KI übermittelt werden');
+			throw errors.forbidden(t('ai.assist.imagesNotAllowed'));
 		}
 		delete context.images;
 	}
 	if (req.task === 'alt-text' && !context?.images?.length) {
-		throw errors.badRequest('Für eine Bildbeschreibung fehlt das Bild');
+		throw errors.badRequest(t('ai.assist.imageMissing'));
 	}
 
 	const extra: Record<string, string> = {};
@@ -265,12 +269,11 @@ export async function prepareAssist(
 				next = await gen.next();
 			}
 			const usage = next.value;
-			if (signal?.aborted) throw errors.badRequest('Die Schreibhilfe wurde abgebrochen');
+			if (signal?.aborted) throw errors.badRequest(t('ai.assist.aborted'));
 			const format = req.task === 'alt-text' ? 'plain' : purpose.format;
 			let text = normalizeOutput(redactor.restore(raw), format, purpose.richTables === true);
 			if (format === 'plain') text = clampPlain(text, purpose.maxChars);
-			if (!text)
-				throw errors.unavailable('Die KI hat keinen Text geliefert. Bitte erneut versuchen.');
+			if (!text) throw errors.unavailable(t('ai.assist.emptyResult'));
 			result = {
 				text,
 				checks: verifyOutput({

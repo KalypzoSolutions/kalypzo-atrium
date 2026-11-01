@@ -10,6 +10,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { submitHandler } from '../_shared/form-utils';
+	import { t } from '$lib/i18n';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -78,17 +79,17 @@
 		});
 </script>
 
-<PageTitle title="Rollen" />
+<PageTitle title={t('admin-roles.title')} />
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<h2 class="text-section">Rollen</h2>
+			<h2 class="text-section">{t('admin-roles.title')}</h2>
 			<p class="text-sm text-muted-foreground">
-				Berechtigungen bündeln und Benutzer*innen zuweisen.
+				{t('admin-roles.description')}
 			</p>
 		</div>
-		{#if data.can.create}<Button onclick={openCreate}>Rolle anlegen</Button>{/if}
+		{#if data.can.create}<Button onclick={openCreate}>{t('admin-roles.create')}</Button>{/if}
 	</div>
 
 	<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -97,20 +98,20 @@
 				<Card.Header>
 					<Card.Title class="flex items-center gap-2">
 						{r.name}
-						{#if r.isSystem}<Badge variant="secondary">System</Badge>{/if}
+						{#if r.isSystem}<Badge variant="secondary">{t('admin-roles.system')}</Badge>{/if}
 						{#if !r.isSystem && r.permissions.some((p) => privilegedSet.has(p))}
-							<Badge variant="destructive">Admin-gleich</Badge>
+							<Badge variant="destructive">{t('admin-roles.privileged')}</Badge>
 						{/if}
 					</Card.Title>
-					<Card.Description>{r.description || 'Keine Beschreibung'}</Card.Description>
+					<Card.Description>{r.description || t('admin-roles.noDescription')}</Card.Description>
 				</Card.Header>
 				<Card.Content class="space-y-3">
 					<p class="text-sm text-muted-foreground">
-						{r.permissions.length} Berechtigungen · {r.userCount} Benutzer
+						{t('admin-roles.stats', { permissions: r.permissions.length, users: r.userCount })}
 					</p>
 					<div class="flex gap-2">
 						<Button size="sm" variant="outline" onclick={() => openEdit(r)}>
-							{editable(r) ? 'Bearbeiten' : 'Ansehen'}
+							{editable(r) ? t('admin-roles.edit') : t('admin-roles.view')}
 						</Button>
 						{#if data.can.delete && !r.isSystem}
 							<Button
@@ -118,7 +119,7 @@
 								variant="destructive"
 								onclick={() => ((toDelete = r), (formError = ''), (deleteOpen = true))}
 							>
-								Löschen
+								{t('admin-roles.delete')}
 							</Button>
 						{/if}
 					</div>
@@ -132,23 +133,27 @@
 	<Dialog.Content class="sm:max-w-2xl">
 		<Dialog.Header>
 			<Dialog.Title>
-				{editing ? (locked ? 'Rolle ansehen' : 'Rolle bearbeiten') : 'Rolle anlegen'}
+				{editing
+					? locked
+						? t('admin-roles.dialogView')
+						: t('admin-roles.dialogEdit')
+					: t('admin-roles.create')}
 			</Dialog.Title>
 			<Dialog.Description>
 				{#if editing?.isSystem}
-					Systemrollen können nicht verändert werden.
+					{t('admin-roles.systemLocked')}
 				{:else}
-					Nur Berechtigungen, die du selbst besitzt, können vergeben werden.
+					{t('admin-roles.ownOnly')}
 				{/if}
 			</Dialog.Description>
 		</Dialog.Header>
 		{#if hasPrivileged}
 			<Alert.Root variant="warning">
-				<Alert.Title>Admin-gleiche Rechte</Alert.Title>
+				<Alert.Title>{t('admin-roles.privilegedTitle')}</Alert.Title>
 				<Alert.Description>
-					Mit „Admin-gleich“ markierte Berechtigungen (Datensicherung, Zurücksetzen) erlauben
-					faktisch die Übernahme des ganzen Systems und aller Daten. Nur Administrator*innen können
-					sie vergeben{data.isAdministrator ? '' : ' – du kannst sie hier nicht ändern'}.
+					{data.isAdministrator
+						? t('admin-roles.privilegedText')
+						: t('admin-roles.privilegedTextLocked')}
 				</Alert.Description>
 			</Alert.Root>
 		{/if}
@@ -160,7 +165,7 @@
 		>
 			{#if editing}<input type="hidden" name="id" value={editing.id} />{/if}
 			<div class="space-y-2">
-				<Label for="r-name">Name</Label>
+				<Label for="r-name">{t('admin-roles.name')}</Label>
 				<Input
 					id="r-name"
 					name="name"
@@ -172,7 +177,7 @@
 				/>
 			</div>
 			<div class="space-y-2">
-				<Label for="r-desc">Beschreibung</Label>
+				<Label for="r-desc">{t('admin-roles.descriptionLabel')}</Label>
 				<Input
 					id="r-desc"
 					name="description"
@@ -191,12 +196,12 @@
 								<button
 									type="button"
 									class="text-xs font-normal text-link underline"
-									onclick={() => toggleGroup(items, true)}>alle</button
+									onclick={() => toggleGroup(items, true)}>{t('admin-roles.all')}</button
 								>
 								<button
 									type="button"
 									class="text-xs font-normal text-link underline"
-									onclick={() => toggleGroup(items, false)}>keine</button
+									onclick={() => toggleGroup(items, false)}>{t('admin-roles.none')}</button
 								>
 							{/if}
 						</legend>
@@ -217,7 +222,8 @@
 									<label for={cid}>
 										<code class="text-xs">{p.key}</code>
 										{#if p.privileged}
-											<Badge variant="destructive" class="ml-1">Admin-gleich</Badge>
+											<Badge variant="destructive" class="ml-1">{t('admin-roles.privileged')}</Badge
+											>
 										{/if}
 										{#if p.description}
 											<span id={`${cid}-desc`} class="block text-xs text-muted-foreground"
@@ -236,10 +242,12 @@
 			{#if formError}<p class="text-sm text-destructive" role="alert">{formError}</p>{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (formOpen = false)}>
-					{locked ? 'Schließen' : 'Abbrechen'}
+					{locked ? t('admin-roles.close') : t('admin-roles.cancel')}
 				</Button>
 				{#if !locked}
-					<Button type="submit" disabled={busy}>{busy ? 'Speichert …' : 'Speichern'}</Button>
+					<Button type="submit" disabled={busy}
+						>{busy ? t('admin-roles.saving') : t('admin-roles.save')}</Button
+					>
 				{/if}
 			</Dialog.Footer>
 		</form>
@@ -249,9 +257,12 @@
 <Dialog.Root bind:open={deleteOpen}>
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>Rolle löschen?</Dialog.Title>
+			<Dialog.Title>{t('admin-roles.deleteTitle')}</Dialog.Title>
 			<Dialog.Description>
-				Die Rolle „{toDelete?.name}“ wird gelöscht und allen {toDelete?.userCount ?? 0} Benutzern entzogen.
+				{t('admin-roles.deleteText', {
+					name: toDelete?.name ?? '',
+					count: toDelete?.userCount ?? 0
+				})}
 			</Dialog.Description>
 		</Dialog.Header>
 		<form method="POST" action="?/delete" use:enhance={handler(() => (deleteOpen = false))}>
@@ -259,9 +270,11 @@
 			{#if formError}<p class="mb-3 text-sm text-destructive" role="alert">{formError}</p>{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (deleteOpen = false)}
-					>Abbrechen</Button
+					>{t('admin-roles.cancel')}</Button
 				>
-				<Button type="submit" variant="destructive" disabled={busy}>Löschen</Button>
+				<Button type="submit" variant="destructive" disabled={busy}
+					>{t('admin-roles.delete')}</Button
+				>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

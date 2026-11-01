@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { isAbsolute } from 'node:path';
 import { z } from 'zod';
 
@@ -11,7 +12,7 @@ const schema = z.object({
 	NODE_ENV: z.string().optional(),
 	DATABASE_URL: z.string().min(1).default('postgres://localhost/ep_intern'),
 	/** Hauptgeheimnis für die Verschlüsselung von Secrets und Auth-Signaturen (min. 32 Zeichen) */
-	APP_SECRET: z.string().min(32, 'APP_SECRET muss mindestens 32 Zeichen lang sein'),
+	APP_SECRET: z.string().min(32, { error: () => t('core-server.env.secretTooShort') }),
 	ORIGIN: z.string().url().default('http://localhost:5173'),
 	INITIAL_ADMIN_EMAIL: z.string().email().optional(),
 	INITIAL_ADMIN_PASSWORD: z.string().min(12).optional(),
@@ -22,7 +23,7 @@ const schema = z.object({
 	/** Temp-Verzeichnis der Datensicherung (Plattenvolume, nicht der RAM-tmpfs `/tmp`), absolut */
 	BACKUP_TMP_DIR: z
 		.string()
-		.refine((v) => isAbsolute(v), 'BACKUP_TMP_DIR muss ein absoluter Pfad sein')
+		.refine((v) => isAbsolute(v), { error: () => t('core-server.env.backupTmpDir') })
 		.optional(),
 	/** Größte hochladbare Sicherungsdatei in Byte (gelesen in `backup/uploads.ts`) */
 	BACKUP_MAX_BYTES: z.coerce.number().int().positive().optional(),
@@ -63,16 +64,14 @@ const productionSchema = schema.superRefine((v, ctx) => {
 		ctx.addIssue({
 			code: 'custom',
 			path: ['ORIGIN'],
-			message:
-				'ORIGIN muss im Produktivbetrieb mit https:// beginnen (sonst fehlt das Secure-Flag der Cookies)'
+			message: t('core-server.env.originHttps')
 		});
 	}
 	if (v.APP_SECRET === BUILD_PLACEHOLDER_SECRET) {
 		ctx.addIssue({
 			code: 'custom',
 			path: ['APP_SECRET'],
-			message:
-				'APP_SECRET ist noch der Build-Platzhalter – zufälligen Wert setzen (openssl rand -base64 48)'
+			message: t('core-server.env.secretPlaceholder')
 		});
 	} else if (
 		typeof v.APP_SECRET === 'string' &&
@@ -81,7 +80,7 @@ const productionSchema = schema.superRefine((v, ctx) => {
 		ctx.addIssue({
 			code: 'custom',
 			path: ['APP_SECRET'],
-			message: 'APP_SECRET ist zu einfach – zufälligen Wert setzen (openssl rand -base64 48)'
+			message: t('core-server.env.secretTrivial')
 		});
 	}
 });
@@ -97,7 +96,7 @@ export function parseEnv(input: Record<string, string | undefined>): Env {
 		? []
 		: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`);
 	if (source.NODE_ENV === 'production' && !('ORIGIN' in source)) {
-		problems.push('ORIGIN: ORIGIN muss im Produktivbetrieb gesetzt sein');
+		problems.push(`ORIGIN: ${t('core-server.env.originRequired')}`);
 	}
 	if (!parsed.success || problems.length > 0) {
 		throw new Error('Ungültige Umgebungsvariablen: ' + problems.join('; '));

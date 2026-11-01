@@ -1,6 +1,9 @@
 /**
- * Texte für Benachrichtigungs-Mails und Push-Nachrichten (rein, ohne Datenbank).
+ * Texte für Benachrichtigungs-Mails und Push-Nachrichten (rein, ohne Datenbank). Der Rahmen (Anrede,
+ * Sammelbetreff, Hinweis auf die Einstellungen) entsteht in der Sprache der empfangenden Person (`locale`);
+ * Titel und Text der Einträge liefern die Module selbst.
  */
+import { getLocale, tl, type Locale } from '$lib/i18n';
 import type { PushPayload } from './push';
 
 export interface ComposeItem {
@@ -32,18 +35,19 @@ export function composeMail(
 	name: string,
 	items: ComposeItem[],
 	kind: 'immediate' | 'daily',
-	origin: string
+	origin: string,
+	locale: Locale = getLocale()
 ): { subject: string; text: string } {
 	const n = items.length;
 	const subject =
 		kind === 'daily'
-			? `Tageszusammenfassung: ${n} ${n === 1 ? 'Benachrichtigung' : 'Benachrichtigungen'}`
+			? tl(locale, 'notifications.digestSubject', { count: n })
 			: n === 1
 				? items[0]!.title
-				: `${n} neue Benachrichtigungen`;
-	const parts: string[] = [`Hallo ${name},`];
-	if (kind === 'daily') parts.push('hier ist deine Zusammenfassung:');
-	else if (n > 1) parts.push(`es gibt ${n} neue Benachrichtigungen:`);
+				: tl(locale, 'notifications.newSubject', { count: n });
+	const parts: string[] = [tl(locale, 'notifications.greeting', { name })];
+	if (kind === 'daily') parts.push(tl(locale, 'notifications.digestIntro'));
+	else if (n > 1) parts.push(tl(locale, 'notifications.newIntro', { count: n }));
 
 	const groups = [...new Set(items.map((i) => i.group))];
 	for (const g of groups) {
@@ -57,14 +61,17 @@ export function composeMail(
 		}
 	}
 	parts.push(
-		`Ob du Benachrichtigungen per E-Mail, als Push aufs Handy oder gar nicht bekommst, stellst du in ` +
-			`deinem Profil ein: ${origin}/profile?tab=notifications`
+		tl(locale, 'notifications.settingsHint', { url: `${origin}/profile?tab=notifications` })
 	);
 	return { subject: oneLine(subject, 200), text: parts.join('\n\n') };
 }
 
 /** Push-Nachrichten einer Person: einzeln oder (zu viele) als Sammelnachricht */
-export function composePush(items: ComposeItem[], kind: 'immediate' | 'daily'): PushPayload[] {
+export function composePush(
+	items: ComposeItem[],
+	kind: 'immediate' | 'daily',
+	locale: Locale = getLocale()
+): PushPayload[] {
 	if (!items.length) return [];
 	if (kind === 'immediate' && items.length <= PUSH_ITEMS_MAX) {
 		return items.map((i) => ({
@@ -80,8 +87,8 @@ export function composePush(items: ComposeItem[], kind: 'immediate' | 'daily'): 
 		{
 			title:
 				kind === 'daily'
-					? `Tageszusammenfassung: ${items.length} Benachrichtigungen`
-					: `${items.length} neue Benachrichtigungen`,
+					? tl(locale, 'notifications.digestSubject', { count: items.length })
+					: tl(locale, 'notifications.newSubject', { count: items.length }),
 			body: oneLine(titles.join(' · '), PUSH_BODY_MAX),
 			url: links.length === 1 && links[0] ? links[0] : '/dashboard',
 			tag: kind === 'daily' ? 'digest' : 'summary'

@@ -1,0 +1,24 @@
+{
+	"presets": {
+		"wald": "Wald",
+		"ozean": "Ozean",
+		"nordlicht": "Nordlicht",
+		"lagerfeuer": "Lagerfeuer",
+		"sonnenuntergang": "Sonnenuntergang",
+		"lavendel": "Lavendel",
+		"bergsee": "Bergsee",
+		"sand": "Sand",
+		"schiefer": "Schiefer",
+		"morgenrot": "Morgenrot"
+	},
+	"newTheme": "Neues Theme",
+	"validation": {
+		"invalidColor": "Ungültige Farbe (#rrggbb erwartet).",
+		"nameRequired": "Bitte einen Namen angeben.",
+		"nameMax": "Höchstens {max} Zeichen.",
+		"themesMax": "Höchstens {max} eigene Themes.",
+		"duplicateId": "Doppelte Theme-ID.",
+		"favoritesMax": "Höchstens {max} Favoriten.",
+		"duplicateFavorite": "Doppelter Favorit."
+	}
+}

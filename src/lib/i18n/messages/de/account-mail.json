@@ -1,0 +1,26 @@
+{
+	"accountLocked": {
+		"subject": "{system}: Anmeldung vorübergehend gesperrt",
+		"text": "Hallo {name},\n\nfür dein Konto gab es in kurzer Zeit sehr viele fehlgeschlagene Anmeldeversuche. Die Anmeldung ist deshalb für etwa {minutes} Minuten für alle gesperrt.\n\nWarst du das nicht, ändere nach Ablauf der Sperre bitte dein Passwort, aktiviere die Zwei-Faktor-Authentifizierung und melde dich bei der Administration."
+	},
+	"resetPassword": {
+		"subject": "{system}: Passwort zurücksetzen",
+		"text": "Hallo {name},\n\nüber den folgenden Link kannst du dein Passwort zurücksetzen (1 Stunde gültig):\n{url}\n\nWenn du das nicht angefordert hast, ignoriere diese Nachricht einfach."
+	},
+	"verifyAccount": {
+		"subject": "{system}: E-Mail-Adresse bestätigen",
+		"text": "Hallo {name},\n\nbitte bestätige mit dem folgenden Link deine E-Mail-Adresse (1 Stunde gültig). Erst danach kannst du dich anmelden:\n{url}\n\nWenn du kein Konto angelegt hast, ignoriere diese Nachricht."
+	},
+	"verifyNewEmail": {
+		"subject": "{system}: Neue E-Mail-Adresse bestätigen",
+		"text": "Hallo {name},\n\nbitte bestätige mit dem folgenden Link, dass diese Adresse künftig für dein Konto gelten soll (1 Stunde gültig). Du musst dazu in diesem Browser angemeldet sein:\n{url}\n\nWenn du das nicht angefordert hast, ignoriere diese Nachricht."
+	},
+	"emailChangeRequested": {
+		"subject": "{system}: Änderung deiner E-Mail-Adresse angefragt",
+		"text": "Hallo {name},\n\nfür dein Konto wurde die Änderung der E-Mail-Adresse auf {email} angefragt. Die Änderung wird erst wirksam, wenn der Link in der Bestätigungsmail an die neue Adresse geöffnet wird.\n\nWenn du das nicht warst, ändere bitte sofort dein Passwort und melde dich bei der Administration."
+	},
+	"emailChangedByAdmin": {
+		"subject": "{system}: Die E-Mail-Adresse deines Kontos wurde geändert",
+		"text": "Hallo {name},\n\ndie E-Mail-Adresse deines Kontos wurde von der Administration auf {email} geändert. An diese Adresse gehen ab sofort alle Nachrichten, auch Links zum Zurücksetzen des Passworts. Alle bisherigen Anmeldungen wurden beendet.\n\nWenn diese Änderung nicht mit dir abgesprochen war, melde dich bitte umgehend bei der Administration."
+	}
+}

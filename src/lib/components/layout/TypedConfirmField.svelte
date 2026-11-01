@@ -3,6 +3,7 @@
 	`confirmed` wird erst bei exakt passender Eingabe (Groß-/Kleinschreibung, Unicode-normalisiert) true.
 -->
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -16,7 +17,8 @@
 		id = 'typed-confirm',
 		label,
 		hint,
-		disabled = false
+		disabled = false,
+		alsoAccept = []
 	}: {
 		/** Wort, das exakt eingegeben werden muss */
 		word: string;
@@ -27,9 +29,13 @@
 		label?: string;
 		hint?: string;
 		disabled?: boolean;
+		/** Weitere gültige Wörter (z. B. das deutsche Bestätigungswort, das der Server immer annimmt) */
+		alsoAccept?: string[];
 	} = $props();
 
-	const matches = $derived(value.normalize('NFC') === word.normalize('NFC'));
+	const matches = $derived(
+		[word, ...alsoAccept].some((w) => value.normalize('NFC') === w.normalize('NFC'))
+	);
 
 	// Ausgabewert für bind:confirmed synchron halten (einziger Effekt, keine Kette)
 	$effect(() => {
@@ -41,8 +47,9 @@
 
 <div class="grid gap-1.5">
 	<Label for={id}>
-		{#if label}{label}{:else}Gib zur Bestätigung <span class="font-mono font-semibold">{word}</span>
-			ein{/if}
+		{#if label}{label}{:else}{t('layout.typedConfirm.before')}
+			<span class="font-mono font-semibold">{word}</span>
+			{t('layout.typedConfirm.after')}{/if}
 	</Label>
 	<div class="relative">
 		<Input
@@ -70,11 +77,11 @@
 		class="text-xs {showMismatch ? 'text-destructive' : 'text-muted-foreground'}"
 	>
 		{#if matches}
-			Bestätigt.
+			{t('layout.typedConfirm.confirmed')}
 		{:else if showMismatch}
-			Die Eingabe stimmt nicht überein – achte auf Großbuchstaben und Umlaute.
+			{t('layout.typedConfirm.mismatch')}
 		{:else}
-			{hint ?? 'Groß-/Kleinschreibung beachten.'}
+			{hint ?? t('layout.typedConfirm.hint')}
 		{/if}
 	</p>
 </div>

@@ -4,6 +4,8 @@
 	import { DataTable, PageTitle } from '$lib/components/layout';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
+	import { t } from '$lib/i18n';
+	import { formatBytes, formatNumber } from '$lib/i18n/intl';
 	import { submitHandler } from '../../_shared/form-utils';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
 	import type { PageData } from './$types';
@@ -12,60 +14,46 @@
 
 	let testing = $state(false);
 	const testHandler = submitHandler({ busy: (b) => (testing = b), reload: false });
-
-	const nf = new Intl.NumberFormat('de-DE');
-	function size(bytes: number) {
-		if (bytes < 1024) return `${bytes} B`;
-		const units = ['KB', 'MB', 'GB', 'TB'];
-		let v = bytes / 1024;
-		let i = 0;
-		while (v >= 1024 && i < units.length - 1) {
-			v /= 1024;
-			i++;
-		}
-		return `${v.toLocaleString('de-DE', { maximumFractionDigits: 1 })} ${units[i]}`;
-	}
 </script>
 
-<PageTitle title="Speicher · Einstellungen" />
+<PageTitle title={t('admin-settings.storage.pageTitle')} />
 
 <div class="space-y-6">
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>S3-Storage</Card.Title>
+			<Card.Title>{t('admin-settings.storage.title')}</Card.Title>
 			<Card.Description>
-				Anbindung an AWS S3, Cloudflare R2, MinIO oder andere S3-kompatible Dienste. Zugangsdaten
-				werden verschlüsselt gespeichert und nie an den Browser übertragen.
+				{t('admin-settings.storage.description')}
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="space-y-4">
 			<SettingsForm fields={data.fields} canEdit={true} />
 			<form method="POST" action="?/test" use:enhance={testHandler}>
 				<Button type="submit" variant="outline" disabled={testing}>
-					{testing ? 'Teste …' : 'Verbindung testen'}
+					{testing ? t('admin-settings.storage.testing') : t('admin-settings.storage.test')}
 				</Button>
 			</form>
 		</Card.Content>
 	</Card.Root>
 
 	<DataTable
-		caption="Speicherverbrauch je Modul"
-		title="Speicherverbrauch je Modul"
+		caption={t('admin-settings.storage.usageTitle')}
+		title={t('admin-settings.storage.usageTitle')}
 		empty={data.usage.length === 0}
-		emptyTitle="Noch keine Dateien gespeichert."
+		emptyTitle={t('admin-settings.storage.usageEmpty')}
 	>
 		{#snippet head()}
 			<Table.Row>
-				<Table.Head>Modul</Table.Head>
-				<Table.Head class="text-right">Dateien</Table.Head>
-				<Table.Head class="text-right">Größe</Table.Head>
+				<Table.Head>{t('admin-settings.storage.colModule')}</Table.Head>
+				<Table.Head class="text-right">{t('admin-settings.storage.colFiles')}</Table.Head>
+				<Table.Head class="text-right">{t('admin-settings.storage.colSize')}</Table.Head>
 			</Table.Row>
 		{/snippet}
 		{#each data.usage as u (u.moduleId)}
 			<Table.Row>
 				<Table.Cell class="font-medium">{u.moduleId}</Table.Cell>
-				<Table.Cell class="text-right">{nf.format(u.files)}</Table.Cell>
-				<Table.Cell class="text-right">{size(u.bytes)}</Table.Cell>
+				<Table.Cell class="text-right">{formatNumber(u.files)}</Table.Cell>
+				<Table.Cell class="text-right">{formatBytes(u.bytes)}</Table.Cell>
 			</Table.Row>
 		{/each}
 	</DataTable>

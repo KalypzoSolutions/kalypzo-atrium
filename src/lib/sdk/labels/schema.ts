@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BARCODE_TYPES, LABEL_LOGOS } from './types';
+import { BARCODE_TYPES, LABEL_LOGO_KEY } from './types';
 import { formatProblem } from './layout';
 
 /** Zod-Schemas für Etikett-Formate und -Layouts (Client-Validierung und API) */
@@ -35,7 +35,7 @@ export const labelElementSchema = z.discriminatedUnion('type', [
 	z.object({
 		...base,
 		type: z.literal('image'),
-		logo: z.enum(LABEL_LOGOS),
+		logo: z.string().regex(LABEL_LOGO_KEY),
 		monochrome: z.boolean().optional()
 	}),
 	z.object({

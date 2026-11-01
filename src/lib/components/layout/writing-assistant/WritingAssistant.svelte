@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Blatt der KI-Schreibhilfe: Aufgabe wählen, Vorschlag erzeugen (gestreamt), Änderungen ansehen,
 	// übernehmen oder verwerfen. Desktop/Tablet als Seitenblatt rechts, Handy als Blatt von unten.
+	import { t } from '$lib/i18n';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
@@ -34,7 +35,7 @@
 		address: defaultAddress = 'du',
 		allowImages = false,
 		compare = true,
-		applyLabel = 'Übernehmen',
+		applyLabel = t('assistant.apply'),
 		notice,
 		text,
 		tasks: onlyTasks,
@@ -66,7 +67,7 @@
 	const phone = $derived(deviceLayout() === 'phone');
 	const tasks = $derived(
 		info.tasks.filter(
-			(t) => (!onlyTasks || onlyTasks.includes(t)) && (t !== 'alt-text' || allowImages)
+			(tk) => (!onlyTasks || onlyTasks.includes(tk)) && (tk !== 'alt-text' || allowImages)
 		)
 	);
 	const emptyText = $derived(
@@ -89,13 +90,13 @@
 	// Bei leerem Feld nur Aufgaben, die ohne Text funktionieren
 	const usable = $derived(
 		tasks.filter(
-			(t) =>
+			(tk) =>
 				!emptyText ||
-				t === 'draft' ||
-				t === 'packing-list' ||
-				t === 'alt-text' ||
-				t === 'title' ||
-				t === 'subject'
+				tk === 'draft' ||
+				tk === 'packing-list' ||
+				tk === 'alt-text' ||
+				tk === 'title' ||
+				tk === 'subject'
 		)
 	);
 
@@ -155,8 +156,7 @@
 			picked = (res.items ?? []).map(() => true);
 		} catch (e) {
 			if (controller.signal.aborted) return;
-			error =
-				e instanceof ApiClientError ? e.message : 'Die Schreibhilfe ist gerade nicht erreichbar';
+			error = e instanceof ApiClientError ? e.message : t('assistant.unavailable');
 		} finally {
 			if (abort === controller) {
 				busy = false;
@@ -177,7 +177,7 @@
 	}
 
 	const facts = $derived(Object.entries(result?.facts ?? {}));
-	const titleText = 'Schreibhilfe';
+	const titleText = t('assistant.title');
 </script>
 
 {#snippet body()}
@@ -191,29 +191,29 @@
 
 		<fieldset class="space-y-2">
 			<legend class="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-				Was soll passieren?
+				{t('assistant.taskLegend')}
 			</legend>
 			<div class="flex flex-wrap gap-2">
-				{#each usable as t (t)}
+				{#each usable as tk (tk)}
 					<button
 						type="button"
 						class={cn(
 							'flex h-9 items-center rounded-full border px-3 text-sm font-medium transition-colors',
-							t === task
+							tk === task
 								? 'border-link bg-link/10 font-semibold text-link'
 								: 'bg-background hover:bg-muted'
 						)}
-						aria-pressed={t === task}
+						aria-pressed={tk === task}
 						disabled={busy}
-						onclick={() => (task = t)}
+						onclick={() => (task = tk)}
 					>
-						{ASSIST_TASK_LABELS[t]}
+						{ASSIST_TASK_LABELS[tk]}
 					</button>
 				{/each}
 			</div>
 			{#if emptyText && usable.length < tasks.length}
 				<p class="text-xs text-muted-foreground">
-					Weitere Aktionen gibt es, sobald im Feld Text steht.
+					{t('assistant.moreWithText')}
 				</p>
 			{/if}
 		</fieldset>
@@ -221,7 +221,7 @@
 		{#if !isVariants && !isList && !['spelling', 'english', 'alt-text', 'summarize'].includes(task)}
 			<fieldset>
 				<legend class="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-					Anrede
+					{t('assistant.address')}
 				</legend>
 				<div class="flex gap-2">
 					{#each ['du', 'ihr', 'Sie'] as const as a (a)}
@@ -246,7 +246,9 @@
 
 		<div class="space-y-1.5">
 			<Label for="assist-instruction">
-				{task === 'rewrite' ? 'Was soll sich ändern? *' : 'Zusätzlicher Wunsch (optional)'}
+				{task === 'rewrite'
+					? t('assistant.instructionRequired')
+					: t('assistant.instructionOptional')}
 			</Label>
 			<Textarea
 				id="assist-instruction"
@@ -255,8 +257,8 @@
 				maxlength={1000}
 				disabled={busy}
 				placeholder={task === 'draft'
-					? 'z. B. „Erinnere an Schlafsack und Taschenlampe“'
-					: 'z. B. „Etwas förmlicher“'}
+					? t('assistant.placeholderDraft')
+					: t('assistant.placeholderOther')}
 			/>
 		</div>
 
@@ -267,7 +269,7 @@
 			onclick={generate}
 		>
 			<SparklesIcon class="size-4" />
-			{busy ? 'Schreibt …' : result ? 'Neu erzeugen' : 'Vorschlag erzeugen'}
+			{busy ? t('assistant.writing') : result ? t('assistant.regenerate') : t('assistant.generate')}
 		</Button>
 
 		{#if error}
@@ -288,7 +290,7 @@
 					id="assist-result-title"
 					class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
 				>
-					Vorschlag
+					{t('assistant.suggestion')}
 				</h3>
 				{#if result.variants}
 					<ul class="space-y-2">
@@ -304,7 +306,7 @@
 							</li>
 						{/each}
 					</ul>
-					<p class="text-xs text-muted-foreground">Antippen übernimmt den Vorschlag.</p>
+					<p class="text-xs text-muted-foreground">{t('assistant.tapToApply')}</p>
 				{:else if result.items}
 					<ul class="space-y-2">
 						{#each result.items as item, i (i)}
@@ -326,7 +328,7 @@
 							{/if}
 						{/each}
 					</p>
-					<p class="text-xs text-muted-foreground">Grün = neu, rot durchgestrichen = entfällt.</p>
+					<p class="text-xs text-muted-foreground">{t('assistant.diffLegend')}</p>
 				{:else}
 					<p class="rounded-md border bg-background p-3 leading-relaxed whitespace-pre-wrap">
 						{suggestion}
@@ -353,7 +355,7 @@
 
 				{#if facts.length}
 					<details class="rounded-md border p-3 text-xs">
-						<summary class="cursor-pointer font-medium">Eckdaten, die die KI bekommen hat</summary>
+						<summary class="cursor-pointer font-medium">{t('assistant.facts')}</summary>
 						<dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
 							{#each facts as [k, v] (k)}
 								<dt class="text-muted-foreground">{k}</dt>
@@ -385,10 +387,12 @@
 						>{applyLabel}</Button
 					>
 				{/if}
-				<Button type="button" variant="outline" onclick={() => (result = null)}>Verwerfen</Button>
+				<Button type="button" variant="outline" onclick={() => (result = null)}
+					>{t('assistant.discard')}</Button
+				>
 			</div>
 		{/if}
-		<p class="text-xs text-muted-foreground">Vorschlag der KI – bitte vor dem Senden lesen.</p>
+		<p class="text-xs text-muted-foreground">{t('assistant.reviewNotice')}</p>
 	</div>
 {/snippet}
 
@@ -404,7 +408,7 @@
 					<SparklesIcon class="size-4 text-link" aria-hidden="true" />
 					{titleText}
 				</Sheet.Title>
-				<Sheet.Description class="sr-only">Vorschläge der KI für dieses Textfeld</Sheet.Description>
+				<Sheet.Description class="sr-only">{t('assistant.sheetDescription')}</Sheet.Description>
 			</Sheet.Header>
 			<div class="min-h-0 flex-1 overflow-y-auto p-4">
 				{@render body()}

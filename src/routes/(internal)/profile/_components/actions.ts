@@ -2,6 +2,7 @@ import { invalidateAll } from '$app/navigation';
 import { deserialize } from '$app/forms';
 import type { SubmitFunction } from '@sveltejs/kit';
 import { toast } from 'svelte-sonner';
+import { t } from '$lib/i18n';
 
 export interface FormOutcome {
 	ok: boolean;
@@ -9,7 +10,8 @@ export interface FormOutcome {
 	error: string | null;
 }
 
-const FALLBACK = 'Das hat nicht geklappt. Bitte versuche es erneut.';
+/** Schlüssel der Rückfallmeldung (beim Gebrauch übersetzt) */
+const FALLBACK = 'profile.errors.fallback';
 
 /** Ergebnis einer SvelteKit-Action in ein einheitliches Format bringen. */
 function outcomeOf(result: {
@@ -20,7 +22,7 @@ function outcomeOf(result: {
 	const data = result.data ?? {};
 	if (result.type === 'success') return { ok: true, data, error: null };
 	const msg = typeof data.error === 'string' ? data.error : null;
-	return { ok: false, data, error: msg ?? result.error?.message ?? FALLBACK };
+	return { ok: false, data, error: msg ?? result.error?.message ?? t(FALLBACK) };
 }
 
 /**
@@ -68,6 +70,6 @@ export async function callAction(
 		}
 		return o;
 	} catch {
-		return { ok: false, data: {}, error: FALLBACK };
+		return { ok: false, data: {}, error: t(FALLBACK) };
 	}
 }

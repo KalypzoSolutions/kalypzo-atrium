@@ -1,0 +1,81 @@
+{
+	"loadFailed": "The overview could not be loaded.",
+	"due": {
+		"overdueSince": "overdue since {date}",
+		"today": "due today",
+		"tomorrow": "due tomorrow",
+		"until": "by {date}"
+	},
+	"finding": {
+		"since": "{days, plural, =1 {since yesterday} other {for # days}}",
+		"oneOverdue": "{title}: overdue.",
+		"oneOverdueSince": "{title}: overdue {since}.",
+		"manyOverdue": "{count} things are overdue.",
+		"manyOverdueSince": "{count} things are overdue, the oldest {since}.",
+		"upcoming": "{count, plural, one {One thing is coming up, nothing is overdue.} other {# things are coming up, nothing is overdue.}}"
+	},
+	"todos": {
+		"title": "To do",
+		"description": "Open invoices, deadlines and tasks from all modules.",
+		"loadFailed": "The list could not be loaded.",
+		"severity": {
+			"overdue": "Overdue",
+			"due": "Due soon",
+			"info": "Note"
+		},
+		"copied": "{label} copied",
+		"copyFailed": "Copying not possible",
+		"openCount": "{count} open",
+		"allDone": "All done.",
+		"allDoneHint": "New invoices, deadlines and tasks appear here.",
+		"recipient": "Recipient",
+		"iban": "IBAN",
+		"copyIban": "Copy IBAN",
+		"bic": "BIC",
+		"amount": "Amount",
+		"reference": "Reference",
+		"referenceLong": "Payment reference",
+		"copyReference": "Copy payment reference",
+		"viewInvoice": "View invoice",
+		"showLess": "Show less",
+		"showAll": "Show all {count}",
+		"failed": "Not loaded: {names}. Please try again later."
+	},
+	"week": {
+		"title": "This week",
+		"description": "Group meetings, events, activities and deadlines from Monday to Sunday.",
+		"loadFailed": "The week could not be loaded.",
+		"entry": "Entry",
+		"allDay": "all day",
+		"from": "from {time}",
+		"start": "Start",
+		"until": "until {time}",
+		"end": "End",
+		"deadline": "Deadline",
+		"overdue": "overdue",
+		"today": "today",
+		"nothingPlanned": "Nothing planned.",
+		"empty": "Nothing is planned this week."
+	},
+	"quickLinks": {
+		"title": "Quick access",
+		"description": "Direct links to your modules.",
+		"empty": "No modules."
+	},
+	"stats": {
+		"title": "Key figures",
+		"description": "Active users, modules and API keys.",
+		"users": "Active users",
+		"modules": "Active modules",
+		"apiKeys": "Active API keys",
+		"loadFailed": "The key figures could not be loaded.",
+		"empty": "No key figures available."
+	},
+	"activity": {
+		"title": "Recent activity",
+		"description": "The latest entries in the audit log.",
+		"loadFailed": "The activity could not be loaded.",
+		"empty": "No entries yet.",
+		"system": "System"
+	}
+}

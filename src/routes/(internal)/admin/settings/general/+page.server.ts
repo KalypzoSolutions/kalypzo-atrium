@@ -2,9 +2,10 @@ import type { Actions } from '@sveltejs/kit';
 import { loadCoreFields, loadCoreTab, saveAction } from '../../_shared/settings-actions.server';
 import type { PageServerLoad } from './$types';
 
-const MATCH = /^core\.(system|organization|legal)\./;
+/** System (Name, Sprache), Organisation (inkl. Bezeichnung für „alle“, `core.org.*`) und rechtliche Links */
+const MATCH = /^core\.(system|org|organization|legal)\./;
 const RETENTION = /^core\.retention\./;
-const SAVE = /^core\.(system|organization|legal|retention)\./;
+const SAVE = /^core\.(system|org|organization|legal|retention)\./;
 
 export const load: PageServerLoad = async ({ locals }) => ({
 	...(await loadCoreTab(locals, MATCH)),

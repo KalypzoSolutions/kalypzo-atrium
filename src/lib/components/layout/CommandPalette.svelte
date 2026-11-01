@@ -13,6 +13,7 @@
 		visibleAdminEntries,
 		type AdminEntry
 	} from './admin-registry';
+	import { t } from '$lib/i18n';
 	import { iconFor } from './icons';
 	import { PRIMARY_NAV, hasPermission, type ModuleNavEntry } from './nav';
 
@@ -66,8 +67,8 @@
 			description: '',
 			href: n.href,
 			icon: n.icon,
-			keywords: ['Startseite'],
-			group: 'Navigation',
+			keywords: [t('command.startPage')],
+			group: t('command.groupNavigation'),
 			context: ''
 		}));
 		const modules: PaletteItem[] = navigation
@@ -79,11 +80,11 @@
 					id: `mod:${n.moduleId}:${n.path}`,
 					section: 'modules',
 					label: n.label,
-					description: context ? `Modul ${context}` : '',
+					description: context ? t('command.moduleContext', { name: context }) : '',
 					href: n.path,
 					icon: n.icon,
 					keywords: [name, n.moduleId, n.group ?? ''].filter(Boolean),
-					group: 'Modul',
+					group: t('command.groupModule'),
 					context
 				};
 			});
@@ -91,7 +92,7 @@
 			const parent = e.parent ? ADMIN_ENTRIES.find((p) => p.id === e.parent) : undefined;
 			return {
 				...e,
-				group: 'Verwaltung',
+				group: t('command.groupAdmin'),
 				context: parent ? `${sectionLabel(e.section)} › ${parent.label}` : sectionLabel(e.section)
 			};
 		});
@@ -158,7 +159,7 @@
 			href: r.href,
 			icon: r.icon,
 			badge: r.group,
-			heading: i === 0 && trimmed ? 'Seiten' : undefined
+			heading: i === 0 && trimmed ? t('command.headingPages') : undefined
 		}));
 		if (dataQuery && dataQuery === trimmed) {
 			for (const g of dataGroups) {
@@ -256,7 +257,7 @@
 			inputEl?.focus();
 		}}
 	>
-		<DialogTitle class="sr-only">Suchen</DialogTitle>
+		<DialogTitle class="sr-only">{t('command.title')}</DialogTitle>
 		<div class="flex items-center gap-2 border-b px-3">
 			<SearchIcon class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 			<input
@@ -268,8 +269,8 @@
 				aria-controls={listId}
 				aria-autocomplete="list"
 				aria-activedescendant={results.length ? optionId(activeIndex) : undefined}
-				aria-label="Suchen: Seiten, Mitglieder, Aktionen, Termine …"
-				placeholder="Suchen: Seiten, Mitglieder, Aktionen …"
+				aria-label={t('command.inputLabel')}
+				placeholder={t('command.inputPlaceholder')}
 				autocomplete="off"
 				spellcheck="false"
 				class="h-12 w-full min-w-0 bg-transparent text-base outline-none placeholder:text-muted-foreground md:text-sm"
@@ -282,7 +283,7 @@
 			{#if searching}
 				<LoaderCircle
 					class="size-4 shrink-0 animate-spin text-muted-foreground"
-					aria-label="Sucht …"
+					aria-label={t('command.searching')}
 				/>
 			{/if}
 			<kbd
@@ -294,7 +295,7 @@
 		<ul
 			id={listId}
 			role="listbox"
-			aria-label="Suchergebnisse"
+			aria-label={t('command.results')}
 			class="max-h-[min(60dvh,26rem)] overflow-y-auto p-1.5"
 		>
 			{#each results as r, i (r.id)}
@@ -334,24 +335,24 @@
 			{:else}
 				<li class="px-3 py-8 text-center text-sm text-muted-foreground" role="presentation">
 					{#if searching}
-						Sucht …
+						{t('command.searching')}
 					{:else}
-						Nichts gefunden. Versuch einen anderen Begriff.
+						{t('command.nothingFound')}
 					{/if}
 				</li>
 			{/each}
 		</ul>
 		{#if searchError}
 			<p class="border-t px-3 py-2 text-xs text-destructive" role="alert">
-				Datensuche gerade nicht möglich – es werden nur Seiten angezeigt.
+				{t('command.dataSearchFailed')}
 			</p>
 		{/if}
 		<p class="sr-only" aria-live="polite">
-			{trimmed && !searching ? `${results.length} Treffer` : ''}
+			{trimmed && !searching ? t('command.hits', { count: results.length }) : ''}
 		</p>
 		<p class="border-t px-3 py-2 text-xs text-muted-foreground">
-			<span class="hidden sm:inline">↑ ↓ zum Auswählen, Enter zum Öffnen, Esc zum Schließen</span>
-			<span class="sm:hidden">Tippe, um zu suchen</span>
+			<span class="hidden sm:inline">{t('command.keyboardHint')}</span>
+			<span class="sm:hidden">{t('command.touchHint')}</span>
 		</p>
 	</DialogContent>
 </Dialog>

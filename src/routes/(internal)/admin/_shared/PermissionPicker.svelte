@@ -3,6 +3,7 @@
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Input } from '$lib/components/ui/input';
 	import Search from '@lucide/svelte/icons/search';
+	import { t } from '$lib/i18n';
 
 	export interface PickerPermission {
 		key: string;
@@ -36,7 +37,7 @@
 
 	/** Alle Wörter müssen in Schlüssel, Modul oder Beschreibung vorkommen */
 	const visible = $derived.by(() => {
-		const words = fold(query).split(/s+/).filter(Boolean);
+		const words = fold(query).split(/\s+/).filter(Boolean);
 		if (!words.length) return permissions;
 		return permissions.filter((p) => {
 			const hay = fold(`${p.key} ${p.moduleId} ${p.description ?? ''}`);
@@ -71,16 +72,20 @@
 			<Input
 				type="search"
 				class="pl-8"
-				aria-label="Berechtigungen durchsuchen"
-				placeholder="Berechtigung suchen, z. B. „kasse“ oder „löschen“ …"
+				aria-label={t('admin.permissionPicker.searchLabel')}
+				placeholder={t('admin.permissionPicker.searchPlaceholder')}
 				bind:value={query}
 			/>
 		</div>
 		{#if query.trim()}
 			<p class="text-xs text-muted-foreground" aria-live="polite">
-				{visible.length} von {permissions.length} Berechtigungen{visible.length
-					? ' – „alle“/„keine“ wirken nur auf die Treffer.'
-					: '.'}
+				{t(
+					visible.length ? 'admin.permissionPicker.countHits' : 'admin.permissionPicker.countNone',
+					{
+						visible: visible.length,
+						total: permissions.length
+					}
+				)}
 			</p>
 		{/if}
 	{/if}
@@ -92,12 +97,12 @@
 					<button
 						type="button"
 						class="text-xs font-normal text-link underline"
-						onclick={() => toggleGroup(items, true)}>alle</button
+						onclick={() => toggleGroup(items, true)}>{t('admin.permissionPicker.all')}</button
 					>
 					<button
 						type="button"
 						class="text-xs font-normal text-link underline"
-						onclick={() => toggleGroup(items, false)}>keine</button
+						onclick={() => toggleGroup(items, false)}>{t('admin.permissionPicker.none')}</button
 					>
 				{/if}
 			</legend>
@@ -118,7 +123,9 @@
 						<label for={cid}>
 							<code class="text-xs">{p.key}</code>
 							{#if p.privileged}
-								<Badge variant="destructive" class="ml-1">Admin-gleich</Badge>
+								<Badge variant="destructive" class="ml-1"
+									>{t('admin.permissionPicker.privileged')}</Badge
+								>
 							{/if}
 							{#if p.description}
 								<span id={`${cid}-desc`} class="block text-xs text-muted-foreground"

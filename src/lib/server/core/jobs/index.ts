@@ -16,6 +16,7 @@
  * - `daily`-Jobs starten nur im Zeitfenster `JOBS_DAILY_WINDOW` (volle Stunden in Europe/Berlin,
  *   Standard `6-20` = 06:00 bis vor 20:00) und höchstens einmal je Kalendertag.
  */
+import { hasMessage, t } from '$lib/i18n';
 import { sql } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import { systemContext } from '../auth/context';
@@ -75,29 +76,42 @@ interface RegisteredJob {
 const CORE_JOBS: ModuleJob[] = [
 	{
 		id: 'housekeeping',
-		summary: 'Aufbewahrungsfristen durchsetzen (API-Protokoll, Audit-Log)',
+		summary: 'jobs.core.housekeeping',
 		schedule: 'daily',
 		run: async (ctx) => {
 			const r = await runHousekeeping(ctx, clock());
-			return `API-Protokoll: ${r.apiLogDeleted} gelöscht; Audit-Log: ${r.auditDeleted} gelöscht, ${r.auditIpCleared} IP-Adressen entfernt`;
+			return t('jobs.result.housekeeping', {
+				apiLog: r.apiLogDeleted,
+				audit: r.auditDeleted,
+				ips: r.auditIpCleared
+			});
 		}
 	},
 	{
 		id: 'avatars-reprocess',
-		summary: 'Alte Profilbilder bereinigen (neu kodieren, Metadaten entfernen)',
+		summary: 'jobs.core.avatarsReprocess',
 		schedule: 'hourly',
 		run: async (ctx) => {
 			const r = await reprocessLegacyAvatars(ctx);
-			return `Profilbilder: ${r.processed} bereinigt, ${r.removed} entfernt, ${r.skipped} übersprungen`;
+			return t('jobs.result.avatars', {
+				processed: r.processed,
+				removed: r.removed,
+				skipped: r.skipped
+			});
 		}
 	},
 	{
 		id: 'notifications-digest',
-		summary: 'Tageszusammenfassung der Benachrichtigungen (E-Mail/Push) verschicken',
+		summary: 'jobs.core.notificationsDigest',
 		schedule: 'daily',
 		run: async () => {
 			const r = await runNotificationDigest(clock());
-			return `Tageszusammenfassung: ${r.users} Personen, ${r.email} Mails, ${r.push} Push, ${r.expired} verworfen`;
+			return t('jobs.result.digest', {
+				users: r.users,
+				email: r.email,
+				push: r.push,
+				expired: r.expired
+			});
 		}
 	}
 ];
@@ -286,8 +300,16 @@ async function execute(
 	return status;
 }
 
-/** Neutraler Ersatz für Altbestände mit SQL-Parametern in `last_message` */
-export const LEGACY_JOB_MESSAGE = 'Fehler (Details aus Datenschutzgründen entfernt)';
+/**
+ * Neutraler Ersatz für Altbestände mit SQL-Parametern in `last_message`: als i18n-Schlüssel gespeichert,
+ * `listJobs` liefert den Text in der Sprache des Requests.
+ */
+export const LEGACY_JOB_MESSAGE = 'jobs.legacyMessage';
+
+/** Zusammenfassung bzw. Meldung: i18n-Schlüssel übersetzen, andere Texte (Module, Läufe) unverändert */
+function jobText(text: string): string {
+	return hasMessage(text, 'de') ? t(text) : text;
+}
 
 /** Alte Meldungen im Format der Drizzle-Hülle (`Failed query: … params: …`) erkennen */
 const legacyMessage = (m: string | null): boolean =>
@@ -352,7 +374,7 @@ export async function listJobs(): Promise<JobInfo[]> {
 			key: entry.key,
 			moduleId: entry.moduleId,
 			id: entry.job.id,
-			summary: entry.job.summary,
+			summary: jobText(entry.job.summary),
 			schedule: entry.job.schedule,
 			enabled: await jobEnabled(entry.moduleId),
 			lastStartedAt: iso(r?.last_started_at),
@@ -360,8 +382,10 @@ export async function listJobs(): Promise<JobInfo[]> {
 			lastFinishedAt: status === 'running' ? null : iso(r?.last_finished_at),
 			lastStatus: status,
 			lastMessage: legacyMessage((r?.last_message as string | null) ?? null)
-				? LEGACY_JOB_MESSAGE
-				: ((r?.last_message as string | null) ?? null)
+				? t(LEGACY_JOB_MESSAGE)
+				: r?.last_message
+					? jobText(String(r.last_message))
+					: null
 		});
 	}
 	return out;
@@ -373,15 +397,15 @@ export async function runJobNow(ctx: RequestContext, key: string): Promise<JobIn
 	await requirePermission(ctx, 'core.jobs.manage');
 	const entry = registeredJobs().find((j) => j.key === key);
 	if (!entry || !(await jobEnabled(entry.moduleId))) {
-		throw errors.notFound('Job nicht gefunden');
+		throw errors.notFound(t('jobs.notFound'));
 	}
-	if (jobsPaused()) throw errors.conflict('Jobs sind pausiert (Zurücksetzen läuft)');
+	if (jobsPaused()) throw errors.conflict(t('jobs.paused'));
 	const startedAt = await claim(entry.key, entry.job.schedule, true);
-	if (!startedAt) throw errors.conflict('Job läuft bereits');
+	if (!startedAt) throw errors.conflict(t('jobs.running'));
 	await execute(entry, systemContext(`job:${entry.key}`), startedAt);
 	await auditFromContext(ctx, 'core.job.triggered', { target: key });
 	const info = (await listJobs()).find((j) => j.key === key);
-	if (!info) throw errors.notFound('Job nicht gefunden');
+	if (!info) throw errors.notFound(t('jobs.notFound'));
 	return info;
 }
 

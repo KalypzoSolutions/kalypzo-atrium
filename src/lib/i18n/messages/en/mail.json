@@ -1,0 +1,12 @@
+{
+	"logoAlt": "Logo",
+	"sample": "Hello Jane Doe,\n\nthank you for signing up for the summer camp. You can find all the details at https://intern.example.org/p/beispiel/anmeldung.\n\nIf you have any questions, just reply to this email.",
+	"errors": {
+		"smtpNoPassword": "SMTP is not configured (password missing)",
+		"smtpNotConfigured": "SMTP is not configured",
+		"timeout": "The mail server is not responding (timeout)",
+		"invalidSender": "Invalid sender address",
+		"invalidMessageId": "Invalid Message-ID",
+		"invalidReplyTo": "Invalid reply-to address"
+	}
+}

@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Reine Hilfsfunktionen für den Admin-Reset (ohne Datenbank): Auflösung der Implikationen und
  * Löschreihenfolge der Module. Getestet in `tests/unit/reset-areas.test.ts`.
@@ -21,7 +22,10 @@ export interface ResolvedAreas {
 	unknown: string[];
 }
 
-export const REBUILD_REASON = 'Das Modul wird komplett neu aufgebaut';
+/** Grund für implizierte Bereiche bei `rebuild` (in der aktuellen Sprache) */
+export function rebuildReason(): string {
+	return t('reset.rebuildReason');
+}
 
 /**
  * Effektive Implikationen eines Bereichs: deklarierte `implies` (nur bekannte Bereiche, z. B. aktive
@@ -39,7 +43,7 @@ export function effectiveImplies(
 	if (node.rebuild) {
 		for (const n of nodes) {
 			if (n.module === node.module && n.key !== node.key && !out.has(n.key)) {
-				out.set(n.key, REBUILD_REASON);
+				out.set(n.key, rebuildReason());
 			}
 		}
 	}

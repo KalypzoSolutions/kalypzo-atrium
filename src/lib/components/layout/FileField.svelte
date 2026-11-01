@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import FileUp from '@lucide/svelte/icons/file-up';
 	import X from '@lucide/svelte/icons/x';
 	import { Button } from '$lib/components/ui/button';
@@ -76,11 +77,11 @@
 			return;
 		}
 		if (!accepted(f)) {
-			localError = 'Dateityp nicht erlaubt';
+			localError = t('layout.file.typeNotAllowed');
 			file = null;
 		} else if (crop) {
 			if (f.size > CROP_SOURCE_MAX_BYTES) {
-				localError = `Datei ist zu groß (maximal ${fmtSize(CROP_SOURCE_MAX_BYTES)})`;
+				localError = t('layout.file.tooLarge', { max: fmtSize(CROP_SOURCE_MAX_BYTES) });
 				file = null;
 			} else {
 				file = null;
@@ -89,7 +90,7 @@
 				return;
 			}
 		} else if (maxBytes && f.size > maxBytes) {
-			localError = `Datei ist zu groß (maximal ${fmtSize(maxBytes)})`;
+			localError = t('layout.file.tooLarge', { max: fmtSize(maxBytes) });
 			file = null;
 		} else {
 			file = f;
@@ -103,7 +104,7 @@
 
 	function onCropped(out: File) {
 		if (maxBytes && out.size > maxBytes) {
-			localError = `Zugeschnittenes Bild ist zu groß (maximal ${fmtSize(maxBytes)})`;
+			localError = t('layout.file.croppedTooLarge', { max: fmtSize(maxBytes) });
 			clear();
 			return;
 		}
@@ -167,7 +168,7 @@
 			</span>
 			{#if canRemove && onremove}
 				<Button type="button" variant="ghost" size="sm" {disabled} onclick={onremove}>
-					Entfernen
+					{t('layout.file.remove')}
 				</Button>
 			{/if}
 		</div>
@@ -192,7 +193,7 @@
 				<button
 					type="button"
 					class="inline-flex items-center rounded p-0.5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-					aria-label="Auswahl entfernen"
+					aria-label={t('layout.file.clearSelection')}
 					onclick={clear}
 				>
 					<X class="size-3.5" />
@@ -204,7 +205,7 @@
 						{disabled}
 						onclick={() => (cropOpen = true)}
 					>
-						Ausschnitt ändern
+						{t('layout.file.changeCrop')}
 					</button>
 				{/if}
 			</p>

@@ -18,6 +18,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	const navigation = locals.user ? await navigationFor(locals.ctx) : [];
 	const navBadges = locals.user ? await navBadgeCounts(locals.ctx) : {};
 	return {
+		/** Sprache der Seite (`core/i18n/locale.ts`); `+layout.ts` lädt die Texte und setzt sie im Browser */
+		locale: locals.locale,
 		user: locals.user,
 		permissions: [...locals.ctx.permissions].sort(),
 		navigation,

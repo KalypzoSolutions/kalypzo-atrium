@@ -1,5 +1,5 @@
 import type { Actions } from '@sveltejs/kit';
-import { brandingState, logoUrl } from '$lib/server/core/branding';
+import { brandingState, uploadedLogoUrl } from '$lib/server/core/branding';
 import {
 	canUploadLogo,
 	loadCoreTab,
@@ -15,7 +15,8 @@ const MATCH = /^core\.design\.(?!logoFileId$)/;
 export const load: PageServerLoad = async ({ locals }) => ({
 	...(await loadCoreTab(locals, MATCH)),
 	canUploadLogo: canUploadLogo(locals),
-	logoUrl: logoUrl(await brandingState())
+	// nur das hochgeladene Logo (nicht das Ersatz-Logo eines Profil-Moduls)
+	logoUrl: uploadedLogoUrl(await brandingState())
 });
 
 export const actions: Actions = {

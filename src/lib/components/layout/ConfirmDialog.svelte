@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import {
 		AlertDialog,
 		AlertDialogAction,
@@ -14,8 +15,8 @@
 		open = $bindable(false),
 		title,
 		description,
-		confirmLabel = 'Bestätigen',
-		cancelLabel = 'Abbrechen',
+		confirmLabel = t('layout.confirm'),
+		cancelLabel = t('layout.cancel'),
 		destructive = false,
 		onconfirm
 	}: {

@@ -53,6 +53,7 @@
 </script>
 
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { onDestroy, onMount } from 'svelte';
 	import CameraIcon from '@lucide/svelte/icons/camera';
 	import Flashlight from '@lucide/svelte/icons/flashlight';
@@ -89,14 +90,11 @@
 
 	function errorText(e: unknown): string {
 		const name = e instanceof Error ? e.name : '';
-		if (!window.isSecureContext)
-			return 'Die Kamera funktioniert nur über eine sichere Verbindung (HTTPS).';
-		if (name === 'NotAllowedError')
-			return 'Kamerazugriff verweigert. Erlaube die Kamera in den Browser-Einstellungen.';
-		if (name === 'NotFoundError' || name === 'OverconstrainedError')
-			return 'Keine Kamera gefunden. Du kannst den Code auch eintippen oder einen USB-Scanner nutzen.';
-		if (name === 'NotReadableError') return 'Die Kamera wird gerade von einer anderen App benutzt.';
-		return 'Die Kamera konnte nicht gestartet werden.';
+		if (!window.isSecureContext) return t('scanner.insecure');
+		if (name === 'NotAllowedError') return t('scanner.denied');
+		if (name === 'NotFoundError' || name === 'OverconstrainedError') return t('scanner.notFound');
+		if (name === 'NotReadableError') return t('scanner.busy');
+		return t('scanner.startFailed');
 	}
 
 	async function start() {
@@ -217,14 +215,17 @@
 				<Button
 					size="icon"
 					variant="secondary"
-					aria-label={torchOn ? 'Taschenlampe aus' : 'Taschenlampe an'}
+					aria-label={torchOn ? t('scanner.torchOff') : t('scanner.torchOn')}
 					aria-pressed={torchOn}
 					onclick={toggleTorch}><Flashlight /></Button
 				>
 			{/if}
 			{#if cameras.length > 1}
-				<Button size="icon" variant="secondary" aria-label="Kamera wechseln" onclick={switchCamera}
-					><SwitchCamera /></Button
+				<Button
+					size="icon"
+					variant="secondary"
+					aria-label={t('scanner.switchCamera')}
+					onclick={switchCamera}><SwitchCamera /></Button
 				>
 			{/if}
 		</div>
@@ -235,9 +236,9 @@
 			<CameraIcon class="size-8 text-muted-foreground" aria-hidden="true" />
 			{#if status === 'error'}
 				<p role="alert">{message}</p>
-				<Button size="sm" variant="outline" onclick={() => start()}>Erneut versuchen</Button>
+				<Button size="sm" variant="outline" onclick={() => start()}>{t('scanner.retry')}</Button>
 			{:else}
-				<p class="text-muted-foreground" role="status">Kamera wird gestartet …</p>
+				<p class="text-muted-foreground" role="status">{t('scanner.starting')}</p>
 			{/if}
 		</div>
 	{/if}

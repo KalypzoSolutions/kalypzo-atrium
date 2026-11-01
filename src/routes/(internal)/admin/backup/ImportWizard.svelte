@@ -3,6 +3,7 @@
 -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { t } from '$lib/i18n';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
@@ -20,6 +21,7 @@
 		UploadCreated,
 		UploadProgress
 	} from '$lib/backup/contract';
+	import { isBackupFileName, MERGE_CONFIRM_WORD, RESTORE_CONFIRM_WORD } from '$lib/backup/contract';
 	import { ConfirmDialog, FileField, FormField } from '$lib/components/layout';
 	import TypedConfirmField from '$lib/components/layout/TypedConfirmField.svelte';
 	import * as Alert from '$lib/components/ui/alert';
@@ -54,17 +56,22 @@
 		constants: { chunkBytes: number; fileExt: string; restoreWord: string; mergeWord: string };
 	} = $props();
 
-	const STEPS = ['Datei wählen', 'Passwörter', 'Vorschau', 'Bestätigen'] as const;
+	const STEPS = [
+		t('admin-backup.import.steps.file'),
+		t('admin-backup.import.steps.passwords'),
+		t('admin-backup.import.steps.preview'),
+		t('admin-backup.import.steps.confirm')
+	];
 	const MODES: { value: RestoreMode; title: string; text: string }[] = [
 		{
 			value: 'restore',
-			title: 'Wiederherstellen (ersetzt die gewählten Bereiche)',
-			text: 'Die gewählten Bereiche werden vollständig durch den Stand der Sicherung ersetzt.'
+			title: t('admin-backup.import.modes.restoreTitle'),
+			text: t('admin-backup.import.modes.restoreText')
 		},
 		{
 			value: 'merge',
-			title: 'Zusammenführen (ergänzt nur Fehlendes)',
-			text: 'Nur fehlende Datensätze werden ergänzt. Vorhandene Daten bleiben unverändert.'
+			title: t('admin-backup.import.modes.mergeTitle'),
+			text: t('admin-backup.import.modes.mergeText')
 		}
 	];
 
@@ -158,7 +165,7 @@
 	// Schritt 1: Upload in Stücken
 	// ---------------------------------------------------------------------------
 
-	const fileOk = $derived(!!file && file.name.toLowerCase().endsWith(constants.fileExt));
+	const fileOk = $derived(!!file && isBackupFileName(file.name));
 
 	async function upload() {
 		if (!file || !fileOk || busy) return;
@@ -187,7 +194,7 @@
 			let complete = false;
 			while (offset < file.size) {
 				if (cancelUpload) {
-					error = 'Upload abgebrochen';
+					error = t('admin-backup.import.uploadCancelled');
 					return;
 				}
 				const part = file.slice(offset, Math.min(offset + chunk, file.size));
@@ -205,7 +212,7 @@
 				complete = r.data.complete;
 			}
 			if (!complete) {
-				error = 'Der Upload ist unvollständig. Bitte versuche es erneut.';
+				error = t('admin-backup.import.uploadIncomplete');
 				return;
 			}
 			uploadId = id;
@@ -242,7 +249,7 @@
 			if (!r.ok) {
 				if (r.status === 404 || r.status === 409) {
 					restart(1);
-					notice = `${r.message} – bitte lade die Datei erneut hoch.`;
+					notice = t('admin-backup.import.uploadAgain', { message: r.message });
 					return;
 				}
 				fieldErrors = r.fields;
@@ -273,10 +280,8 @@
 
 	const summary = $derived(
 		mode === 'restore'
-			? `${allChosen.length} ${allChosen.length === 1 ? 'Bereich wird' : 'Bereiche werden'} durch den Stand der Sicherung ersetzt. ` +
-					'Aktuelle Daten dieser Bereiche gehen dabei verloren.'
-			: `Aus der Sicherung werden in ${allChosen.length} ${allChosen.length === 1 ? 'Bereich' : 'Bereichen'} nur fehlende Datensätze ergänzt. ` +
-					'Vorhandene Daten bleiben unverändert.'
+			? t('admin-backup.import.summaryRestore', { count: allChosen.length })
+			: t('admin-backup.import.summaryMerge', { count: allChosen.length })
 	);
 
 	async function execute() {
@@ -295,7 +300,7 @@
 			if (!r.ok) {
 				if (r.status === 409 || r.status === 404) {
 					restart(2);
-					notice = `${r.message} – bitte prüfe die Sicherung erneut.`;
+					notice = t('admin-backup.import.checkAgain', { message: r.message });
 					return;
 				}
 				error = r.message;
@@ -305,7 +310,7 @@
 			run = {
 				runId: r.data.runId,
 				state: 'running',
-				phase: 'Wird gestartet …',
+				phase: t('admin-backup.import.starting'),
 				progress: { done: 0, total: 0 }
 			};
 			phase = 'running';
@@ -339,10 +344,10 @@
 		if (r.data.state === 'running') return schedulePoll(runId);
 		if (r.data.state === 'done') {
 			phase = r.data.result?.loggedOut ? 'loggedOut' : 'done';
-			toast.success('Wiederherstellung abgeschlossen');
+			toast.success(t('admin-backup.import.restoreDone'));
 		} else {
 			phase = 'failed';
-			error = r.data.error ?? 'Die Wiederherstellung ist fehlgeschlagen.';
+			error = r.data.error ?? t('admin-backup.import.restoreFailedText');
 		}
 	}
 
@@ -357,9 +362,9 @@
 {#if phase === 'running' && run}
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>Wiederherstellung läuft …</Card.Title>
+			<Card.Title>{t('admin-backup.import.running')}</Card.Title>
 			<Card.Description>
-				Bitte schließe die Seite nicht. Das System ist währenddessen kurz nicht nutzbar.
+				{t('admin-backup.import.runningHint')}
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="space-y-2" aria-live="polite">
@@ -367,11 +372,14 @@
 			<ProgressBar
 				value={percent(run.progress.done, run.progress.total)}
 				indeterminate={run.progress.total === 0}
-				label="Fortschritt der Wiederherstellung"
+				label={t('admin-backup.import.runProgress')}
 			/>
 			{#if run.progress.total > 0}
 				<p class="text-xs text-muted-foreground tabular-nums">
-					{fmt(run.progress.done)} von {fmt(run.progress.total)}
+					{t('admin-backup.import.progressOf', {
+						done: fmt(run.progress.done),
+						total: fmt(run.progress.total)
+					})}
 				</p>
 			{/if}
 		</Card.Content>
@@ -381,15 +389,16 @@
 		<Card.Header>
 			<Card.Title class="flex items-center gap-2">
 				<CircleCheck class="size-5 text-success" aria-hidden="true" />
-				Wiederherstellung abgeschlossen
+				{t('admin-backup.import.restoreDone')}
 			</Card.Title>
 			<Card.Description>
-				Deine Sitzung wurde dabei beendet. Melde dich neu an – mit den Zugangsdaten aus der
-				Sicherung, falls dein Konto daraus übernommen wurde.
+				{t('admin-backup.import.loggedOutText')}
 			</Card.Description>
 		</Card.Header>
 		<Card.Footer class="flex justify-end">
-			<Button href="/login"><LogIn aria-hidden="true" />Neu anmelden</Button>
+			<Button href="/login"
+				><LogIn aria-hidden="true" />{t('admin-backup.import.signInAgain')}</Button
+			>
 		</Card.Footer>
 	</Card.Root>
 {:else if phase === 'done' && run?.result}
@@ -398,29 +407,30 @@
 		<Card.Header>
 			<Card.Title class="flex items-center gap-2">
 				<CircleCheck class="size-5 text-success" aria-hidden="true" />
-				{res.mode === 'restore' ? 'Wiederherstellung' : 'Zusammenführung'} abgeschlossen
+				{res.mode === 'restore'
+					? t('admin-backup.import.restoreDone')
+					: t('admin-backup.import.mergeDone')}
 			</Card.Title>
 			<Card.Description>
-				{res.scopes.length}
-				{res.scopes.length === 1 ? 'Bereich wurde' : 'Bereiche wurden'} übernommen.
+				{t('admin-backup.import.scopesTaken', { count: res.scopes.length })}
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="space-y-4">
 			<dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 				<div class="rounded-lg border p-3">
-					<dt class="text-xs text-muted-foreground">Eingefügt</dt>
+					<dt class="text-xs text-muted-foreground">{t('admin-backup.import.inserted')}</dt>
 					<dd class="text-2xl font-semibold tabular-nums">{fmt(res.inserted)}</dd>
 				</div>
 				<div class="rounded-lg border p-3">
-					<dt class="text-xs text-muted-foreground">Gelöscht</dt>
+					<dt class="text-xs text-muted-foreground">{t('admin-backup.import.deleted')}</dt>
 					<dd class="text-2xl font-semibold tabular-nums">{fmt(res.deleted)}</dd>
 				</div>
 				<div class="rounded-lg border p-3">
-					<dt class="text-xs text-muted-foreground">Übersprungen</dt>
+					<dt class="text-xs text-muted-foreground">{t('admin-backup.import.skipped')}</dt>
 					<dd class="text-2xl font-semibold tabular-nums">{fmt(skippedSum)}</dd>
 				</div>
 				<div class="rounded-lg border p-3">
-					<dt class="text-xs text-muted-foreground">Dateien</dt>
+					<dt class="text-xs text-muted-foreground">{t('admin-backup.import.files')}</dt>
 					<dd class="text-2xl font-semibold tabular-nums">{fmt(res.files.uploaded)}</dd>
 				</div>
 			</dl>
@@ -431,14 +441,17 @@
 			</ul>
 			<ul class="space-y-1 text-sm text-muted-foreground">
 				<li>
-					Dateien: {fmt(res.files.uploaded)} übernommen, {fmt(res.files.skipped)} übersprungen{res
-						.files.failed
-						? `, ${fmt(res.files.failed)} fehlgeschlagen`
+					{t('admin-backup.import.filesLine', {
+						uploaded: fmt(res.files.uploaded),
+						skipped: fmt(res.files.skipped)
+					})}{res.files.failed
+						? t('admin-backup.import.filesFailed', { failed: fmt(res.files.failed) })
 						: ''}
 				</li>
 				<li>
-					Prüfwerte neu berechnet: {fmt(res.rehash.updated)}{res.rehash.unrecoverable
-						? `, nicht wiederherstellbar: ${fmt(res.rehash.unrecoverable)}`
+					{t('admin-backup.import.rehashLine', { updated: fmt(res.rehash.updated) })}{res.rehash
+						.unrecoverable
+						? t('admin-backup.import.rehashLost', { lost: fmt(res.rehash.unrecoverable) })
 						: ''}
 				</li>
 			</ul>
@@ -449,7 +462,7 @@
 							class="size-4 transition-transform group-open:rotate-90"
 							aria-hidden="true"
 						/>
-						Übersprungene Datensätze je Tabelle ({fmt(skippedSum)})
+						{t('admin-backup.import.skippedPerTable', { count: fmt(skippedSum) })}
 					</summary>
 					<div class="overflow-x-auto border-t">
 						<Table.Root>
@@ -468,7 +481,7 @@
 			{#if res.warnings.length}
 				<Alert.Root variant="warning">
 					<TriangleAlert aria-hidden="true" />
-					<Alert.Title>Hinweise</Alert.Title>
+					<Alert.Title>{t('admin-backup.import.warnings')}</Alert.Title>
 					<Alert.Description>
 						<ul class="list-disc space-y-1 pl-4">
 							{#each res.warnings as w, i (i)}<li>{w}</li>{/each}
@@ -478,32 +491,36 @@
 			{/if}
 		</Card.Content>
 		<Card.Footer class="flex flex-wrap justify-end gap-2">
-			<Button variant="outline" href="/dashboard">Zum Dashboard</Button>
-			<Button onclick={() => restart(1)}>Weitere Sicherung einspielen</Button>
+			<Button variant="outline" href="/dashboard">{t('admin-backup.import.toDashboard')}</Button>
+			<Button onclick={() => restart(1)}>{t('admin-backup.import.another')}</Button>
 		</Card.Footer>
 	</Card.Root>
 {:else if phase === 'failed'}
 	<Alert.Root variant="destructive">
 		<CircleX aria-hidden="true" />
-		<Alert.Title>Wiederherstellung fehlgeschlagen</Alert.Title>
+		<Alert.Title>{t('admin-backup.import.restoreFailed')}</Alert.Title>
 		<Alert.Description class="space-y-2">
-			<p>{error || 'Unbekannter Fehler.'}</p>
-			<p>Die Änderungen wurden zurückgerollt, soweit der Server das melden konnte.</p>
-			<Button size="sm" variant="outline" onclick={() => restart(1)}>Neu beginnen</Button>
+			<p>{error || t('admin-backup.import.unknownError')}</p>
+			<p>{t('admin-backup.import.rolledBack')}</p>
+			<Button size="sm" variant="outline" onclick={() => restart(1)}
+				>{t('admin-backup.import.startOver')}</Button
+			>
 		</Alert.Description>
 	</Alert.Root>
 {:else}
 	<div class="space-y-6">
 		<Alert.Root>
 			<Info aria-hidden="true" />
-			<Alert.Title>Wiederherstellen am besten zu einem ruhigen Zeitpunkt.</Alert.Title>
+			<Alert.Title>{t('admin-backup.import.quietTime')}</Alert.Title>
 			<Alert.Description>
-				Hintergrundjobs pausieren während des Laufs. Was andere in dieser Zeit ändern, kann durch
-				den Stand der Sicherung ersetzt werden.
+				{t('admin-backup.import.quietTimeText')}
 			</Alert.Description>
 		</Alert.Root>
 
-		<ol class="flex flex-wrap gap-x-4 gap-y-2 text-sm" aria-label="Schritte">
+		<ol
+			class="flex flex-wrap gap-x-4 gap-y-2 text-sm"
+			aria-label={t('admin-backup.import.stepsLabel')}
+		>
 			{#each STEPS as label, i (label)}
 				{@const n = i + 1}
 				<li
@@ -540,9 +557,9 @@
 		{#if step === 1}
 			<Card.Root>
 				<Card.Header>
-					<Card.Title>1. Sicherungsdatei wählen</Card.Title>
+					<Card.Title>{t('admin-backup.import.step1Title')}</Card.Title>
 					<Card.Description>
-						Wähle eine mit „Sicherung erstellen“ erzeugte Datei ({constants.fileExt}).
+						{t('admin-backup.import.step1Text', { ext: constants.fileExt.split(',')[0] ?? '' })}
 					</Card.Description>
 				</Card.Header>
 				<Card.Content class="space-y-4">
@@ -556,31 +573,38 @@
 					{/if}
 					{#if busy && uploadTotal > 0}
 						<div class="space-y-1.5" aria-live="polite">
-							<ProgressBar value={percent(uploaded, uploadTotal)} label="Fortschritt des Uploads" />
+							<ProgressBar
+								value={percent(uploaded, uploadTotal)}
+								label={t('admin-backup.import.uploadProgress')}
+							/>
 							<p class="text-xs text-muted-foreground tabular-nums">
-								{fmtBytes(uploaded)} von {fmtBytes(uploadTotal)} ({percent(uploaded, uploadTotal)} %)
+								{t('admin-backup.import.uploadOf', {
+									done: fmtBytes(uploaded),
+									total: fmtBytes(uploadTotal),
+									percent: percent(uploaded, uploadTotal)
+								})}
 							</p>
 						</div>
 					{/if}
 				</Card.Content>
 				<Card.Footer class="flex flex-wrap justify-end gap-2">
 					{#if busy}
-						<Button variant="outline" onclick={() => (cancelUpload = true)}>Abbrechen</Button>
+						<Button variant="outline" onclick={() => (cancelUpload = true)}
+							>{t('admin-backup.import.cancel')}</Button
+						>
 					{/if}
 					<Button onclick={upload} disabled={!fileOk || busy}>
 						<Upload aria-hidden="true" />
-						{busy ? 'Upload läuft …' : 'Hochladen'}
+						{busy ? t('admin-backup.import.uploading') : t('admin-backup.import.upload')}
 					</Button>
 				</Card.Footer>
 			</Card.Root>
 		{:else if step === 2}
 			<Card.Root>
 				<Card.Header>
-					<Card.Title>2. Passwörter</Card.Title>
+					<Card.Title>{t('admin-backup.import.step2Title')}</Card.Title>
 					<Card.Description>
-						Das Sicherungs-Passwort entschlüsselt die Datei, mit deinem Konto-Passwort{twoFactorEnabled
-							? ' und dem Code'
-							: ''} bestätigst du den Vorgang.
+						{t('admin-backup.import.step2Text', { twoFactor: twoFactorEnabled ? 'yes' : 'no' })}
 					</Card.Description>
 				</Card.Header>
 				<Card.Content>
@@ -593,7 +617,7 @@
 						}}
 					>
 						<FormField
-							label="Sicherungs-Passwort *"
+							label={t('admin-backup.import.backupPassword')}
 							id="restore-backup-password"
 							error={fieldErrors.backupPassword}
 						>
@@ -621,9 +645,11 @@
 					</form>
 				</Card.Content>
 				<Card.Footer class="flex flex-wrap justify-between gap-2">
-					<Button variant="outline" onclick={() => restart(1)} disabled={busy}>Andere Datei</Button>
+					<Button variant="outline" onclick={() => restart(1)} disabled={busy}
+						>{t('admin-backup.import.otherFile')}</Button
+					>
 					<Button type="submit" form="restore-analyze" disabled={!canAnalyze}>
-						{busy ? 'Prüfung läuft …' : 'Prüfen'}
+						{busy ? t('admin-backup.import.analyzing') : t('admin-backup.import.analyze')}
 					</Button>
 				</Card.Footer>
 			</Card.Root>
@@ -631,49 +657,51 @@
 			{@const b = preview.backup}
 			<Card.Root>
 				<Card.Header>
-					<Card.Title>3. Vorschau</Card.Title>
+					<Card.Title>{t('admin-backup.import.step3Title')}</Card.Title>
 					<Card.Description>
-						Gültig bis {fmtDateTime(preview.expiresAt)}. Wähle Modus und Bereiche.
+						{t('admin-backup.import.step3Text', { until: fmtDateTime(preview.expiresAt) })}
 					</Card.Description>
 				</Card.Header>
 				<Card.Content class="space-y-6">
 					<dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
 						<div>
-							<dt class="text-xs text-muted-foreground">Erstellt am</dt>
+							<dt class="text-xs text-muted-foreground">{t('admin-backup.import.createdAt')}</dt>
 							<dd>{fmtDateTime(b.createdAt)}</dd>
 						</div>
 						<div>
-							<dt class="text-xs text-muted-foreground">Erstellt von</dt>
+							<dt class="text-xs text-muted-foreground">{t('admin-backup.import.createdBy')}</dt>
 							<dd>{b.createdBy}</dd>
 						</div>
 						<div>
-							<dt class="text-xs text-muted-foreground">Version</dt>
+							<dt class="text-xs text-muted-foreground">{t('admin-backup.import.version')}</dt>
 							<dd class="tabular-nums">{b.appVersion}</dd>
 						</div>
 						<div>
-							<dt class="text-xs text-muted-foreground">Herkunft</dt>
-							<dd class="break-all">{b.sourceOrigin ?? 'unbekannt'}</dd>
+							<dt class="text-xs text-muted-foreground">{t('admin-backup.import.origin')}</dt>
+							<dd class="break-all">{b.sourceOrigin ?? t('admin-backup.import.unknown')}</dd>
 						</div>
 						<div>
-							<dt class="text-xs text-muted-foreground">Dateien</dt>
-							<dd>{b.includesFiles ? 'enthalten' : 'nicht enthalten'}</dd>
+							<dt class="text-xs text-muted-foreground">{t('admin-backup.import.files')}</dt>
+							<dd>
+								{b.includesFiles
+									? t('admin-backup.import.included')
+									: t('admin-backup.import.notIncluded')}
+							</dd>
 						</div>
 					</dl>
 
 					{#if preview.secretChanged}
 						<Alert.Root>
 							<Info aria-hidden="true" />
-							<Alert.Title>Anderer Server-Schlüssel</Alert.Title>
+							<Alert.Title>{t('admin-backup.import.otherKey')}</Alert.Title>
 							<Alert.Description>
-								Die Sicherung stammt von einem Server mit anderem Schlüssel. Verschlüsselte Werte
-								werden neu verschlüsselt und Prüfwerte neu berechnet; was sich nicht neu berechnen
-								lässt, wird im Ergebnis gemeldet.
+								{t('admin-backup.import.otherKeyText')}
 							</Alert.Description>
 						</Alert.Root>
 					{/if}
 
 					<fieldset class="space-y-2">
-						<legend class="mb-2 text-sm font-semibold">Modus</legend>
+						<legend class="mb-2 text-sm font-semibold">{t('admin-backup.import.mode')}</legend>
 						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 							{#each MODES as m (m.value)}
 								<label
@@ -697,7 +725,7 @@
 					</fieldset>
 
 					<fieldset class="space-y-2">
-						<legend class="mb-2 text-sm font-semibold">Bereiche</legend>
+						<legend class="mb-2 text-sm font-semibold">{t('admin-backup.import.scopes')}</legend>
 						{#each preview.scopes as s (s.key)}
 							{@const imp = implied.get(s.key)}
 							{@const isChecked = s.available && (chosen.includes(s.key) || !!imp)}
@@ -719,18 +747,30 @@
 									<div class="min-w-0 flex-1 space-y-1">
 										<Label for={cid(s.key)} class="flex flex-wrap items-center gap-2 font-medium">
 											{s.label}
-											<Badge variant="outline">{s.group === 'core' ? 'Core' : 'Modul'}</Badge>
+											<Badge variant="outline"
+												>{s.group === 'core'
+													? t('admin-backup.import.groupCore')
+													: t('admin-backup.import.groupModule')}</Badge
+											>
 											{#if !s.available}
-												<Badge variant="secondary"><Lock aria-hidden="true" />nicht verfügbar</Badge
+												<Badge variant="secondary"
+													><Lock aria-hidden="true" />{t('admin-backup.import.unavailable')}</Badge
 												>
 											{:else if imp}
-												<Badge variant="secondary"><Lock aria-hidden="true" />automatisch</Badge>
+												<Badge variant="secondary"
+													><Lock aria-hidden="true" />{t('admin-backup.import.automatic')}</Badge
+												>
 											{/if}
 										</Label>
 										<p class="text-xs text-muted-foreground tabular-nums">
-											Sicherung: {fmt(backupRows)} Datensätze · aktuell: {fmt(currentRows)}{s.files
-												.count
-												? ` · ${fmt(s.files.count)} Dateien (${fmtBytes(s.files.bytes)})`
+											{t('admin-backup.import.rowsLine', {
+												backup: fmt(backupRows),
+												current: fmt(currentRows)
+											})}{s.files.count
+												? t('admin-backup.import.filesSuffix', {
+														count: fmt(s.files.count),
+														size: fmtBytes(s.files.bytes)
+													})
 												: ''}
 										</p>
 										{#if !s.available && s.reason}
@@ -741,13 +781,16 @@
 													href="/admin/modules/install?url={encodeURIComponent(
 														s.installSource
 													)}&select={encodeURIComponent(s.key)}"
-													>Modul aus der Quelle installieren</a
+													>{t('admin-backup.import.installFromSource')}</a
 												>
 											{/if}
 										{/if}
 										{#if imp}
 											<p class="text-xs text-warning">
-												Geht mit, weil „{labelOf(imp.by)}“ gewählt ist – {imp.reason}
+												{t('admin-backup.import.impliedBecause', {
+													by: labelOf(imp.by),
+													reason: imp.reason
+												})}
 											</p>
 										{/if}
 									</div>
@@ -761,16 +804,19 @@
 												class="size-3.5 transition-transform group-open:rotate-90"
 												aria-hidden="true"
 											/>
-											{s.tables.length}
-											{s.tables.length === 1 ? 'Tabelle' : 'Tabellen'} anzeigen
+											{t('admin-backup.import.showTables', { count: s.tables.length })}
 										</summary>
 										<div class="overflow-x-auto">
 											<Table.Root>
 												<Table.Header>
 													<Table.Row>
-														<Table.Head>Tabelle</Table.Head>
-														<Table.Head class="text-right">Sicherung</Table.Head>
-														<Table.Head class="text-right">Aktuell</Table.Head>
+														<Table.Head>{t('admin-backup.import.table')}</Table.Head>
+														<Table.Head class="text-right"
+															>{t('admin-backup.import.inBackup')}</Table.Head
+														>
+														<Table.Head class="text-right"
+															>{t('admin-backup.import.current')}</Table.Head
+														>
 													</Table.Row>
 												</Table.Header>
 												<Table.Body>
@@ -795,7 +841,7 @@
 					</fieldset>
 
 					<fieldset class="space-y-2">
-						<legend class="mb-2 text-sm font-semibold">Optionen</legend>
+						<legend class="mb-2 text-sm font-semibold">{t('admin-backup.import.options')}</legend>
 						<div class="flex items-start gap-3">
 							<Checkbox
 								id="restore-smtp"
@@ -804,9 +850,9 @@
 								aria-describedby="restore-smtp-desc"
 							/>
 							<div class="space-y-1">
-								<Label for="restore-smtp">Mail-Zugang übernehmen</Label>
+								<Label for="restore-smtp">{t('admin-backup.import.takeSmtp')}</Label>
 								<p id="restore-smtp-desc" class="text-xs text-muted-foreground">
-									SMTP-Einstellungen aus der Sicherung statt der aktuellen verwenden.
+									{t('admin-backup.import.takeSmtpHint')}
 								</p>
 							</div>
 						</div>
@@ -819,9 +865,9 @@
 									aria-describedby="restore-modules-desc"
 								/>
 								<div class="space-y-1">
-									<Label for="restore-modules">Modulstatus übernehmen</Label>
+									<Label for="restore-modules">{t('admin-backup.import.moduleState')}</Label>
 									<p id="restore-modules-desc" class="text-xs text-muted-foreground">
-										Module so aktivieren bzw. deaktivieren wie zum Zeitpunkt der Sicherung.
+										{t('admin-backup.import.moduleStateHint')}
 									</p>
 								</div>
 							</div>
@@ -831,23 +877,21 @@
 					{#if usersChosen && mode === 'restore'}
 						<Alert.Root>
 							<Info aria-hidden="true" />
-							<Alert.Title>Dein Konto</Alert.Title>
+							<Alert.Title>{t('admin-backup.import.yourAccount')}</Alert.Title>
 							<Alert.Description class="space-y-1">
 								<p>
 									{preview.account.case === 'same'
-										? 'Dein Konto ist mit gleichem Passwort in der Sicherung enthalten.'
-										: 'Dein aktuelles Konto bleibt zusätzlich erhalten, damit du dich nicht aussperrst.'}
+										? t('admin-backup.import.accountSame')
+										: t('admin-backup.import.accountKept')}
 								</p>
 								{#if preview.account.willLogout}
 									<p>
-										Du wirst danach abgemeldet und meldest dich mit den Zugangsdaten aus der
-										Sicherung neu an.
+										{t('admin-backup.import.willLogout')}
 									</p>
 								{/if}
 								{#if preview.account.twoFactorInBackup}
 									<p>
-										In der Sicherung ist für dein Konto die Zwei-Faktor-Anmeldung aktiv – halte die
-										damalige Authenticator-App bereit.
+										{t('admin-backup.import.twoFactorInBackup')}
 									</p>
 								{/if}
 							</Alert.Description>
@@ -858,9 +902,7 @@
 						<Alert.Root variant="warning">
 							<TriangleAlert aria-hidden="true" />
 							<Alert.Description>
-								{fmt(preview.missingUserRefs)}
-								{preview.missingUserRefs === 1 ? 'Verweis' : 'Verweise'} auf Benutzer*innen, die es im
-								Ziel nicht gibt. Diese Einträge erscheinen danach als „Unbekannt“.
+								{t('admin-backup.import.missingUserRefs', { count: preview.missingUserRefs })}
 							</Alert.Description>
 						</Alert.Root>
 					{/if}
@@ -868,7 +910,7 @@
 					{#if preview.warnings.length}
 						<Alert.Root variant="warning">
 							<TriangleAlert aria-hidden="true" />
-							<Alert.Title>Hinweise</Alert.Title>
+							<Alert.Title>{t('admin-backup.import.warnings')}</Alert.Title>
 							<Alert.Description>
 								<ul class="list-disc space-y-1 pl-4">
 									{#each preview.warnings as w, i (i)}<li>{w}</li>{/each}
@@ -878,14 +920,15 @@
 					{/if}
 				</Card.Content>
 				<Card.Footer class="flex flex-wrap items-center justify-between gap-2">
-					<Button variant="outline" onclick={() => restart(2)}>Zurück</Button>
+					<Button variant="outline" onclick={() => restart(2)}
+						>{t('admin-backup.import.back')}</Button
+					>
 					<div class="flex flex-wrap items-center gap-3">
 						<span class="text-xs text-muted-foreground" aria-live="polite">
-							{allChosen.length}
-							{allChosen.length === 1 ? 'Bereich' : 'Bereiche'} gewählt
+							{t('admin-backup.import.chosenCount', { count: allChosen.length })}
 						</span>
 						<Button onclick={() => (step = 4)} disabled={!allChosen.length}>
-							Weiter zur Bestätigung
+							{t('admin-backup.import.toConfirm')}
 						</Button>
 					</div>
 				</Card.Footer>
@@ -893,7 +936,11 @@
 		{:else if preview && step === 4}
 			<Card.Root class={mode === 'restore' ? 'border-destructive/50' : ''}>
 				<Card.Header>
-					<Card.Title>4. {mode === 'restore' ? 'Wiederherstellen' : 'Zusammenführen'}</Card.Title>
+					<Card.Title
+						>{mode === 'restore'
+							? t('admin-backup.import.step4Restore')
+							: t('admin-backup.import.step4Merge')}</Card.Title
+					>
 					<Card.Description>{summary}</Card.Description>
 				</Card.Header>
 				<Card.Content class="space-y-4">
@@ -906,6 +953,7 @@
 						<TypedConfirmField
 							id="restore-confirm"
 							{word}
+							alsoAccept={[mode === 'restore' ? RESTORE_CONFIRM_WORD : MERGE_CONFIRM_WORD]}
 							bind:value={confirmValue}
 							bind:confirmed
 							disabled={busy}
@@ -913,17 +961,19 @@
 					</div>
 				</Card.Content>
 				<Card.Footer class="flex flex-wrap justify-between gap-2">
-					<Button variant="outline" onclick={() => (step = 3)} disabled={busy}>Zurück</Button>
+					<Button variant="outline" onclick={() => (step = 3)} disabled={busy}
+						>{t('admin-backup.import.back')}</Button
+					>
 					<Button
 						variant="destructive-solid"
 						disabled={!confirmed || busy}
 						onclick={() => (dialogOpen = true)}
 					>
 						{busy
-							? 'Wird gestartet …'
+							? t('admin-backup.import.starting')
 							: mode === 'restore'
-								? 'Jetzt wiederherstellen'
-								: 'Jetzt zusammenführen'}
+								? t('admin-backup.import.restoreNow')
+								: t('admin-backup.import.mergeNow')}
 					</Button>
 				</Card.Footer>
 			</Card.Root>
@@ -933,9 +983,13 @@
 
 <ConfirmDialog
 	bind:open={dialogOpen}
-	title={mode === 'restore' ? 'Wirklich wiederherstellen?' : 'Wirklich zusammenführen?'}
+	title={mode === 'restore'
+		? t('admin-backup.import.confirmRestore')
+		: t('admin-backup.import.confirmMerge')}
 	description={summary}
-	confirmLabel={mode === 'restore' ? 'Wiederherstellen' : 'Zusammenführen'}
+	confirmLabel={mode === 'restore'
+		? t('admin-backup.import.restore')
+		: t('admin-backup.import.merge')}
 	destructive
 	onconfirm={execute}
 />

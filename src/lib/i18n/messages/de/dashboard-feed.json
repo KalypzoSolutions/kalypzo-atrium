@@ -1,0 +1,12 @@
+{
+	"kinds": {
+		"meeting": "Gruppenstunde",
+		"event": "Termin",
+		"deadline": "Frist"
+	},
+	"notSignedIn": "Nicht angemeldet",
+	"invalidOrigin": "Ungültige Herkunft der Anfrage",
+	"expectedJson": "Erwartet application/json",
+	"invalidJson": "Ungültiges JSON",
+	"invalidLayout": "Ungültige Dashboard-Anordnung"
+}

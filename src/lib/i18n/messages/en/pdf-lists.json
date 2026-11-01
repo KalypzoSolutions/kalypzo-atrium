@@ -1,0 +1,34 @@
+{
+	"groups": {
+		"person": "Person",
+		"contact": "Contact",
+		"health": "Health & additional details",
+		"action": "Activity"
+	},
+	"presets": {
+		"fahrt": {
+			"label": "Trip",
+			"description": "Name, group, age, emergency phone, diet, allergies, medication"
+		},
+		"kontakt": {
+			"label": "Contact list",
+			"description": "Name, group, phone, email"
+		},
+		"gesundheit": {
+			"label": "Health",
+			"description": "Trip plus health, emergency contact, swimming, ticks/tetanus, health insurance"
+		},
+		"minimal": {
+			"label": "Minimal",
+			"description": "Name, group, age"
+		}
+	},
+	"confidential": "Confidential: contains personal data, partly health information. Use only for the intended purpose and destroy afterwards.",
+	"persons": "{count, plural, one {# person} other {# people}}",
+	"asOf": "As of {date}",
+	"empty": "No people.",
+	"validation": {
+		"minColumns": "Choose at least one column",
+		"maxColumns": "At most {max} columns"
+	}
+}

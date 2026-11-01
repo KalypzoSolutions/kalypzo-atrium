@@ -42,6 +42,7 @@ import {
 	type AreaNode
 } from './reset-areas';
 import { rowsOf, type Row } from '../database/rows';
+import { localized, t } from '$lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Öffentliche Typen
@@ -69,7 +70,18 @@ export interface ResetPreview {
 	expiresAt: string;
 }
 
+/** Deutsches Bestätigungswort – wird in jeder Sprache zusätzlich angenommen (Tests, Gewohnheit) */
 export const RESET_CONFIRM_WORD = 'ZURÜCKSETZEN';
+
+/** Bestätigungswort in der aktuellen Sprache (Anzeige und Prüfung) */
+export function resetConfirmWord(): string {
+	return t('reset.confirmWord');
+}
+
+/** Eingabe = Wort der aktuellen Sprache oder das deutsche Wort */
+export function isResetConfirmWord(input: string): boolean {
+	return input === resetConfirmWord() || input === RESET_CONFIRM_WORD;
+}
 
 export interface ResetResult {
 	areas: string[];
@@ -150,19 +162,19 @@ function settingsWhere(): SQL {
 
 const NON_SYSTEM_ROLE_IDS = sql`SELECT id FROM "public"."role" WHERE NOT is_system`;
 
+/** `label`/`description`/`reason` sind Textschlüssel (Übersetzung in `collectAreas`) */
 const CORE_AREAS: CoreAreaDef[] = [
 	{
 		id: 'api-keys',
-		label: 'API-Keys',
-		description: 'Alle API-Keys aller Benutzer (auch die eigenen).',
+		label: 'reset.area.apiKeys.label',
+		description: 'reset.area.apiKeys.description',
 		tables: [{ table: 'api_key', columns: API_KEY_COLUMNS }]
 	},
 	{
 		id: 'users',
-		label: 'Benutzer',
-		description:
-			'Alle Benutzerkonten außer dem eigenen, inkl. Sitzungen, Anmeldedaten, Rollenzuweisungen und persönlicher Einstellungen.',
-		implies: [{ area: 'core:api-keys', reason: 'API-Keys gehören zu Benutzerkonten' }],
+		label: 'reset.area.users.label',
+		description: 'reset.area.users.description',
+		implies: [{ area: 'core:api-keys', reason: 'reset.area.users.impliesApiKeys' }],
 		tables: [
 			{ table: 'setting', where: (keep) => sql`scope_id <> '' AND scope_id <> ${keep}` },
 			{ table: 'user_role', where: (keep) => sql`user_id <> ${keep}`, cascade: true },
@@ -176,9 +188,8 @@ const CORE_AREAS: CoreAreaDef[] = [
 	},
 	{
 		id: 'roles',
-		label: 'Rollen',
-		description:
-			'Alle selbst angelegten Rollen mit Rechten und Zuweisungen. Systemrollen (Administrator) bleiben.',
+		label: 'reset.area.roles.label',
+		description: 'reset.area.roles.description',
 		tables: [
 			{
 				table: 'role_grant_applied',
@@ -200,34 +211,32 @@ const CORE_AREAS: CoreAreaDef[] = [
 	},
 	{
 		id: 'api-log',
-		label: 'API-Protokoll',
-		description: 'Protokoll aller API-Aufrufe.',
+		label: 'reset.area.apiLog.label',
+		description: 'reset.area.apiLog.description',
 		tables: [{ table: 'api_log' }]
 	},
 	{
 		id: 'jobs',
-		label: 'Job-Läufe',
-		description: 'Letzte Läufe der Hintergrundjobs (Jobs laufen danach beim nächsten Takt neu).',
+		label: 'reset.area.jobs.label',
+		description: 'reset.area.jobs.description',
 		tables: [{ table: 'job_run' }]
 	},
 	{
 		id: 'ai-usage',
-		label: 'KI-Nutzung',
-		description: 'Erfasste KI-Nutzung und Kosten.',
+		label: 'reset.area.aiUsage.label',
+		description: 'reset.area.aiUsage.description',
 		tables: [{ table: 'ai_usage' }]
 	},
 	{
 		id: 'settings',
-		label: 'Einstellungen',
-		description:
-			'Globale und persönliche Einstellungen (inkl. Modul-Einstellungen). Speicher- und SMTP-Zugang sowie Secrets bleiben erhalten.',
+		label: 'reset.area.settings.label',
+		description: 'reset.area.settings.description',
 		tables: [{ table: 'setting', where: () => settingsWhere() }]
 	},
 	{
 		id: 'audit',
-		label: 'Audit-Log',
-		description:
-			'Alle Audit-Einträge. Danach bleibt nur der Eintrag über dieses Zurücksetzen bestehen.',
+		label: 'reset.area.audit.label',
+		description: 'reset.area.audit.description',
 		tables: [{ table: 'audit_log' }]
 	}
 ];
@@ -271,9 +280,9 @@ async function collectAreas(): Promise<AreaDef[]> {
 				node: { key, module: id, rebuild: !!a.rebuild, implies: a.implies ?? [] },
 				info: {
 					key,
-					group: def.manifest.name,
-					label: a.label,
-					description: a.description,
+					group: localized(def.manifest.name),
+					label: localized(a.label),
+					description: localized(a.description),
 					implies: [],
 					rebuild: !!a.rebuild
 				},
@@ -284,12 +293,17 @@ async function collectAreas(): Promise<AreaDef[]> {
 	for (const c of CORE_AREAS) {
 		const key = `core:${c.id}`;
 		out.push({
-			node: { key, module: 'core', rebuild: false, implies: c.implies ?? [] },
+			node: {
+				key,
+				module: 'core',
+				rebuild: false,
+				implies: (c.implies ?? []).map((i) => ({ area: i.area, reason: t(i.reason) }))
+			},
 			info: {
 				key,
-				group: 'Core',
-				label: c.label,
-				description: c.description,
+				group: t('reset.coreGroup'),
+				label: t(c.label),
+				description: t(c.description),
 				implies: [],
 				rebuild: false
 			},
@@ -308,7 +322,7 @@ async function collectAreas(): Promise<AreaDef[]> {
 async function requireResetUser(ctx: RequestContext): Promise<string> {
 	await requirePermission(ctx, 'core.system.reset');
 	if (ctx.actor.type !== 'user' || !ctx.userId) {
-		throw errors.forbidden('Zurücksetzen ist nur für angemeldete Benutzer möglich');
+		throw errors.forbidden(t('reset.onlyUsers'));
 	}
 	return ctx.userId;
 }
@@ -345,7 +359,7 @@ function requireToken(token: string, userId: string): TokenEntry {
 	sweepTokens();
 	const entry = typeof token === 'string' ? tokens.get(hashToken(token)) : undefined;
 	if (!entry || entry.userId !== userId) {
-		throw errors.conflict('Vorschau abgelaufen, bitte neu starten');
+		throw errors.conflict(t('reset.previewExpired'));
 	}
 	return entry;
 }
@@ -473,14 +487,12 @@ async function reresolve(entry: TokenEntry, token: string) {
 		// unten einheitlich behandeln
 	}
 	tokens.delete(hashToken(token));
-	throw errors.conflict('Vorschau abgelaufen, bitte neu starten');
+	throw errors.conflict(t('reset.previewExpired'));
 }
 
 async function resolveSelection(selected: string[]) {
 	if (!Array.isArray(selected) || !selected.length) {
-		throw errors.validation([
-			{ path: ['areas'], message: 'Bitte mindestens einen Bereich wählen' }
-		]);
+		throw errors.validation([{ path: ['areas'], message: t('reset.chooseArea') }]);
 	}
 	const all = await collectAreas();
 	const res = resolveAreas(
@@ -489,7 +501,7 @@ async function resolveSelection(selected: string[]) {
 	);
 	if (res.unknown.length) {
 		throw errors.validation([
-			{ path: ['areas'], message: `Unbekannter Bereich: ${res.unknown.join(', ')}` }
+			{ path: ['areas'], message: t('reset.unknownAreas', { areas: res.unknown.join(', ') }) }
 		]);
 	}
 	const set = new Set(res.areas);
@@ -623,12 +635,12 @@ export async function exportResetData(
 		throw errors.validation([
 			{
 				path: ['backupPassword'],
-				message: `Sicherungs-Passwort: mindestens ${BACKUP_MIN_PASSWORD} Zeichen`
+				message: t('reset.backupPasswordMin', { count: BACKUP_MIN_PASSWORD })
 			}
 		]);
 	}
 	if (!(await verifyUserPassword(userId, String(input.password ?? '')))) {
-		throw errors.validation([{ path: ['password'], message: 'Passwort ist nicht korrekt' }]);
+		throw errors.validation([{ path: ['password'], message: t('maintenance.wrongPassword') }]);
 	}
 	const [u] = await getDb()
 		.select({ twoFactorEnabled: schema.user.twoFactorEnabled })
@@ -637,25 +649,23 @@ export async function exportResetData(
 	if (u?.twoFactorEnabled) {
 		const key = `resettotp:${userId}`;
 		if (peek(key, TOTP_WINDOW_SEC) >= TOTP_MAX_FAILURES) {
-			throw errors.badRequest('Zu viele Versuche. Bitte später erneut versuchen.');
+			throw errors.badRequest(t('maintenance.tooManyAttempts'));
 		}
 		const code = String(input.totp ?? '').replace(/\s+/g, '');
 		if (!(await verifyTotp(userId, code))) {
 			hit(key, 1000, TOTP_WINDOW_SEC);
-			throw errors.validation([
-				{ path: ['totp'], message: 'Bestätigungscode (2FA) fehlt oder ist ungültig' }
-			]);
+			throw errors.validation([{ path: ['totp'], message: t('maintenance.totpInvalid') }]);
 		}
 		resetRateLimit(key);
 	}
 	const resolved = await reresolve(entry, input.token);
 	const known = new Set((await listBackupScopes()).map((s) => s.key));
 	const scopes = backupScopesForResetAreas(resolved.areas).filter((s) => known.has(s));
-	if (!scopes.length) throw errors.badRequest('Für die gewählten Bereiche gibt es keine Daten');
+	if (!scopes.length) throw errors.badRequest(t('reset.noData'));
 	const built = await writeBackupFile(
 		userId,
 		{ scopes, includeFiles: false, backupPassword },
-		'Sicherung vor dem Zurücksetzen'
+		'maintenance.lock.resetExport'
 	);
 	entry.status = 'exported';
 	await auditFromContext(ctx, 'core.system.reset_exported', {
@@ -668,7 +678,9 @@ export async function exportResetData(
 		}
 	});
 	return {
-		fileName: built.fileName.replace(/^ep-intern-sicherung-/, 'ep-intern-reset-'),
+		fileName: built.fileName.startsWith(`${t('backup.export.fileNamePrefix')}-`)
+			? `atrium-reset-${built.fileName.slice(t('backup.export.fileNamePrefix').length + 1)}`
+			: built.fileName,
 		path: built.path,
 		size: built.summary.bytes,
 		done: () => removeTemp(built.path)
@@ -692,15 +704,15 @@ export async function executeReset(
 	const userId = await requireResetUser(ctx);
 	const entry = requireToken(input.token, userId);
 	if (entry.status !== 'exported') {
-		throw errors.conflict('Bitte zuerst die Daten exportieren');
+		throw errors.conflict(t('reset.exportFirst'));
 	}
-	if (input.confirmWord !== RESET_CONFIRM_WORD) {
+	if (!isResetConfirmWord(String(input.confirmWord ?? ''))) {
 		throw errors.validation([
-			{ path: ['confirmWord'], message: `Bitte genau "${RESET_CONFIRM_WORD}" eingeben` }
+			{ path: ['confirmWord'], message: t('reset.typeExactly', { word: resetConfirmWord() }) }
 		]);
 	}
 	const resolved = await reresolve(entry, input.token);
-	acquireMaintenanceLock('Zurücksetzen');
+	acquireMaintenanceLock('maintenance.lock.reset');
 	tokens.delete(hashToken(input.token));
 
 	pauseJobs();
@@ -813,9 +825,7 @@ async function runReset(defs: AreaDef[], keep: string, result: ResetResult): Pro
 	if (keys.has('core:roles') || keys.has('core:users')) {
 		const perms = await getUserPermissions(keep);
 		if (!perms.has('core.system.reset')) {
-			result.warnings.push(
-				'Das eigene Konto hat nach dem Zurücksetzen keine Administrationsrechte mehr'
-			);
+			result.warnings.push(t('reset.lostAdmin'));
 		}
 	}
 }

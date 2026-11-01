@@ -3,6 +3,12 @@
  * einfarbig oder als Verlauf. Alle Farben sind `#rrggbb` – daraus erzeugtes CSS kann nichts einschleusen.
  */
 import { z } from 'zod';
+import { t } from '$lib/i18n';
+
+/** Zod-Fehlerparameter, erst beim Prüfen übersetzt */
+const msg = (key: string, params?: Record<string, string>) => ({
+	error: () => t(key, params)
+});
 
 export const THEMES_MAX = 20;
 export const FAVORITES_MAX = 30;
@@ -14,7 +20,7 @@ export const PRESET_PREFIX = 'preset:';
 
 const hex = z
 	.string()
-	.regex(/^#[0-9a-fA-F]{6}$/, 'Ungültige Farbe (#rrggbb erwartet).')
+	.regex(/^#[0-9a-fA-F]{6}$/, msg('appearance.validation.invalidColor'))
 	.transform((v) => v.toLowerCase());
 const percent = z.number().min(0).max(100);
 
@@ -67,8 +73,8 @@ export const userThemeSchema = z.object({
 	name: z
 		.string()
 		.trim()
-		.min(1, 'Bitte einen Namen angeben.')
-		.max(THEME_NAME_MAX, `Höchstens ${THEME_NAME_MAX} Zeichen.`),
+		.min(1, msg('appearance.validation.nameRequired'))
+		.max(THEME_NAME_MAX, msg('appearance.validation.nameMax', { max: String(THEME_NAME_MAX) })),
 	/** `''` = eigene bzw. System-Akzentfarbe behalten */
 	accent: z.union([z.literal(''), hex]),
 	light: themeModeSchema,
@@ -77,8 +83,11 @@ export const userThemeSchema = z.object({
 
 export const userThemesSchema = z
 	.array(userThemeSchema)
-	.max(THEMES_MAX, `Höchstens ${THEMES_MAX} eigene Themes.`)
-	.refine((list) => new Set(list.map((t) => t.id)).size === list.length, 'Doppelte Theme-ID.');
+	.max(THEMES_MAX, msg('appearance.validation.themesMax', { max: String(THEMES_MAX) }))
+	.refine(
+		(list) => new Set(list.map((x) => x.id)).size === list.length,
+		msg('appearance.validation.duplicateId')
+	);
 
 /** ID eines eigenen Themes (UUID) oder eines Vorschlags (`preset:<slug>`) */
 export const themeIdSchema = z.union([z.uuid(), z.string().regex(/^preset:[a-z0-9-]{1,40}$/)]);
@@ -89,8 +98,11 @@ export const activeThemeSchema = z.union([z.literal(''), themeIdSchema]);
 /** Mit Stern markierte Themes (eigene oder Vorschläge) – nur sie stehen in der Kopfzeile */
 export const themeFavoritesSchema = z
 	.array(themeIdSchema)
-	.max(FAVORITES_MAX, `Höchstens ${FAVORITES_MAX} Favoriten.`)
-	.refine((list) => new Set(list).size === list.length, 'Doppelter Favorit.');
+	.max(FAVORITES_MAX, msg('appearance.validation.favoritesMax', { max: String(FAVORITES_MAX) }))
+	.refine(
+		(list) => new Set(list).size === list.length,
+		msg('appearance.validation.duplicateFavorite')
+	);
 
 /** Liest gespeicherte Favoriten tolerant (ungültige/doppelte IDs fallen weg). */
 export function parseFavorites(value: unknown): string[] {

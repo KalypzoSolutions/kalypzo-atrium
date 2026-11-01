@@ -16,6 +16,7 @@ import type { DataSubject, SubjectCandidate } from '../modules/types';
 import { allDefinitions } from '../modules/registry';
 import { isModuleEnabled } from '../modules/service';
 import { directPermissionsOfUser, requirePermission } from '../permissions/service';
+import { localized, t } from '$lib/i18n';
 
 export const PRIVACY_PERMISSION = 'core.privacy.export';
 /** Höchstzahl Audit-Einträge im Export (neueste zuerst) */
@@ -29,7 +30,7 @@ export interface PrivacyCandidate extends SubjectCandidate {
 }
 
 export interface SubjectExport {
-	format: 'ep-intern-datenauskunft';
+	format: 'atrium-datenauskunft';
 	version: 1;
 	generatedAt: string;
 	subject: DataSubject;
@@ -42,7 +43,7 @@ export interface SubjectExport {
 async function requirePrivacyUser(ctx: RequestContext): Promise<void> {
 	await requirePermission(ctx, PRIVACY_PERMISSION);
 	if (ctx.actor.type !== 'user' || !ctx.userId) {
-		throw errors.forbidden('Datenauskunft ist nur für angemeldete Benutzer*innen möglich');
+		throw errors.forbidden(t('privacy.signedInOnly'));
 	}
 }
 
@@ -51,7 +52,11 @@ async function activeExporters() {
 	for (const def of allDefinitions()) {
 		if (!def.subjectExport) continue;
 		if (!(await isModuleEnabled(def.manifest.id))) continue;
-		out.push({ id: def.manifest.id, name: def.manifest.name, hooks: def.subjectExport });
+		out.push({
+			id: def.manifest.id,
+			name: localized(def.manifest.name),
+			hooks: def.subjectExport
+		});
 	}
 	return out;
 }
@@ -80,9 +85,9 @@ export async function findPrivacySubjects(
 		.limit(20);
 	const out: PrivacyCandidate[] = users.map((u) => ({
 		source: 'core',
-		sourceName: 'Benutzerkonto',
+		sourceName: t('privacy.userAccount'),
 		label: u.name,
-		detail: u.active ? u.email : `${u.email} (deaktiviert)`,
+		detail: u.active ? u.email : t('privacy.deactivatedDetail', { email: u.email }),
 		subject: { userId: u.id }
 	}));
 	for (const m of await activeExporters()) {
@@ -268,17 +273,17 @@ export async function exportSubject(
 	const userId = input.userId?.trim() || null;
 	const memberId = input.memberId?.trim() || null;
 	if (!userId && !memberId) {
-		throw errors.validation([{ path: ['userId'], message: 'Konto oder Mitglied wählen' }]);
+		throw errors.validation([{ path: ['userId'], message: t('privacy.chooseSubject') }]);
 	}
 	if (memberId && !UUID.test(memberId)) {
-		throw errors.validation([{ path: ['memberId'], message: 'Ungültige ID' }]);
+		throw errors.validation([{ path: ['memberId'], message: t('privacy.invalidId') }]);
 	}
 	if (userId) {
 		const [u] = await getDb()
 			.select({ id: schema.user.id })
 			.from(schema.user)
 			.where(eq(schema.user.id, userId));
-		if (!u) throw errors.notFound('Benutzer nicht gefunden');
+		if (!u) throw errors.notFound(t('privacy.userNotFound'));
 	}
 
 	const subject: DataSubject = { userId, memberIds: memberId ? [memberId] : [] };
@@ -293,7 +298,7 @@ export async function exportSubject(
 				if (!subject.memberIds.includes(id)) subject.memberIds.push(id);
 			}
 		} catch (err) {
-			failures.push({ module: m.id, message: (err as Error)?.message ?? 'Fehler' });
+			failures.push({ module: m.id, message: (err as Error)?.message ?? t('privacy.error') });
 		}
 	}
 
@@ -309,7 +314,7 @@ export async function exportSubject(
 				`[privacy] Datenauskunft im Modul ${m.id} fehlgeschlagen:`,
 				(err as Error)?.message
 			);
-			failures.push({ module: m.id, message: (err as Error)?.message ?? 'Fehler' });
+			failures.push({ module: m.id, message: (err as Error)?.message ?? t('privacy.error') });
 		}
 	}
 
@@ -323,7 +328,7 @@ export async function exportSubject(
 		}
 	});
 	return {
-		format: 'ep-intern-datenauskunft',
+		format: 'atrium-datenauskunft',
 		version: 1,
 		generatedAt: new Date().toISOString(),
 		subject,

@@ -1,0 +1,10 @@
+{
+	"onlyMemberSource": "Nur das Mitgliedermodul darf gelöschte Mitglieder melden",
+	"signedInOnly": "Datenauskunft ist nur für angemeldete Benutzer*innen möglich",
+	"userAccount": "Benutzerkonto",
+	"deactivatedDetail": "{email} (deaktiviert)",
+	"chooseSubject": "Konto oder Mitglied wählen",
+	"invalidId": "Ungültige ID",
+	"userNotFound": "Benutzer nicht gefunden",
+	"error": "Fehler"
+}

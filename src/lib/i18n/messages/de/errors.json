@@ -1,0 +1,13 @@
+{
+	"badRequest": "Ungültige Anfrage",
+	"validation": "Validierung fehlgeschlagen",
+	"unauthenticated": "Authentifizierung erforderlich",
+	"forbidden": "Keine Berechtigung",
+	"notFound": "Nicht gefunden",
+	"methodNotAllowed": "Methode nicht erlaubt",
+	"conflict": "Konflikt",
+	"rateLimited": "Zu viele Anfragen",
+	"moduleDisabled": "Modul \"{id}\" ist nicht aktiv",
+	"tooLarge": "Datei ist zu groß",
+	"unavailable": "Dienst nicht konfiguriert oder nicht erreichbar"
+}

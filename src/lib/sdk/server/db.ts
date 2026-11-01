@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 /**
  * Datenbank-Grundhelfer für Module: Modul-Datenbank, Zeilen aus `tx.execute`, ID-Listen, Zeitstempel und
  * Spaltenwerte. Ersetzt die früher in jedem Modul kopierten `mdb`/`rowsOf`/`iso`/`idList` (#70).
@@ -25,7 +26,7 @@ export const moduleDb = (moduleId: string) => core.database.forModule(moduleId);
 export function userLabel(
 	users: ReadonlyMap<string, { name: string }>,
 	id: string | null | undefined,
-	fallback = 'Unbekannt'
+	fallback = t('sdk.unknown')
 ): string {
 	return (id ? users.get(id)?.name : undefined) ?? fallback;
 }

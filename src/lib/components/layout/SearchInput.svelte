@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { untrack } from 'svelte';
@@ -7,8 +8,8 @@
 
 	let {
 		param = 'search',
-		placeholder = 'Suchen …',
-		label = 'Suche',
+		placeholder = t('layout.search.placeholder'),
+		label = t('layout.search.label'),
 		resetParams = ['offset']
 	}: {
 		param?: string;

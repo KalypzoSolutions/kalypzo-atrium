@@ -8,6 +8,8 @@
 	import { SummaryList, type SummaryRow } from '$lib/components/layout';
 	import { cn } from '$lib/utils';
 	import type { ApiCatalogEntry, JsonSchema } from '$lib/api-docs/types';
+	import { t } from '$lib/i18n';
+	import { formatBytes, formatNumber } from '$lib/i18n/intl';
 	import SchemaTree from './SchemaTree.svelte';
 	import ResponsePanel from './ResponsePanel.svelte';
 	import ErrorsTable from './ErrorsTable.svelte';
@@ -16,64 +18,81 @@
 	let { entry, open = $bindable(false) }: { entry: ApiCatalogEntry | null; open: boolean } =
 		$props();
 
-	function formatBytes(bytes: number): string {
-		if (bytes >= 1024 * 1024) {
-			const mb = bytes / (1024 * 1024);
-			return `${mb.toLocaleString('de-DE', { maximumFractionDigits: 1 })} MB`;
-		}
-		if (bytes >= 1024) return `${Math.round(bytes / 1024).toLocaleString('de-DE')} KB`;
-		return `${bytes.toLocaleString('de-DE')} Byte`;
-	}
-
 	function accessText(e: ApiCatalogEntry): string {
-		if (e.access === 'public') return 'Öffentlich';
-		if (e.access === 'authenticated') return 'Nur Anmeldung';
-		return `Berechtigung ${e.permission ?? '–'}`;
+		if (e.access === 'public') return t('api-docs.sheet.publicAccess');
+		if (e.access === 'authenticated') return t('api-docs.sheet.authenticatedAccess');
+		return t('api-docs.sheet.permissionAccess', { permission: e.permission ?? '–' });
 	}
 
 	function overviewRows(e: ApiCatalogEntry): SummaryRow[] {
 		const rl = e.rateLimit;
 		const rows: SummaryRow[] = [
-			{ label: 'Modul', value: e.moduleEnabled ? e.moduleName : `${e.moduleName} (inaktiv)` },
-			{ label: 'Zugriff', value: accessText(e) },
 			{
-				label: 'Nur Session',
-				value: e.sessionOnly ? 'Ja' : 'Nein',
-				hint: 'Nur mit angemeldeter Sitzung aufrufbar, nicht per API-Schlüssel.'
+				label: t('api-docs.sheet.module'),
+				value: e.moduleEnabled
+					? e.moduleName
+					: t('api-docs.sheet.moduleInactive', { name: e.moduleName })
+			},
+			{ label: t('api-docs.sheet.access'), value: accessText(e) },
+			{
+				label: t('api-docs.sheet.sessionOnly'),
+				value: e.sessionOnly ? t('api-docs.sheet.yes') : t('api-docs.sheet.no'),
+				hint: t('api-docs.sheet.sessionOnlyHint')
 			},
 			{
-				label: 'Für dich aufrufbar',
-				value: e.allowed ? 'Ja' : e.moduleEnabled ? 'Nein' : 'Nein (Modul inaktiv)'
+				label: t('api-docs.sheet.allowed'),
+				value: e.allowed
+					? t('api-docs.sheet.yes')
+					: e.moduleEnabled
+						? t('api-docs.sheet.no')
+						: t('api-docs.sheet.noModuleInactive')
 			},
 			{
-				label: 'Rate-Limit',
-				value: `${rl.limit.toLocaleString('de-DE')} Anfragen / ${rl.windowSec.toLocaleString('de-DE')} s${rl.isDefault ? ' (Standard)' : ''}`
+				label: t('api-docs.sheet.rateLimit'),
+				value: t(
+					rl.isDefault ? 'api-docs.sheet.rateLimitDefault' : 'api-docs.sheet.rateLimitValue',
+					{
+						limit: formatNumber(rl.limit),
+						window: formatNumber(rl.windowSec)
+					}
+				)
 			}
 		];
 		if (e.multipart) {
 			rows.push({
-				label: 'Datei-Upload',
-				value: `max. ${e.multipart.maxFiles} ${e.multipart.maxFiles === 1 ? 'Datei' : 'Dateien'}, ${formatBytes(e.multipart.maxBytes)}`
+				label: t('api-docs.sheet.upload'),
+				value: t('api-docs.sheet.uploadValue', {
+					count: e.multipart.maxFiles,
+					size: formatBytes(e.multipart.maxBytes)
+				})
 			});
 		}
-		rows.push({ label: 'Erfolgsstatus', value: String(e.successStatus) });
+		rows.push({ label: t('api-docs.sheet.successStatus'), value: String(e.successStatus) });
 		return rows;
 	}
 
 	const requestSections = (
 		e: ApiCatalogEntry
 	): { title: string; schema: JsonSchema | null; empty: string }[] => [
-		{ title: 'Pfadparameter', schema: e.params, empty: 'Keine Pfadparameter' },
-		{ title: 'Query-Parameter', schema: e.query, empty: 'Keine Query-Parameter' },
-		{ title: 'Body', schema: e.body, empty: 'Kein Body' }
+		{
+			title: t('api-docs.sheet.pathParams'),
+			schema: e.params,
+			empty: t('api-docs.sheet.noPathParams')
+		},
+		{
+			title: t('api-docs.sheet.queryParams'),
+			schema: e.query,
+			empty: t('api-docs.sheet.noQueryParams')
+		},
+		{ title: t('api-docs.sheet.body'), schema: e.body, empty: t('api-docs.sheet.noBody') }
 	];
 
 	async function copyPath(path: string) {
 		try {
 			await navigator.clipboard.writeText(path);
-			toast.success('Pfad kopiert');
+			toast.success(t('api-docs.sheet.pathCopied'));
 		} catch {
-			toast.error('Kopieren nicht möglich');
+			toast.error(t('api-docs.sheet.copyFailed'));
 		}
 	}
 </script>
@@ -102,8 +121,8 @@
 							variant="ghost"
 							size="icon-sm"
 							class="shrink-0"
-							aria-label="Pfad kopieren"
-							title="Pfad kopieren"
+							aria-label={t('api-docs.sheet.copyPath')}
+							title={t('api-docs.sheet.copyPath')}
 							onclick={() => copyPath(entry.path)}
 						>
 							<Copy />
@@ -115,11 +134,11 @@
 				<div class="p-4">
 					<Tabs.Root value="overview">
 						<Tabs.List variant="line">
-							<Tabs.Trigger value="overview">Übersicht</Tabs.Trigger>
-							<Tabs.Trigger value="request">Anfrage</Tabs.Trigger>
-							<Tabs.Trigger value="response">Antwort</Tabs.Trigger>
-							<Tabs.Trigger value="errors">Fehler</Tabs.Trigger>
-							<Tabs.Trigger value="try">Ausprobieren</Tabs.Trigger>
+							<Tabs.Trigger value="overview">{t('api-docs.sheet.tabOverview')}</Tabs.Trigger>
+							<Tabs.Trigger value="request">{t('api-docs.sheet.tabRequest')}</Tabs.Trigger>
+							<Tabs.Trigger value="response">{t('api-docs.sheet.tabResponse')}</Tabs.Trigger>
+							<Tabs.Trigger value="errors">{t('api-docs.sheet.tabErrors')}</Tabs.Trigger>
+							<Tabs.Trigger value="try">{t('api-docs.sheet.tabTry')}</Tabs.Trigger>
 						</Tabs.List>
 
 						<Tabs.Content value="overview" class="space-y-4 pt-2">
@@ -136,9 +155,9 @@
 								<section class="space-y-2">
 									<h3 class="text-sm font-semibold">{section.title}</h3>
 									{#if section.schema}
-										<SchemaTree schema={section.schema} emptyText="Keine" />
+										<SchemaTree schema={section.schema} emptyText={t('api-docs.sheet.none')} />
 									{:else}
-										<p class="text-muted-foreground text-sm">Keine</p>
+										<p class="text-muted-foreground text-sm">{t('api-docs.sheet.none')}</p>
 									{/if}
 								</section>
 							{/each}
@@ -160,7 +179,7 @@
 			{/key}
 		{:else}
 			<Sheet.Header>
-				<Sheet.Title>Kein Endpunkt gewählt</Sheet.Title>
+				<Sheet.Title>{t('api-docs.sheet.noEndpoint')}</Sheet.Title>
 			</Sheet.Header>
 		{/if}
 	</Sheet.Content>

@@ -1,0 +1,12 @@
+{
+	"insecure": "Die Kamera funktioniert nur über eine sichere Verbindung (HTTPS).",
+	"denied": "Kamerazugriff verweigert. Erlaube die Kamera in den Browser-Einstellungen.",
+	"notFound": "Keine Kamera gefunden. Du kannst den Code auch eintippen oder einen USB-Scanner nutzen.",
+	"busy": "Die Kamera wird gerade von einer anderen App benutzt.",
+	"startFailed": "Die Kamera konnte nicht gestartet werden.",
+	"torchOn": "Taschenlampe an",
+	"torchOff": "Taschenlampe aus",
+	"switchCamera": "Kamera wechseln",
+	"retry": "Erneut versuchen",
+	"starting": "Kamera wird gestartet …"
+}

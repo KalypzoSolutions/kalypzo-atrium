@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import type { Snippet } from 'svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
@@ -21,7 +22,7 @@
 		error = '',
 		onretry,
 		empty = false,
-		emptyTitle = 'Keine Einträge',
+		emptyTitle = t('layout.noEntries'),
 		emptyDescription,
 		skeletonRows = 5,
 		toolbar,

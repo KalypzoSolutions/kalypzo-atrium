@@ -1,0 +1,7 @@
+{
+	"title": "Error {status}",
+	"notFound": "Page not found",
+	"generic": "Something went wrong",
+	"reference": "Reference: {id}",
+	"toDashboard": "Go to dashboard"
+}

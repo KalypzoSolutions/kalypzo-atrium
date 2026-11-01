@@ -7,24 +7,30 @@ import { isCoreError } from '$lib/server/core/errors';
 import { safeFileName as cleanFileName } from '$lib/sdk/file-names';
 import { exportResetData } from '$lib/server/core/system/reset';
 import type { RequestHandler } from './$types';
+import { t } from '$lib/i18n';
 
 /**
  * Sicherung vor dem Zurücksetzen: POST JSON `{ token, password, totp?, backupPassword }` → verschlüsselte
- * Sicherung (`.epbackup`, Format der Datensicherung) als Download; die Temp-Datei wird nach dem Senden gelöscht.
+ * Sicherung (`.atriumbackup`, Format der Datensicherung) als Download; die Temp-Datei wird nach dem Senden gelöscht.
  * JSON-POSTs fallen nicht unter den Origin-Check von SvelteKit (nur Formular-Content-Types) –
  * daher hier eigener Same-Origin-Check.
  */
 const bodySchema = z
 	.object({
 		token: z.string().min(1).max(500),
-		password: z.string().min(1, 'Bitte das Passwort eingeben').max(1024),
+		password: z
+			.string()
+			.min(1, { error: () => t('admin-reset.server.password') })
+			.max(1024),
 		backupPassword: z
 			.string()
-			.min(BACKUP_MIN_PASSWORD, `Sicherungs-Passwort: mindestens ${BACKUP_MIN_PASSWORD} Zeichen`)
+			.min(BACKUP_MIN_PASSWORD, {
+				error: () => t('admin-reset.server.backupPasswordMin', { count: BACKUP_MIN_PASSWORD })
+			})
 			.max(200),
 		totp: z
 			.string()
-			.regex(/^\d{6}$/, 'Bitte den 6-stelligen Code eingeben')
+			.regex(/^\d{6}$/, { error: () => t('admin-reset.server.totp') })
 			.optional()
 	})
 	.strict();
@@ -49,26 +55,27 @@ function safeFileName(name: string): string {
 	const cleaned = cleanFileName(name, {
 		replacement: '-',
 		maxLength: 200,
-		fallback: 'ep-intern-sicherung'
+		fallback: 'atrium-reset'
 	});
 	return cleaned + (cleaned.endsWith(BACKUP_FILE_EXT) ? '' : BACKUP_FILE_EXT);
 }
 
 export const POST: RequestHandler = async ({ request, locals, url }) => {
-	if (!locals.user) return problem(401, 'Nicht angemeldet');
-	if (!locals.ctx.permissions.has('core.system.reset')) return problem(403, 'Keine Berechtigung');
+	if (!locals.user) return problem(401, t('admin-reset.server.unauthenticated'));
+	if (!locals.ctx.permissions.has('core.system.reset'))
+		return problem(403, t('admin-reset.server.forbidden'));
 
 	const origin = request.headers.get('origin');
-	if (!origin || origin !== url.origin) return problem(403, 'Ungültige Herkunft der Anfrage');
+	if (!origin || origin !== url.origin) return problem(403, t('admin-reset.server.badOrigin'));
 	if (!(request.headers.get('content-type') ?? '').toLowerCase().startsWith('application/json')) {
-		return problem(415, 'Erwartet application/json');
+		return problem(415, t('admin-reset.server.expectedJson'));
 	}
 
 	let raw: unknown;
 	try {
 		raw = await request.json();
 	} catch {
-		return problem(400, 'Ungültiges JSON');
+		return problem(400, t('admin-reset.server.invalidJson'));
 	}
 	const parsed = bodySchema.safeParse(raw);
 	if (!parsed.success) {

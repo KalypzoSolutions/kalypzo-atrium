@@ -1,0 +1,16 @@
+{
+	"loading": "Lädt …",
+	"today": "Heute",
+	"prevMonth": "Vorheriger Monat",
+	"nextMonth": "Nächster Monat",
+	"gridLabel": "Kalender {month}",
+	"agendaLabel": "Termine {month}",
+	"createOn": "Termin am {date} anlegen",
+	"create": "Termin anlegen",
+	"moreOn": "{count} weitere Termine am {date}",
+	"more": "+{count} weitere",
+	"emptyMonth": "Keine Termine in diesem Monat.",
+	"dayToday": "{date}, heute",
+	"seriesTitle": "{title} (Serie)",
+	"describeRange": "{title}, {start}{startTime} bis {end}{endTime}"
+}

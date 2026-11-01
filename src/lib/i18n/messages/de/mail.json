@@ -1,0 +1,12 @@
+{
+	"logoAlt": "Logo",
+	"sample": "Hallo Max Mustermann,\n\nvielen Dank für deine Anmeldung zum Sommerlager. Alle Informationen findest du unter https://intern.example.org/p/beispiel/anmeldung.\n\nBei Fragen antworte einfach auf diese E-Mail.",
+	"errors": {
+		"smtpNoPassword": "SMTP ist nicht konfiguriert (Passwort fehlt)",
+		"smtpNotConfigured": "SMTP ist nicht konfiguriert",
+		"timeout": "Der Mailserver antwortet nicht (Zeitüberschreitung)",
+		"invalidSender": "Ungültige Absenderadresse",
+		"invalidMessageId": "Ungültige Message-ID",
+		"invalidReplyTo": "Ungültige Antwortadresse"
+	}
+}

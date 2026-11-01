@@ -8,6 +8,7 @@
  *
  * Bewusst ohne `$lib`-Importe: wird auch vom Vite-Plugin und von Werkzeugen außerhalb der App gelesen.
  */
+import { t } from '$lib/i18n';
 import semver from 'semver';
 import { z } from 'zod';
 
@@ -83,36 +84,48 @@ export function formatModuleSource(s: ModuleSource): string {
 
 const dependencySchema = z.strictObject({
 	/** SemVer-Bereich, z. B. `^1.14.0` */
-	version: z.string().refine((v) => semver.validRange(v) !== null, 'Ungültiger Versionsbereich'),
+	version: z.string().refine((v) => semver.validRange(v) !== null, {
+		error: () => t('modules.package.invalidRange')
+	}),
 	/** Woher das Modul geholt wird, wenn es fehlt (sonst: gleiches Repository/Katalog) */
 	source: z
 		.string()
-		.refine((v) => parseModuleSource(v) !== null, 'Ungültige Quelle (github:owner/repo/pfad#ref)')
+		.refine((v) => parseModuleSource(v) !== null, {
+			error: () => t('modules.package.invalidSource')
+		})
 		.optional()
 });
 
 const dependencyMap = z
-	.record(z.string().regex(ID, 'Ungültige Modul-ID'), dependencySchema)
+	.record(z.string().regex(ID, { error: () => t('modules.package.invalidId') }), dependencySchema)
 	.default({});
 
 export const modulePackageSchema = z
 	.strictObject({
 		$schema: z.string().optional(),
 		schema: z.literal(MODULE_PACKAGE_SCHEMA_VERSION),
-		id: z.string().regex(ID, 'Ungültige Modul-ID'),
+		id: z.string().regex(ID, { error: () => t('modules.package.invalidId') }),
 		name: z.string().trim().min(1).max(80),
 		description: z.string().max(500).optional(),
-		version: z.string().refine((v) => semver.valid(v) !== null, 'Version muss SemVer sein'),
+		version: z
+			.string()
+			.refine((v) => semver.valid(v) !== null, { error: () => t('modules.package.versionSemver') }),
 		/** Passende Core-Versionen (SemVer-Bereich) */
-		core: z.string().refine((v) => semver.validRange(v) !== null, 'Ungültiger Versionsbereich'),
+		core: z.string().refine((v) => semver.validRange(v) !== null, {
+			error: () => t('modules.package.invalidRange')
+		}),
 		dependencies: dependencyMap,
 		optionalDependencies: dependencyMap,
-		permissions: z.array(z.string().regex(PERMISSION, 'Ungültiges Recht')).default([]),
+		permissions: z
+			.array(z.string().regex(PERMISSION, { error: () => t('modules.package.invalidPermission') }))
+			.default([]),
 		/** Nur modulspezifische npm-Pakete mit exakter Version (Plattform-Pakete liefert der Core) */
 		npm: z
 			.record(
-				z.string().regex(NPM_NAME, 'Ungültiger Paketname'),
-				z.string().refine((v) => semver.valid(v) !== null, 'Exakte Version nötig')
+				z.string().regex(NPM_NAME, { error: () => t('modules.package.invalidPackageName') }),
+				z.string().refine((v) => semver.valid(v) !== null, {
+					error: () => t('modules.package.exactVersion')
+				})
 			)
 			.default({}),
 		/** Herkunft (Anzeige), z. B. `github:org/ep-intern-modules` */
@@ -124,27 +137,27 @@ export const modulePackageSchema = z
 				ctx.addIssue({
 					code: 'custom',
 					path: ['dependencies', k],
-					message: 'Modul hängt von sich selbst ab'
+					message: t('modules.package.selfDependency')
 				});
 			if (k in p.optionalDependencies)
 				ctx.addIssue({
 					code: 'custom',
 					path: ['optionalDependencies', k],
-					message: 'Zugleich harte Abhängigkeit'
+					message: t('modules.package.alsoHardDependency')
 				});
 		}
 		if (p.id in p.optionalDependencies)
 			ctx.addIssue({
 				code: 'custom',
 				path: ['optionalDependencies', p.id],
-				message: 'Modul hängt von sich selbst ab'
+				message: t('modules.package.selfDependency')
 			});
 		for (const perm of p.permissions) {
 			if (!perm.startsWith(`${p.id}.`))
 				ctx.addIssue({
 					code: 'custom',
 					path: ['permissions'],
-					message: `Recht „${perm}“ gehört nicht zum Modul`
+					message: t('modules.package.foreignPermission', { permission: perm })
 				});
 		}
 	});
@@ -159,14 +172,18 @@ export const moduleCatalogSchema = z.strictObject({
 	modules: z
 		.array(
 			z.strictObject({
-				id: z.string().regex(ID, 'Ungültige Modul-ID'),
+				id: z.string().regex(ID, { error: () => t('modules.package.invalidId') }),
 				/** Ordner relativ zum Katalog */
-				path: z.string().refine((p) => p !== '' && SAFE_PATH(p), 'Ungültiger Pfad')
+				path: z.string().refine((p) => p !== '' && SAFE_PATH(p), {
+					error: () => t('modules.package.invalidPath')
+				})
 			})
 		)
 		.min(1)
 		.max(200)
-		.refine((m) => new Set(m.map((x) => x.id)).size === m.length, 'Modul-IDs doppelt')
+		.refine((m) => new Set(m.map((x) => x.id)).size === m.length, {
+			error: () => t('modules.package.duplicateIds')
+		})
 });
 
 export type ModuleCatalog = z.infer<typeof moduleCatalogSchema>;
@@ -176,7 +193,7 @@ export function parseModulePackage(raw: unknown, where = MODULE_PACKAGE_FILE): M
 	const r = modulePackageSchema.safeParse(raw);
 	if (r.success) return r.data;
 	const msg = r.error.issues
-		.map((i) => `${i.path.join('.') || '(Wurzel)'}: ${i.message}`)
+		.map((i) => `${i.path.join('.') || t('modules.package.root')}: ${i.message}`)
 		.join('; ');
 	throw new Error(`${where}: ${msg}`);
 }

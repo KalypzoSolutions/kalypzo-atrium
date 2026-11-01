@@ -16,6 +16,7 @@ import { allDefinitions, getDefinition } from '../modules/registry';
 import { enabledModuleIds } from '../modules/state';
 import { hasAny } from '../permissions/service';
 import { loadPrefs, prefKey } from './prefs';
+import { intlLocale, localized } from '$lib/i18n';
 
 export interface ResolvedType extends ModuleNotificationType {
 	moduleId: string;
@@ -106,9 +107,9 @@ async function rowsForUser(
 				logError(`[notifications] forUser von ${moduleId} fehlgeschlagen`, e);
 			}
 		}
-		if (rows.length) out.push({ id: moduleId, label: def.manifest.name, rows });
+		if (rows.length) out.push({ id: moduleId, label: localized(def.manifest.name), rows });
 	}
-	return out.sort((a, b) => a.label.localeCompare(b.label, 'de'));
+	return out.sort((a, b) => a.label.localeCompare(b.label, intlLocale()));
 }
 
 /** Profilansicht: Gruppen je Modul mit der wirksamen Wahl */

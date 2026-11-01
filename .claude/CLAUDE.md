@@ -37,6 +37,7 @@ Modul- und Bereichsregeln (`module-*.md`, `website.md`, `ui-design.md` …) lade
 | `rules/module-material.md` | Modul Material: Bestand (Orte, Kisten, Stücke, Mengen), Zelt-Sets, Reservierungen mit Bahnen-Anfrage, Ausgabe/Rückgabe per Scan, Etiketten-Designer/-Druck |
 | `rules/module-whiteboard.md` | Modul Whiteboards: Live-Bearbeitung (SSE + Ops, zuletzt geschrieben gewinnt), Formen/Verbinder/Freihand/Rahmen, Bilder/Dateien, Karten aus Modulen, Versionen, Export PNG/SVG/PDF/Archiv, Touch |
 | `rules/module-notes.md` | Modul Notizen: Seitenbaum, Live-Bearbeitung (Yjs über SSE + rohe Updates), Markdown/Quelltext, Tabellen/Bilder, Whiteboard einbetten (Core `embeds`), Export md/zip/html/docx/pdf, Import |
+| `rules/module-ep-stamm.md` | Modul Stammesprofil: Briefkopf/Mail-Kopf/Wappen-Logo der Edelweißpiraten und Einstellungs-Vorgaben über Core-Hooks (`pdfTemplates`, `mailBranding`, `brandingLogo`, `settingDefaults`) |
 | `rules/website.md` | Stammeswebsite `website/` = alte Website mit neuem Backend (`WEBSITE_API_KEY`): Anbindung, Routen, Demo |
 | `rules/project-state.md` | Stand, getroffene Entscheidungen, offene Punkte |
 
@@ -77,5 +78,6 @@ trotzdem lesen – der Graph ersetzt keine Verifikation.
 7. bits-ui setzt `data-state` / `data-orientation` – **nie** `data-open:`/`data-checked:`/`data-horizontal:` in Tailwind-Klassen.
 8. Keine nativen `<select>`/`<input type=color>`; Core-Bausteine nutzen (`SelectField`, `MultiSelect`, `ColorPicker` …).
 9. Alle deutschen Texte mit echten Umlauten und ß (UTF-8): Oberfläche, Server-Fehlertexte, Mails, Kommentare. ASCII bleibt nur in
-   Bezeichnern, Schlüsseln, Pfaden/Slugs, Dateinamen und angewendeten SQL-Migrationen.
+   Bezeichnern, Schlüsseln, Pfaden/Slugs, Dateinamen und angewendeten SQL-Migrationen. **Im Core (`src/**`) keine festen Texte**: alles über
+   `t()` mit de **und** en (`src/lib/i18n/messages`), neutral ohne Organisation (Wächter `i18n-guard`, siehe `architecture.md` → Mehrsprachigkeit).
 10. Nichts committen oder pushen, solange der Nutzer es nicht verlangt. Demo-Server nie hart beenden (`.data/stop`).

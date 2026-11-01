@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	// Auswahlmodus einer Touch-Liste: oben „N ausgewählt“ mit Summe und „Alle“, unten feste
 	// Leiste mit den Sammelaktionen (verdeckt die Bereichsleiste). Beenden über ✕.
 	import type { Snippet } from 'svelte';
@@ -38,16 +39,18 @@
 	<button
 		type="button"
 		class="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted"
-		aria-label="Auswahl beenden"
+		aria-label={t('layout.selection.close')}
 		onclick={onclose}
 	>
 		<XIcon class="size-5" />
 	</button>
 	<div class="flex min-w-0 flex-1 flex-col" aria-live="polite">
-		<strong class="truncate">{count} ausgewählt</strong>
+		<strong class="truncate">{t('layout.selection.count', { count })}</strong>
 		{#if summary}<span class="truncate text-xs text-muted-foreground">{summary}</span>{/if}
 	</div>
-	<Button variant="outline" size="sm" onclick={onall}>{allSelected ? 'Keine' : 'Alle'}</Button>
+	<Button variant="outline" size="sm" onclick={onall}
+		>{allSelected ? t('layout.selection.none') : t('layout.selection.all')}</Button
+	>
 	{#if !fixed}
 		<div role="toolbar" aria-label={label} class="ml-1 flex flex-wrap gap-2">
 			{@render actions()}

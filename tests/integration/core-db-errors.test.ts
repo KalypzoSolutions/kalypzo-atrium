@@ -206,7 +206,7 @@ describe('Fehler-Logs ohne Parameter (#56)', () => {
 			.where(eq(schema.jobRun.key, 'dberr.boom'));
 		// Lesen maskiert sofort …
 		const listed = (await listJobs()).find((j) => j.key === 'dberr.boom');
-		expect(listed!.lastMessage).toBe(LEGACY_JOB_MESSAGE);
+		expect(listed!.lastMessage).toBe('Fehler (Details aus Datenschutzgründen entfernt)');
 		// … der Startlauf bereinigt die Tabelle
 		expect(await neutralizeLegacyJobMessages()).toBe(1);
 		const rows = await getDb()

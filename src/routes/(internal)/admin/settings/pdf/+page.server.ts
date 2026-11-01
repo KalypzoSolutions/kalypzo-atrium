@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		fields: await loadFields(['pdf']),
 		templates: listTemplates(),
-		templateInfo: describeTemplates()
+		templateInfo: await describeTemplates()
 	};
 };
 

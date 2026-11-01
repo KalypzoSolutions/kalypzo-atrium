@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { t } from '$lib/i18n';
 import { z } from 'zod';
 import { isCoreError } from '$lib/server/core/errors';
 import { renderTemplatePreview } from '$lib/server/core/pdf';
@@ -7,13 +8,14 @@ import type { RequestHandler } from './$types';
 const id = z.string().regex(/^[a-z0-9-]{1,40}$/);
 
 export const GET: RequestHandler = async ({ locals, url }) => {
-	if (!locals.user) throw error(401, 'Nicht angemeldet');
-	if (!locals.ctx.permissions.has('core.pdf.manage')) throw error(403, 'Keine Berechtigung');
+	if (!locals.user) throw error(401, t('admin-pdf.errors.unauthenticated'));
+	if (!locals.ctx.permissions.has('core.pdf.manage'))
+		throw error(403, t('admin-pdf.errors.forbidden'));
 	const template = id.safeParse(url.searchParams.get('template'));
-	if (!template.success) throw error(400, 'Ungültige Vorlage');
+	if (!template.success) throw error(400, t('admin-pdf.errors.invalidTemplate'));
 	const onlyRaw = url.searchParams.get('only');
 	const only = onlyRaw === null ? undefined : id.safeParse(onlyRaw);
-	if (only && !only.success) throw error(400, 'Ungültiger Bestandteil');
+	if (only && !only.success) throw error(400, t('admin-pdf.errors.invalidPart'));
 	try {
 		const png = await renderTemplatePreview({
 			template: template.data,

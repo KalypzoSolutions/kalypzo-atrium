@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { BackupFormatError, type ByteSink, type ByteSource } from './types';
+import { t } from '$lib/i18n';
 
 const DEFAULT_READ_CHUNK = 1024 * 1024;
 
@@ -89,7 +90,7 @@ export async function collect(source: ByteSource, maxBytes?: number): Promise<Ui
 	for await (const chunk of source) {
 		total += chunk.length;
 		if (maxBytes !== undefined && total > maxBytes) {
-			throw new BackupFormatError('too_large', 'Ein Eintrag der Sicherung ist zu groß.');
+			throw new BackupFormatError('too_large', t('backup.format.entryTooLarge'));
 		}
 		parts.push(chunk);
 	}

@@ -1,5 +1,6 @@
 import { fail, type Actions } from '@sveltejs/kit';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import {
 	confirmInstall,
 	inspectSource,
@@ -84,7 +85,8 @@ export const actions: Actions = {
 				clearToken: form.get('clearToken') === 'on',
 				allowedSources: String(form.get('allowedSources') ?? '')
 			});
-		if (!parsed.success) return fail(422, { message: 'Eingaben ungültig', fields: {} });
+		if (!parsed.success)
+			return fail(422, { message: t('admin-modules.server.invalidInput'), fields: {} });
 		const values: Record<string, unknown> = {
 			'core.modules.allowedSources': parsed.data.allowedSources.trim()
 		};
@@ -92,7 +94,7 @@ export const actions: Actions = {
 		else if (parsed.data.token) values['core.modules.githubToken'] = parsed.data.token;
 		try {
 			await setSettings(locals.ctx, values);
-			return { step: 'settings' as const, message: 'Gespeichert' };
+			return { step: 'settings' as const, message: t('admin-modules.server.saved') };
 		} catch (e) {
 			return failWith(e);
 		}
