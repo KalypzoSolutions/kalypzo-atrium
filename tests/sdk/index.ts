@@ -95,3 +95,6 @@ export async function apiCall<T = unknown>(
 	}
 	return { status: res.status, body };
 }
+
+/** Form-Actions der Profilseite (Core-Route) für modulübergreifende Tests (z. B. Mitglieder-Karte im Profil) */
+export { actions as profileActions } from '../../src/routes/(internal)/profile/+page.server';
