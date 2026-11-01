@@ -72,11 +72,14 @@ services:
     read_only: true
     volumes:
       - backup-tmp:/var/tmp/ep-backup
+      # Modul-Installation im Panel: Supervisor baut im Container neu (Generationen, Quellen, Protokolle)
+      - atrium-data:/data/atrium
     tmpfs:
       # klein und begrenzt: nur Chromium-Profile/kurzlebige Dateien; große Dateien → backup-tmp
       - /tmp:size=256m,mode=1777
     cap_drop: [ALL]
-    mem_limit: ${APP_MEM_LIMIT:-1536m}
+    # Neubau beim Installieren von Modulen braucht ~3,5 GB (Messung docs/deployment.md); ohne Installation reichen 1,5 GB
+    mem_limit: ${APP_MEM_LIMIT:-4g}
     cpus: ${APP_CPUS:-1.0}
     cpu_shares: 768
     # Chromium startet viele Prozesse/Threads (pids_limit zählt Threads)
@@ -196,6 +199,7 @@ services:
 
 volumes:
   db-data:
+  atrium-data:
   backup-tmp:
   backup-work:
   backup-repo:

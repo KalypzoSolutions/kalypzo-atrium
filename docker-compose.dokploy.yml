@@ -310,6 +310,8 @@ services:
 volumes:
   db-data:
   s3-data:
+  # Generationen der App, Lock-Dateien, Quellen und Protokolle des Supervisors (Modul-Installation)
+  atrium-data:
   backup-tmp:
   backup-work:
   backup-repo:
