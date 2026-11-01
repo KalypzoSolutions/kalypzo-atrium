@@ -100,6 +100,52 @@ export function modulePackagesFor(modulesDir, corePkg) {
 	return Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b)));
 }
 
+/** Paketnamen eines `node_modules`-Ordners (inkl. `@scope/name`) */
+function installedPackages(nodeModules) {
+	if (!existsSync(nodeModules)) return [];
+	const out = [];
+	for (const name of readdirSync(nodeModules)) {
+		if (name.startsWith('.')) continue;
+		if (name.startsWith('@')) {
+			for (const sub of readdirSync(join(nodeModules, name))) out.push(`${name}/${sub}`);
+		} else out.push(name);
+	}
+	return out;
+}
+
+function installedVersion(nodeModules, name) {
+	try {
+		return (
+			JSON.parse(readFileSync(join(nodeModules, name, 'package.json'), 'utf8')).version ?? null
+		);
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Entfernt aus `<modulesDir>/node_modules` die Pakete, die der Core schon in derselben Hauptversion mitbringt
+ * (außer den von Modulen ausdrücklich verlangten). Sonst lädt ein Bundle zwei Kopien desselben Pakets – bei
+ * Singletons wie `prosemirror-model` bricht das zur Laufzeit („multiple versions … were loaded“). Die Module finden
+ * die Core-Kopie über den `node_modules`-Link des Generationsordners bzw. des Module-Repos.
+ * @returns {string[]} entfernte Pakete
+ */
+export function dedupeModulePackages(modulesDir, coreRoot, wanted = {}) {
+	const own = join(modulesDir, 'node_modules');
+	const core = join(coreRoot, 'node_modules');
+	const major = (v) => String(v ?? '').split('.')[0];
+	const removed = [];
+	for (const name of installedPackages(own)) {
+		if (name in wanted) continue;
+		const coreVersion = installedVersion(core, name);
+		const ownVersion = installedVersion(own, name);
+		if (!coreVersion || !ownVersion || major(coreVersion) !== major(ownVersion)) continue;
+		rmSync(join(own, name), { recursive: true, force: true });
+		removed.push(name);
+	}
+	return removed.sort();
+}
+
 /** Lock-Datei der neuen Generation: bisheriger Stand + Auftrag; Module ohne Eintrag als `builtin` */
 export function mergeLock(prev, request, modulesDir, coreVersion) {
 	const modules = { ...(prev?.modules ?? {}) };
@@ -487,6 +533,8 @@ export class Supervisor {
 						],
 						{ cwd: modulesDir, write, shell: process.platform === 'win32' }
 					);
+					const removed = dedupeModulePackages(modulesDir, this.coreRoot, packages);
+					if (removed.length) write(`vom Core übernommen: ${removed.join(', ')}`);
 				}
 			} else write('keine eigenen Pakete');
 			// Moduldateien finden die Pakete des Core über diesen Link (Junction unter Windows)

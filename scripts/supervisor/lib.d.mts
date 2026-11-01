@@ -54,3 +54,10 @@ export declare class Supervisor {
 	/** Wartet, bis alle anstehenden Neubauten fertig sind */
 	readonly queue: Promise<void>;
 }
+
+/** Entfernt Modul-Pakete, die der Core in derselben Hauptversion mitbringt (außer `wanted`); liefert die Namen */
+export declare function dedupeModulePackages(
+	modulesDir: string,
+	coreRoot: string,
+	wanted?: Record<string, string>
+): string[];

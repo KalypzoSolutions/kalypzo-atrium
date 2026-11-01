@@ -8,6 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { contentHash, readModuleArchive } from '$lib/server/core/modules/install/archive';
 import {
 	contentHashOfDir,
+	dedupeModulePackages,
 	mergeLock,
 	moduleFolders,
 	modulePackagesFor,
@@ -100,5 +101,32 @@ describe('modulePackagesFor', () => {
 		expect(modulePackagesFor(dir, core)).toEqual({ 'is-odd': '3.0.1', 'left-pad': '1.3.0' });
 		add('pc', { 'left-pad': '1.2.0' });
 		expect(() => modulePackagesFor(dir, core)).toThrow(/verschiedenen Versionen/);
+	});
+});
+
+describe('dedupeModulePackages', () => {
+	const pkg = (root: string, name: string, version: string) => {
+		const dir = join(root, 'node_modules', name);
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'package.json'), JSON.stringify({ name, version }));
+	};
+
+	it('entfernt Kopien, die der Core in derselben Hauptversion hat; verlangte und andere Hauptversionen bleiben', () => {
+		const core = join(tmp, 'dedupe-core');
+		const mods = join(tmp, 'dedupe-mods');
+		pkg(core, 'prosemirror-model', '1.25.1');
+		pkg(core, '@scope/lib', '2.0.0');
+		pkg(core, 'htmlparser2', '8.0.2');
+		pkg(core, 'yjs', '13.0.0');
+		pkg(mods, 'prosemirror-model', '1.24.0');
+		pkg(mods, '@scope/lib', '2.3.0');
+		pkg(mods, 'htmlparser2', '10.0.0');
+		pkg(mods, 'yjs', '13.6.33');
+		pkg(mods, 'nur-modul', '1.0.0');
+		expect(dedupeModulePackages(mods, core, { yjs: '13.6.33' })).toEqual([
+			'@scope/lib',
+			'prosemirror-model'
+		]);
+		expect(dedupeModulePackages(mods, core, { yjs: '13.6.33' })).toEqual([]);
 	});
 });
