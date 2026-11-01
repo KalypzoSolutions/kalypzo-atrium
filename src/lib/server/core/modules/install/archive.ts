@@ -3,8 +3,10 @@
  *
  * Gelesen wird über das **zentrale Verzeichnis** (dort stehen Unix-Rechte, also auch Symlinks); jeder Eintrag wird
  * mit seinem lokalen Kopf abgeglichen. Abgelehnt werden: Symlinks/Gerätedateien, absolute Pfade, `..`, Backslash,
- * NUL, versteckte Dateien, `.git/`, `node_modules/`, doppelte bzw. nur in Groß/Klein verschiedene Pfade, unbekannte
- * Endungen, verschlüsselte oder ungewöhnlich gepackte Einträge und „ZIP-Bomben“ (Grenzen siehe `ARCHIVE_LIMITS`).
+ * NUL, doppelte bzw. nur in Groß/Klein verschiedene Pfade, unbekannte Endungen, verschlüsselte oder ungewöhnlich
+ * gepackte Einträge und „ZIP-Bomben“ (Grenzen siehe `ARCHIVE_LIMITS`). **Übersprungen** (nie entpackt, nicht im
+ * Inhaltshash) werden versteckte Einträge (`.git/`, `.github/`, `.claude/`, `.env` …) und `node_modules/` – ein Repo
+ * enthält sie neben den Modulen fast immer.
  * Ein gemeinsamer Oberordner (GitHub: `<owner>-<repo>-<sha>/`) wird entfernt.
  */
 import { createHash } from 'node:crypto';
@@ -60,8 +62,11 @@ function u32(b: Uint8Array, o: number): number {
 	return (b[o]! | (b[o + 1]! << 8) | (b[o + 2]! << 16) | (b[o + 3]! << 24)) >>> 0;
 }
 
+/** Eintrag wird nicht entpackt (versteckt oder `node_modules`) */
+const SKIP = Symbol('skip');
+
 /** Pfad prüfen und normalisieren (nur `/`, keine leeren Segmente); `null` = Verzeichniseintrag */
-function checkPath(raw: string): string | null {
+function checkPath(raw: string): string | null | typeof SKIP {
 	if (raw.includes('\0')) throw fail(t('install.archive.invalidFileName'));
 	if (raw.includes('\\')) throw fail(t('install.archive.invalidPath', { path: raw.slice(0, 120) }));
 	if (raw.startsWith('/') || /^[A-Za-z]:/.test(raw)) {
@@ -74,12 +79,11 @@ function checkPath(raw: string): string | null {
 		if (p === '' || p === '.' || p === '..') {
 			throw fail(t('install.archive.invalidPath', { path: raw.slice(0, 120) }));
 		}
-		if (p.startsWith('.')) throw fail(t('install.archive.hiddenFile', { path: raw.slice(0, 120) }));
-		if (p === 'node_modules') throw fail(t('install.archive.nodeModules'));
 		if (/[<>:"|?*]/.test(p) || [...p].some((c) => c.charCodeAt(0) < 0x20)) {
 			throw fail(t('install.archive.invalidChar', { path: raw.slice(0, 120) }));
 		}
 	}
+	if (parts.some((p) => p.startsWith('.') || p === 'node_modules')) return SKIP;
 	return isDir ? null : parts.join('/');
 }
 
@@ -151,7 +155,7 @@ export function readModuleArchive(zip: Uint8Array): ArchiveFiles {
 				throw fail(t('install.archive.symlink', { path: name.slice(0, 120) }));
 			}
 		}
-		if (path === null) continue;
+		if (path === null || path === SKIP) continue;
 		if (flags & 0x1) throw fail(t('install.archive.encrypted'));
 		if (method !== 0 && method !== 8) throw fail(t('install.archive.compression', { path }));
 		if (size > ARCHIVE_LIMITS.maxFileBytes) throw fail(t('install.archive.fileTooLarge', { path }));

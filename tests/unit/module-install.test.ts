@@ -56,9 +56,18 @@ describe('readModuleArchive', () => {
 		expectArchiveError(zipSync({ 'a\\evil.ts': enc('x') }), /Ungültiger Pfad/);
 	});
 
-	it('lehnt versteckte Dateien, node_modules und unbekannte Endungen ab', () => {
-		expectArchiveError(makeZip({ '.env': 'SECRET=1' }), /Versteckte/);
-		expectArchiveError(makeZip({ 'node_modules/x/index.js': 'x' }), /node_modules/);
+	it('überspringt versteckte Einträge und node_modules (Repo-Zipball), lehnt unbekannte Endungen ab', () => {
+		const files = readModuleArchive(
+			makeZip({
+				'.env': 'SECRET=1',
+				'.github/workflows/ci.yml': 'x',
+				'.claude/CLAUDE.md': 'x',
+				'mods/a/.hidden.ts': 'x',
+				'node_modules/x/index.js': 'x',
+				'mods/a/module.ts': 'export default {};'
+			})
+		);
+		expect([...files.keys()]).toEqual(['mods/a/module.ts']);
 		expectArchiveError(makeZip({ 'tool.exe': 'MZ' }), /Dateityp/);
 		expectArchiveError(makeZip({ 'run.sh': 'rm -rf /' }), /Dateityp/);
 	});

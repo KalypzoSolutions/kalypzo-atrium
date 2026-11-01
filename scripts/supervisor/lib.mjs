@@ -46,10 +46,11 @@ export function contentHashOfDir(dir) {
 	const files = [];
 	const walk = (d) => {
 		for (const name of readdirSync(d)) {
+			// gleiche Regel wie das Archiv (archive.ts): versteckte Einträge und node_modules zählen nicht
+			if (name.startsWith('.') || name === 'node_modules') continue;
 			const p = join(d, name);
-			if (statSync(p).isDirectory()) {
-				if (name !== 'node_modules') walk(p);
-			} else files.push(relative(dir, p).split('\\').join('/'));
+			if (statSync(p).isDirectory()) walk(p);
+			else files.push(relative(dir, p).split('\\').join('/'));
 		}
 	};
 	walk(dir);
