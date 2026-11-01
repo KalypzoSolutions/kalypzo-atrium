@@ -67,8 +67,10 @@ export default ts.config(
  */
 function moduleBoundaryConfigs() {
 	const dir = modulesDir();
-	// Muster relativ zur Projektwurzel; liegt das Verzeichnis außerhalb, lintet das Module-Repo selbst
-	const base = relative(CORE_ROOT, dir).replace(/\\/g, '/');
+	// Muster relativ zur Wurzel der ESLint-Konfiguration: der Core selbst oder – im Module-Repo, dessen
+	// eslint.config.js diese Datei lädt – dessen Wurzel (`ATRIUM_ESLINT_ROOT`)
+	const root = process.env.ATRIUM_ESLINT_ROOT?.trim() || CORE_ROOT;
+	const base = relative(root, dir).replace(/\\/g, '/');
 	const ids = moduleIds(dir);
 	const blocks = ids.map((id) => ({
 		files: [`${base}/${id}/**/*.{ts,svelte}`],
