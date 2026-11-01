@@ -735,6 +735,15 @@
 										</p>
 										{#if !s.available && s.reason}
 											<p class="text-xs text-destructive">{s.reason}</p>
+											{#if s.installSource}
+												<a
+													class="text-xs text-link underline-offset-4 hover:underline"
+													href="/admin/modules/install?url={encodeURIComponent(
+														s.installSource
+													)}&select={encodeURIComponent(s.key)}"
+													>Modul aus der Quelle installieren</a
+												>
+											{/if}
 										{/if}
 										{#if imp}
 											<p class="text-xs text-warning">

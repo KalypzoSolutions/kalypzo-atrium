@@ -161,4 +161,4 @@ ${footerHtml}
 
 /** Beispielinhalt für die Admin-Vorschau. */
 export const SAMPLE_MAIL_TEXT =
-	'Hallo Max Mustermann,\n\nvielen Dank für deine Anmeldung zum Sommerlager. Alle Informationen findest du unter https://intern.example.org/p/actions/anmeldung/beispiel.\n\nBei Fragen antworte einfach auf diese E-Mail.';
+	'Hallo Max Mustermann,\n\nvielen Dank für deine Anmeldung zum Sommerlager. Alle Informationen findest du unter https://intern.example.org/p/beispiel/anmeldung.\n\nBei Fragen antworte einfach auf diese E-Mail.';

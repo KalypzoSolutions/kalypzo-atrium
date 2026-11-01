@@ -1,0 +1,16 @@
+{
+	"schema": 1,
+	"id": "fx-consumer",
+	"name": "Fixture Verbraucher",
+	"description": "Test-Modul: harte Abhängigkeit auf fx-board, optionale auf fx-people",
+	"version": "0.3.0",
+	"core": ">=2.0.0-0 <3.0.0",
+	"dependencies": {
+		"fx-board": { "version": "^1.2.0", "source": "github:kalypzo/atrium-fixtures/fx-board#main" }
+	},
+	"optionalDependencies": {
+		"fx-people": { "version": "^1.0.0" }
+	},
+	"permissions": ["fx-consumer.stats.view"],
+	"npm": {}
+}

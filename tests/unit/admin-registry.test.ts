@@ -20,6 +20,7 @@ const ALL_PERMISSIONS = [
 	'core.storage.manage',
 	'core.pdf.manage',
 	'core.modules.view',
+	'core.modules.install',
 	'core.api.view',
 	'core.audit.view',
 	'core.system.reset',

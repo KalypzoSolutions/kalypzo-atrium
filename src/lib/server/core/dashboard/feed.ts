@@ -10,7 +10,8 @@ import {
 	DASHBOARD_AGENDA_LIMIT,
 	DASHBOARD_TODO_LIMIT,
 	DASHBOARD_TODO_LIMIT_PER_SOURCE,
-	type DashboardAgendaKind,
+	CORE_AGENDA_KINDS,
+	type DashboardAgendaKindInfo,
 	type DashboardFeed,
 	type DashboardFeedAgendaItem,
 	type DashboardFeedTodo,
@@ -26,13 +27,19 @@ import { allowed, isSafeHref } from '../search/service';
 export const DASHBOARD_SOURCE_BUDGET_MS = 3000;
 
 const SEVERITIES: readonly DashboardTodoSeverity[] = ['overdue', 'due', 'info'];
-const KINDS: readonly DashboardAgendaKind[] = [
-	'meeting',
-	'event',
-	'action',
-	'material',
-	'deadline'
-];
+const CORE_KIND_KEYS = new Set(CORE_AGENDA_KINDS.map((k) => k.key));
+
+/** Arten für die Legende: Core zuerst, dann die der Module (erste Anmeldung eines Schlüssels gewinnt) */
+export function agendaKindsFor(defs: ModuleDefinition[]): DashboardAgendaKindInfo[] {
+	const out = [...CORE_AGENDA_KINDS];
+	for (const d of defs) {
+		for (const k of d.dashboard?.agendaKinds ?? []) {
+			if (!out.some((o) => o.key === k.key))
+				out.push({ key: k.key, label: k.label, style: k.style });
+		}
+	}
+	return out;
+}
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const text = (v: unknown, max: number): string =>
@@ -131,14 +138,17 @@ function cleanAgenda(
 		const day = date(a.date);
 		const end = date(a.endDate) ?? day;
 		if (!id || !title || !day || !end || !isSafeHref(a.href) || seen.has(id)) continue;
-		if (!KINDS.includes(a.kind as DashboardAgendaKind)) continue;
+		// Nur Core-Arten oder vom Modul selbst angemeldete
+		const kind = typeof a.kind === 'string' ? a.kind : '';
+		if (!CORE_KIND_KEYS.has(kind) && !def.dashboard?.agendaKinds?.some((k) => k.key === kind))
+			continue;
 		// Muss den Zeitraum berühren
 		if (end < from || day > to || end < day) continue;
 		seen.add(id);
 		out.push({
 			id,
 			moduleId: def.manifest.id,
-			kind: a.kind as DashboardAgendaKind,
+			kind,
 			title,
 			date: day,
 			endDate: end !== day ? end : null,
@@ -225,7 +235,15 @@ export async function collectDashboardFeed(
 	const today = opts.today && isRealDate(opts.today) ? opts.today : todayBerlin();
 	const from = mondayOf(today);
 	const to = addDays(from, 6);
-	const empty: DashboardFeed = { today, from, to, todos: [], agenda: [], failed: [] };
+	const empty: DashboardFeed = {
+		today,
+		from,
+		to,
+		todos: [],
+		agenda: [],
+		kinds: [...CORE_AGENDA_KINDS],
+		failed: []
+	};
 	if (!ctx.userId) return empty;
 
 	const enabled = await enabledModuleIds();
@@ -261,6 +279,7 @@ export async function collectDashboardFeed(
 		to,
 		todos: sortTodos(todos.items).slice(0, DASHBOARD_TODO_LIMIT),
 		agenda: sortAgenda(agenda.items).slice(0, DASHBOARD_AGENDA_LIMIT),
+		kinds: agendaKindsFor(defs),
 		failed: [...new Set([...todos.failed, ...agenda.failed])].map(
 			(id) => defs.find((d) => d.manifest.id === id)?.manifest.name ?? id
 		)

@@ -407,6 +407,12 @@ async function tick(): Promise<void> {
 	}
 }
 
+/** Hält den Zeitgeber an (geordnetes Beenden); laufende Jobs laufen zu Ende */
+export function stopJobRunner(): void {
+	if (timer) clearInterval(timer);
+	timer = undefined;
+}
+
 /** Startet den Zeitgeber (einmalig, nicht beim Build und nicht mit `JOBS_DISABLED=1`). */
 export function startJobRunner(): void {
 	if (timer || process.env.JOBS_DISABLED === '1') return;

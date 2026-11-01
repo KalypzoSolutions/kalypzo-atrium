@@ -236,6 +236,51 @@ export const moduleMigration = pgTable(
 	(t) => [primaryKey({ columns: [t.moduleId, t.name] })]
 );
 
+/**
+ * Installierte Module aus einer Quelle (Kalypzo Atrium, Phase 5): Wunschzustand je Modul – Quelle, fester Commit,
+ * Inhaltshash. Die gebaute Lock-Datei (Phase 6) wird beim Start damit verglichen.
+ */
+export const moduleInstall = pgTable('module_install', {
+	id: text('id').primaryKey(),
+	version: text('version').notNull(),
+	/** `github` | `upload` | `builtin` */
+	sourceType: text('source_type').notNull(),
+	/** `{ owner, repo, path, ref }` bzw. `{ fileName, zipSha256, path }` */
+	source: jsonb('source').$type<Record<string, unknown>>().notNull().default({}),
+	commit: text('commit'),
+	contentHash: text('content_hash').notNull(),
+	installedAt: timestamp('installed_at', { withTimezone: true }).notNull().defaultNow(),
+	installedBy: text('installed_by')
+});
+
+/** Verlauf der Installationen (Anzeige unter Administration → Module → Verlauf) */
+export const moduleInstallEvent = pgTable(
+	'module_install_event',
+	{
+		id: id(),
+		moduleId: text('module_id').notNull(),
+		/** `install` | `update` | `reinstall` | `downgrade` | `uninstall` */
+		action: text('action').notNull(),
+		fromVersion: text('from_version'),
+		toVersion: text('to_version'),
+		sourceType: text('source_type'),
+		source: jsonb('source').$type<Record<string, unknown>>().notNull().default({}),
+		commit: text('commit'),
+		contentHash: text('content_hash'),
+		/** `requested` | `done` | `failed` */
+		status: text('status').notNull(),
+		detail: text('detail'),
+		actorId: text('actor_id'),
+		/** Auftrag an den Supervisor (Neubau), sonst `null` */
+		planId: text('plan_id'),
+		createdAt: createdAt()
+	},
+	(t) => [
+		index('module_install_event_created_idx').on(t.createdAt),
+		index('module_install_event_plan_idx').on(t.planId)
+	]
+);
+
 /** Letzter Lauf je Hintergrundjob (`<modul>.<job>`); dient zugleich als Sperre gegen Doppel-Läufe */
 export const jobRun = pgTable('job_run', {
 	key: text('key').primaryKey(),

@@ -4,9 +4,18 @@
 - `src/lib/server/core/**` – Core-Implementierung (nur Server). Zentraler Einstieg: `core` aus `src/lib/server/core/index.ts`.
 - `src/lib/sdk/{server,client,types}` – **öffentliche** Schnittstelle für Module (`defineModule`, `defineEndpoint`, `core`, `errors`, `apiFetch`, `can`, Typen).
 - `src/lib/components/{ui,layout}` – UI-Bausteine (ui = shadcn/bits-ui-Wrapper, layout = fachliche Bausteine).
-- `src/lib/modules/<id>/` – Fachmodule (`module.ts`, `ui.ts`, `schemas.ts`, `migrations/*.sql`, Endpoints, `pages/`).
+- `modules/<id>/` – Fachmodule (`module.ts`, `ui.ts`, `schemas.ts`, `migrations/*.sql`, Endpoints, `pages/`), **außerhalb von `src/`**.
+  Ort über `tools/modules-dir.js` (`ATRIUM_MODULES_DIR`, Standard `modules/`), eingebunden vom Vite-Plugin `tools/vite-plugin-atrium-modules.ts`
+  (`virtual:atrium-modules/server` → `core/modules/load.ts`, `virtual:atrium-modules/ui` → `$lib/sdk/client/module-ui-registry.ts` `moduleUiLoader`,
+  Tailwind-`@source`). Import-Alias **`$modules/<id>/…`** (nicht mehr `$lib/modules`); Verträge fremder Module nur `import type` (ESLint
+  `consistent-type-imports`). Plan „Kalypzo Atrium“ (Core/Module getrennt, Installation per Link): `~/.claude/plans/ok-dieses-projekt-soll-wondrous-blum.md`.
 - `src/routes/**` – SvelteKit: `login/…` öffentlich, `(internal)/…` hinter Login, `api/v1/[...path]` zentraler REST-Router.
 - `drizzle/` – Core-Migrationen. Modul-Migrationen liegen im Modul (`migrations/*.sql?raw`).
+- **Core kennt keine Modul-IDs** (Phase 3, 2026-11-01; Wächter `tests/unit/core-no-module-ids.test.ts`): fachliches Wissen über Hooks –
+  `backup.adminOnlyRestore`/`afterRestoreJobs` (statt fester `'offices'`), `ModuleDefinition.principals` (Personenquelle für Freigaben und
+  `memberDeleted`, `core.modules.principalSource()`; statt fester `'members'` in `sdk/server/sharing.ts`/`privacy/member-hooks.ts`),
+  `dashboard.agendaKinds` (eigene Arten in „Diese Woche“, Core kennt `meeting|event|deadline`, Feed liefert `kinds`). Mitglieder-Spaltenkatalog liegt in
+  `members/sheet-columns.ts` (`MembersService.sheetCatalog`/`sheetRow`), `$lib/pdf-lists` hat nur generische Voreinstellungen (`presets.ts`).
 
 ## Request-Fluss
 `hooks.server.ts`: Header → Session/Kontext (`locals.ctx: RequestContext`) → Better-Auth → Guard
@@ -154,6 +163,44 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   ai-usage|api-keys|users|roles|settings`) + `ModuleDefinition.resetAreas` (`<modul>:<id>`, `implies` transitiv, `rebuild` = Schema neu inkl. Startdaten)
   + `resetUsers(tx, keepUserId)`. Jobs pausiert; Reihenfolge Module → Benutzer → Core → Dateien (`core.storage.purge`) → Einstellungen (Storage/SMTP/Secrets
   bleiben) → Audit (DELETE nur mit `SET LOCAL app.audit_reset = 'on'`, Migration 0005) → Eintrag `core.system.reset`.
+
+## Modul-Installation (Kalypzo Atrium Phase 5, 2026-11-01)
+- `src/lib/server/core/modules/install/`: `archive.ts` (sicheres ZIP im Speicher, `contentHash`), `github.ts` (nur api/codeload, Ref → SHA,
+  `setGithubFetchForTests`), `discover.ts` (Katalog → `modules/*` → Einzelmodul), `analyze.ts` (Aktion install/update/reinstall/unchanged/downgrade,
+  Rechte-Diff, neue Migrationen, veränderte angewendete Migration **sperrt**, npm-Konflikt mit `CORE_PACKAGES`, Import-Scan), `resolve.ts`
+  (harte Abhängigkeiten: gleiche Quelle → `source`-Link → Fehler; optionale = Empfehlung; Zyklen, Rückwärts-Bereiche), `service.ts`
+  (`inspectSource` → `previewInstall` → `confirmInstall`, Sitzungen 15 min, `installStatus`, Verlauf).
+- Recht `core.modules.install` (privilegiert) + `isAdministrator` + Sitzung + Re-Auth. Einstellungen `core.modules.githubToken` (Secret),
+  `core.modules.allowedSources`. Core-Migration **0012** `module_install` (Wunschzustand je Modul) und `module_install_event` (Verlauf).
+- Ausführen je `ATRIUM_MODULE_INSTALL`: `off` (Standard Produktion, nur Vorschau), `copy` (Standard bei `NODE_ENV=development`: Dateien nach
+  `runtimeModulesDir()`, danach Neustart/Neuladen), `supervisor` (Phase 6). Seiten `/admin/modules` (Reiter Installiert · Installieren · Verlauf,
+  `admin-registry.ts` `modules.install`/`modules.history`). Tests `tests/unit/module-install.test.ts`, `tests/integration/module-install.test.ts`
+  (GitHub-Ersatz + Fixture-Module), Helfer `tests/helpers/module-zip.ts`.
+
+## Supervisor und Neubau (Kalypzo Atrium Phase 6, 2026-11-01)
+- `scripts/supervisor/lib.mjs` (`Supervisor`, `contentHashOfDir` = gleiche Regel wie `archive.ts` `contentHash`, `mergeLock`, `modulePackagesFor`),
+  Startpunkt `scripts/supervisor.mjs` (Image-`CMD`), genutzt von `scripts/demo-server.mjs` und `scripts/e2e-install-server.mjs`.
+  Datenverzeichnis `ATRIUM_DATA_DIR`: `state.json` (current/previous), `gen/<id>/{modules,build,.svelte-kit,BUILD_INFO.json,atrium-modules.lock.json}`,
+  `gen/<id>/node_modules` = Junction auf den Core, `staging/<planId>`, `results/<planId>.json`, `status.json`, `logs/`.
+- Neubau ohne Schreibzugriff auf den Core: `ATRIUM_BUILD_OUT` (adapter-node `out`), `ATRIUM_KIT_OUT_DIR` (`kit.outDir`), `ATRIUM_VITE_CACHE`
+  (`svelte.config.js`, Vite-Plugin), Modul-npm-Pakete per `ssr.noExternal` (`modulePackages`).
+- App-Seite: `core/lifecycle.ts` (`installShutdownHandlers`: IPC `atrium:shutdown` → `SIGTERM` an adapter-node → `sveltekit:shutdown` → Jobs anhalten
+  (`stopJobRunner`), Pool schließen; `runVerifyAndExit` für `ATRIUM_VERIFY_ONLY=1`), `core/modules/install/supervisor-link.ts` (Staging, IPC
+  `atrium:build`, `readSupervisorStatus`, `reconcileInstallEvents` in `initCore`: `requested` → `done`/`failed`, erst dann `module_install`).
+  Panel fragt `/admin/modules/install/status` alle 2 s ab (Neustart = kurz offline).
+- Tests: `tests/unit/supervisor-lib.test.ts`; echter Neubau `npx playwright test -c playwright.install.config.ts` (`tests/e2e-install/`, Port 4174).
+
+## Lebenszyklus der Module (Kalypzo Atrium Phase 7, 2026-11-01)
+- `core/modules/install/manage.ts`: `checkUpdates` (GitHub-Kopf vs. gespeicherter Commit), `uninstallModule` (nur deaktiviert + kein Modul braucht es;
+  Daten behalten oder `deleteModuleData`: Schema, `module_migration|state`, `permission` (CASCADE), `role_grant_applied`, `user_role_grant`, Einstellungen
+  `<id>.*`, `notification_pref`, `job_run`, Dateien), `installDrift`/`restoreFromDatabase` (Wunschzustand ↔ laufender Stand, Neubau aus Quelle+Commit
+  bzw. ZIP-Cache `ATRIUM_DATA_DIR/sources`), `syncInstallsFromLock` (in `initCore`). Vorschau zeigt `fileChanges` (Dateien gegen das Modulverzeichnis).
+- Datensicherung: `backup.json` → `modules.<id>.origin` (Quelle, Commit, Inhaltshash, optional), Bereich `core:settings` umfasst `module_install` +
+  `module_install_event`; `checkCompat` liefert für fehlende Module `installSource` (Link zur Installation im Import-Assistenten).
+- Supervisor-Seed `scripts/supervisor/seed.mjs` (`ATRIUM_MODULES_SEED` Datei/JSON oder `deploy/modules.seed.json`, nur volle Commits).
+- UI `/admin/modules`: Herkunft je Modul, „Nach Updates suchen“, „Entfernen …“ (Dialog, Bestätigung per ID), Hinweis + „Aus der Datenbank
+  wiederherstellen“; `/admin/modules/install?url=…&select=…` belegt vor. Tests `module-lifecycle.test.ts`, `supervisor-seed.test.ts`,
+  `backup-compat.test.ts`, E2E `tests/e2e-install` (installieren + entfernen).
 
 ## Einzelrechte am Benutzer (2026-10-21)
 - Tabelle `user_permission` (Core-Migration 0009): Rechte direkt am Benutzer zusätzlich zu Rollen; `getUserPermissions` vereinigt sie

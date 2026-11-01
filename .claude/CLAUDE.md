@@ -3,7 +3,7 @@
 Selbst gehostete Verwaltungsplattform (SvelteKit 2 / Svelte 5, TypeScript strict, PostgreSQL, Drizzle,
 Better Auth, Tailwind 4, shadcn-svelte/bits-ui) als **modularer Monolith**: ein kleiner **Core**
 (Auth, Rechte, Module, Einstellungen, API, Storage, PDF, KI, Audit) plus **Fachmodule** unter
-`src/lib/modules/<id>/`. Der Nutzer ist deutschsprachig; die Zielgruppe ist ein Pfadfinder-Stamm.
+`modules/<id>/`. Der Nutzer ist deutschsprachig; die Zielgruppe ist ein Pfadfinder-Stamm.
 
 Die ausführliche Doku liegt in `docs/` (architecture, core-services, module-development, permissions,
 api, database, deployment, security). **Diese Dateien hier sind die Kurzfassung für die Arbeit** –
@@ -46,7 +46,8 @@ Modul- und Bereichsregeln (`module-*.md`, `website.md`, `ui-design.md` …) lade
 |---|---|
 | `npm run check` | `svelte-kit sync` + `svelte-check` (0 Fehler Pflicht) |
 | `npx eslint .` / `npx prettier --check src tests docs` | Lint / Format (Tabs, Single Quotes, 100 Zeichen) |
-| `npm test` (`npx vitest run`) | Unit + Integration (PGlite, ohne Docker) |
+| `npm test` (`npx vitest run`) | Unit + Integration (PGlite, ohne Docker), Core + alle Module |
+| `npm run test:core` / `npm run check:core` | Core allein mit Fixture-Modulen (`tests/fixtures/modules`) – muss grün sein |
 | `npm run build` | Produktions-Build nach `build/` |
 | `npx playwright test` | E2E (baut selbst und startet eigene PGlite-Instanz) |
 | `node scripts/demo-server.mjs` | Demo-App auf http://localhost:4300 (`admin@demo.test` / `Demo-Admin-2026!`) |

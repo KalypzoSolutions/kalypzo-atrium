@@ -9,7 +9,7 @@
  *     (Administrator-Rolle zählt immer) → Fall `same`; sonst gesperrt (nicht umgehbar).
  *   - kein Treffer → Fall `kept`: das aktuelle Konto (mit Sitzung) bleibt zusätzlich erhalten und behält
  *     seine bisherigen Rollen (keine zusätzlichen, #16). `core:users`/`core:roles` dürfen ohnehin nur
- *     Administrator*innen wiederherstellen (`ADMIN_ONLY_RESTORE_SCOPES` in `access.ts`).
+ *     Administrator*innen wiederherstellen (`adminOnlyRestoreScopes()` in `access.ts`).
  */
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../auth';

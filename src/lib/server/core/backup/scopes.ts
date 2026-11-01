@@ -59,8 +59,13 @@ const CORE_SCOPES: Record<CoreScopeKey, CoreScopeDef> = {
 	},
 	'core:settings': {
 		label: 'Einstellungen',
-		description: 'Globale Einstellungen inkl. Modul-Einstellungen und Zugangsdaten.',
-		tables: [{ table: 'setting', where: `scope_id = ''` }]
+		description:
+			'Globale Einstellungen inkl. Modul-Einstellungen und Zugangsdaten sowie die Herkunft installierter Module (Quelle, Commit) mit Verlauf.',
+		tables: [
+			{ table: 'setting', where: `scope_id = ''` },
+			{ table: 'module_install' },
+			{ table: 'module_install_event' }
+		]
 	},
 	'core:audit': {
 		label: 'Audit-Log',

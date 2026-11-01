@@ -37,6 +37,7 @@ const probe: ModuleDefinition = {
 		dependencies: []
 	},
 	dashboard: {
+		agendaKinds: [{ key: 'hajk', label: 'Hajk', style: 'tinted' }],
 		todos: {
 			permission: 'dash-probe.item.view',
 			run: async (ctx, opts) => {
@@ -100,7 +101,7 @@ const probe: ModuleDefinition = {
 					},
 					{
 						id: 'b',
-						kind: 'action',
+						kind: 'hajk',
 						title: 'Hajk',
 						date: '2026-10-31',
 						endDate: '2026-11-02',
@@ -124,7 +125,9 @@ const probe: ModuleDefinition = {
 						href: '/e'
 					},
 					{ id: 'f', kind: 'event', title: 'Kein Datum', date: '30.10.2026', href: '/f' },
-					{ id: 'g', kind: 'party' as never, title: 'Falsche Art', date: '2026-10-30', href: '/g' }
+					{ id: 'g', kind: 'party' as never, title: 'Falsche Art', date: '2026-10-30', href: '/g' },
+					// Art eines anderen Moduls (nicht selbst angemeldet) → entfällt
+					{ id: 'h', kind: 'action', title: 'Fremde Art', date: '2026-10-30', href: '/h' }
 				];
 			}
 		}
@@ -207,6 +210,8 @@ describe('collectDashboardFeed', () => {
 		expect(feed.agenda.map((a) => a.id)).toEqual(['d', 'a', 'e', 'b']);
 		expect(feed.agenda.find((a) => a.id === 'e')!.startTime).toBeNull();
 		expect(feed.agenda.find((a) => a.id === 'b')).toMatchObject({ endDate: '2026-11-02' });
+		// Legende: Core-Arten, danach die angemeldete Art des Moduls
+		expect(feed.kinds.map((k) => k.key)).toEqual(['meeting', 'event', 'deadline', 'hajk']);
 	});
 
 	it('ohne Recht keine Einträge aus der Quelle', async () => {

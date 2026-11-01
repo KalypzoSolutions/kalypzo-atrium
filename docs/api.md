@@ -162,7 +162,7 @@ das Objekt nicht (mehr) auf der Website steht oder kein Speicher eingerichtet is
   - **Paging** (#48): `limit`/`offset` zählen **Vorkommen** (nach dem Expandieren der Serien). Ohne `paged` bleibt die Antwort ein Array
     (abwärtskompatibel) – eine volle Seite heißt dann „evtl. gekürzt“. Mit `paged=1` kommt `WebsiteEventPage`
     `{ items, total, offset, limit, hasMore }`; nachladen, solange `hasMore`. Die Stammeswebsite tut das je Halbjahr (`website/src/lib/server/event-pages.ts`).
-  - **Vertrag**: Zod-Schemas der Website-DTOs in `src/lib/modules/<modul>/website.schemas.ts` (`websiteEventSchema`, `websiteEventPageSchema`,
+  - **Vertrag**: Zod-Schemas der Website-DTOs in `modules/<modul>/website.schemas.ts` (`websiteEventSchema`, `websiteEventPageSchema`,
     `websiteGallerySchema`, `websiteGalleryDetailSchema`, `websiteGalleryListSchema`, `websiteOfficeSchema`, `websiteGroupSchema`, alle strikt);
     die `*-website`-Integrationstests parsen die Antworten dagegen, `tests/unit/website-contract.test.ts` prüft die `Backend*`-Typen der Website.
   - **`group`**: nur Termine, die dieser Gruppe bzw. (`stamm`) dem ganzen Stamm zugeordnet sind. Keine UUID und nicht `stamm` → 422;

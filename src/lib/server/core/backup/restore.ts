@@ -45,7 +45,7 @@ import {
 	verifyReauth
 } from '../system/maintenance';
 import { moduleDeleteOrder } from '../system/reset-areas';
-import { ADMIN_ONLY_RESTORE_REASON, ADMIN_ONLY_RESTORE_SCOPES, requireBackupUser } from './access';
+import { adminOnlyRestoreScopes, requireBackupUser } from './access';
 import {
 	ACCOUNT_GUARD_TABLES,
 	assessAccount,
@@ -502,9 +502,9 @@ export async function analyzeBackup(
 		}
 		// Rechte-relevante Bereiche nur für Administrator*innen (#16)
 		if (!isAdministrator(ctx)) {
-			for (const s of ADMIN_ONLY_RESTORE_SCOPES) {
+			for (const [s, reason] of adminOnlyRestoreScopes()) {
 				if (compat.scopes[s]?.available) {
-					compat.scopes[s] = { available: false, reason: ADMIN_ONLY_RESTORE_REASON };
+					compat.scopes[s] = { available: false, reason };
 				}
 			}
 		}
@@ -562,6 +562,7 @@ export async function analyzeBackup(
 				label: info?.label ?? s,
 				available: avail.available,
 				...(avail.reason ? { reason: avail.reason } : {}),
+				...(avail.installSource ? { installSource: avail.installSource } : {}),
 				tables: meta.tables
 					.filter((t) => tableScopes(t).includes(s))
 					.map((t) => ({
@@ -768,18 +769,16 @@ export async function executeRestore(
 	return { runId };
 }
 
-/**
- * Jobs, die nach dem Wiederherstellen eines Moduls abgeleitete Core-Daten neu bilden. Bisher nur einer:
- * `offices.sync-grants` (Rollen aus Ämtern → `user_role_grant`; das Modul-Rebuild löscht die Verleihungen des
- * Moduls). Weitere Module mit solchen Abgleich-Jobs hier ergänzen.
- */
-const POST_RESTORE_JOBS: { module: string; job: string }[] = [
-	{ module: 'offices', job: 'offices.sync-grants' }
-];
-
 /** Nach Commit und `resumeJobs`, best-effort (Fehler → Warnung). Nur für wiederhergestellte, aktive Module. */
 async function runPostRestoreJobs(chosen: string[], result: RestoreResult): Promise<void> {
-	for (const j of POST_RESTORE_JOBS) {
+	// Module melden Abgleich-Jobs über `backup.afterRestoreJobs` an (z. B. Rollen-Verleihungen neu bilden)
+	const jobs = allDefinitions().flatMap((d) =>
+		(d.backup?.afterRestoreJobs ?? []).map((job) => ({
+			module: d.manifest.id,
+			job: `${d.manifest.id}.${job}`
+		}))
+	);
+	for (const j of jobs) {
 		if (!chosen.includes(j.module) || !(await isModuleEnabled(j.module))) continue;
 		try {
 			// Abgleich nach der Wiederherstellung ist Systemarbeit – nicht an core.jobs.manage der Person binden

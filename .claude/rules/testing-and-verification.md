@@ -10,7 +10,16 @@ Vor jeder Fertigmeldung, in dieser Reihenfolge, alles grün:
 6. bei UI/Core-Änderungen: `npx playwright test` **und** Screenshot-Prüfung (siehe `workflow.md`)
 Ehrlich berichten: was **nicht** geprüft wurde (z. B. Upload mit echtem S3, Mobilansicht) ausdrücklich nennen.
 
-## Wo liegt was
+## Wo liegt was (seit 2026-11-01, Kalypzo Atrium Phase 4)
+- **Core-Tests** `tests/{unit,integration,e2e}` laufen **ohne Fachmodule**: Modul-Mechanik gegen die Fixture-Module `tests/fixtures/modules/fx-{people,board,consumer}`
+  (Personenquelle, Freigaben, Hooks, Dashboard-Arten, Abhängigkeiten, Seiten/Assets), Muster `tests/integration/fixture-modules.test.ts`,
+  E2E `tests/e2e/fixture-module.spec.ts`. Core-Tests importieren nie `$modules/<fachmodul>` (Fixtures relativ importieren).
+- **Modultests** `modules/<id>/tests/{unit,integration}`, E2E `modules/<id>/e2e`; **modulübergreifende** (Backup mit echten Daten, Suche,
+  Datenschutz, Freigaben mit `members`, Endpunkt-/Reset-/Doku-Abgleich aller Module) in `modules/_integration/{tests,e2e,helpers}`.
+  Sie nutzen `$testing` (Vitest) bzw. `$testing/e2e` (Playwright) statt `$lib/server/*`/`tests/helpers/*`.
+- Läufe: `npx vitest run` = Core + alle Module; `npm run test:core` / `npm run check:core` = nur Core mit Fixtures
+  (`ATRIUM_MODULES_DIR=tests/fixtures/modules`, muss grün sein); `npm run test:modules`. Playwright-Projekte `core`, `modules`, `integration`
+  (in dieser Reihenfolge; einige Specs sind reihenfolgeabhängig: Rate-Limits/Daten des gemeinsamen Servers).
 - `tests/unit/*.test.ts` – reine Funktionen (Berechnung, Parser, Schemas, Routen-Matcher).
 - `tests/integration/*.test.ts` – Core/Module gegen PGlite im Speicher (kein Docker), z. B. `core.test.ts`, `members.test.ts`,
   `actions*.test.ts`, `core-directory.test.ts` und je Modul `<modul>*.test.ts`.
@@ -19,6 +28,12 @@ Ehrlich berichten: was **nicht** geprüft wurde (z. B. Upload mit echtem S3, Mob
 - Weitere Helfer: `fake-storage.ts` (`installFakeStorage(admin)`: Fake-S3 für Integrationstests), `s3-mock.ts` (S3-Ersatz für E2E),
   `settle.ts` (wartet auf „fire and forget“-Mails), `migrations.ts` (Upgrade-Tests für Modul-Migrationen), `registration-optin.ts`,
   `backup-flow.ts`/`backup-seed.ts` (Datensicherung).
+
+## Test-Schnittstelle `$testing` (seit 2026-11-01)
+Modultests sollen Core-Interna nur über `$testing` (`tests/sdk/index.ts`, Alias in `svelte.config.js`) erreichen – nie `$lib/server/*` oder
+`tests/helpers/*` direkt (Vorbereitung auf das getrennte Module-Repo, Umzug der bestehenden Tests in Phase 4). Enthält Datenbank/Storage/Mail/PDF-
+Testschalter, `registerModule`/`syncModules`/`enableModule`, Konten/Rollen/API-Keys, `listAudit`, `runJobNow`, Migrations-Helfer und die Helfer
+`adminContext(email, pw)`, `contextForEmail`, `apiCall(key, method, path, json?)`. Muster: `tests/integration/testing-facade.test.ts`. Neuer Bedarf → Export hier ergänzen.
 
 ## Integrationstest für ein Modul (Muster: `tests/integration/actions.test.ts`)
 ```ts

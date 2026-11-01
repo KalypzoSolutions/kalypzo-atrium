@@ -1,17 +1,18 @@
 ---
 paths:
-  - "src/lib/modules/**"
+  - "modules/**"
   - "tests/integration/**"
 ---
 
 # Fachmodule bauen
 
-Referenzmodule: `src/lib/modules/members` (Mitglieder/Gruppen, Dokumente-Upload) und
-`src/lib/modules/actions` (Aktionen, Freigaben, Kalkulation). Bei neuen Modulen deren Struktur kopieren.
+Referenzmodule: `modules/members` (Mitglieder/Gruppen, Dokumente-Upload) und
+`modules/actions` (Aktionen, Freigaben, Kalkulation). Bei neuen Modulen deren Struktur kopieren.
 
 ## Dateistruktur
+Tests des Moduls liegen im Modul: `tests/{unit,integration}/*.test.ts` (Importe über `$testing`), E2E in `e2e/*.spec.ts` (`$testing/e2e`).
 ```
-src/lib/modules/<id>/
+modules/<id>/
 ├── module.ts                 defineModule({ manifest, settings?, migrations, endpoints })
 ├── ui.ts                     { routes: { '': () => import('./pages/X.svelte'), ':id': … } }
 ├── schemas.ts                API-Vertrag: Zod-Eingaben + DTO-Typen + Konstanten/Labels (von Server UND UI genutzt)
@@ -24,13 +25,20 @@ src/lib/modules/<id>/
 ```
 
 ## Erlaubte Importe (ESLint je Modul, #44/#47)
-- Erlaubt: eigene Moduldateien, `$lib/sdk/*`, `$lib/components/{ui,layout,forms}`, `$lib/forms`, `$lib/pdf-lists` (inkl.
-  `$lib/pdf-lists/member-columns` = Mitglieder-Spaltenkatalog), `$lib/utils`. Fremde Module **nur** `import type … from '$lib/modules/<id>/contract'`
+- Erlaubt: eigene Moduldateien, `$lib/sdk/*`, `$lib/components/{ui,layout,forms}`, `$lib/forms`, `$lib/pdf-lists`, `$lib/utils`. Fremde Module **nur** `import type … from '$modules/<id>/contract'`
   (Laufzeit über `core.modules.use|useOptional`); andere Fremddateien und relative Pfade `../<anderes-modul>/…` → ESLint-Fehler.
 - Gemeinsame reine Hilfen in eine dieser Bibliotheken legen (oder als Dienst in den Vertrag), nie aus einem anderen Modul importieren.
 - `no-restricted-syntax`: `core.database.db`, `core.system.*`, `core.modules.enable|disable`, `core.auth.instance`, `forModule('<fremde-id>')` verboten.
 - Offene Ausnahmen: `OPEN_BOUNDARY_EXCEPTIONS` in `eslint.config.js` (mit Grund, beim Beheben löschen). Test: `tests/unit/module-boundaries.test.ts`.
 - Details: `docs/module-development.md` → „Erlaubte Importe“.
+
+## Paketbeschreibung `atrium-module.json` (seit 2026-11-01, Kalypzo Atrium Phase 2)
+- Pflicht je Modul: `schema`, `id`, `name`, `description?`, `version`, `core` (Bereich), `dependencies`/`optionalDependencies`
+  (`{ <id>: { version: '^x.y.z', source?: 'github:owner/repo/pfad#ref' } }`), `permissions` (alle), `npm` (nur modulspezifisch, exakt).
+  `module.ts`: `import pkg from './atrium-module.json'` → `package: pkg` + `manifest: { ...manifestFromPackage(pkg), permissions, navigation, … }`.
+  **Version/Abhängigkeiten nur in der JSON ändern**; neue Rechte in Manifest **und** JSON (`permissions`), sonst „Defekt“.
+- Migrationen in `module.ts` müssen genau den Dateien `migrations/*.sql` (Namensreihenfolge) entsprechen. Katalog `modules/atrium-modules.json`
+  um neue Module ergänzen. Test `tests/unit/module-packages.test.ts`; Schema `src/lib/server/core/modules/package/schema.ts`.
 
 ## Manifest und Rechte
 - `id`: `[a-z][a-z0-9-]{1,30}`, nicht `core|api|auth|admin|system`. Neue Module starten **deaktiviert**; Aktivierung in `/admin/modules`.
@@ -183,7 +191,7 @@ return result;
   `[a-z][a-z0-9-]*`) + `optionalDependencies: ['offices']`. `offices` legt das Amt **einmal** an (nur Vorlage, Marker); danach ist es ein normales,
   löschbares Amt – gelöscht wird es **nicht** neu angelegt.
 - Auslösen **nach** der Transaktion: `(await core.modules.useOptional<OfficesService>('offices', MODULE_ID))?.notify(ctx, [{ module, office, event,
-  subject, text, link? }])` (Typen aus `$lib/modules/offices/contract`, `import type`). Ereignisse eines Vorgangs in **einem** Aufruf (eine Mail je
+  subject, text, link? }])` (Typen aus `$modules/offices/contract`, `import type`). Ereignisse eines Vorgangs in **einem** Aufruf (eine Mail je
   Person), keine IBAN o. Ä. im Text, Aufruf in `try/catch`. Kanal (Aus · E-Mail · Beides · Push, Sofort/Täglich) wählen die Inhaber*innen im Profil-Reiter „Benachrichtigungen“ (Versand über `core.notifications`). Muster:
   `treasury/office-notify.ts`; Details `module-offices.md`.
 

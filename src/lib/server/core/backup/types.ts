@@ -88,7 +88,21 @@ export const backupMeta = z
 					name: z.string(),
 					installedVersion: z.string().nullable(),
 					enabled: z.boolean(),
-					migrations: z.array(z.object({ name: z.string(), checksum: z.string() }).strict())
+					migrations: z.array(z.object({ name: z.string(), checksum: z.string() }).strict()),
+					/**
+					 * Herkunft des Moduls (Kalypzo Atrium): Quelle, Commit, Inhaltshash – fehlt das Modul auf dem Zielserver,
+					 * lässt es sich damit genau in diesem Stand installieren. Fehlt in älteren Sicherungen.
+					 */
+					origin: z
+						.object({
+							version: z.string(),
+							sourceType: z.string(),
+							source: z.record(z.string(), z.unknown()),
+							commit: z.string().nullable(),
+							contentHash: z.string()
+						})
+						.strict()
+						.optional()
 				})
 				.strict()
 		),

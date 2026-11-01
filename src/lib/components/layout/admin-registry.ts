@@ -237,12 +237,34 @@ export const ADMIN_ENTRIES: readonly AdminEntry[] = [
 		id: 'modules',
 		section: 'modules',
 		label: 'Module',
-		description: 'Module aktivieren und deaktivieren.',
+		description: 'Module aktivieren, deaktivieren und installieren.',
 		href: '/admin/modules',
 		icon: 'puzzle',
 		permission: 'core.modules.view',
 		keywords: ['aktivieren', 'deaktivieren', 'Erweiterung', 'Version'],
 		nav: true
+	},
+	{
+		id: 'modules.install',
+		section: 'modules',
+		label: 'Installieren',
+		description: 'Module per GitHub-Link oder ZIP-Datei installieren und aktualisieren.',
+		href: '/admin/modules/install',
+		icon: 'download',
+		permission: 'core.modules.install',
+		keywords: ['GitHub', 'ZIP', 'hochladen', 'Update', 'Quelle', 'Repository'],
+		parent: 'modules'
+	},
+	{
+		id: 'modules.history',
+		section: 'modules',
+		label: 'Verlauf',
+		description: 'Installationen und Aktualisierungen von Modulen.',
+		href: '/admin/modules/history',
+		icon: 'history',
+		permission: 'core.modules.view',
+		keywords: ['Installationen', 'Protokoll', 'Commit'],
+		parent: 'modules'
 	},
 	// Schnittstellen
 	{

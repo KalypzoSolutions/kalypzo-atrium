@@ -201,4 +201,25 @@ describe('checkCompat', () => {
 		expect(r.scopes.members!.available).toBe(false);
 		expect(r.scopes['core:users']!.available).toBe(false);
 	});
+
+	it('fehlendes Modul mit gesicherter Herkunft: Quelle zum Installieren (Kalypzo Atrium)', () => {
+		const m = meta();
+		m.modules.members!.origin = {
+			version: '1.0.0',
+			sourceType: 'github',
+			source: { owner: 'org', repo: 'mods', path: 'modules/members', ref: 'main' },
+			commit: 'c'.repeat(40),
+			contentHash: 'sha256-x'
+		};
+		const t = target({ modules: { members: { registered: false, migrations: [] } } });
+		const r = checkCompat(m, t);
+		expect(r.scopes.members).toMatchObject({
+			available: false,
+			installSource: `github:org/mods/modules/members#${'c'.repeat(40)}`
+		});
+		expect(r.scopes.members!.reason).toMatch(/zuerst 1\.0\.0 aus der gesicherten Quelle/);
+		// ohne Herkunft (ältere Sicherung) kein Hinweis
+		const old = checkCompat(meta(), t);
+		expect(old.scopes.members!.installSource).toBeUndefined();
+	});
 });

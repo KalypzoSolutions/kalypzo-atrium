@@ -1,7 +1,7 @@
 /**
  * Gemeinsame Hilfen für Personen-Listen als PDF (rein, ohne Server-Importe; genutzt von `members`
  * und `actions`): Datum/Alter/Feldwert formatieren, Quer-Vorlage wählen, Spalten auswählen und Blöcke bauen.
- * Mitglieder-Spaltenkatalog und Zeilen: `member-columns.ts`; Layout (Tabelle, Seitenumbruch): `layout.ts`.
+ * Voreinstellungen: `presets.ts` (Mitglieder-Spaltenkatalog liegt im Modul `members`, `sheet-columns.ts`); Layout (Tabelle, Seitenumbruch): `layout.ts`.
  */
 import type { FieldDefinition, FormValue } from '$lib/forms';
 import { ageFromBirthDate, formatDateDe, todayBerlin } from '$lib/sdk/dates';

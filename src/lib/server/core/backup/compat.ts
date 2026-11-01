@@ -33,7 +33,15 @@ export interface CompatTarget {
 }
 
 export interface CompatResult {
-	scopes: Record<string, { available: boolean; reason?: string }>;
+	scopes: Record<
+		string,
+		{
+			available: boolean;
+			reason?: string;
+			/** Fehlendes Modul: Quelle zum Installieren (`github:owner/repo/pfad#commit`), sonst fehlt das Feld */
+			installSource?: string;
+		}
+	>;
 	warnings: string[];
 }
 
@@ -106,7 +114,19 @@ export function checkCompat(meta: BackupMeta, target: CompatTarget): CompatResul
 		}
 		const tgt = target.modules[scope];
 		if (!tgt?.registered) {
-			scopes[scope] = { available: false, reason: 'Modul ist auf diesem Server nicht installiert' };
+			const origin = meta.modules[scope]?.origin;
+			const src = origin?.source as { owner?: string; repo?: string; path?: string } | undefined;
+			const installSource =
+				origin?.sourceType === 'github' && src?.owner && src.repo && origin.commit
+					? `github:${src.owner}/${src.repo}${src.path ? `/${src.path}` : ''}#${origin.commit}`
+					: undefined;
+			scopes[scope] = {
+				available: false,
+				reason: installSource
+					? `Modul ist auf diesem Server nicht installiert – zuerst ${origin!.version} aus der gesicherten Quelle installieren`
+					: 'Modul ist auf diesem Server nicht installiert',
+				...(installSource ? { installSource } : {})
+			};
 			continue;
 		}
 		const src = meta.modules[scope];

@@ -407,7 +407,24 @@ export async function writeBackupFile(
 					const localSql = new Map(
 						(getDefinition(s)?.migrations ?? []).map((m) => [m.name, m.sql] as const)
 					);
+					const [origin] = await rowsOf(
+						tx,
+						sql`SELECT version, source_type, source, commit, content_hash FROM "public"."module_install" WHERE id = ${s}`
+					);
 					modules[s] = {
+						...(origin
+							? {
+									origin: {
+										version: String(origin.version),
+										sourceType: String(origin.source_type),
+										source: (typeof origin.source === 'string'
+											? JSON.parse(origin.source)
+											: origin.source) as Record<string, unknown>,
+										commit: origin.commit == null ? null : String(origin.commit),
+										contentHash: String(origin.content_hash)
+									}
+								}
+							: {}),
 						name: getDefinition(s)?.manifest.name ?? s,
 						installedVersion: st?.installed_version == null ? null : String(st.installed_version),
 						enabled: st?.enabled === true || st?.enabled === 't',

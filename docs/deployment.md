@@ -504,3 +504,68 @@ ordnet jede Mail dem passenden Postfach zu (Oberfläche: Nachrichten → Postein
   übersprungen (Kopfzeile `X-EP-Intern`) – keine Schleife, die Person sieht die Mail im Posteingang.
 - Nur **eine** Instanz darf abrufen (Sperre je Prozess; mehrere Instanzen würden über die Job-Sperre trotzdem nur einmal je Minute laufen).
 - Demo: `docker compose -f docker-compose.demo.yml up -d` (GreenMail auf `127.0.0.1:1143`), dann `node scripts/seed-demo-inbox.mjs`.
+
+## Module installieren: Supervisor und Neubau im Container (Kalypzo Atrium)
+
+Das Image startet `node scripts/supervisor.mjs` statt `node build`. Der Supervisor startet die App als Kindprozess
+und baut sie neu, wenn unter Administration → Module → Installieren Module eingespielt werden:
+
+1. Module der laufenden Generation kopieren, Auftrag einspielen (Inhalt muss zum Inhaltshash der Vorschau passen),
+   eigene npm-Pakete der Module installieren (`--ignore-scripts`),
+2. `svelte-kit sync` + `vite build` in eine neue **Generation** (`/data/atrium/gen/<id>`),
+3. **Probelauf** (`ATRIUM_VERIFY_ONLY=1`: Module laden und prüfen, ohne Datenbank),
+4. Tausch und Neustart (App wird per IPC geordnet beendet), **Health-Prüfung** (120 s) – sonst Rückkehr zur vorigen Generation.
+
+Die Ausfallzeit entspricht dem Neustart (einige Sekunden). Ohne eigene Generation läuft der mitgelieferte Build.
+Kommt ein neues Image mit anderer Core-Version, baut der Supervisor die Module der laufenden Generation beim Start neu
+(bis dahin läuft der mitgelieferte Build; `HEALTHCHECK start-period` 15 min).
+
+| Variable | Standard (Image) | Bedeutung |
+|---|---|---|
+| `ATRIUM_MODULE_INSTALL` | `supervisor` | `off` = nur Vorschau, `copy` = Entwicklung (`vite dev`), `supervisor` = Neubau |
+| `ATRIUM_DATA_DIR` | `/data/atrium` | Volume: `gen/`, `state.json`, `status.json`, `staging/`, `results/`, `logs/`, Caches |
+| `ATRIUM_BUILD_HEAP` | `3072` | Heap des Neubaus in MB |
+| `ATRIUM_VITE_CACHE`, `npm_config_cache`, `TMPDIR` | unter `/data/atrium` | Schreibbare Orte, das Dateisystem bleibt `read_only` |
+
+Compose (`docker-compose.dokploy*.yml`): Volume `atrium-data:/data/atrium`, `mem_limit` Standard **4g** (Neubau),
+`stop_grace_period` 45 s. Ausgehend nötig: `api.github.com`, `codeload.github.com` (Quellen) und ggf. `registry.npmjs.org`
+(Module mit eigenen npm-Paketen). Das Image enthält dafür alle Abhängigkeiten und die Quellen (größer als vorher).
+
+**Messwerte:** lokal (Windows, 8 Kerne) dauert ein Neubau mit allen 14 Fachmodulen etwa 40–60 s; im Container mit
+`--cpus 1 --memory 3g` noch nicht gemessen (Phase 0 offen).
+
+Lokal: `node scripts/demo-server.mjs` startet ebenfalls über den Supervisor (Daten in `.data/atrium`, PGlite bleibt
+im Elternprozess offen); `.data/stop` beendet App und Datenbank geordnet.
+
+### Frisches Deployment mit Modulen (Seed)
+
+Ein neuer Server holt seine Module beim ersten Start selbst, wenn eine **Seed-Liste** vorliegt: Datei
+`deploy/modules.seed.json`, Pfad in `ATRIUM_MODULES_SEED` oder das JSON direkt in `ATRIUM_MODULES_SEED` (Compose):
+
+```json
+{ "schema": 1, "sources": [
+  { "source": "github:org/ep-intern-modules", "commit": "<voller Commit, 40 Zeichen>",
+    "modules": ["members", "actions", "treasury"], "contentHashes": { "members": "sha256-…" } }
+] }
+```
+
+Nur volle Commits (keine Branches), `modules` fehlt = alle Module der Quelle, `contentHashes` optional (Abweichung bricht ab).
+Der Supervisor lädt die Archive (Token optional `ATRIUM_GITHUB_TOKEN`/`GITHUB_TOKEN`), baut eine Generation und merkt sich den
+Seed (`state.json` → `seed`); bis dahin läuft der mitgelieferte Build. Die App übernimmt die Module danach als installiert
+(`module_install`, Herkunft GitHub).
+
+### Updates, Entfernen, Wiederherstellen
+
+- **Updates**: Administration → Module → „Nach Updates suchen“ vergleicht je Modul aus GitHub den gespeicherten Commit mit dem Kopf
+  des Refs; „Aktualisieren“ öffnet die Installation mit vorbelegter Quelle. Die Vorschau zeigt geänderte Dateien, neue Migrationen und
+  Rechte. Vorher eine Datensicherung erstellen (Migrationen sind nicht rückgängig zu machen).
+- **Entfernen** (nur deaktivierte Module, die kein anderes braucht): Standard **Daten behalten** – Schema, Einstellungen, Rechte und
+  Dateien bleiben und sind nach erneuter Installation wieder da. „Daten löschen“ (Bestätigung mit der Modul-ID) löscht Schema,
+  Migrationsstand, Zustand, Rechte samt Rollen-/Einzelrechten, Rollen-Verleihungen, Einstellungen, Benachrichtigungs-Einstellungen,
+  Job-Läufe und Dateien. Danach Neubau ohne das Modul.
+- **Wiederherstellen**: Die Herkunft der Module (`module_install`, Verlauf) gehört zum Sicherungsbereich „Einstellungen“; jede Sicherung
+  enthält zudem je Modul Quelle, Commit und Inhaltshash. Fehlt ein Modul auf dem Zielserver, nennt der Import die Quelle mit Link zur
+  Installation. Fehlen nach einer Wiederherstellung (oder nach Verlust des Volumes) installierte Module im laufenden Stand, bietet die
+  Seite „Installiert“ **„Aus der Datenbank wiederherstellen“** (GitHub-Module am gespeicherten Commit; ZIP-Module nur, solange die Datei
+  unter `/data/atrium/sources/` liegt).
+

@@ -10,6 +10,7 @@ import { getAuth } from '$lib/server/core/auth';
 import { applyClientIpHeader, clientAddress } from '$lib/server/core/auth/client-ip';
 import { logError } from '$lib/server/core/db-errors';
 import { initCore } from '$lib/server/core/init';
+import { installShutdownHandlers, runVerifyAndExit } from '$lib/server/core/lifecycle';
 import { startJobRunner } from '$lib/server/core/jobs';
 import { brandVersion, brandingState } from '$lib/server/core/branding';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
@@ -28,7 +29,11 @@ const PUBLIC_PAGES = [
 /** Öffentliche Modulseiten (`/p/<moduleId>/…`) sowie Logo/Icons (`/branding/…`): keine Session nötig */
 const PUBLIC_PREFIXES = ['/p/', '/branding/'];
 
-if (!building) {
+if (!building && process.env.ATRIUM_VERIFY_ONLY === '1') {
+	// Probelauf des Supervisors: nur Module prüfen, keine Datenbank, dann beenden (lifecycle.ts)
+	runVerifyAndExit();
+} else if (!building) {
+	installShutdownHandlers();
 	// Startsequenz (Migrationen, Registrierung, Synchronisation). Fehler beenden den Start laut.
 	initCore()
 		.then(() => startJobRunner())

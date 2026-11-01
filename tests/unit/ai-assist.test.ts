@@ -195,19 +195,3 @@ describe('Schreibhilfe: Vorschau', () => {
 		]);
 	});
 });
-
-describe('Schreibhilfe: Antwortentwurf', () => {
-	it('schneidet den zitierten Verlauf ab', async () => {
-		const { withoutQuotedHistory } = await import('$lib/modules/messages/assist');
-		const text = [
-			'Hallo, kommt Mila auch mit?',
-			'Danke!',
-			'',
-			'Am 12.10.2026 um 10:00 schrieb Stamm <stamm@example.org>:',
-			'> Liebe Eltern …'
-		].join('\r\n');
-		expect(withoutQuotedHistory(text)).toBe('Hallo, kommt Mila auch mit?\nDanke!');
-		expect(withoutQuotedHistory('Text\n> zitiert\nweiter')).toBe('Text\nweiter');
-		expect(withoutQuotedHistory('Oben\n-----Original Message-----\nalt')).toBe('Oben');
-	});
-});

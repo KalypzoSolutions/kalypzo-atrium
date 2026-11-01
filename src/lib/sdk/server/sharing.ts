@@ -75,28 +75,36 @@ const EVERYONE_KEY = `everyone:${EVERYONE_ID}`;
 
 type Display = Omit<PrincipalInfo, 'type' | 'id'>;
 
-const MEMBERS_ID = 'members';
-/** Rechte, die Details in Suche/Anzeige freischalten */
-const MEMBER_VIEW = 'members.member.view';
+/** Recht, das E-Mail-Adressen in Suche/Anzeige freischaltet */
 const USERS_VIEW = 'core.users.view';
 /** Anzeige gespeicherter Mitglieds-Freigaben ohne `members.member.view` */
 const HIDDEN_MEMBER: Display = { name: 'Mitglied' };
 
 /**
- * `members`-Dienst passend zur Deklaration des Aufrufers: harte Abhängigkeit → `core.modules.use`,
- * optionale → `core.modules.useOptional` (`null`, wenn nicht aktiv). Ohne Deklaration: `Error`.
+ * Dienst der Personenquelle (Modul mit `ModuleDefinition.principals`, z. B. Mitglieder & Gruppen) passend zur
+ * Deklaration des Aufrufers: harte Abhängigkeit → `core.modules.use`, optionale → `core.modules.useOptional`
+ * (`null`, wenn nicht aktiv). Keine Personenquelle installiert → `null` (nur Stamm, Rollen, Benutzer*innen).
+ * Quelle installiert, aber vom Aufrufer nicht deklariert: `Error` (Programmierfehler).
  */
 async function membersProvider(moduleId: string): Promise<PrincipalProvider | null> {
+	const source = core.modules.principalSource();
+	if (!source) return null;
 	const manifest = core.modules.registered().find((m) => m.id === moduleId);
-	if (manifest?.dependencies.includes(MEMBERS_ID)) {
-		return core.modules.use<PrincipalProvider>(MEMBERS_ID, moduleId);
+	if (manifest?.dependencies.includes(source.id)) {
+		return core.modules.use<PrincipalProvider>(source.id, moduleId);
 	}
-	if (manifest?.optionalDependencies?.includes(MEMBERS_ID)) {
-		return core.modules.useOptional<PrincipalProvider>(MEMBERS_ID, moduleId);
+	if (manifest?.optionalDependencies?.includes(source.id)) {
+		return core.modules.useOptional<PrincipalProvider>(source.id, moduleId);
 	}
 	throw new Error(
-		`Modul ${moduleId} nutzt Freigaben an Principals, führt "${MEMBERS_ID}" aber weder in dependencies noch in optionalDependencies`
+		`Modul ${moduleId} nutzt Freigaben an Principals, führt "${source.id}" aber weder in dependencies noch in optionalDependencies`
 	);
+}
+
+/** Recht, das Mitglieder in Freigabe-Suche/-Anzeige sichtbar macht (von der Personenquelle festgelegt) */
+function canSeeMembers(ctx: RequestContext): boolean {
+	const source = core.modules.principalSource();
+	return !!source && core.permissions.has(ctx, source.memberViewPermission);
 }
 
 function allowedTypes(types?: readonly PrincipalType[]): Set<PrincipalType> {
@@ -172,7 +180,7 @@ export async function principalKeysFor(ctx: RequestContext, moduleId: string): P
 	}
 	const members = await membersProvider(moduleId);
 	if (members) {
-		const { memberIds, groupIds } = await memoized(memo, 'members', () =>
+		const { memberIds, groupIds } = await memoized(memo, 'principals', () =>
 			members.principalIdsForUser(userId)
 		);
 		for (const id of memberIds) keys.add(`member:${id}`);
@@ -184,7 +192,7 @@ export async function principalKeysFor(ctx: RequestContext, moduleId: string): P
 const PRINCIPAL_KEY_MEMO_MS = 5_000;
 type PrincipalMemo = {
 	roles?: { at: number; value: Promise<string[]> };
-	members?: { at: number; value: Promise<{ memberIds: string[]; groupIds: string[] }> };
+	principals?: { at: number; value: Promise<{ memberIds: string[]; groupIds: string[] }> };
 };
 const principalKeyMemo = new WeakMap<RequestContext, PrincipalMemo>();
 
@@ -270,7 +278,7 @@ export async function searchPrincipals(
 			image: u.image
 		}));
 	}
-	const memberSearch = types.has('member') && core.permissions.has(ctx, MEMBER_VIEW);
+	const memberSearch = types.has('member') && canSeeMembers(ctx);
 	if (types.has('group') || memberSearch) {
 		const members = await membersProvider(moduleId);
 		if (members) {
@@ -353,13 +361,13 @@ async function resolvePrincipals(
 					found.set(`group:${g.id}`, { name: g.name, color: g.color, image: g.image });
 				}
 			}
-			const canSeeMembers = core.permissions.has(ctx, MEMBER_VIEW);
-			if (opts.purpose === 'display' && !canSeeMembers) {
+			const memberDetails = canSeeMembers(ctx);
+			if (opts.purpose === 'display' && !memberDetails) {
 				for (const id of memberIds) found.set(`member:${id}`, HIDDEN_MEMBER);
 			} else {
 				// Prüfung: nur Existenz (UUIDs, nichts wird ausgegeben) – daher im System-Kontext,
 				// damit Speichern vorbereiteter Mitglieds-Freigaben nicht am Leserecht scheitert
-				const lookupCtx = canSeeMembers ? ctx : core.auth.systemContext(moduleId);
+				const lookupCtx = memberDetails ? ctx : core.auth.systemContext(moduleId);
 				for (const chunk of chunks(memberIds, DIRECTORY_CHUNK)) {
 					const rows = await members.searchMemberPrincipals(lookupCtx, {
 						ids: chunk,

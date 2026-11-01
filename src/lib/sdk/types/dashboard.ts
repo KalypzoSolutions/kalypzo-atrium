@@ -35,10 +35,37 @@ export interface DashboardTodo {
 }
 
 /**
- * Art eines Eintrags in „Diese Woche“: `meeting` = Gruppenstunde, `event` = Termin, `action` = Aktion
- * (Fahrt/Lager), `material` = Materialausgabe/-rückgabe, `deadline` = Frist.
+ * Art eines Eintrags in „Diese Woche“ (`[a-z][a-z0-9-]*`). Der Core kennt `meeting` (regelmäßiges Treffen),
+ * `event` (Termin) und `deadline` (Frist); Module melden weitere Arten über `dashboard.agendaKinds` an
+ * (z. B. `action`, `material`) und dürfen nur eigene oder Core-Arten verwenden.
  */
-export type DashboardAgendaKind = 'meeting' | 'event' | 'action' | 'material' | 'deadline';
+export type DashboardAgendaKind = string;
+
+/** Darstellung einer Art (Klassen liegen im Core, Module wählen nur den Stil) */
+export type DashboardAgendaStyle = 'muted' | 'outline' | 'tinted' | 'marked' | 'dashed';
+
+export interface DashboardAgendaKindInfo {
+	key: string;
+	/** Bezeichnung in der Legende, z. B. „Aktion“ */
+	label: string;
+	style: DashboardAgendaStyle;
+}
+
+/** Arten, die der Core selbst kennt (Reihenfolge = Legende) */
+export const CORE_AGENDA_KINDS: readonly DashboardAgendaKindInfo[] = [
+	{ key: 'meeting', label: 'Gruppenstunde', style: 'muted' },
+	{ key: 'event', label: 'Termin', style: 'outline' },
+	{ key: 'deadline', label: 'Frist', style: 'dashed' }
+];
+
+export const DASHBOARD_AGENDA_STYLES: readonly DashboardAgendaStyle[] = [
+	'muted',
+	'outline',
+	'tinted',
+	'marked',
+	'dashed'
+];
+export const AGENDA_KIND_PATTERN = /^[a-z][a-z0-9-]{0,39}$/;
 
 export interface DashboardAgendaItem {
 	/** Eindeutig innerhalb des Moduls (bei Serien inkl. Datum) */
@@ -81,6 +108,8 @@ export interface DashboardFeed {
 	to: string;
 	todos: DashboardFeedTodo[];
 	agenda: DashboardFeedAgendaItem[];
+	/** Arten der Einträge (Core + aktive Module) für Legende und Darstellung, Reihenfolge = Legende */
+	kinds: DashboardAgendaKindInfo[];
 	/** Namen der Module, deren Quelle fehlgeschlagen ist (Anzeige: Hinweis, Rest bleibt nutzbar) */
 	failed: string[];
 }

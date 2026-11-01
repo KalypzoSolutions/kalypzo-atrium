@@ -1,0 +1,19 @@
+{
+	"schema": 1,
+	"id": "fx-board",
+	"name": "Fixture Pinnwand",
+	"description": "Test-Modul: Einträge mit Freigaben, Einbettung, Dashboard, Suche, Job, Hooks und Oberfläche",
+	"version": "1.2.0",
+	"core": ">=2.0.0-0 <3.0.0",
+	"dependencies": {},
+	"optionalDependencies": {
+		"fx-people": { "version": "^1.0.0" }
+	},
+	"permissions": [
+		"fx-board.note.create",
+		"fx-board.note.edit-all",
+		"fx-board.note.view",
+		"fx-board.note.view-all"
+	],
+	"npm": {}
+}

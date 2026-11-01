@@ -125,7 +125,7 @@ await mdb.transaction(async (tx) => {
 
 Module verwenden ausschließlich `forModule(<eigene id>)`. Der `search_path` macht Core-Tabellen und fremde Modulschemas nur **unqualifiziert**
 unerreichbar – das ist eine Konvention, kein Sicherheitsmechanismus (schemaqualifizierte Namen funktionieren technisch). Module sind vertrauenswürdiger
-Code; ESLint meldet in `src/lib/modules/**` `core.database.db`, `core.database.transaction` und `forModule` mit fremdem String-Literal.
+Code; ESLint meldet in `modules/**` `core.database.db`, `core.database.transaction` und `forModule` mit fremdem String-Literal.
 
 ## core.pdf
 
@@ -209,7 +209,7 @@ Vorlagen mit festem Seitenlayout (Briefkopf, Falzmarken, Adressfeld, Fußzeile) 
 
 ## Modul-Dienste (`ModuleDefinition.provides`, `core.modules.use`)
 
-Ein Modul kann abhängigen Modulen typisierte Funktionen anbieten: `defineModule({ …, provides: { … } })`, Vertrag als reine Typen in `src/lib/modules/<id>/contract.ts`.
+Ein Modul kann abhängigen Modulen typisierte Funktionen anbieten: `defineModule({ …, provides: { … } })`, Vertrag als reine Typen in `modules/<id>/contract.ts`.
 Regel: den Dienst mit `satisfies <Vertrag>` angeben (`provides: officesService satisfies OfficesService`), kein `as unknown as` – so prüft der Compiler die Umsetzung gegen den Vertrag.
 Aufruf: `await core.modules.use<MembersService>('members', 'actions')` – prüft, dass das aufrufende Modul den Anbieter in `manifest.dependencies` führt und der Anbieter aktiv ist
 (sonst `module_disabled`). Aufruf **nie** innerhalb einer offenen Modul-Transaktion. Beispiel: `actions` → `members` (Anmeldung mit Mitglied).
@@ -416,6 +416,6 @@ Metadaten werden bereinigt: Schlüssel, die auf `password`, `secret`, `token`, `
 ## core.system (nur Core)
 
 `core.system.reset` (`listAreas`, `preview`, `export`, `execute`, `confirmWord`) steuert den Admin-Reset (`/admin/reset`, Recht `core.system.reset`,
-nur Session-Benutzer*innen). Module rufen es nie auf (ESLint meldet `core.system` in `src/lib/modules/**`); ihre Beiträge kommen über
+nur Session-Benutzer*innen). Module rufen es nie auf (ESLint meldet `core.system` in `modules/**`); ihre Beiträge kommen über
 `resetAreas`/`resetUsers`. Datensicherung (`core/backup`) und Datenauskunft (`core/privacy`, `/admin/privacy`) sind nicht Teil des `core`-Objekts;
 Module beteiligen sich über `backup.rehash` und `subjectExport` (siehe [Modulentwicklung](module-development.md#weitere-modul-hooks)).

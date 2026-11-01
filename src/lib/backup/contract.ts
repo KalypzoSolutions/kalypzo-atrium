@@ -150,6 +150,8 @@ export interface PreviewScope {
 	/** Wiederherstellbar? Sonst `reason` (z. B. „Modul nicht installiert“, „Sicherung ist neuer“) */
 	available: boolean;
 	reason?: string;
+	/** Modul fehlt auf dem Server: Quelle zum Installieren (`github:owner/repo/pfad#commit`) */
+	installSource?: string;
 	tables: PreviewTable[];
 	files: { count: number; bytes: number };
 }

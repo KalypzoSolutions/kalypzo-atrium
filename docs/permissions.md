@@ -24,6 +24,7 @@
 | `core.roles.assign` | Rollen an Benutzer zuweisen |
 | `core.modules.view` | Module ansehen |
 | `core.modules.manage` | Module aktivieren und deaktivieren |
+| `core.modules.install` | Module aus GitHub oder ZIP installieren und aktualisieren (**privilegiert**: nur Administrator*innen; Modulcode läuft mit vollen Rechten) |
 | `core.jobs.manage` | Hintergrundjobs ansehen und manuell auslösen (`GET /api/v1/jobs`, `POST /api/v1/jobs/:key/run`) |
 | `core.settings.view` | Systemeinstellungen ansehen |
 | `core.settings.manage` | Systemeinstellungen verwalten |
@@ -63,7 +64,7 @@ Konten, die über den Verknüpfungslink des Moduls `members` entstehen (`core.us
 
 Weitere Standardrollen: **„Amtsinhaber*in“** (`offices`: `offices.office.view`, wird Inhaber*innen über Ämter verliehen) und
 **„Kämmerer*in“** (`orders`: `orders.order.view`, `orders.order.create`, `orders.order.manage`, `orders.article.manage`, `orders.stock.manage`).
-Quelle: `defaultRoleGrants` in `src/lib/modules/*/module.ts`. Die Vergabe geschieht **einmalig** je
+Quelle: `defaultRoleGrants` in `modules/*/module.ts`. Die Vergabe geschieht **einmalig** je
 (Modul, Rolle, Recht) (Tabelle `role_grant_applied`): ein bewusst entzogenes Recht kommt nicht zurück. Administrator*innen können die Rolle danach
 wie jede andere bearbeiten.
 

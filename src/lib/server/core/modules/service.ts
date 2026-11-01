@@ -9,7 +9,8 @@ import { ensureDefaultRole } from '../permissions/default-roles';
 import { requirePermission, syncPermissions } from '../permissions/service';
 import {
 	allDefinitions,
-	assertDependenciesResolvable,
+	brokenModules,
+	excludeUnresolvableModules,
 	getDefinition,
 	requireDefinition
 } from './registry';
@@ -33,7 +34,8 @@ const warnedCouplings = new Set<string>();
 
 /** Gleicht Registry (Build-Zeit) mit Datenbank (Laufzeit) ab. Beim Start aufzurufen. */
 export async function syncModules(): Promise<void> {
-	assertDependenciesResolvable();
+	// Nicht lauffähige Module (Abhängigkeit/Version/Zyklus) ausschließen statt den Start abzubrechen
+	excludeUnresolvableModules();
 	const db = getDb();
 	const defs = allDefinitions();
 	// Manifest-Verweise (Rechte, Reset-Bereiche) gegen alle registrierten Module prüfen (#76, 10-10)
@@ -130,6 +132,43 @@ export async function listModules(): Promise<ModuleInfo[]> {
 			missingDependencies: d.manifest.dependencies.filter((dep) => !getDefinition(dep))
 		};
 	});
+}
+
+/** Module, die Daten oder einen Zustand haben, aber nicht laufen (Anzeige unter Administration → Module) */
+export interface ModuleProblem {
+	id: string;
+	name: string;
+	version: string | null;
+	/** `broken`: gefunden, aber nicht geladen; `missing`: nicht mehr installiert, Zustand/Daten vorhanden */
+	kind: 'broken' | 'missing';
+	reason: string;
+	/** War beim Ausfall aktiv (Daten bleiben erhalten, Funktionen fehlen) */
+	enabled: boolean;
+}
+
+export async function listModuleProblems(): Promise<ModuleProblem[]> {
+	const rows = await getDb().select().from(schema.moduleState);
+	const state = new Map(rows.map((r) => [r.id, r]));
+	const brokenList = brokenModules();
+	const brokenIds = new Set(brokenList.map((b) => b.id));
+	const problems: ModuleProblem[] = brokenList.map((b) => ({
+		...b,
+		version: b.version ?? state.get(b.id)?.installedVersion ?? null,
+		kind: 'broken',
+		enabled: state.get(b.id)?.enabled ?? false
+	}));
+	for (const r of rows) {
+		if (getDefinition(r.id) || brokenIds.has(r.id)) continue;
+		problems.push({
+			id: r.id,
+			name: r.id,
+			version: r.installedVersion,
+			kind: 'missing',
+			reason: 'Nicht installiert – Daten und Einstellungen sind noch vorhanden',
+			enabled: r.enabled
+		});
+	}
+	return problems.sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export async function isModuleEnabled(id: string): Promise<boolean> {

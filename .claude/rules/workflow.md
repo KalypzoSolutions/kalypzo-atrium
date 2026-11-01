@@ -14,6 +14,9 @@ npm run build
 node scripts/demo-server.mjs        # Bash-Tool mit run_in_background: true; wartet auf http://127.0.0.1:4300/login → 200
 touch .data/stop                    # SAUBER beenden (Server räumt auf und beendet sich); Datei danach löschen
 ```
+- Der Demo-Server startet die App über den **Supervisor** (`scripts/supervisor/lib.mjs`, Daten `.data/atrium`): Module lassen sich im Panel
+  installieren (Neubau + Neustart, PGlite bleibt offen). Eine gebaute Generation in `.data/atrium/gen` hat Vorrang vor `build/` –
+  nach Code-Änderungen am Core `.data/atrium` löschen (oder `state.json`), sonst läuft der alte Generationen-Build.
 - **Nie** mit `Stop-Process -Force`/`kill` beenden: das beschädigte die PGlite-Datenbank (`RuntimeError: Aborted()`;
   Sicherung `.data/pglite-corrupt-*`). Bei Datenbankschaden `.data/pglite` verschieben, Server startet frisch,
   Module in `/modules` bzw. per `POST /api/v1/modules/<id>/enable` neu aktivieren.

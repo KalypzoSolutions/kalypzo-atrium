@@ -1,14 +1,14 @@
 <script lang="ts">
-	// Kachel „Diese Woche“: Montag–Sonntag mit Gruppenstunden, Terminen, Aktionen, Material und
-	// Fristen aus allen Modulen (`GET /dashboard/feed`). Jede Art hat ihre eigene Form (Fläche,
-	// Rahmen, gestrichelt), Farbe nur für heute (Akzent) und verstrichene Fristen (rot).
+	// Kachel „Diese Woche“: Montag–Sonntag mit Gruppenstunden, Terminen, Fristen und den Arten der
+	// Module (`GET /dashboard/feed`, `kinds`). Jede Art hat ihre eigene Form (Fläche, Rahmen, gestrichelt),
+	// Farbe nur für heute (Akzent) und verstrichene Fristen (rot).
 	// Ab `md` sieben Spalten, darunter eine Liste ab heute.
 	import { onMount } from 'svelte';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
 	import { DashboardCard } from '$lib/components/layout';
 	import { addDays } from '$lib/sdk/dates';
 	import type {
-		DashboardAgendaKind,
+		DashboardAgendaStyle,
 		DashboardFeed,
 		DashboardFeedAgendaItem
 	} from '$lib/sdk/types/dashboard';
@@ -41,20 +41,16 @@
 	});
 
 	const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-	const KIND_LABEL: Record<DashboardAgendaKind, string> = {
-		meeting: 'Gruppenstunde',
-		event: 'Termin',
-		action: 'Aktion',
-		material: 'Material',
-		deadline: 'Frist'
+	const STYLE_CLASS: Record<DashboardAgendaStyle, string> = {
+		muted: 'border-transparent bg-muted',
+		outline: 'border-border bg-card',
+		tinted: 'border-transparent bg-foreground/10',
+		marked: 'border-border border-l-foreground/50 border-l-2 bg-card',
+		dashed: 'border-dashed border-foreground/30 bg-card'
 	};
-	const KIND_CLASS: Record<DashboardAgendaKind, string> = {
-		meeting: 'border-transparent bg-muted',
-		event: 'border-border bg-card',
-		action: 'border-transparent bg-foreground/10',
-		material: 'border-border border-l-foreground/50 border-l-2 bg-card',
-		deadline: 'border-dashed border-foreground/30 bg-card'
-	};
+	const kindInfo = $derived(new Map((feed?.kinds ?? []).map((k) => [k.key, k])));
+	const kindClass = (key: string) => STYLE_CLASS[kindInfo.get(key)?.style ?? 'outline'];
+	const kindLabel = (key: string) => kindInfo.get(key)?.label ?? 'Eintrag';
 
 	const days = $derived.by(() => {
 		if (!feed) return [];
@@ -67,9 +63,7 @@
 	});
 	const upcoming = $derived(days.filter((d) => !d.past && (d.items.length || d.today)));
 	const kinds = $derived(
-		(Object.keys(KIND_LABEL) as DashboardAgendaKind[]).filter((k) =>
-			feed?.agenda.some((a) => a.kind === k)
-		)
+		(feed?.kinds ?? []).filter((k) => feed?.agenda.some((a) => a.kind === k.key))
 	);
 
 	function timeLabel(a: DashboardFeedAgendaItem, date: string): string {
@@ -88,7 +82,7 @@
 		href={a.href}
 		class={[
 			'block min-w-0 rounded border px-2 py-1.5 text-xs leading-snug transition-colors hover:border-foreground/40',
-			KIND_CLASS[a.kind],
+			kindClass(a.kind),
 			a.late && 'border-destructive',
 			past && !a.late && 'opacity-60'
 		]}
@@ -98,7 +92,7 @@
 		</span>
 		<span class="block font-medium break-words hyphens-auto" lang="de">{a.title}</span>
 		{#if a.detail}<span class="block text-muted-foreground">{a.detail}</span>{/if}
-		<span class="sr-only">({KIND_LABEL[a.kind]})</span>
+		<span class="sr-only">({kindLabel(a.kind)})</span>
 	</a>
 {/snippet}
 
@@ -116,10 +110,11 @@
 				class="flex flex-wrap gap-x-3 gap-y-1 pb-2 text-xs text-muted-foreground"
 				aria-hidden="true"
 			>
-				{#each kinds as k (k)}
+				{#each kinds as k (k.key)}
 					<li class="flex items-center gap-1.5">
-						<span class={['inline-block h-2.5 w-3.5 rounded-sm border', KIND_CLASS[k]]}></span>
-						{KIND_LABEL[k]}
+						<span class={['inline-block h-2.5 w-3.5 rounded-sm border', STYLE_CLASS[k.style]]}
+						></span>
+						{k.label}
 					</li>
 				{/each}
 			</ul>

@@ -1,16 +1,15 @@
 import { error } from '@sveltejs/kit';
 import { matchModuleRoute } from '$lib/sdk/client/routes';
-import type { ModuleUi } from '$lib/sdk/types/module-ui';
+import { moduleUiLoader } from '$lib/sdk/client/module-ui-registry';
 import type { PageLoad } from './$types';
 
 /**
- * Build-Zeit-Registry der Modul-Oberflächen. Die Aktivierung wird serverseitig in
+ * Modul-Oberflächen aus dem Modulverzeichnis (`moduleUiLoader`). Die Aktivierung wird serverseitig in
  * +page.server.ts geprüft; hier wird nur die Komponente aufgelöst.
  */
-const uis = import.meta.glob<{ default: ModuleUi }>('/src/lib/modules/*/ui.ts');
 
 export const load: PageLoad = async ({ data }) => {
-	const loader = uis[`/src/lib/modules/${data.moduleId}/ui.ts`];
+	const loader = moduleUiLoader(data.moduleId);
 	if (!loader) throw error(404, 'Das Modul stellt keine Oberfläche bereit');
 	const ui = (await loader()).default;
 	const match = matchModuleRoute(Object.keys(ui.routes), data.path);

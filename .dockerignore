@@ -16,7 +16,10 @@ coverage
 # Werkzeug-/Doku-Dateien gehören nicht ins Image (kleinerer Kontext, kein Cache-Bruch bei Doku-Änderungen)
 .claude
 docs
+# Skripte nicht ins Image – außer dem Supervisor (Kalypzo Atrium)
 scripts
+!scripts/supervisor.mjs
+!scripts/supervisor
 deploy
 *.md
 docker-compose*.yml

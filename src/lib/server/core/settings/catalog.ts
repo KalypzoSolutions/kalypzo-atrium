@@ -51,6 +51,28 @@ type Def = Omit<SettingDefinition, 'scope'> & { scope?: SettingScope };
 const g = (d: Def): SettingDefinition => ({ scope: 'global', ...d });
 
 export const CORE_SETTINGS: SettingDefinition[] = [
+	// Modul-Installation (Kalypzo Atrium)
+	g({
+		key: 'core.modules.githubToken',
+		label: 'GitHub-Token',
+		description:
+			'Optional: für private Repositorys und höhere Abruflimits (nur Lesezugriff nötig).',
+		schema: str(400),
+		default: '',
+		secret: true,
+		group: 'modules',
+		writePermission: 'core.modules.install'
+	}),
+	g({
+		key: 'core.modules.allowedSources',
+		label: 'Erlaubte Quellen',
+		description:
+			'Optional: je Zeile `owner/repo` oder `owner/*`. Leer = alle GitHub-Quellen und ZIP-Dateien erlaubt; sonst keine ZIP-Dateien.',
+		schema: str(2000),
+		default: '',
+		group: 'modules',
+		writePermission: 'core.modules.install'
+	}),
 	// System / Organisation
 	g({
 		key: 'core.system.name',

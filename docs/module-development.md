@@ -1,25 +1,25 @@
 # Modulentwicklung
 
-Module liegen unter `src/lib/modules/<id>/` und greifen **ausschließlich** über `$lib/sdk/*` auf den Core zu. ESLint (`eslint.config.js`, je Modul ein Block) erzwingt die erlaubte Oberfläche – siehe „Erlaubte Importe“.
+Module liegen unter `modules/<id>/` und greifen **ausschließlich** über `$lib/sdk/*` auf den Core zu. ESLint (`eslint.config.js`, je Modul ein Block) erzwingt die erlaubte Oberfläche – siehe „Erlaubte Importe“.
 
 ## Erlaubte Importe
 
-In `src/lib/modules/<id>/**` sind nur diese Importe erlaubt (Regel `@typescript-eslint/no-restricted-imports`, Test `tests/unit/module-boundaries.test.ts`):
+In `modules/<id>/**` sind nur diese Importe erlaubt (Regel `@typescript-eslint/no-restricted-imports`, Test `tests/unit/module-boundaries.test.ts`):
 
 | Ziel | Erlaubt | Zweck |
 |---|---|---|
-| eigene Moduldateien (`./…`, `$lib/modules/<id>/…`) | ja | |
+| eigene Moduldateien (`./…`, `$modules/<id>/…`) | ja | |
 | `$lib/sdk/*` | ja | Core-Schnittstelle (`server`, `client`, `types`) |
 | `$lib/components/ui`, `$lib/components/layout`, `$lib/components/forms` | ja | UI-Bausteine, Formular-Builder |
 | `$lib/forms` | ja | Formular-Typen, Feldtypen, Validierung |
-| `$lib/pdf-lists` | ja | PDF-Listen: Spaltenauswahl, Layout, `composeListBlocks`, Formatierer, `listSelectionInput`; `$lib/pdf-lists/member-columns` = Mitglieder-Spaltenkatalog (`members` + `actions`) |
+| `$lib/pdf-lists` | ja | PDF-Listen: Spaltenauswahl, Layout, `composeListBlocks`, Formatierer, `listSelectionInput`, Voreinstellungen `buildPresets`/`fieldColumnKey` (Mitglieder-Spaltenkatalog: `members/sheet-columns.ts`, für andere Module über `MembersService.sheetCatalog`/`sheetRow`) |
 | `$lib/utils` | ja | `cn` & Co. |
-| `$lib/modules/<anderes>/contract` | **nur** `import type` | Vertrag; Laufzeit über `core.modules.use`/`useOptional` |
-| andere Dateien fremder Module (`$lib/modules/<anderes>/…`, `../<anderes>/…`) | nein | |
+| `$modules/<anderes>/contract` | **nur** `import type` | Vertrag; Laufzeit über `core.modules.use`/`useOptional` |
+| andere Dateien fremder Module (`$modules/<anderes>/…`, `../<anderes>/…`) | nein | |
 | `$lib/server/*`, `$lib/core/*`, alle übrigen `$lib/*` | nein | |
 
 Gemeinsam gebrauchte, reine Hilfen gehören in eine dieser neutralen Bibliotheken (oder in den Vertrag als Dienst), nicht in ein Modul, das ein anderes dann importiert.
-Zusätzlich meldet `no-restricted-syntax` in `src/lib/modules/**` direkte Zugriffe auf Core-Interna: `core.database.db`, `core.database.transaction`,
+Zusätzlich meldet `no-restricted-syntax` in `modules/**` direkte Zugriffe auf Core-Interna: `core.database.db`, `core.database.transaction`,
 `core.system.*`, `core.modules.enable|disable`, `core.auth.instance` und `forModule('<andere-id>')` mit einem String-Literal ungleich der eigenen
 Modul-ID (nur statisch erkennbare Zugriffe; Destrukturieren/Aliasse erkennt die Regel nicht – Code-Review bleibt nötig). Das ist eine Leitplanke,
 keine Sandbox: Module sind **vertrauenswürdiger Code** im selben Prozess.
@@ -28,29 +28,70 @@ Offene Ausnahmen stehen mit Begründung in `OPEN_BOUNDARY_EXCEPTIONS` (`eslint.c
 ## Verzeichnislayout
 
 ```text
-src/lib/modules/members/
-├── module.ts          # Pflicht: Default-Export defineModule({...})
-├── ui.ts              # optional: Seiten (Default-Export ModuleUi)
-├── migrations/        # SQL (im Schema mod_members)
-└── pages/             # Svelte-Komponenten
+modules/
+├── atrium-modules.json   # Katalog: alle Module dieses Verzeichnisses/Repositorys
+└── members/
+    ├── atrium-module.json  # Pflicht: Paketbeschreibung (statisch, wird nie ausgeführt)
+    ├── module.ts          # Pflicht: Default-Export defineModule({...})
+    ├── ui.ts              # optional: Seiten (Default-Export ModuleUi)
+    ├── migrations/        # SQL (im Schema mod_members), NNNN_name.sql
+    └── pages/             # Svelte-Komponenten
 ```
 
-`module.ts` wird zur Build-Zeit per `import.meta.glob('/src/lib/modules/*/module.ts')` entdeckt. Ein neues Modul erscheint danach unter **Module** und ist zunächst **deaktiviert**.
+`module.ts` wird zur Build-Zeit im Modulverzeichnis entdeckt (Standard `modules/`, sonst `ATRIUM_MODULES_DIR`; Vite-Plugin `tools/vite-plugin-atrium-modules.ts`). Andere Module und eigene Dateien außerhalb des Ordners importiert man über den Alias `$modules/<id>/…`. Ein neues Modul erscheint danach unter **Module** und ist zunächst **deaktiviert**.
+
+## Paketformat (`atrium-module.json`, Katalog)
+
+Jedes Modul beschreibt sich in `atrium-module.json` (Schema `src/lib/server/core/modules/package/schema.ts`). Die Datei ist die
+**einzige Quelle** für Kennung, Name, Beschreibung, Version und Abhängigkeiten; sie wird nie ausgeführt und dient der Installation
+(Vorschau, Abhängigkeitsauflösung, Lock-Datei).
+
+```json
+{
+  "schema": 1,
+  "id": "treasury",
+  "name": "Kasse",
+  "description": "…",
+  "version": "1.2.0",
+  "core": ">=2.0.0-0 <3.0.0",
+  "dependencies": {
+    "members": { "version": "^1.14.0", "source": "github:org/ep-intern-modules/modules/members" },
+    "actions": { "version": "^1.9.0" }
+  },
+  "optionalDependencies": { "offices": { "version": "^1.2.0" } },
+  "permissions": ["treasury.account.manage", "…"],
+  "npm": {}
+}
+```
+
+- `core`: passende Core-Versionen (SemVer-Bereich, Vorabversionen zählen mit); Core-Version = `package.json` → `version`
+  (`src/lib/server/core/version.ts`).
+- `dependencies`/`optionalDependencies`: je Modul ein Versionsbereich und optional `source` (`github:owner/repo[/pfad][#ref]` oder
+  `https://github.com/owner/repo/tree/<ref>/<pfad>`), woher das Modul bei der Installation geholt wird. Ohne `source` wird im selben
+  Repository/Katalog gesucht.
+- `permissions`: alle Rechte des Moduls (gleiche Menge wie im Manifest).
+- `npm`: nur modulspezifische Pakete mit **exakter** Version; alles andere liefert der Core.
+- Katalog `atrium-modules.json` (im Modulverzeichnis bzw. Repository): `{ "schema": 1, "name": "…", "modules": [{ "id", "path" }] }`.
+
+**Prüfung beim Start** (`core/modules/load.ts`, `registry.ts`): Ordnername = Modul-ID, `package` vorhanden, `migrations` in
+`module.ts` = alle Dateien `migrations/*.sql` in Namensreihenfolge, `atrium-module.json` passt zum Manifest. Ein Verstoß, eine fehlende
+oder zu alte harte Abhängigkeit, eine unpassende Core-Version oder ein Abhängigkeitszyklus **beendet den Start nicht**: das Modul wird
+nicht geladen und erscheint unter Administration → Module als „Defekt“ (Grund), seine Daten bleiben. Module mit Zustand in der
+Datenbank, die nicht mehr installiert sind, erscheinen dort als „Nicht installiert“. Test: `tests/unit/module-packages.test.ts`.
 
 ## 1. Manifest und Definition
 
 ```ts
-// src/lib/modules/members/module.ts
-import { defineModule, defineEndpoint, core } from '$lib/sdk/server';
+// modules/members/module.ts
+import { defineModule, defineEndpoint, core, manifestFromPackage } from '$lib/sdk/server';
 import { z } from 'zod';
+import pkg from './atrium-module.json';
 import m0001 from './migrations/0001_init.sql?raw';
 
 export default defineModule({
+  package: pkg,                    // atrium-module.json (Pflicht im Modulverzeichnis)
   manifest: {
-    id: 'members',                 // [a-z][a-z0-9-]{1,30}, nicht: core, api, auth, admin, system
-    name: 'Mitgliederverwaltung',
-    version: '1.0.0',              // SemVer
-    dependencies: [],              // IDs anderer Module
+    ...manifestFromPackage(pkg),   // id, name, description, version, dependencies, optionalDependencies
     permissions: ['members.users.view', 'members.users.edit', 'members.storage.write'],
     navigation: [
       { label: 'Mitglieder', icon: 'users', path: '/modules/members', permission: 'members.users.view' }
@@ -84,7 +125,7 @@ danach. Konfigurationsseiten gehören nicht ins Hauptmenü, sondern per `admin: 
 `group`/`groupIcon` (aufklappbare Gruppe, modulübergreifend zusammengefasst) gibt es weiterhin, Fachmodule nutzen es aber nicht. Die Gruppe
 „Administration“ ist nach jedem Laden zugeklappt; enthält sie die aktive Seite, ist der Gruppenknopf hervorgehoben.
 
-Validierungen (beim Registrieren, Fehler beenden den Start): ID-Format, SemVer, Berechtigungen im Schema `members.ressource.aktion` mit Präfix der eigenen ID, Einstellungsschlüssel mit Präfix `members.`, Navigationspfade unter `/modules/members`, keine öffentlichen Endpunkte, keine Abhängigkeitszyklen/unbekannten Abhängigkeiten.
+Validierungen beim Registrieren: ID-Format (`[a-z][a-z0-9-]{1,30}`, nicht `core|api|auth|admin|system`), SemVer, Berechtigungen im Schema `members.ressource.aktion` mit Präfix der eigenen ID, Einstellungsschlüssel mit Präfix `members.`, Navigationspfade unter `/modules/members`, keine öffentlichen Endpunkte, `atrium-module.json` passt zum Manifest. Module aus dem Modulverzeichnis, die das verletzen oder deren Abhängigkeiten nicht aufgehen, werden als „Defekt“ ausgeschlossen (siehe Paketformat); `registerModule` selbst wirft weiterhin.
 
 ## 2. Berechtigungen
 
@@ -115,7 +156,7 @@ Registrierung über `endpoints` (siehe oben). Der Router prüft automatisch Modu
 ## 6. Benutzeroberfläche
 
 ```ts
-// src/lib/modules/members/ui.ts
+// modules/members/ui.ts
 import type { ModuleUi } from '$lib/sdk/types/module-ui';
 export default {
   routes: {
@@ -160,7 +201,7 @@ export default {
 
 ### Datei-Uploads über Modul-Endpoints
 
-Uploads laufen als `multipart/form-data` über einen normalen Modul-Endpunkt. Der Endpunkt deklariert **kein** `body`-Schema; der Handler liest `await request.formData()` (z. B. Feld `file`), prüft Typ und Größe und legt die Datei mit `core.storage.upload(ctx, { module, path, file, contentType, name })` ab. Die Storage-Rechte (`<modul>.storage.write|read|delete`) prüft `core.storage` selbst. Clientseitig akzeptiert `apiFetch` ein `FormData` als `body` und setzt den multipart-Header samt Boundary selbst. Downloads dürfen eine fertige `Response` (mit `content-type`/`content-disposition`) zurückgeben. Vorlage: `src/lib/modules/members/documents.endpoints.ts`.
+Uploads laufen als `multipart/form-data` über einen normalen Modul-Endpunkt. Der Endpunkt deklariert **kein** `body`-Schema; der Handler liest `await request.formData()` (z. B. Feld `file`), prüft Typ und Größe und legt die Datei mit `core.storage.upload(ctx, { module, path, file, contentType, name })` ab. Die Storage-Rechte (`<modul>.storage.write|read|delete`) prüft `core.storage` selbst. Clientseitig akzeptiert `apiFetch` ein `FormData` als `body` und setzt den multipart-Header samt Boundary selbst. Downloads dürfen eine fertige `Response` (mit `content-type`/`content-disposition`) zurückgeben. Vorlage: `modules/members/documents.endpoints.ts`.
 
 ### UI-Komponenten in Modulen
 
@@ -350,7 +391,7 @@ offices: [
 ]
 
 // Auslöser, NACH der Transaktion
-import type { OfficesService } from '$lib/modules/offices/contract';
+import type { OfficesService } from '$modules/offices/contract';
 try {
 	const offices = await core.modules.useOptional<OfficesService>('offices', MODULE_ID); // null, wenn aus
 	await offices?.notify(ctx, [
@@ -432,9 +473,11 @@ dashboard: {
 			  amountCents, action: { label: 'Bezahlen', href: '/modules/…' }, payment? }
 		]
 	},
+	// eigene Arten für „Diese Woche“ (Core kennt meeting, event, deadline); Stil muted|outline|tinted|marked|dashed
+	agendaKinds: [{ key: 'action', label: 'Aktion', style: 'tinted' }],
 	agenda: {                                  // „Diese Woche“ (Montag–Sonntag, `from`/`to` inklusive)
 		run: async (ctx, { today, from, to }) => [
-			{ id, kind: 'meeting' | 'event' | 'action' | 'material' | 'deadline', title, date, endDate?,
+			{ id, kind: 'meeting' | 'event' | 'deadline' | '<eigene Art>', title, date, endDate?,
 			  startTime?: 'HH:MM', endTime?, detail?, href, late? }
 		]
 	}
@@ -478,6 +521,8 @@ werden dagegen nachgezogen. Rechte müssen im Manifest stehen, sonst werden sie 
 | `onUserDeleted(tx, { userId, transferTo })` | Konto gelöscht: persönliche Daten löschen, Stammesdaten übergeben (siehe oben). Pflicht bei `user_id`-/`created_by`-Spalten. | `files/user-deleted.ts` |
 | `onMemberDeleted(tx, { memberIds, reason })` | Mitglied gelöscht/anonymisiert: Kopien der Mitgliedsdaten löschen bzw. anonymisieren (siehe oben). | `actions/privacy.ts` |
 | `subjectExport` | Beitrag zur Datenauskunft `/admin/privacy` (`findSubjects?`, `resolve?`, `run`, siehe oben). | `members/subject-export.ts` |
+| `backup.adminOnlyRestore` (Grund) / `backup.afterRestoreJobs` (eigene Job-IDs) | Daten des Moduls verleihen Rechte → Wiederherstellen/Zusammenführen nur für Administrator*innen (#16); nach dem Wiederherstellen laufen die genannten Jobs (Systemkontext, nur bei aktivem Modul), z. B. um Rollen-Verleihungen neu zu bilden. | `offices` (`sync-grants`) |
+| `principals: { memberViewPermission }` | Das Modul ist die **Personenquelle** für Freigaben an Principals (Mitglieder/Gruppen, `provides` erfüllt `PrincipalProvider`) und darf gelöschte Mitglieder melden (`core.modules.memberDeleted`). Höchstens ein Modul; Mitglieder erscheinen in Freigabe-Suche/-Anzeige nur mit `memberViewPermission`. Module, die Freigaben nutzen, deklarieren die Quelle in `dependencies`/`optionalDependencies`. | `members` |
 | `backup.rehash(tx, { hash, decrypt })` | Nach Wiederherstellen/Zusammenführen einer Sicherung mit **anderem Schlüssel** (`APP_SECRET`): schlüsselgebundene Hashes mit dem Zielschlüssel neu berechnen; idempotent, Rückgabe `{ updated, unrecoverable }`, keine Core-Services. **Pflicht für jede neue `*_hash`-Spalte mit `core.crypto.forModule(id).hash(…)`.** Ohne Hook passen die Hashes nach dem Umzug auf einen anderen Server zu keiner Eingabe mehr: Lookups über den Hash (Link-Token, Verknüpfungscode, IBAN-Abgleich) finden nichts, Links/Codes sind tot, Zuordnungen fehlen still. Werte ohne entschlüsselbare Quelle als `unrecoverable` auf `NULL` setzen. | `treasury/backup.ts` (IBAN), `files/backup.ts`, `members`/`actions` (`link-tokens.ts`) |
 | `search` | Quelle für die globale Suche (Befehlspalette, `ModuleSearchProvider { permission?, anyPermission?, run(ctx, query, limit) }`): `run` filtert selbst objektbezogen (Freigaben, eigene Daten), liefert nur sichtbare Felder und relative Links; Fehler überspringen die Quelle. | `events/search.ts`, `members/search.ts` |
 | `embeds` | Einbettbare Inhalte (`ModuleEmbedProvider[]`: `kind`, `label`, `icon`, `permission?`, `search`, `describe`), Core-Endpunkte `/api/v1/embeds…` (siehe „Einbetten in andere Module“). | `whiteboard/embeds.ts` |

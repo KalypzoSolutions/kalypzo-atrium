@@ -183,7 +183,7 @@ Allgemein („Aufbewahrungsfristen“). Die konkreten Fristen legt der Verein fe
 - **Zugriffskreis**: nur mit dem Recht `members.data.export` (dasselbe Recht wie Mitglieder-Datenblätter und Teilnehmenden-PDF,
   standardmäßig nur „Administrator“) **und** Lesezugriff auf die Aktion. Ohne das Recht liefern JSON-Liste (Felder `null`,
   `healthHidden`), CSV (Spalten fehlen), ZIP-Export (`includesHealth: false`) und PDF (403) keine Gesundheitsdaten.
-  Zentrale Prüfung: `src/lib/modules/actions/health.ts` (`canSeeHealth`).
+  Zentrale Prüfung: `modules/actions/health.ts` (`canSeeHealth`).
 - Grenze: Freie Formularfelder gelten nur dann als Gesundheitsdaten, wenn sie an ein Mitgliedsfeld gebunden sind oder ihre
   Beschriftung Gesundheitsbegriffe enthält (kein Kennzeichen im Formular-Builder). Offen: `members.custom` (Zusatzfelder der
   Mitglieder) ist noch unverschlüsselt.
@@ -251,6 +251,26 @@ der Rest bekommt 429; Erfolg setzt den Zähler zurück. Test `files-sharing.test
 
 Prompts und Antworten werden nicht gespeichert oder geloggt; `ai_usage` enthält nur Zähler (Tokens, Kosten, Modul, Modell). Modul-Allowlist, Modell-Allowlist, Rate Limit und Monatslimits begrenzen Verbrauch. Der API-Key verlässt den Server nie. Dateien werden nur mit den Rechten des aufrufenden Kontexts gelesen.
 
+## Modul-Installation aus fremden Quellen (Kalypzo Atrium, seit 2026-11-01)
+
+Module lassen sich unter Administration → Module → Installieren per GitHub-Link oder ZIP-Datei einspielen
+(`src/lib/server/core/modules/install/`). **Modulcode läuft danach mit vollen Rechten im Server-Prozess** (alle
+Daten, Secrets aus der Umgebung) – es gibt keine Sandbox. Schutzmaßnahmen:
+
+- Recht `core.modules.install` ist **privilegiert** (`PRIVILEGED_PERMISSIONS`), zusätzlich gilt `isAdministrator`, nur per
+  Sitzung (kein API-Key) und mit **erneuter Anmeldung** (Passwort + TOTP, `verifyReauth`). Der Plan ist an Person und
+  Inhalt gebunden (Token 15 min, im Prozessspeicher).
+- Abruf nur von `api.github.com`/`codeload.github.com` (Weiterleitungen einzeln geprüft, Token nur an die API), Ref → fester
+  **Commit-SHA**; gespeichert werden Quelle, Commit und **Inhaltshash** (`module_install`, Verlauf `module_install_event`, Audit
+  `core.module.installed`). Optional nur freigegebene Quellen (`core.modules.allowedSources`, dann keine ZIP-Dateien).
+- Entpacken nur im Speicher über das zentrale ZIP-Verzeichnis: keine Symlinks/Sonderdateien, kein `..`/absoluter Pfad/Backslash,
+  keine versteckten Dateien/`.git`/`node_modules`, keine Groß/Klein-Kollisionen, nur erlaubte Endungen, ≤ 5000 Dateien, ≤ 50 MB
+  (je Datei ≤ 10 MB, Packrate ≤ 100).
+- Vorschau ohne Codeausführung: Rechte-Unterschied, neue Migrationen, npm-Pakete (Konflikt mit dem Core sperrt), Hinweise aus einem
+  Import-Scan (`$lib/server`, `child_process`, `process.env`, `eval` …). **Bereits angewendete, veränderte Migrationen sperren.**
+- Ausführen nur, wenn der Server es erlaubt (`ATRIUM_MODULE_INSTALL`: `off` Standard in Produktion, `copy` für `vite dev`,
+  `supervisor` = Neubau, folgt in Phase 6).
+
 ## Externe Empfänger (Übermittlung an Dritte, #69)
 
 Grundlage für das Verzeichnis der Verarbeitungstätigkeiten (VVT). Alle Verbindungen gehen vom **Server** aus (der Browser der
@@ -261,6 +281,7 @@ Nutzer*innen spricht keine Dritten an); die Dienste sehen die Server-Adresse, ni
 | OpenPLZ API (`openplzapi.org`) | Adress-Autovervollständigung in `members` (`members.address.openPlzUrl`, leer = aus) | Straßenname, ggf. PLZ – keine Namen | Beschreibung der Einstellung (Einstellungen → Module → Mitglieder) |
 | Photon (`photon.komoot.io`, OpenStreetMap) | Ersatz, wenn OpenPLZ nichts findet bzw. Land ≠ DE (`members.address.photonUrl`, leer = aus) | eingegebene Anschrift (Straße, Hausnummer, PLZ, Ort) – keine Namen | wie oben |
 | KI-Anbieter (OpenAI-kompatibel, `core.ai.baseUrl`) | nur auf Knopfdruck in der **Schreibhilfe** (`POST /api/v1/ai/assist`, Recht `<modul>.ai.use`, Modul freigegeben über `core.ai.allowedModules`); nichts läuft automatisch | Text im Feld, Wunsch der Person, Eckdaten des verknüpften Objekts (z. B. Name/Zeitraum/Ort/Beitrag einer Aktion – **nie** Teilnehmende, Empfängerlisten, Gesundheits- oder Bankdaten); E-Mail-Adressen, Telefonnummern und IBANs vorher maskiert (`[E-Mail 1]` …) und danach lokal zurückgesetzt. Nur mit Einstellung: eingegangene Mail ohne Absender/Zitatverlauf (`core.ai.assist.allowInbox`), Galeriebild ohne Metadaten (`core.ai.assist.allowImages`) – beide Standard aus | Warnhinweis und Karte „Schreibhilfe“ auf `/admin/settings/ai`; Hinweis „Vorschlag der KI“ im Blatt |
+| GitHub (`api.github.com`, `codeload.github.com`) | nur beim Laden einer Modul-Quelle unter Administration → Module → Installieren | Repository/Ref, optional das GitHub-Token (`core.modules.githubToken`) – keine Personendaten | Seite „Installieren“ |
 | SMTP-Server (`core.smtp.*`) | jede Mail (Bestätigungen, Rechnungen, Erinnerungen, Benachrichtigungen) | Empfängeradresse, Betreff, Text, Anhänge (z. B. Rechnungs-PDF) | – (eigener bzw. beauftragter Mailserver) |
 | SMTP-Server (Modul `messages`) | jede Nachricht an Mitglieder/Gruppen, einzeln je Empfänger | Empfängeradresse, Betreff, Text, Anhänge, frei wählbare Absender-/Antwortadresse (vom Server auf erlaubte Absender geprüft) | – (eigener bzw. beauftragter Mailserver) |
 | IMAP-Server (Modul `messages`, `messages.imap.*`) | Abruf des Catch-all-Postfachs jede Minute (nur wenn eingeschaltet) | Zugangsdaten (Passwort verschlüsselt gespeichert, an Server/Port/Benutzer gebunden); empfangene Mails werden in der App gespeichert | Einstellungsbeschreibung (Einstellungen → Module → Nachrichten) |
@@ -345,7 +366,7 @@ Test `tests/unit/website-security-headers.test.ts`.
 - Audit-Log ist nicht manipulationssicher gegenüber Datenbank-Superusern (Trigger ließe sich entfernen); kein Hash-Chaining.
 - Modul-Schemaisolation ist eine Konvention auf Basis von `search_path`, kein Sicherheitsmechanismus und kein Datenbank-Rollenmodell: Core-Tabellen
   und fremde Modulschemas sind nur **unqualifiziert** unerreichbar, schemaqualifizierte Zugriffe wären möglich. Module sind vertrauenswürdiger Code.
-  ESLint meldet in `src/lib/modules/**` direkte Zugriffe auf Core-Interna (`core.database.db`, `core.database.transaction`, `core.system`,
+  ESLint meldet in `modules/**` direkte Zugriffe auf Core-Interna (`core.database.db`, `core.database.transaction`, `core.system`,
   `core.modules.enable|disable`, `core.auth.instance`, `forModule` mit fremdem String-Literal) – nur statisch erkennbare Fälle, Code-Review bleibt nötig.
 - Chromium im Container ohne seccomp-Profil fällt bei `PDF_CHROMIUM_SANDBOX=auto` auf `--no-sandbox` zurück (siehe „PDF-Renderer“).
 - Kein Virenscan für Uploads.

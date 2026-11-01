@@ -11,6 +11,8 @@ export const CORE_PERMISSIONS: Record<string, string> = {
 	'core.roles.assign': 'Rollen an Benutzer zuweisen',
 	'core.modules.view': 'Module ansehen',
 	'core.modules.manage': 'Module aktivieren und deaktivieren',
+	'core.modules.install':
+		'Module aus GitHub oder ZIP installieren, aktualisieren und entfernen (Modulcode läuft mit vollen Rechten)',
 	'core.jobs.manage': 'Hintergrundjobs ansehen und manuell auslösen',
 	'core.settings.view': 'Systemeinstellungen ansehen',
 	'core.settings.manage': 'Systemeinstellungen verwalten',
@@ -48,5 +50,7 @@ export const PRIVILEGED_PERMISSIONS: ReadonlySet<string> = new Set([
 	'core.system.backup',
 	'core.system.reset',
 	// Liest sämtliche Daten einer Person, auch Gesundheitsdaten (#30)
-	'core.privacy.export'
+	'core.privacy.export',
+	// Fremder Modulcode läuft mit vollen Rechten im Server (Kalypzo Atrium)
+	'core.modules.install'
 ]);

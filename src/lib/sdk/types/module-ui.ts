@@ -54,7 +54,7 @@ export interface UserAdminSection {
 }
 
 /**
- * Vertrag für `src/lib/modules/<id>/ui.ts`: Zuordnung Unterpfad -> Seitenkomponente.
+ * Vertrag für `modules/<id>/ui.ts`: Zuordnung Unterpfad -> Seitenkomponente.
  *
  * Schlüssel sind exakte Unterpfade (`''`, `groups`) oder Muster mit Parametern
  * (`actions/:id`, `actions/:id/edit`). Exakte Treffer haben Vorrang.

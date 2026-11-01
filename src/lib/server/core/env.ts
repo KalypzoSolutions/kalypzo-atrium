@@ -35,7 +35,13 @@ const schema = z.object({
 	 * Faktor auf alle Auth-Rate-Limits (`auth/auth-limits.ts`, Standard 1). Höher nur, wenn viele Personen
 	 * hinter derselben IP arbeiten (NAT) oder für E2E-Tests; die Fehlversuchssperre je Konto bleibt unverändert.
 	 */
-	AUTH_RATE_LIMIT_FACTOR: z.coerce.number().int().min(1).max(100).default(1)
+	AUTH_RATE_LIMIT_FACTOR: z.coerce.number().int().min(1).max(100).default(1),
+	/**
+	 * Modul-Installation im Panel (Kalypzo Atrium): `off` = nur Vorschau, `copy` = Dateien direkt ins Modulverzeichnis
+	 * (Entwicklung mit `vite dev`, danach lädt Vite neu), `supervisor` = Neubau über den Supervisor (Phase 6).
+	 * Ohne Angabe: `copy` bei `NODE_ENV=development`, sonst `off`.
+	 */
+	ATRIUM_MODULE_INSTALL: z.enum(['off', 'copy', 'supervisor']).optional()
 });
 
 export type Env = z.infer<typeof schema>;

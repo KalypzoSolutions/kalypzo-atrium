@@ -1,5 +1,6 @@
 /**
- * Modul-Hook `onMemberDeleted` (siehe `ModuleDefinition`): Das Modul `members` meldet gelöschte oder
+ * Modul-Hook `onMemberDeleted` (siehe `ModuleDefinition`): Die Personenquelle (`ModuleDefinition.principals`,
+ * z. B. Mitglieder & Gruppen) meldet gelöschte oder
  * anonymisierte Mitglieder, alle anderen aktiven Module räumen ihre Kopien auf (z. B. `actions`:
  * verknüpfte Teilnehmende anonymisieren). Je Modul eine eigene Modul-Transaktion, danach
  * `afterCommit`; Fehler eines Moduls brechen nicht ab.
@@ -7,18 +8,17 @@
 import type { MemberDeletedInfo } from '../modules/types';
 import { forModule } from '../database/module-db';
 import { errors } from '../errors';
-import { allDefinitions } from '../modules/registry';
+import { allDefinitions, principalSource } from '../modules/registry';
 import { isModuleEnabled } from '../modules/service';
-
-/** Nur das Mitgliedermodul darf das Ereignis auslösen */
-const SOURCE_MODULE = 'members';
 
 /** Rückgabe = Modul-IDs, deren Aufräumen fehlgeschlagen ist (für das Audit des Aufrufers). */
 export async function notifyMembersDeleted(
 	callerModuleId: string,
 	info: MemberDeletedInfo
 ): Promise<string[]> {
-	if (callerModuleId !== SOURCE_MODULE) {
+	// Nur die Personenquelle darf das Ereignis auslösen
+	const source = principalSource()?.id;
+	if (!source || callerModuleId !== source) {
 		throw errors.forbidden('Nur das Mitgliedermodul darf gelöschte Mitglieder melden');
 	}
 	const memberIds = [...new Set(info.memberIds)].filter(Boolean);
@@ -27,7 +27,7 @@ export async function notifyMembersDeleted(
 	for (const def of allDefinitions()) {
 		const hook = def.onMemberDeleted;
 		const moduleId = def.manifest.id;
-		if (!hook || moduleId === SOURCE_MODULE) continue;
+		if (!hook || moduleId === source) continue;
 		try {
 			if (!(await isModuleEnabled(moduleId))) continue;
 			const result = await forModule(moduleId).transaction((tx) =>

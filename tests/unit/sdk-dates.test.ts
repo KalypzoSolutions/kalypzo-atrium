@@ -9,7 +9,6 @@ import {
 	setTodayForTests,
 	todayBerlin
 } from '$lib/sdk/dates';
-import { memberInput } from '$lib/modules/members/schemas';
 
 afterEach(() => {
 	setTodayForTests(null);
@@ -44,20 +43,6 @@ describe('todayBerlin (#32)', () => {
 		setTodayForTests(null);
 		expect(todayBerlin()).toBe('2026-10-21');
 		expect(() => setTodayForTests('2026-02-30')).toThrow();
-	});
-	it('Mitglied mit Eintritt „heute“ nachts um 00:30 wird akzeptiert', () => {
-		vi.useFakeTimers();
-		vi.setSystemTime(new Date('2026-10-20T22:30:00Z'));
-		const parsed = memberInput.safeParse({
-			firstName: 'Mia',
-			lastName: 'Muster',
-			birthDate: '2026-10-21'
-		});
-		// Geburtsdatum „heute“ (Berlin) ist nicht in der Zukunft
-		const issues = parsed.success
-			? []
-			: parsed.error.issues.filter((i) => i.path[0] === 'birthDate');
-		expect(issues).toEqual([]);
 	});
 });
 

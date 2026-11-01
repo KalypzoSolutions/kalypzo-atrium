@@ -117,7 +117,7 @@ function optionalCycleWarnings(defs: readonly ModuleDefinition[]): string[] {
 		for (const e of edges.get(at) ?? []) {
 			const opt = optional || e.optional;
 			if (e.to === start) {
-				if (!opt) continue; // harte Zyklen lehnt assertDependenciesResolvable ab
+				if (!opt) continue; // harte Zyklen schließt excludeUnresolvableModules aus
 				const cycle = [...trail, start];
 				// gleiche Zyklen nur einmal melden (Rotation normalisieren)
 				const body = cycle.slice(0, -1);

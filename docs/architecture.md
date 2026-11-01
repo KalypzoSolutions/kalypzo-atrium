@@ -22,12 +22,12 @@ Schichten:
 
 1. **Core-Services** (`src/lib/server/core`): auth, permissions, modules, settings, api, database, pdf, ai, storage, images, audit, jobs, search, backup, privacy, system (Reset). Liegen unter `$lib/server`, SvelteKit verhindert damit Client-Bundles.
 2. **Modul-SDK** (`src/lib/sdk`): einzige erlaubte Schnittstelle für Module (`server`, `client`, `types`). ESLint (`eslint.config.js`) erlaubt Modulen nur `$lib/sdk/*`, `$lib/components/{ui,layout,forms}`, `$lib/forms`, `$lib/pdf-lists`, `$lib/utils` und fremde Verträge als `import type` (siehe [Modulentwicklung](module-development.md#erlaubte-importe)); `$lib/server/*` und `$lib/core/*` sind verboten. Zusätzlich meldet es direkte Zugriffe auf Core-Interna (`core.database.db|transaction`, `core.system`, `core.modules.enable|disable`, `core.auth.instance`, `forModule` mit fremdem Literal).
-3. **Module** (`src/lib/modules/<id>`): Manifest, Endpunkte, Migrationen, UI.
+3. **Module** (`modules/<id>`): Manifest, Endpunkte, Migrationen, UI.
 4. **Administrationsoberfläche** (`src/routes/(internal)/admin/…`, URLs unter `/admin`): nutzt die Core-Services direkt in `+page.server.ts` (Load/Actions) mit `locals.ctx`.
    Seitenleiste, Übersicht `/admin`, Reiter und Befehlspalette (Strg+K) kommen aus `src/lib/components/layout/admin-registry.ts`; alte URLs
    (`/users`, `/settings`, `/api-docs` …) leiten per 308 um (`src/lib/server/core/admin-redirects.ts`).
 
-Der Core kennt keine Fachmodule: er entdeckt sie nur über das Build-Zeit-Glob `src/lib/modules/*/module.ts`.
+Der Core kennt keine Fachmodule: er entdeckt sie nur über das Build-Zeit-Glob `modules/*/module.ts`.
 
 ## Requestfluss
 
@@ -58,7 +58,7 @@ Der Core kennt keine Fachmodule: er entdeckt sie nur über das Build-Zeit-Glob `
 
 | Ebene | Wann | Wo | Wirkung |
 |---|---|---|---|
-| **Registrierung** | Build/Start | `modules/load.ts` (`import.meta.glob`), `registry.ts` | Modul ist im Build bekannt; Manifest wird validiert |
+| **Registrierung** | Build/Start | `modules/load.ts` (`virtual:atrium-modules/server`), `registry.ts` | Modul ist im Build bekannt; Manifest wird validiert |
 | **Routing** | Build | `/modules/[moduleId]/[...path]` (Catch-all), `/api/v1/modules/<id>/…` | Statische Routen, Auflösung zur Laufzeit |
 | **Aktivierung** | Laufzeit | Tabelle `module_state`, `isModuleEnabled` (3 s Cache) | Entscheidet über Erreichbarkeit, Navigation und wirksame Berechtigungen |
 
@@ -82,4 +82,12 @@ Beim Start legt `syncModules()` fehlende `module_state`-Zeilen an (deaktiviert),
 
 ## Erweiterbarkeit
 
-Module liegen zunächst im selben Repository. Das SDK (`$lib/sdk/*`) ist der stabile Vertrag; ein späteres Auslagern in Pakete erfordert nur, die Importpfade des SDK bereitzustellen. Dynamisches Laden nicht vertrauenswürdigen Codes zur Laufzeit ist bewusst nicht vorgesehen.
+Module liegen außerhalb von `src/` im Modulverzeichnis (Standard `modules/`, abweichend über `ATRIUM_MODULES_DIR`, siehe
+`tools/modules-dir.js`). Das Vite-Plugin `tools/vite-plugin-atrium-modules.ts` bindet sie beim Build ein (`virtual:atrium-modules/server`
+für die Definitionen, `virtual:atrium-modules/ui` für die Oberflächen, Tailwind-`@source` für die Klassen); Importpfad für Module ist
+der Alias `$modules/<id>/…`. Das SDK (`$lib/sdk/*`) ist der stabile Vertrag. Fremde Module werden nur per `import type … from
+'$modules/<id>/contract'` angesprochen (ESLint `consistent-type-imports`), damit der Build auch ohne das andere Modul gelingt.
+
+**Geplant (2026-11-01, „Kalypzo Atrium“):** Core und Module in getrennten Repositories; Module werden im Webpanel per GitHub-Link oder
+ZIP installiert, danach baut der Server die App neu. Damit ist Modulcode aus fremden Quellen möglich – er läuft mit **vollen Rechten**
+im Server-Prozess (keine Sandbox); installieren dürfen nur Administrator*innen, mit fester Commit-Kennung.

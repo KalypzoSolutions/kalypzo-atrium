@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CORE_PERMISSIONS } from '$lib/server/core/permissions/catalog';
@@ -25,20 +25,6 @@ describe('Doku-Abgleich', () => {
 		expect(fields.length).toBeGreaterThan(10);
 		const text = read('docs', 'module-development.md');
 		const missing = fields.filter((f) => !text.includes(f));
-		expect(missing).toEqual([]);
-	});
-
-	const modulesDir = join(root, 'src', 'lib', 'modules');
-	const moduleIds = readdirSync(modulesDir).filter((d) =>
-		statSync(join(modulesDir, d)).isDirectory()
-	);
-
-	it.each(moduleIds)('.claude/rules/module-%s.md nennt jede Top-Level-.ts des Moduls', (id) => {
-		const text = read('.claude', 'rules', `module-${id}.md`);
-		const files = readdirSync(join(modulesDir, id)).filter(
-			(f) => f.endsWith('.ts') && statSync(join(modulesDir, id, f)).isFile()
-		);
-		const missing = files.filter((f) => !text.includes(f));
 		expect(missing).toEqual([]);
 	});
 });

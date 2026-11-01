@@ -2,7 +2,7 @@
 paths:
   - "src/lib/forms/**"
   - "src/lib/components/forms/**"
-  - "src/lib/modules/**/form*"
+  - "modules/**/form*"
 ---
 
 # Formular-Builder (wiederverwendbar) – Entwurf und Regeln

@@ -2,7 +2,6 @@
 import { describe, expect, it } from 'vitest';
 import { richTextImageIds, sanitizeRichText } from '$lib/sdk/server/html';
 import { slugify } from '$lib/sdk/slug';
-import { bannerState, firstNameOf } from '$lib/modules/website/schemas';
 
 const IMG = '0f8fad5b-d9cb-469f-a165-70867728950e';
 const OTHER = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
@@ -55,24 +54,5 @@ describe('slugify', () => {
 
 	it('kürzt ohne Bindestrich am Ende', () => {
 		expect(slugify('abc def ghi', 4)).toBe('abc');
-	});
-});
-
-describe('website: reine Helfer', () => {
-	const now = Date.parse('2026-10-25T12:00:00Z');
-	it('bannerState', () => {
-		expect(bannerState({ active: false, startsAt: null, endsAt: null }, now)).toBe('inactive');
-		expect(bannerState({ active: true, startsAt: null, endsAt: null }, now)).toBe('live');
-		expect(bannerState({ active: true, startsAt: '2026-10-26T00:00:00Z', endsAt: null }, now)).toBe(
-			'scheduled'
-		);
-		expect(bannerState({ active: true, startsAt: null, endsAt: '2026-10-25T12:00:00Z' }, now)).toBe(
-			'expired'
-		);
-	});
-
-	it('firstNameOf', () => {
-		expect(firstNameOf('  Anna-Lena  Muster ')).toBe('Anna-Lena');
-		expect(firstNameOf('')).toBe('');
 	});
 });

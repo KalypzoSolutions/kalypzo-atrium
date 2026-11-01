@@ -4,15 +4,16 @@
  * `components/ui` und keine nativen Checkboxen/Textareas in der Verwaltung – stattdessen Tokens
  * (`text-warning`, `bg-success-muted`, `text-destructive` …) und Core-Bausteine (`Alert`, `Badge`, `Checkbox`, `Textarea`).
  *
- * Module werden schrittweise migriert: erfasst sind die in `MIGRATED_MODULES` genannten (#71, Folgeschritt von #49);
- * seit Welle 5 alle Fachmodule. Zusätzlich (#71): Typo-Mindestgröße, Dialoghöhen, Ladetexte, Tabs-Hacks,
+ * Module: alle installierten (Modulverzeichnis, ohne `tests/`; #71, seit Welle 5 alle Fachmodule). Zusätzlich (#71): Typo-Mindestgröße, Dialoghöhen, Ladetexte, Tabs-Hacks,
  * Kartentitel ohne Größen-Override, du-Ansprache.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 
 const ROOT = resolve(__dirname, '../..');
+const MODULES = modulesDir();
 
 function files(dir: string): string[] {
 	const out: string[] = [];
@@ -24,27 +25,20 @@ function files(dir: string): string[] {
 	return out;
 }
 
-const rel = (p: string) => relative(ROOT, p).replace(/\\/g, '/');
-/** Bereits auf Tokens umgestellte Module (weitere ergänzen, sobald migriert) */
-const MIGRATED_MODULES = [
-	'actions',
-	'events',
-	'files',
-	'galleries',
-	'members',
-	'material',
-	'notes',
-	'orders',
-	'offices',
-	'tasks',
-	'treasury',
-	'website',
-	'whiteboard'
-];
+/** Pfad relativ zum Projekt; Moduldateien immer als `modules/<id>/…` (auch bei anderem Modulverzeichnis) */
+const rel = (p: string) => {
+	const fromModules = relative(MODULES, p).replace(/\\/g, '/');
+	return fromModules.startsWith('..')
+		? relative(ROOT, p).replace(/\\/g, '/')
+		: `modules/${fromModules}`;
+};
+/** Alle installierten Module (seit Welle 5 sind alle Fachmodule migriert), ohne ihre Tests */
 const SCOPE = [
 	...files(join(ROOT, 'src/lib/components')),
 	...files(join(ROOT, 'src/routes')),
-	...MIGRATED_MODULES.flatMap((m) => files(join(ROOT, 'src/lib/modules', m)))
+	...moduleIds(MODULES)
+		.flatMap((m) => files(join(MODULES, m)))
+		.filter((f) => !/[\\/]tests[\\/]/.test(f))
 ];
 
 /** Begründete Ausnahmen (Pfad-Präfixe) */
@@ -55,8 +49,8 @@ const PALETTE_EXCEPTIONS: string[] = [
 
 /** Bildbetrachter mit immer dunkler Bühne (unabhängig vom Farbschema): weiße Schrift auf Schwarz gewollt */
 const DARK_STAGE: string[] = [
-	'src/lib/modules/files/pages/FilePreview.svelte',
-	'src/lib/modules/galleries/pages/ImageViewer.svelte'
+	'modules/files/pages/FilePreview.svelte',
+	'modules/galleries/pages/ImageViewer.svelte'
 ];
 
 function hits(pattern: RegExp, include: (path: string) => boolean): string[] {

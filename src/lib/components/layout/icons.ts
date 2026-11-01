@@ -22,6 +22,8 @@ import Mail from '@lucide/svelte/icons/mail';
 import NotebookPen from '@lucide/svelte/icons/notebook-pen';
 import Presentation from '@lucide/svelte/icons/presentation';
 import Puzzle from '@lucide/svelte/icons/puzzle';
+import Download from '@lucide/svelte/icons/download';
+import History from '@lucide/svelte/icons/history';
 import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 import ShoppingBasket from '@lucide/svelte/icons/shopping-basket';
 import ScrollText from '@lucide/svelte/icons/scroll-text';
@@ -65,6 +67,8 @@ const ICONS: Record<string, Icon> = {
 	offices: Briefcase,
 	presentation: Presentation,
 	puzzle: Puzzle,
+	download: Download,
+	history: History,
 	'rotate-ccw': RotateCcw,
 	'scroll-text': ScrollText,
 	settings: Settings,

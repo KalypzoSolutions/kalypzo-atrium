@@ -9,7 +9,10 @@ import {
 import { hit, peek, reset, resetAllForTests } from '$lib/server/core/rate-limit';
 import { sanitizeMetadata } from '$lib/server/core/audit/service';
 import {
-	assertDependenciesResolvable,
+	brokenModules,
+	excludeUnresolvableModules,
+	getDefinition,
+	resetBrokenModulesForTests,
 	registerModule,
 	unregisterModule,
 	validateDefinition
@@ -129,13 +132,27 @@ describe('Modulregistrierung', () => {
 			)
 		).not.toThrow();
 	});
-	it('erkennt fehlende Abhängigkeiten und Zyklen', () => {
+	it('schließt Module mit fehlender Abhängigkeit (auch Folgefehler) und Zyklen aus, ohne zu werfen', () => {
+		resetBrokenModulesForTests();
 		registerModule(mod('zz-a', { dependencies: ['zz-b'] }));
-		expect(() => assertDependenciesResolvable()).toThrow(/unbekanntes Modul/);
-		registerModule(mod('zz-b', { dependencies: ['zz-a'] }));
-		expect(() => assertDependenciesResolvable()).toThrow(/Zyklische/);
-		unregisterModule('zz-a');
-		unregisterModule('zz-b');
+		registerModule(mod('zz-c', { dependencies: ['zz-a'] }));
+		const removed = excludeUnresolvableModules();
+		expect(removed.map((r) => r.id).sort()).toEqual(['zz-a', 'zz-c']);
+		expect(getDefinition('zz-a')).toBeUndefined();
+		expect(brokenModules().find((b) => b.id === 'zz-a')?.reason).toMatch(/„zz-b“ fehlt/);
+
+		registerModule(mod('zz-x', { dependencies: ['zz-y'] }));
+		registerModule(mod('zz-y', { dependencies: ['zz-x'] }));
+		registerModule(mod('zz-ok'));
+		expect(
+			excludeUnresolvableModules()
+				.map((r) => r.id)
+				.sort()
+		).toEqual(['zz-x', 'zz-y']);
+		expect(brokenModules().find((b) => b.id === 'zz-x')?.reason).toMatch(/Zyklische/);
+		expect(getDefinition('zz-ok')).toBeDefined();
+		unregisterModule('zz-ok');
+		resetBrokenModulesForTests();
 	});
 	it('lehnt doppelte Registrierung ab', () => {
 		registerModule(mod('zz-dup'));

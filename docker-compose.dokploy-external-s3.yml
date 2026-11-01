@@ -76,6 +76,12 @@ services:
       BACKUP_MAX_BYTES: ${BACKUP_MAX_BYTES:-}
       # Temp-Dateien der Datensicherung auf dem Volume `backup-tmp` statt im RAM-tmpfs /tmp (Issue #38)
       BACKUP_TMP_DIR: /var/tmp/ep-backup
+      # Modul-Installation im Panel (Kalypzo Atrium): Supervisor baut im Container neu (Volume `atrium-data`).
+      # `off` = nur Vorschau. Heap des Neubaus in MB (mem_limit entsprechend höher als im Normalbetrieb).
+      ATRIUM_MODULE_INSTALL: ${ATRIUM_MODULE_INSTALL:-supervisor}
+      ATRIUM_BUILD_HEAP: ${ATRIUM_BUILD_HEAP:-3072}
+      # Frisches Deployment: Module, die der Server beim ersten Start selbst holt (JSON, siehe docs/deployment.md)
+      ATRIUM_MODULES_SEED: ${ATRIUM_MODULES_SEED:-}
       # Traefik (Dokploy) setzt die Forwarded-Header
       ADDRESS_HEADER: X-Forwarded-For
       XFF_DEPTH: '1'
@@ -100,6 +106,7 @@ services:
     read_only: true
     volumes:
       - backup-tmp:/var/tmp/ep-backup
+      - atrium-data:/data/atrium
     tmpfs:
       - /tmp:size=256m,mode=1777
     cap_drop: [ALL]
@@ -107,11 +114,12 @@ services:
       internal:
         aliases: ['ep-intern-${DEPLOY_ENV:-prod}-app']
       dokploy-network: {}
-    mem_limit: ${APP_MEM_LIMIT:-1536m}
+    # Neubau beim Installieren von Modulen braucht ~3 GB (Messwerte: docs/deployment.md)
+    mem_limit: ${APP_MEM_LIMIT:-4g}
     cpus: ${APP_CPUS:-1.0}
     cpu_shares: 768
     pids_limit: 1024
-    stop_grace_period: 30s
+    stop_grace_period: 45s
 
   # Öffentliche Stammeswebsite (website/). Domain in Dokploy auf Service `website`, Port 3001 legen.
   # Holt Termine und Galerien serverseitig über das interne Netz (ep-intern-<env>-app:3000) mit WEBSITE_API_KEY; ohne Key
@@ -207,6 +215,7 @@ services:
 volumes:
   db-data:
   backup-tmp:
+  atrium-data:
   backup-work:
   backup-repo:
 

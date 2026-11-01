@@ -64,7 +64,7 @@ export interface ModuleMigration {
 }
 
 /**
- * Serverseitige Moduldefinition. Wird in `src/lib/modules/<id>/module.ts` per
+ * Serverseitige Moduldefinition. Wird in `modules/<id>/module.ts` per
  * `defineModule(...)` exportiert und zur Build-Zeit registriert.
  */
 /**
@@ -120,6 +120,16 @@ export interface ModuleBackupHooks {
 		tx: import('../database/client').Tx,
 		helpers: ModuleBackupRehashHelpers
 	) => Promise<{ updated: number; unrecoverable: number }>;
+	/**
+	 * Wiederherstellen/Zusammenführen dieses Moduls nur für Administrator*innen (#16), weil seine Daten Rechte
+	 * verleihen (z. B. Ämter → Rollen). Wert = kurzer Grund für die Anzeige.
+	 */
+	adminOnlyRestore?: string;
+	/**
+	 * Eigene Job-IDs (aus `jobs`), die nach dem Wiederherstellen des Moduls abgeleitete Core-Daten neu bilden
+	 * (z. B. Rollen-Verleihungen). Laufen nach dem Commit im Systemkontext, nur bei aktivem Modul, best-effort.
+	 */
+	afterRestoreJobs?: string[];
 }
 
 /**
@@ -159,6 +169,11 @@ export interface ModuleDashboardSources {
 		{ today: string; limit: number },
 		import('$lib/sdk/types/dashboard').DashboardTodo
 	>;
+	/**
+	 * Eigene Arten für „Diese Woche“ zusätzlich zu den Core-Arten (`meeting`, `event`, `deadline`), z. B.
+	 * `{ key: 'action', label: 'Aktion', style: 'tinted' }`. Einträge dürfen nur Core- oder eigene Arten nutzen.
+	 */
+	agendaKinds?: import('$lib/sdk/types/dashboard').DashboardAgendaKindInfo[];
 	/** Einträge im Zeitraum `from`–`to` (beide inklusive, `YYYY-MM-DD`) */
 	agenda?: ModuleDashboardSource<
 		{ today: string; from: string; to: string },
@@ -253,6 +268,12 @@ export interface ModuleSubjectExport {
 
 export interface ModuleDefinition {
 	manifest: ModuleManifest;
+	/**
+	 * Inhalt von `atrium-module.json` (Paketbeschreibung, siehe `package/schema.ts`). Pflicht für Module aus dem
+	 * Modulverzeichnis; die Registrierung prüft, dass Kennung, Name, Version, Abhängigkeiten und Rechte zum
+	 * Manifest passen. Übernahme ins Manifest mit `manifestFromPackage(pkg)` aus `$lib/sdk/server`.
+	 */
+	package?: unknown;
 	settings?: ModuleSettingDefinition[];
 	/* eslint-disable @typescript-eslint/no-explicit-any */
 	endpoints?: ApiEndpoint<any, any, any>[];
@@ -265,6 +286,15 @@ export interface ModuleDefinition {
 	 * `satisfies <Vertrag>` (kein `as unknown as`), damit fehlende Methoden beim Typcheck auffallen.
 	 */
 	provides?: object;
+	/**
+	 * Dieses Modul ist die **Personenquelle** (Mitglieder und Gruppen) für Freigaben an Principals und meldet
+	 * gelöschte Mitglieder (`core.modules.memberDeleted`). `provides` muss dann `PrincipalProvider`
+	 * (`$lib/sdk/types/sharing`) erfüllen. Höchstens ein Modul je Installation.
+	 */
+	principals?: {
+		/** Recht, das Mitglieder in Freigabe-Suche/-Anzeige sichtbar macht (sonst nur „Mitglied“) */
+		memberViewPermission: string;
+	};
 	/** Hintergrundjobs (siehe `core/jobs`) */
 	jobs?: ModuleJob[];
 	/**

@@ -23,6 +23,10 @@ vi.mock('$app/environment', () => ({
 	version: 'test'
 }));
 vi.mock('$lib/server/core/init', () => ({ initCore: async () => {} }));
+vi.mock('$lib/server/core/lifecycle', () => ({
+	installShutdownHandlers: () => {},
+	runVerifyAndExit: () => {}
+}));
 vi.mock('$lib/server/core/jobs', () => ({ startJobRunner: () => {} }));
 vi.mock('$lib/server/core/auth', () => ({ getAuth: () => ({}) }));
 vi.mock('better-auth/svelte-kit', () => ({

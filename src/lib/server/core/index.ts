@@ -18,7 +18,7 @@ import { registerUserWithRole, searchUserDirectory, usersByIds } from './auth/us
 import { decryptSecret, encryptSecret, isEncrypted, keyedHash } from './crypto';
 import { forModule } from './database/module-db';
 import { findDefaultRoleId } from './permissions/default-roles';
-import { allDefinitions } from './modules/registry';
+import { allDefinitions, principalSource } from './modules/registry';
 import { notifyMembersDeleted } from './privacy/member-hooks';
 import {
 	assertModuleEnabled,
@@ -344,10 +344,12 @@ export const core = {
 		/** Wie `use`, für `optionalDependencies`: `null`, wenn der Anbieter nicht aktiv ist */
 		useOptional: useOptionalModuleService,
 		/**
-		 * Nur für `members`: gelöschte/anonymisierte Mitglieder melden → `onMemberDeleted` aller
-		 * anderen aktiven Module (nie in einer offenen Transaktion aufrufen). Rückgabe = Module mit Fehler.
+		 * Nur für die Personenquelle (`ModuleDefinition.principals`): gelöschte/anonymisierte Mitglieder melden →
+		 * `onMemberDeleted` aller anderen aktiven Module (nie in einer offenen Transaktion aufrufen). Rückgabe = Module mit Fehler.
 		 */
 		memberDeleted: notifyMembersDeleted,
+		/** Personenquelle für Freigaben (Mitglieder/Gruppen), sonst `null` */
+		principalSource,
 		navigationFor,
 		registered: () => allDefinitions().map((d) => d.manifest)
 	},

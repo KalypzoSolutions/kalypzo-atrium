@@ -378,7 +378,43 @@
   live Mitbearbeiten (nur Text), Ablauf/Passwort/Widerruf wie bei Dateien, Gäste mit optionalem Namen. Core: Live-Hub für Gäste (`subject`, `recheck`),
   `publicWideRoutes`. Details: `module-notes.md` → „Öffentliche Links“.
 
+- **Core/Module-Trennung „Kalypzo Atrium“ – Phase 1 (2026-11-01)**: Module liegen in `modules/` (außerhalb `src/`), Alias `$modules`, Vite-Plugin
+  `tools/vite-plugin-atrium-modules.ts` ersetzt die 7 `import.meta.glob` (Server `virtual:atrium-modules/server`, Client `moduleUiLoader`), Ort per
+  `ATRIUM_MODULES_DIR` (`tools/modules-dir.js`; externes Verzeichnis: check/build/Tests grün, braucht `node_modules` per Junction daneben; ESLint-Grenzen
+  greifen dort noch nicht). Plan Phasen 2–9 + N (neutral/mehrsprachig): `~/.claude/plans/ok-dieses-projekt-soll-wondrous-blum.md`.
+  **Phase 2 (2026-11-01)**: Paketformat `modules/<id>/atrium-module.json` (Schema `core/modules/package/schema.ts`, Quellen `github:…`, SemVer-Bereiche,
+  `npm`), Katalog `modules/atrium-modules.json`, `module.ts` mit `package: pkg` + `manifestFromPackage(pkg)`, Core-Version `2.0.0-pre.1`
+  (`core/version.ts`, `semver`). Nicht lauffähige Module (Konvention, Paket ≠ Manifest, fehlende/zu alte Abhängigkeit, Core-Version, Zyklus)
+  brechen den Start nicht mehr ab → „Defekt“ unter Administration → Module; nicht mehr installierte mit Zustand → „Nicht installiert“
+  (`listModuleProblems`). Tests `module-packages`, `module-problems`, `core-units`.
+  **Phase 3 (2026-11-01)**: Core ohne Modul-IDs (Wächter `core-no-module-ids`): `backup.adminOnlyRestore`/`afterRestoreJobs` (offices),
+  `ModuleDefinition.principals` + `core.modules.principalSource()` (members als Personenquelle für Freigaben/`memberDeleted`), `dashboard.agendaKinds`
+  (Feed liefert `kinds`, `action`/`material` von den Modulen angemeldet), Mitglieder-Spaltenkatalog nach `members/sheet-columns.ts`
+  (`MembersService.sheetCatalog`/`sheetRow`, `$lib/pdf-lists/presets.ts` generisch), Test-Schnittstelle `$testing` (`tests/sdk/index.ts`).
+  **Phase 4 (2026-11-01)**: Tests aufgeteilt – Fixture-Module `tests/fixtures/modules/fx-{people,board,consumer}` (+ `fixture-modules.test.ts`,
+  E2E `fixture-module.spec.ts`), 211 Modultests nach `modules/<id>/tests/…` bzw. `modules/_integration/tests/…` (Backup-Helfer nach
+  `modules/_integration/helpers/`), E2E nach `modules/<id>/e2e` bzw. `_integration/e2e`, Importe auf `$testing` (`tests/sdk/core.ts` erzeugt,
+  `$testing/e2e`). `npm run test:core` (Core ohne Fachmodule) grün; CI-Schritte „Core ohne Fachmodule“. Offen: Core-Funktionen Backup/Reset/Suche/
+  Datenschutz werden mit echten Daten nur in `_integration` geprüft; `website-*`/`messages-trial`-Tests importieren aus `website/` (eigenes Repo
+  geplant); `profile-extra` importiert eine Core-Route relativ.
+  **Phase 5 (2026-11-01)**: Installer-Backend und Panel – `/admin/modules/install` (GitHub-Link oder ZIP → Module auswählen → Vorschau mit
+  Abhängigkeiten, Rechten, Migrationen, npm, Hinweisen → Re-Auth → Installieren) und `/admin/modules/history`; Details `architecture.md` →
+  „Modul-Installation“. Ausführen nur im Modus `copy` (Entwicklung); Produktion zeigt nur die Vorschau, bis der Supervisor (Phase 6) steht.
+  Offen: ZIP-Upload über die Form-Action braucht `BODY_SIZE_LIMIT` ≥ 50 MB (Dockerfile 55 MB); `module_install` noch nicht in der Datensicherung (Phase 7).
+  **Phase 6 (2026-11-01)**: Supervisor (`scripts/supervisor/`), Generationen in `ATRIUM_DATA_DIR`, Neubau → Probelauf → Tausch → Health → Rollback,
+  App beendet sich geordnet (IPC/`sveltekit:shutdown`), Panel zeigt den Fortschritt; Demo-Server und Image starten über den Supervisor
+  (`CMD node scripts/supervisor.mjs`, Volume `/data/atrium`, `mem_limit` 4g). Details `architecture.md` → „Supervisor und Neubau“, `docs/deployment.md`.
+  Offen: Docker-Probelauf (`read_only`, Speicherlimit) und Messung im Container; Core-Update-Neubau nur grob (läuft mit Basis-Build bis fertig).
+  **Phase 7 (2026-11-01)**: Updates suchen, Entfernen (Daten behalten/löschen), Herkunft in der Datensicherung + Installationshinweis beim Import,
+  Wunschzustand ↔ laufender Stand mit Wiederherstellung, Seed für frische Deployments. Details `architecture.md` → „Lebenszyklus der Module“,
+  `docs/deployment.md`. Offen: Seed nur per Unit-Test (Archiv, Prüfung) geprüft, nicht mit echtem GitHub; Wartungsseite beim Core-Update nicht umgesetzt
+  (Basis-Build läuft weiter).
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Core-Split (2026-11-01): Core heißt **Kalypzo Atrium** (Repo `kalypzo-atrium`, Präfix `atrium`), neutral + mehrsprachig (de/en) für andere
+  Projekte; Module-Repo `ep-intern-modules` (alle 14 + Katalog); Installation im Panel per GitHub-Link/ZIP mit **Neubau im Server**; nur Admins,
+  Warnung, fester Commit; Abhängigkeiten mit Quell-Links im Manifest, fehlende werden vorgeschlagen. Stammeswebsite `website/` bekommt ein
+  **eigenes Repo** (nicht ins Module-Repo).
 - Notizen-Links (2026-11-01): mit Unterseiten; Ablauf + Passwort wie Dateien; Gäste nach Namen fragen; Gäste nur Text (keine Uploads/Einbettungen).
 - KI-Schreibhilfe (2026-10-29): Anrede-Standard **„du“** (Einstellung `core.ai.style.address`, je Text umschaltbar); Nutzung **nur über Rechte**
   `<modul>.ai.use` je Modul (keine Standard-Vergabe an Rollen); eingegangene Mails und Galeriebilder dürfen an die KI **mit Schutz** (maskiert/ohne

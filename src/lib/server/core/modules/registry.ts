@@ -2,12 +2,58 @@ import { PERMISSION_PATTERN } from '../permissions/catalog';
 import { errors } from '../errors';
 import { NOTIFICATION_KEY_PATTERN, allowedChannels } from '$lib/sdk/types/notifications';
 import { MODULE_ID_PATTERN, RESERVED_MODULE_IDS, type ModuleDefinition } from './types';
+import { CORE_VERSION } from '../version';
+import {
+	AGENDA_KIND_PATTERN,
+	CORE_AGENDA_KINDS,
+	DASHBOARD_AGENDA_STYLES
+} from '$lib/sdk/types/dashboard';
+import { parseModulePackage, versionSatisfies, type ModulePackage } from './package/schema';
 
 /**
  * Build-Zeit-Registrierung. Hier wird nur bekannt gemacht, WELCHE Module im Build enthalten
  * sind. Ob ein Modul laufzeitseitig aktiv ist, entscheidet `module_state` (siehe state.ts).
  */
 const definitions = new Map<string, ModuleDefinition>();
+
+/** Module, die gefunden, aber nicht geladen wurden (ungültig, Abhängigkeit fehlt, Core-Version passt nicht) */
+export interface BrokenModule {
+	id: string;
+	name: string;
+	version: string | null;
+	reason: string;
+}
+const broken = new Map<string, BrokenModule>();
+
+/** Paketbeschreibung (`atrium-module.json`) eines registrierten Moduls, sofern vorhanden */
+const packages = new Map<string, ModulePackage>();
+
+/**
+ * Prüft `def.package` gegen das Manifest: gleiche Kennung, Name, Beschreibung, Version, Abhängigkeiten und Rechte.
+ * Wirft mit lesbarer Meldung; liefert das geprüfte Paket.
+ */
+function checkPackage(def: ModuleDefinition): ModulePackage | null {
+	if (def.package === undefined) return null;
+	const m = def.manifest;
+	const pkg = parseModulePackage(def.package, `${m.id}/atrium-module.json`);
+	const sameSet = (a: string[], b: string[]) =>
+		a.length === b.length && [...a].sort().every((v, i) => v === [...b].sort()[i]);
+	const diffs: string[] = [];
+	if (pkg.id !== m.id) diffs.push(`id ${pkg.id} ≠ ${m.id}`);
+	if (pkg.name !== m.name) diffs.push('name');
+	if ((pkg.description ?? '') !== (m.description ?? '')) diffs.push('description');
+	if (pkg.version !== m.version) diffs.push(`version ${pkg.version} ≠ ${m.version}`);
+	if (!sameSet(Object.keys(pkg.dependencies), m.dependencies)) diffs.push('dependencies');
+	if (!sameSet(Object.keys(pkg.optionalDependencies), m.optionalDependencies ?? []))
+		diffs.push('optionalDependencies');
+	if (!sameSet(pkg.permissions, m.permissions)) diffs.push('permissions');
+	if (diffs.length) {
+		throw new Error(
+			`Modul ${m.id}: atrium-module.json passt nicht zum Manifest (${diffs.join(', ')})`
+		);
+	}
+	return pkg;
+}
 
 export function validateDefinition(def: ModuleDefinition): void {
 	const m = def.manifest;
@@ -49,6 +95,36 @@ export function validateDefinition(def: ModuleDefinition): void {
 			}
 		}
 		jobIds.add(j.id);
+	}
+	for (const job of def.backup?.afterRestoreJobs ?? []) {
+		if (!jobIds.has(job)) {
+			throw new Error(`Modul ${m.id}: backup.afterRestoreJobs nennt unbekannten Job "${job}"`);
+		}
+	}
+	if (def.backup?.adminOnlyRestore !== undefined && !def.backup.adminOnlyRestore.trim()) {
+		throw new Error(`Modul ${m.id}: backup.adminOnlyRestore braucht einen Grund`);
+	}
+	if (def.principals) {
+		if (!m.permissions.includes(def.principals.memberViewPermission)) {
+			throw new Error(
+				`Modul ${m.id}: principals.memberViewPermission "${def.principals.memberViewPermission}" fehlt im Manifest`
+			);
+		}
+		if (!def.provides)
+			throw new Error(`Modul ${m.id}: principals braucht provides (PrincipalProvider)`);
+	}
+	const agendaKinds = new Set<string>();
+	for (const k of def.dashboard?.agendaKinds ?? []) {
+		if (
+			!AGENDA_KIND_PATTERN.test(k.key) ||
+			agendaKinds.has(k.key) ||
+			CORE_AGENDA_KINDS.some((c) => c.key === k.key) ||
+			!k.label.trim() ||
+			!DASHBOARD_AGENDA_STYLES.includes(k.style)
+		) {
+			throw new Error(`Modul ${m.id}: ungültige oder doppelte Dashboard-Art "${k.key}"`);
+		}
+		agendaKinds.add(k.key);
 	}
 	const officeKeys = new Set<string>();
 	for (const o of m.offices ?? []) {
@@ -95,14 +171,113 @@ export function validateDefinition(def: ModuleDefinition): void {
 
 export function registerModule(def: ModuleDefinition): void {
 	validateDefinition(def);
+	const pkg = checkPackage(def);
 	if (definitions.has(def.manifest.id)) {
 		throw new Error(`Modul "${def.manifest.id}" ist bereits registriert`);
 	}
+	const otherSource = def.principals
+		? [...definitions.values()].find((d) => d.principals)
+		: undefined;
+	if (otherSource) {
+		throw new Error(
+			`Modul "${def.manifest.id}": Personenquelle (principals) ist schon "${otherSource.manifest.id}"`
+		);
+	}
 	definitions.set(def.manifest.id, def);
+	broken.delete(def.manifest.id);
+	if (pkg) packages.set(def.manifest.id, pkg);
 }
 
 export function unregisterModule(id: string): void {
 	definitions.delete(id);
+	packages.delete(id);
+}
+
+/** Modul, das Mitglieder/Gruppen für Freigaben liefert (`ModuleDefinition.principals`), sonst `null` */
+export function principalSource(): { id: string; memberViewPermission: string } | null {
+	for (const d of definitions.values()) {
+		if (d.principals) return { id: d.manifest.id, ...d.principals };
+	}
+	return null;
+}
+
+export function getModulePackage(id: string): ModulePackage | undefined {
+	return packages.get(id);
+}
+
+/** Merkt ein Modul als defekt (nicht geladen) – Anzeige unter Administration → Module */
+export function markModuleBroken(entry: BrokenModule): void {
+	broken.set(entry.id, entry);
+	console.error(`[modules] Modul ${entry.id} nicht geladen: ${entry.reason}`);
+}
+
+export function brokenModules(): BrokenModule[] {
+	return [...broken.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
+ * Schließt Module aus, die nicht laufen können, statt den Start abzubrechen: Core-Version außerhalb von
+ * `atrium-module.json` → `core`, harte Abhängigkeit fehlt/defekt oder in unpassender Version, Zyklus über harte
+ * Abhängigkeiten. Wiederholt, bis nichts mehr wegfällt (Folgefehler werden mit erfasst).
+ */
+export function excludeUnresolvableModules(): BrokenModule[] {
+	const removed: BrokenModule[] = [];
+	const drop = (d: ModuleDefinition, reason: string) => {
+		const entry = { id: d.manifest.id, name: d.manifest.name, version: d.manifest.version, reason };
+		unregisterModule(d.manifest.id);
+		markModuleBroken(entry);
+		removed.push(entry);
+	};
+	let changed = true;
+	while (changed) {
+		changed = false;
+		for (const d of [...definitions.values()]) {
+			const pkg = packages.get(d.manifest.id);
+			if (pkg && !versionSatisfies(CORE_VERSION, pkg.core)) {
+				drop(d, `Braucht Core ${pkg.core}, installiert ist ${CORE_VERSION}`);
+				changed = true;
+				continue;
+			}
+			for (const dep of d.manifest.dependencies) {
+				const target = definitions.get(dep);
+				const range = pkg?.dependencies[dep]?.version;
+				const reason = !target
+					? `Benötigtes Modul „${dep}“ fehlt`
+					: range && !versionSatisfies(target.manifest.version, range)
+						? `Benötigt „${dep}“ ${range}, vorhanden ist ${target.manifest.version}`
+						: null;
+				if (reason) {
+					drop(d, reason);
+					changed = true;
+					break;
+				}
+			}
+		}
+	}
+	// Zyklen über harte Abhängigkeiten: alle Beteiligten ausschließen
+	const state = new Map<string, 'visiting' | 'done'>();
+	const inCycle = new Set<string>();
+	const visit = (id: string, trail: string[]) => {
+		if (state.get(id) === 'done') return;
+		if (state.get(id) === 'visiting') {
+			for (const x of trail.slice(trail.indexOf(id))) inCycle.add(x);
+			return;
+		}
+		state.set(id, 'visiting');
+		for (const dep of definitions.get(id)?.manifest.dependencies ?? []) visit(dep, [...trail, id]);
+		state.set(id, 'done');
+	};
+	for (const id of definitions.keys()) visit(id, []);
+	for (const id of inCycle) {
+		const d = definitions.get(id);
+		if (d) drop(d, `Zyklische Abhängigkeit (${[...inCycle].join(', ')})`);
+	}
+	return removed;
+}
+
+/** Nur für Tests: Liste defekter Module leeren */
+export function resetBrokenModulesForTests(): void {
+	broken.clear();
 }
 
 export function getDefinition(id: string): ModuleDefinition | undefined {
@@ -126,29 +301,6 @@ export async function notifyModuleDataReplaced(): Promise<void> {
 			console.warn(`[modules] onDataReplaced von ${d.manifest.id} fehlgeschlagen`, e);
 		}
 	}
-}
-
-/** Topologische Prüfung: unbekannte Abhängigkeiten und Zyklen werden abgelehnt. */
-export function assertDependenciesResolvable(): void {
-	for (const d of definitions.values()) {
-		for (const dep of d.manifest.dependencies) {
-			if (!definitions.has(dep)) {
-				throw new Error(`Modul ${d.manifest.id} benötigt unbekanntes Modul "${dep}"`);
-			}
-		}
-	}
-	const visiting = new Set<string>();
-	const done = new Set<string>();
-	const visit = (id: string, trail: string[]) => {
-		if (done.has(id)) return;
-		if (visiting.has(id))
-			throw new Error(`Zyklische Modulabhängigkeit: ${[...trail, id].join(' -> ')}`);
-		visiting.add(id);
-		for (const dep of definitions.get(id)?.manifest.dependencies ?? []) visit(dep, [...trail, id]);
-		visiting.delete(id);
-		done.add(id);
-	};
-	for (const id of definitions.keys()) visit(id, []);
 }
 
 export function requireDefinition(id: string): ModuleDefinition {

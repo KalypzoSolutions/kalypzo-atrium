@@ -50,7 +50,7 @@ jobs:
         run: grep -q '"node_modules/@img/sharp-linux-x64"' package-lock.json
 
       - name: Format (prettier)
-        run: npx prettier --check src tests docs
+        run: npx prettier --check src tests docs modules tools
 
       - name: Typprüfung (svelte-check)
         # Standard-Heap (~2 GB) reicht für das ganze Projekt nicht mehr (OOM seit 2026-10-26)
@@ -74,6 +74,23 @@ jobs:
           retention-days: 14
 
       - name: Build
+        run: npm run build
+
+      # Kalypzo Atrium: der Core muss ohne Fachmodule laufen (Fixture-Module unter tests/fixtures/modules)
+      - name: Core ohne Fachmodule – Typprüfung
+        env:
+          ATRIUM_MODULES_DIR: tests/fixtures/modules
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npm run check
+
+      - name: Core ohne Fachmodule – Tests
+        env:
+          ATRIUM_MODULES_DIR: tests/fixtures/modules
+        run: npx vitest run
+
+      - name: Core ohne Fachmodule – Build
+        env:
+          ATRIUM_MODULES_DIR: tests/fixtures/modules
         run: npm run build
 
       - name: Audit Laufzeitabhängigkeiten (High/Critical blockieren)
@@ -154,7 +171,7 @@ jobs:
         run: npm ci
 
       - name: Nebenläufigkeit (Advisory-Sperren, Job-Claim, Migrationen, Treiber)
-        run: npx vitest run tests/integration/pg-concurrency.test.ts
+        run: npx vitest run modules/_integration/tests/integration/pg-concurrency.test.ts
 
       - name: Smoke-Suite gegen PostgreSQL (alle Core- und Modul-Migrationen, Restore)
         run: >-
@@ -163,10 +180,10 @@ jobs:
           tests/integration/core.test.ts
           tests/integration/core-jobs.test.ts
           tests/integration/module-migration-isolation.test.ts
-          tests/integration/treasury.test.ts
-          tests/integration/orders.test.ts
-          tests/integration/files.test.ts
-          tests/integration/backup-restore-smoke.test.ts
+          modules/treasury/tests/integration/treasury.test.ts
+          modules/orders/tests/integration/orders.test.ts
+          modules/files/tests/integration/files.test.ts
+          modules/_integration/tests/integration/backup-restore-smoke.test.ts
 
   e2e:
     name: e2e (Playwright)

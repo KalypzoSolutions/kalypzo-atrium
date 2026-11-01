@@ -1,18 +1,18 @@
 import { selectProfileSections } from '$lib/sdk/client/profile-sections';
-import type { ModuleUi, ProfileSection } from '$lib/sdk/types/module-ui';
+import type { ProfileSection } from '$lib/sdk/types/module-ui';
+import { moduleUiLoader } from '$lib/sdk/client/module-ui-registry';
 import type { PageLoad } from './$types';
 
 /**
- * Build-Zeit-Registry der Modul-Oberflächen. Hier werden nur die `profileSections` aktiver Module
+ * Modul-Oberflächen aus dem Modulverzeichnis (`moduleUiLoader`). Hier werden nur die `profileSections` aktiver Module
  * (und mit vorhandenem Recht) ausgewählt; die Komponenten laden ihre Daten selbst per `apiFetch`.
  */
-const uis = import.meta.glob<{ default: ModuleUi }>('/src/lib/modules/*/ui.ts');
 
 export const load: PageLoad = async ({ data }) => {
 	const byModule: Record<string, ProfileSection[]> = {};
 	await Promise.all(
 		data.activeModules.map(async (moduleId) => {
-			const loader = uis[`/src/lib/modules/${moduleId}/ui.ts`];
+			const loader = moduleUiLoader(moduleId);
 			if (!loader) return;
 			const sections = (await loader()).default.profileSections;
 			if (sections?.length) byModule[moduleId] = sections;

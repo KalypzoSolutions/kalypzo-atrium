@@ -1,8 +1,9 @@
-import { readdirSync } from 'node:fs';
+import { relative } from 'node:path';
 import js from '@eslint/js';
 import svelte from 'eslint-plugin-svelte';
 import globals from 'globals';
 import ts from 'typescript-eslint';
+import { CORE_ROOT, moduleIds, modulesDir } from './tools/modules-dir.js';
 
 /**
  * Offene Verstöße gegen die Modulgrenze (#44), je Datei die ausnahmsweise erlaubten Importpfade. Liegen in
@@ -20,6 +21,8 @@ export default ts.config(
 			'playwright-report/',
 			'test-results/',
 			'coverage/',
+			// Git-Worktrees anderer Arbeitsstände (eigene tsconfig)
+			'.worktrees/',
 			// Fremde Claude-Skills (vendored, eigener Stil)
 			'.claude/skills/',
 			// Lokale Demo-/Testdaten (PGlite, Screenshots, Skripte) – im sauberen Checkout nicht vorhanden
@@ -54,26 +57,37 @@ export default ts.config(
 );
 
 /**
- * Modulgrenzen (#44) und Core-Interna (#47) für `src/lib/modules/<id>/**` – je Modul ein Block, weil die
+ * Modulgrenzen (#44) und Core-Interna (#47) für `modules/<id>/**` – je Modul ein Block, weil die
  * eigene Modul-ID erlaubt ist. Beschrieben in `docs/module-development.md` → „Erlaubte Importe“;
  * geprüft durch `tests/unit/module-boundaries.test.ts`.
  *
  * Erlaubt: `$lib/sdk/*`, `$lib/components/{ui,layout,forms}`, `$lib/forms`, `$lib/pdf-lists`, `$lib/utils`,
- * eigene Moduldateien und fremde Module NUR als `import type … from '$lib/modules/<anderes>/contract'`.
+ * eigene Moduldateien und fremde Module NUR als `import type … from '$modules/<anderes>/contract'`.
  * Die Core-Regeln (#47) erkennen nur direkte Zugriffe (`core.database.db`, kein Destrukturieren/Alias).
  */
 function moduleBoundaryConfigs() {
-	const ids = readdirSync(new URL('./src/lib/modules/', import.meta.url), { withFileTypes: true })
-		.filter((e) => e.isDirectory())
-		.map((e) => e.name);
+	const dir = modulesDir();
+	// Muster relativ zur Projektwurzel; liegt das Verzeichnis außerhalb, lintet das Module-Repo selbst
+	const base = relative(CORE_ROOT, dir).replace(/\\/g, '/');
+	const ids = moduleIds(dir);
 	const blocks = ids.map((id) => ({
-		files: [`src/lib/modules/${id}/**/*.{ts,svelte}`],
+		files: [`${base}/${id}/**/*.{ts,svelte}`],
 		rules: moduleRules(id, ids, [])
 	}));
 	for (const [file, allowed] of Object.entries(OPEN_BOUNDARY_EXCEPTIONS)) {
-		const id = file.split('/')[3];
+		const id = file.split('/')[1];
 		blocks.push({ files: [file], rules: moduleRules(id, ids, allowed) });
 	}
+	// Tests der Module (`<id>/tests/**`, `_integration/**`) dürfen mehrere Module und `$testing` nutzen
+	blocks.push({
+		files: [`${base}/*/tests/**/*.ts`, `${base}/_integration/**/*.ts`],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': 'off',
+			'no-restricted-syntax': 'off',
+			'@typescript-eslint/consistent-type-imports': 'off',
+			'@typescript-eslint/no-import-type-side-effects': 'off'
+		}
+	});
 	return blocks;
 }
 
@@ -98,29 +112,35 @@ function moduleRules(id, ids, allowed) {
 						message: `Module dürfen nicht auf $lib/server/* zugreifen – nur $lib/sdk/* ${docs}.`
 					},
 					{
-						// Alles unter $lib außer der freigegebenen Oberfläche ($lib/modules regeln die Muster unten)
+						// Alles unter $lib außer der freigegebenen Oberfläche ($modules regeln die Muster unten)
 						regex:
-							'^[$]lib/(?!(sdk|forms|pdf-lists|modules|server|core)(/|$)|utils([.]js)?$|components/(ui|layout|forms)(/|$))',
+							'^[$]lib/(?!(sdk|forms|pdf-lists|server|core)(/|$)|utils([.]js)?$|components/(ui|layout|forms)(/|$))',
 						message: `Nicht freigegebene $lib-Bibliothek für Module ${docs}.`
 					},
 					{
 						// Fremde Module: alles außer ihrem Vertrag
-						regex: `^${exceptions}[$]lib/modules/(?!${id}(/|$))[^/]+(/(?!contract$).*)?$`,
-						message: `Fremde Module nur über ihren Vertrag: import type … from '$lib/modules/<id>/contract' ${docs}.`
+						regex: `^${exceptions}[$]modules/(?!${id}(/|$))[^/]+(/(?!contract$).*)?$`,
+						message: `Fremde Module nur über ihren Vertrag: import type … from '$modules/<id>/contract' ${docs}.`
 					},
 					{
 						// Vertrag fremder Module: nur als Typ (Laufzeit über core.modules.use)
-						regex: `^[$]lib/modules/(?!${id}/)[^/]+/contract$`,
+						regex: `^[$]modules/(?!${id}/)[^/]+/contract$`,
 						allowTypeImports: true,
 						message: `Verträge fremder Module nur als \`import type\` (Laufzeit über core.modules.use) ${docs}.`
 					},
 					{
 						group: relOthers,
-						message: `Relative Importe in andere Module sind verboten – nur import type aus '$lib/modules/<id>/contract' ${docs}.`
+						message: `Relative Importe in andere Module sind verboten – nur import type aus '$modules/<id>/contract' ${docs}.`
 					}
 				]
 			}
 		],
+		// Nur `import type` verschwindet sicher aus dem Build, wenn das Fremdmodul nicht installiert ist
+		'@typescript-eslint/consistent-type-imports': [
+			'error',
+			{ prefer: 'type-imports', fixStyle: 'separate-type-imports', disallowTypeAnnotations: false }
+		],
+		'@typescript-eslint/no-import-type-side-effects': 'error',
 		'no-restricted-syntax': [
 			'error',
 			{

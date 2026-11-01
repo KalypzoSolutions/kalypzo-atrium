@@ -3,7 +3,7 @@
 Selbst gehostete, webbasierte Verwaltungsplattform für einen Pfadfinderstamm als **modularer Monolith**: ein kleiner **Core**
 (Authentifizierung mit 2FA, RBAC, Modulverwaltung, Einstellungen, REST-API mit API-Keys, PDF-, KI-, Bild- und S3-Storage-Service,
 Mail, Hintergrundjobs, globale Suche, Dashboard, Audit-Log, Datensicherung, Admin-Reset, Datenauskunft) plus **Fachmodule** unter
-`src/lib/modules/<id>/`. Module werden unter Administration → Module einzeln aktiviert.
+`modules/<id>/`. Module werden unter Administration → Module einzeln aktiviert.
 
 | Modul | Name | Inhalt |
 |---|---|---|

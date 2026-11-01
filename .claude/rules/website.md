@@ -1,5 +1,5 @@
 ---
-paths: ["website/**", "scripts/seed-demo-website.mjs", "src/lib/modules/*/website.endpoints.ts", "tests/**/*website*"]
+paths: ["website/**", "scripts/seed-demo-website.mjs", "modules/*/website.endpoints.ts", "tests/**/*website*"]
 ---
 
 # Stammeswebsite (`website/`)

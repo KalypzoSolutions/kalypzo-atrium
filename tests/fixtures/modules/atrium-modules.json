@@ -1,0 +1,10 @@
+{
+	"schema": 1,
+	"name": "Kalypzo Atrium – Test-Fixtures",
+	"description": "Kleine Module für die Core-Tests (laufen ohne die Fachmodule).",
+	"modules": [
+		{ "id": "fx-board", "path": "fx-board" },
+		{ "id": "fx-consumer", "path": "fx-consumer" },
+		{ "id": "fx-people", "path": "fx-people" }
+	]
+}

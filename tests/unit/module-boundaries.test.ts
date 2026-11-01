@@ -1,19 +1,23 @@
 /**
- * Modulgrenzen (#44) und Core-Interna (#47): Die ESLint-Regeln aus `eslint.config.js` schlagen bei
- * verbotenen Importen/Zugriffen in `src/lib/modules/<id>/**` an; ein Quelltext-Scan stellt sicher, dass
- * fremde Module heute nur als `import type … /contract` verwendet werden (bis auf die offenen Ausnahmen).
+ * Modulgrenzen (#44) und Core-Interna (#47): Die ESLint-Regeln aus `eslint.config.js` schlagen bei verbotenen
+ * Importen/Zugriffen in `<Modulverzeichnis>/<id>/**` an; ein Quelltext-Scan stellt sicher, dass fremde Module nur als
+ * `import type … /contract` verwendet werden. Generisch über die installierten Module (Fachmodule oder Fixtures):
+ * `A` = eigenes Modul, `B`/`C` = fremde Module.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { ESLint } from 'eslint';
 import { describe, expect, it } from 'vitest';
+import { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 
 const ROOT = process.cwd();
-const MODULES = join(ROOT, 'src', 'lib', 'modules');
+const MODULES = modulesDir();
+const BASE = relative(ROOT, MODULES).replace(/\\/g, '/');
+const [A, B, C] = moduleIds(MODULES) as [string, string, string];
 
 const eslint = new ESLint({ cwd: ROOT });
 
-async function lint(code: string, file = 'src/lib/modules/actions/__boundary-fixture.ts') {
+async function lint(code: string, file = `${BASE}/${A}/__boundary-fixture.ts`) {
 	const [result] = await eslint.lintText(code, { filePath: join(ROOT, file) });
 	return (result?.messages ?? []).filter((m) =>
 		['@typescript-eslint/no-restricted-imports', 'no-restricted-syntax'].includes(m.ruleId ?? '')
@@ -21,11 +25,15 @@ async function lint(code: string, file = 'src/lib/modules/actions/__boundary-fix
 }
 
 describe('ESLint: Modulgrenzen (#44)', () => {
+	it('mindestens drei Module installiert (sonst greift der Test nicht)', () => {
+		expect(C).toBeTruthy();
+	});
+
 	it('verbietet Laufzeit- und Typimporte aus internen Dateien fremder Module', async () => {
 		const msgs = await lint(
 			[
-				"import { listSelectionInput } from '$lib/modules/members/schemas';",
-				"import type { Member } from '$lib/modules/members/schemas';",
+				`import { listSelectionInput } from '$modules/${B}/schemas';`,
+				`import type { Member } from '$modules/${B}/schemas';`,
 				'export const x = [listSelectionInput] as unknown as Member;'
 			].join('\n')
 		);
@@ -35,22 +43,21 @@ describe('ESLint: Modulgrenzen (#44)', () => {
 	it('erlaubt den Vertrag fremder Module nur als import type', async () => {
 		const msgs = await lint(
 			[
-				"import type { MembersService } from '$lib/modules/members/contract';",
-				"import { type TreasuryService } from '$lib/modules/treasury/contract';",
-				"import { something } from '$lib/modules/members/contract';",
-				'export type X = MembersService | TreasuryService | typeof something;'
+				`import type { BService } from '$modules/${B}/contract';`,
+				`import { something } from '$modules/${C}/contract';`,
+				'export type X = BService | typeof something;'
 			].join('\n')
 		);
-		expect(msgs.map((m) => m.line)).toEqual([3]);
+		expect(msgs.map((m) => m.line)).toEqual([2]);
 	});
 
 	it('verbietet relative Pfade in Nachbarmodule, erlaubt eigene Dateien', async () => {
 		const msgs = await lint(
 			[
-				"import { a } from '../members/schemas';",
-				"import { b } from '../../treasury/db';",
+				`import { a } from '../${B}/schemas';`,
+				`import { b } from '../../${C}/db';`,
 				"import { c } from './schemas';",
-				"import { d } from '$lib/modules/actions/schemas';",
+				`import { d } from '$modules/${A}/schemas';`,
 				'export const x = [a, b, c, d];'
 			].join('\n')
 		);
@@ -77,15 +84,16 @@ describe('ESLint: Modulgrenzen (#44)', () => {
 		expect([...new Set(msgs.map((m) => m.line))]).toEqual([8, 9, 10]);
 	});
 
-	it('Ausnahme gilt nur für die eingetragene Datei', async () => {
-		const code = [
-			"import { ACCOUNTING_CATEGORY_LABELS } from '$lib/modules/actions/schemas';",
-			"import { x } from '$lib/modules/actions/access';",
-			'export const l = [ACCOUNTING_CATEGORY_LABELS, x];'
-		].join('\n');
-		const open = await lint(code, 'src/lib/modules/treasury/pages/AccountingPage.ts');
-		// Andere Dateiendung → keine Ausnahme
-		expect(open.map((m) => m.line)).toEqual([1, 2]);
+	it('Tests im Modul (tests/) dürfen andere Module und $testing nutzen', async () => {
+		const msgs = await lint(
+			[
+				`import modB from '$modules/${B}/module';`,
+				"import { useTestDatabase } from '$testing';",
+				'export const x = [modB, useTestDatabase];'
+			].join('\n'),
+			`${BASE}/${A}/tests/integration/__fixture.test.ts`
+		);
+		expect(msgs).toEqual([]);
 	});
 });
 
@@ -110,10 +118,10 @@ describe('ESLint: Core-Interna in Modulen (#47)', () => {
 		const msgs = await lint(
 			[
 				"import { core } from '$lib/sdk/server';",
-				"const MODULE_ID = 'actions';",
-				"export const a = core.database.forModule('treasury');",
-				"export const b = core.crypto.forModule('members');",
-				"export const ok1 = core.database.forModule('actions');",
+				`const MODULE_ID = '${A}';`,
+				`export const a = core.database.forModule('${C}');`,
+				`export const b = core.crypto.forModule('${B}');`,
+				`export const ok1 = core.database.forModule('${A}');`,
 				'export const ok2 = core.crypto.forModule(MODULE_ID);'
 			].join('\n')
 		);
@@ -122,33 +130,33 @@ describe('ESLint: Core-Interna in Modulen (#47)', () => {
 });
 
 describe('Quelltext: fremde Module nur über import type … /contract', () => {
-	/** Offene Ausnahmen (#44), identisch mit OPEN_BOUNDARY_EXCEPTIONS in eslint.config.js */
-	const OPEN = new Set(['treasury/pages/AccountingPage.svelte → $lib/modules/actions/schemas']);
-
 	function files(dir: string): string[] {
 		return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
 			e.isDirectory()
-				? files(join(dir, e.name))
+				? e.name === 'tests' || e.name === 'node_modules'
+					? []
+					: files(join(dir, e.name))
 				: /\.(ts|svelte)$/.test(e.name)
 					? [join(dir, e.name)]
 					: []
 		);
 	}
 
-	it('keine weiteren Verstöße', () => {
+	it('keine Verstöße', () => {
 		const found: string[] = [];
-		const re = /import\s+(type\s+)?[^;]*?\sfrom\s*['"]\$lib\/modules\/([^/'"]+)([^'"]*)['"]/g;
-		for (const file of files(MODULES)) {
-			const rel = relative(MODULES, file).split(sep).join('/');
-			const own = rel.split('/')[0]!;
-			const src = readFileSync(file, 'utf8');
-			for (const m of src.matchAll(re)) {
-				const [, isType, mod, rest] = m;
-				if (mod === own) continue;
-				if (isType && rest === '/contract') continue;
-				found.push(`${rel} → $lib/modules/${mod}${rest}`);
+		const re = /import\s+(type\s+)?[^;]*?\sfrom\s*['"]\$modules\/([^/'"]+)([^'"]*)['"]/g;
+		for (const id of moduleIds(MODULES)) {
+			for (const file of files(join(MODULES, id))) {
+				const rel = relative(MODULES, file).split(sep).join('/');
+				const src = readFileSync(file, 'utf8');
+				for (const m of src.matchAll(re)) {
+					const [, isType, mod, rest] = m;
+					if (mod === id) continue;
+					if (isType && rest === '/contract') continue;
+					found.push(`${rel} → $modules/${mod}${rest}`);
+				}
 			}
 		}
-		expect(found.filter((f) => !OPEN.has(f))).toEqual([]);
+		expect(found).toEqual([]);
 	});
 });

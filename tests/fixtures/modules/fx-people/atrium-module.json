@@ -1,0 +1,12 @@
+{
+	"schema": 1,
+	"id": "fx-people",
+	"name": "Fixture Personen",
+	"description": "Test-Modul: Personenquelle (Personen, Teams) für Freigaben an Principals",
+	"version": "1.0.0",
+	"core": ">=2.0.0-0 <3.0.0",
+	"dependencies": {},
+	"optionalDependencies": {},
+	"permissions": ["fx-people.person.edit", "fx-people.person.view"],
+	"npm": {}
+}
