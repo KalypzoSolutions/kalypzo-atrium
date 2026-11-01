@@ -173,7 +173,8 @@ export class Supervisor {
 		this.crashes = [];
 		this.queue = Promise.resolve();
 		this.stopping = false;
-		for (const d of ['gen', 'staging', 'results', 'logs', 'cache', 'tmp']) {
+		// tmp/vite-temp: Ziel des Links node_modules/.vite-temp im Image (Dockerfile)
+		for (const d of ['gen', 'staging', 'results', 'logs', 'cache', 'tmp', 'tmp/vite-temp']) {
 			mkdirSync(join(this.dataDir, d), { recursive: true });
 		}
 	}
@@ -505,7 +506,8 @@ export class Supervisor {
 			const kit = join(this.coreRoot, 'node_modules', '@sveltejs', 'kit', 'svelte-kit.js');
 			const vite = join(this.coreRoot, 'node_modules', 'vite', 'bin', 'vite.js');
 			await this.run(process.execPath, [kit, 'sync'], { cwd: this.coreRoot, env: buildEnv, write });
-			await this.run(process.execPath, [vite, 'build'], {
+			// `runner`: Config ohne Temp-Datei laden (Standard schreibt nach node_modules/.vite-temp, im Image schreibgeschützt)
+			await this.run(process.execPath, [vite, 'build', '--configLoader', 'runner'], {
 				cwd: this.coreRoot,
 				env: buildEnv,
 				write

@@ -34,7 +34,8 @@ ENV ATRIUM_DATA_DIR=/data/atrium \
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 # Chromium fuer den PDF-Service (inkl. Systembibliotheken)
-RUN node node_modules/playwright/cli.js install --with-deps chromium \
+# TMPDIR zeigt erst zur Laufzeit ins Volume (/data/atrium/tmp legt der Supervisor an) – beim Bauen /tmp
+RUN TMPDIR=/tmp node node_modules/playwright/cli.js install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/* \
     && chmod -R a+rX /ms-playwright
 # Mitgelieferter Build (läuft, solange keine eigene Generation gebaut ist) und alles für den Neubau
@@ -48,8 +49,12 @@ COPY --from=build /app/modules ./modules
 COPY --from=build /app/scripts/supervisor.mjs ./scripts/supervisor.mjs
 COPY --from=build /app/scripts/supervisor ./scripts/supervisor
 COPY --from=build /app/svelte.config.js /app/vite.config.ts /app/tsconfig.json /app/package.json /app/package-lock.json ./
-RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app     && mkdir -p /var/tmp/ep-backup && chown app:app /var/tmp/ep-backup && chmod 0700 /var/tmp/ep-backup \
-    && mkdir -p /data/atrium && chown app:app /data/atrium && chmod 0700 /data/atrium
+# Vite legt die gebündelte Config in node_modules/.vite-temp ab (auch in SvelteKits zweitem Build):
+# Link ins Volume, weil /app schreibgeschützt ist (das Ziel legt der Supervisor beim Start an)
+RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app \
+    && mkdir -p /var/tmp/ep-backup && chown app:app /var/tmp/ep-backup && chmod 0700 /var/tmp/ep-backup \
+    && mkdir -p /data/atrium && chown app:app /data/atrium && chmod 0700 /data/atrium \
+    && ln -s /data/atrium/tmp/vite-temp /app/node_modules/.vite-temp
 # Temp-Dateien der Datensicherung (Export/Upload bis BACKUP_MAX_BYTES) auf Platte statt im RAM-tmpfs /tmp
 # (Issue #38). Compose legt hier das Volume `backup-tmp` ein; ein neues Volume übernimmt Besitzer/Rechte.
 VOLUME ["/var/tmp/ep-backup"]
