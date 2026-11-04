@@ -10,6 +10,10 @@ export interface ProfileData {
 	};
 	roles: string[];
 	createdAt: string | Date | null;
+	/** Passwort von der Verwaltung gesetzt – erst selbst ändern */
+	mustChangePassword?: boolean;
+	/** Die Verwaltung handelt gerade als diese Person (Konto-Sicherheit gesperrt) */
+	impersonating?: boolean;
 	sessions: {
 		id: string;
 		current: boolean;

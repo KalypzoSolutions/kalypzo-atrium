@@ -6,6 +6,7 @@ const CORE_PERMISSION_KEYS = [
 	'core.users.create',
 	'core.users.edit',
 	'core.users.delete',
+	'core.users.impersonate',
 	'core.roles.view',
 	'core.roles.create',
 	'core.roles.edit',
@@ -66,5 +67,7 @@ export const PRIVILEGED_PERMISSIONS: ReadonlySet<string> = new Set([
 	// Liest sämtliche Daten einer Person, auch Gesundheitsdaten (#30)
 	'core.privacy.export',
 	// Fremder Modulcode läuft mit vollen Rechten im Server (Kalypzo Atrium)
-	'core.modules.install'
+	'core.modules.install',
+	// Handeln als andere Person (inkl. Änderungen in ihrem Namen)
+	'core.users.impersonate'
 ]);

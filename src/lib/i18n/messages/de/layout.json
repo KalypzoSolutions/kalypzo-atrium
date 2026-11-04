@@ -102,5 +102,10 @@
 		"action": "Rückgängig",
 		"done": "Rückgängig gemacht",
 		"failed": "Rückgängig fehlgeschlagen"
+	},
+	"impersonation": {
+		"actingAs": "Du handelst als {name}",
+		"remaining": "noch {count} min",
+		"stop": "Beenden"
 	}
 }

@@ -14,8 +14,11 @@ declare global {
 				email: string;
 				image: string | null;
 				twoFactorEnabled: boolean;
+				mustChangePassword?: boolean;
 			} | null;
 			sessionId: string | null;
+			/** Läuft „Als Person handeln“: Admin-Konto, Zielperson, Ablauf (sonst `null`) */
+			impersonation: import('$lib/server/core/auth/context').ImpersonationInfo | null;
 			requestId: string;
 			/** Sprache des Requests (`core/i18n/locale.ts`) */
 			locale: import('$lib/i18n').Locale;

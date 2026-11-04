@@ -102,5 +102,10 @@
 		"action": "Undo",
 		"done": "Undone",
 		"failed": "Undo failed"
+	},
+	"impersonation": {
+		"actingAs": "You are acting as {name}",
+		"remaining": "{count} min left",
+		"stop": "Stop"
 	}
 }

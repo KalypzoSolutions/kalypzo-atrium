@@ -114,7 +114,7 @@ describe('searchEverything', () => {
 		const r = await searchEverything(admin, 'nora');
 		const core = r.groups.find((g) => g.source === 'core');
 		expect(core?.hits.map((h) => h.title)).toContain('Nora Nutzer_in');
-		expect(core?.hits[0]!.href).toBe('/admin/users?q=nora%40example.test');
+		expect(core?.hits[0]!.href).toMatch(/^\/admin\/users\/[0-9a-f-]{36}$/);
 		const roles = await searchEverything(admin, 'leer');
 		expect(roles.groups.find((g) => g.source === 'core')?.hits[0]).toMatchObject({
 			title: 'Leer',

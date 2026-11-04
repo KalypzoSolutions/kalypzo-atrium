@@ -116,7 +116,14 @@ function createAuth(opts: { sveltekitCookies: boolean }) {
 					})
 				).catch((err) => console.error('[mail] Passwort-Reset fehlgeschlagen:', err?.message));
 			},
-			resetPasswordTokenExpiresIn: 60 * 60
+			resetPasswordTokenExpiresIn: 60 * 60,
+			// Eigenes Passwort gesetzt (Link aus „Passwort vergessen“, Verwaltung oder Einladung): Pflicht entfällt
+			onPasswordReset: async ({ user }) => {
+				await getDb()
+					.update(schema.user)
+					.set({ mustChangePassword: false })
+					.where(eq(schema.user.id, user.id));
+			}
 		},
 		emailVerification: {
 			// Wird ausschließlich für den E-Mail-Wechsel genutzt (Link geht an die NEUE Adresse);

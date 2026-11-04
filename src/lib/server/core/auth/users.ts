@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, inArray, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getDb, schema, type Tx } from '../database/client';
@@ -25,6 +25,7 @@ import { accountMailLocale } from './account-mail';
 import { assertCanManageUser } from './manage-guard';
 import { maskEmail } from './mask-email';
 import { removeAvatarObject } from './profile';
+import { unusablePassword } from './admin/password';
 import { t } from '$lib/i18n';
 
 export interface UserListItem {
@@ -41,6 +42,73 @@ export interface UserListItem {
 	permissions: string[];
 	/** Profilbild-Adresse (`/avatar/<id>?v=…`) oder `null` */
 	image: string | null;
+	/** Letzte vollständige Anmeldung (`null` = nie) */
+	lastLoginAt: Date | null;
+	/** Von der Verwaltung gesetztes Passwort, noch nicht selbst geändert */
+	mustChangePassword: boolean;
+}
+
+export const USER_STATUS_FILTERS = ['active', 'inactive', 'unverified', 'never'] as const;
+export type UserStatusFilter = (typeof USER_STATUS_FILTERS)[number];
+export const USER_SORTS = ['name', 'created', 'lastLogin'] as const;
+export type UserSort = (typeof USER_SORTS)[number];
+
+export interface UserListFilter {
+	search?: string;
+	status?: UserStatusFilter;
+	/** `true` = nur mit 2FA, `false` = nur ohne */
+	twoFactor?: boolean;
+	/** Mindestens eine dieser Rollen (manuell oder von einem Modul verliehen) */
+	roleIds?: string[];
+	/** Nur Konten mit Admin-gleichen Rechten (Rolle Administrator) */
+	admins?: boolean;
+}
+
+/** Bis zu so viele IDs liefert „alle Treffer auswählen“ */
+export const USER_IDS_MAX = 500;
+
+function userListWhere(f: UserListFilter): SQL | undefined {
+	const u = schema.user;
+	const conds: (SQL | undefined)[] = [];
+	const s = f.search?.trim().replace(/[%_\\]/g, '');
+	if (s) conds.push(or(ilike(u.name, `%${s}%`), ilike(u.email, `%${s}%`)));
+	if (f.status === 'active') conds.push(eq(u.active, true));
+	if (f.status === 'inactive') conds.push(eq(u.active, false));
+	if (f.status === 'unverified') conds.push(eq(u.emailVerified, false));
+	if (f.status === 'never') conds.push(isNull(u.lastLoginAt));
+	if (f.twoFactor !== undefined) conds.push(eq(u.twoFactorEnabled, f.twoFactor));
+	const roleIds = [...new Set(f.roleIds ?? [])].slice(0, 50);
+	if (f.admins) roleIds.push(ADMIN_ROLE_ID);
+	if (roleIds.length) {
+		const list = sql.join(
+			roleIds.map((r) => sql`${r}`),
+			sql`, `
+		);
+		conds.push(
+			sql`(${u.id} IN (SELECT user_id FROM user_role WHERE role_id IN (${list})) OR ${u.id} IN (SELECT user_id FROM user_role_grant WHERE role_id IN (${list})))`
+		);
+	}
+	const list = conds.filter((c): c is SQL => !!c);
+	return list.length ? and(...list) : undefined;
+}
+
+function userListOrder(sort: UserSort | undefined) {
+	const u = schema.user;
+	if (sort === 'created') return [desc(u.createdAt), asc(u.name)];
+	if (sort === 'lastLogin') return [sql`${u.lastLoginAt} DESC NULLS LAST`, asc(u.name)];
+	return [asc(u.name), asc(u.email)];
+}
+
+/** IDs aller Treffer eines Filters (für „alle Treffer auswählen“, höchstens `USER_IDS_MAX`). */
+export async function listUserIds(ctx: RequestContext, filter: UserListFilter): Promise<string[]> {
+	await requirePermission(ctx, 'core.users.view');
+	const rows = await getDb()
+		.select({ id: schema.user.id })
+		.from(schema.user)
+		.where(userListWhere(filter))
+		.orderBy(asc(schema.user.name))
+		.limit(USER_IDS_MAX);
+	return rows.map((r) => r.id);
 }
 
 async function rolesByUser(userIds: string[]) {
@@ -48,10 +116,11 @@ async function rolesByUser(userIds: string[]) {
 	const rows = await getDb()
 		.select({ userId: schema.userRole.userId, id: schema.role.id, name: schema.role.name })
 		.from(schema.userRole)
-		.innerJoin(schema.role, eq(schema.role.id, schema.userRole.roleId));
+		.innerJoin(schema.role, eq(schema.role.id, schema.userRole.roleId))
+		.where(inArray(schema.userRole.userId, userIds))
+		.orderBy(asc(schema.role.name));
 	const map = new Map<string, { id: string; name: string }[]>();
 	for (const r of rows) {
-		if (!userIds.includes(r.userId)) continue;
 		map.set(r.userId, [...(map.get(r.userId) ?? []), { id: r.id, name: r.name }]);
 	}
 	return map;
@@ -74,28 +143,32 @@ async function permissionsByUser(userIds: string[]) {
 
 export async function listUsers(
 	ctx: RequestContext,
-	opts: { search?: string; limit?: number; offset?: number } = {}
+	opts: UserListFilter & { limit?: number; offset?: number; sort?: UserSort } = {}
 ) {
 	await requirePermission(ctx, 'core.users.view');
 	const db = getDb();
-	const s = opts.search?.trim().replace(/[%_\\]/g, '');
-	const where = s
-		? or(ilike(schema.user.name, `%${s}%`), ilike(schema.user.email, `%${s}%`))
-		: undefined;
-	const [rows, [total]] = await Promise.all([
-		db
-			.select()
-			.from(schema.user)
-			.where(where)
-			.orderBy(asc(schema.user.name))
-			.limit(Math.min(opts.limit ?? 50, 200))
-			.offset(opts.offset ?? 0),
-		db.select({ n: count() }).from(schema.user).where(where)
-	]);
+	const where = userListWhere(opts);
+	const rows = await db
+		.select()
+		.from(schema.user)
+		.where(where)
+		.orderBy(...userListOrder(opts.sort))
+		.limit(Math.min(opts.limit ?? 50, 200))
+		.offset(opts.offset ?? 0);
+	const [total] = await db.select({ n: count() }).from(schema.user).where(where);
 	const ids = rows.map((r) => r.id);
 	const roles = await rolesByUser(ids);
 	const direct = await permissionsByUser(ids);
-	const items: UserListItem[] = rows.map((u) => ({
+	const items: UserListItem[] = rows.map((u) => toListItem(u, roles, direct));
+	return { items, total: total?.n ?? 0 };
+}
+
+function toListItem(
+	u: typeof schema.user.$inferSelect,
+	roles: Map<string, { id: string; name: string }[]>,
+	direct: Map<string, string[]>
+): UserListItem {
+	return {
 		id: u.id,
 		name: u.name,
 		email: u.email,
@@ -105,9 +178,10 @@ export async function listUsers(
 		createdAt: u.createdAt,
 		roles: roles.get(u.id) ?? [],
 		permissions: direct.get(u.id) ?? [],
-		image: directoryAvatar(u.id, u.image)
-	}));
-	return { items, total: total?.n ?? 0 };
+		image: directoryAvatar(u.id, u.image),
+		lastLoginAt: u.lastLoginAt,
+		mustChangePassword: u.mustChangePassword
+	};
 }
 
 export async function getUser(ctx: RequestContext, id: string): Promise<UserListItem> {
@@ -116,18 +190,7 @@ export async function getUser(ctx: RequestContext, id: string): Promise<UserList
 	if (!u) throw errors.notFound(t('auth.userNotFound'));
 	const roles = await rolesByUser([id]);
 	const direct = await permissionsByUser([id]);
-	return {
-		id: u.id,
-		name: u.name,
-		email: u.email,
-		active: u.active,
-		twoFactorEnabled: u.twoFactorEnabled,
-		emailVerified: u.emailVerified,
-		createdAt: u.createdAt,
-		roles: roles.get(id) ?? [],
-		permissions: direct.get(id) ?? [],
-		image: directoryAvatar(u.id, u.image)
-	};
+	return toListItem(u, roles, direct);
 }
 
 async function assertCanAssignRoles(ctx: RequestContext, roleIds: string[]): Promise<void> {
@@ -244,7 +307,14 @@ export async function registerUserWithRole(input: {
 	return id;
 }
 
-export async function createUser(ctx: RequestContext, input: CreateUserInput): Promise<string> {
+/**
+ * Legt ein Konto an. Mit `invite: true` ohne Passwort (unbenutzbarer Zufallswert): Die Person setzt es über die
+ * Einladung (`sendInvitation`, ruft der Aufrufer danach auf, damit ein fehlender SMTP-Server das Konto nicht verhindert).
+ */
+export async function createUser(
+	ctx: RequestContext,
+	input: Omit<CreateUserInput, 'password'> & { password?: string; invite?: boolean }
+): Promise<string> {
 	await requirePermission(ctx, 'core.users.create');
 	if (input.roleIds?.length) {
 		await requirePermission(ctx, 'core.roles.assign');
@@ -255,14 +325,17 @@ export async function createUser(ctx: RequestContext, input: CreateUserInput): P
 		await assertValidPermissionKeys(input.permissionKeys);
 		assertCanGrant(ctx, input.permissionKeys);
 	}
-	if (input.password.length < 12) throw errors.badRequest(t('auth.passwordMinLength', { min: 12 }));
-	const id = await createUserUnchecked(input);
+	const password = input.invite ? unusablePassword() : (input.password ?? '');
+	if (!input.invite && password.length < 12)
+		throw errors.badRequest(t('auth.passwordMinLength', { min: 12 }));
+	const id = await createUserUnchecked({ ...input, password });
 	await auditFromContext(ctx, 'core.user.created', {
 		target: id,
 		metadata: {
 			email: maskEmail(input.email.trim().toLowerCase()),
 			roleIds: input.roleIds ?? [],
-			permissionKeys: [...new Set(input.permissionKeys ?? [])]
+			permissionKeys: [...new Set(input.permissionKeys ?? [])],
+			invite: !!input.invite
 		}
 	});
 	return id;

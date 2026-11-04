@@ -1,4 +1,4 @@
-# Projektstand (zuletzt aktualisiert: 2026-10-29)
+# Projektstand (zuletzt aktualisiert: 2026-11-04)
 
 ## Fertig
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
@@ -418,7 +418,16 @@
   liegen im Modul `material`. Details `architecture.md` → „Mehrsprachigkeit und Neutralität“. Offen: Fachmodule bleiben deutsch; englische
   Texte nur per Screenshot-Stichprobe geprüft; Service Worker wählt Texte per `navigator.language`.
 
+- **Benutzerverwaltung ausgebaut (2026-11-04, Core-Migration 0013)**: Passwort durch die Verwaltung (Reset-Mail, Einmal-Link, Passwort setzen mit
+  „beim nächsten Besuch ändern“), Einladung per Mail statt Passwort, Detailseite je Person (Kennzahlen + Aktivitätskurve, Audit von/an der Person,
+  Sitzungen beenden, 2FA zurücksetzen, Rechte mit Herkunft), Liste mit Filtern/Sortierung/letzter Anmeldung, Sammelaktionen und CSV,
+  **„Als Person handeln“** (vollständig, mit Banner, Kennzeichnung im Audit, Sperre der Konto-Sicherheit), Kennzahlen-Kacheln auf `/admin`.
+  Details `architecture.md` → „Benutzerverwaltung ausgebaut“. Offen: echter SMTP-Versand der Reset-/Einladungsmails nur mit Test-Transport geprüft;
+  Modul-Reiter (`userAdminSections`) nur im Bearbeiten-Dialog, nicht auf der Detailseite; Statistik ohne Modulbeiträge.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Benutzerverwaltung (2026-11-04): „Als Person handeln“ **vollständig** (auch Änderungen), nicht nur lesen; Passwort per Reset-Mail, direkt
+  setzen **und** Einmal-Link; dazu Sitzungen/2FA, Detailseite, Filter/Sammelaktionen/Einladung und Kennzahlen auf `/admin`.
 - Core-Split (2026-11-01): Core heißt **Kalypzo Atrium** (Repo `kalypzo-atrium`, Präfix `atrium`), neutral + mehrsprachig (de/en) für andere
   Projekte; Module-Repo `ep-intern-modules` (alle 14 + Katalog); Installation im Panel per GitHub-Link/ZIP mit **Neubau im Server**; nur Admins,
   Warnung, fester Commit; Abhängigkeiten mit Quell-Links im Manifest, fehlende werden vorgeschlagen. Stammeswebsite `website/` bekommt ein

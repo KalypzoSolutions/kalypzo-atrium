@@ -14,8 +14,13 @@ import {
 	getUser,
 	listUsers,
 	updateUserFull,
+	USER_SORTS,
+	USER_STATUS_FILTERS,
 	verifyUserEmail
 } from '../auth/users';
+import { sendPasswordReset } from '../auth/admin/password';
+import { listUserSessions, revokeUserSessions } from '../auth/admin/sessions';
+import { userStats } from '../auth/admin/stats';
 import { disableModule, enableModule, listModules } from '../modules/service';
 import { listJobs, runJobNow } from '../jobs';
 import { adoptDefaultRole } from '../permissions/default-roles';
@@ -34,6 +39,14 @@ const paging = z.object({
 	search: z.string().max(100).optional(),
 	limit: z.coerce.number().int().min(1).max(200).default(50),
 	offset: z.coerce.number().int().min(0).default(0)
+});
+const userFilter = paging.extend({
+	status: z.enum(USER_STATUS_FILTERS).optional(),
+	twoFactor: z
+		.enum(['true', 'false'])
+		.transform((v) => v === 'true')
+		.optional(),
+	sort: z.enum(USER_SORTS).optional()
 });
 const password = z.string().min(12).max(128);
 
@@ -92,7 +105,7 @@ export function registerCoreApi(): void {
 			summary: 'api.endpoints.usersList',
 			tags: ['api.tags.users'],
 			permission: 'core.users.view',
-			query: paging,
+			query: userFilter,
 			handler: ({ ctx, query }) => listUsers(ctx, query)
 		}),
 		defineEndpoint({
@@ -149,6 +162,47 @@ export function registerCoreApi(): void {
 			handler: async ({ ctx, params }) => {
 				await verifyUserEmail(ctx, params.id);
 				return getUser(ctx, params.id);
+			}
+		}),
+		defineEndpoint({
+			method: 'GET',
+			path: '/users/:id/stats',
+			summary: 'api.endpoints.usersStats',
+			tags: ['api.tags.users'],
+			permission: 'core.users.view',
+			params: id,
+			handler: ({ ctx, params }) => userStats(ctx, params.id)
+		}),
+		defineEndpoint({
+			method: 'GET',
+			path: '/users/:id/sessions',
+			summary: 'api.endpoints.usersSessions',
+			tags: ['api.tags.users'],
+			permission: 'core.users.view',
+			params: id,
+			handler: ({ ctx, params }) => listUserSessions(ctx, params.id)
+		}),
+		defineEndpoint({
+			method: 'DELETE',
+			path: '/users/:id/sessions',
+			summary: 'api.endpoints.usersSessionsRevoke',
+			tags: ['api.tags.users'],
+			permission: 'core.users.edit',
+			params: id,
+			handler: async ({ ctx, params }) => ({
+				revoked: await revokeUserSessions(ctx, params.id)
+			})
+		}),
+		defineEndpoint({
+			method: 'POST',
+			path: '/users/:id/password-reset',
+			summary: 'api.endpoints.usersPasswordReset',
+			tags: ['api.tags.users'],
+			permission: 'core.users.edit',
+			params: id,
+			handler: async ({ ctx, params }) => {
+				await sendPasswordReset(ctx, params.id);
+				return null;
 			}
 		}),
 		defineEndpoint({

@@ -92,11 +92,19 @@ export async function logAudit(entry: AuditEntry, tx?: DbOrTx): Promise<void> {
 		target: entry.target ?? null,
 		ip: entry.ip ?? null,
 		requestId: entry.requestId ?? null,
+		impersonatorId: entry.actor.impersonator?.id ?? null,
 		metadata: (sanitizeMetadata(entry.metadata ?? {}, 0, entry.action) ?? {}) as Record<
 			string,
 			unknown
 		>
 	});
+	// Letzte Anmeldung je Konto (Migration 0013): alle Anmeldewege (Passwort, 2FA, QR) protokollieren hier
+	if (entry.action === 'core.auth.login' && entry.actor.id) {
+		await db
+			.update(schema.user)
+			.set({ lastLoginAt: new Date() })
+			.where(eq(schema.user.id, entry.actor.id));
+	}
 }
 
 /** Komfortvariante: Akteur, IP und Request-ID aus dem Kontext übernehmen. */
@@ -113,6 +121,10 @@ export interface AuditFilter {
 	search?: string;
 	action?: string;
 	actorId?: string;
+	/** Nur Einträge, bei denen dieses Admin-Konto „als jemand“ gehandelt hat */
+	impersonatorId?: string;
+	/** Einträge von **oder** an dieser Person (Akteur, Ziel oder handelnde Admin-Person) */
+	involving?: string;
 	/** Exakter Treffer auf `target` (Entitäts-ID) */
 	target?: string;
 	/** Exakte Treffer auf mehrere `target`-IDs (max. 50) */
@@ -133,6 +145,16 @@ export async function listAudit(filter: AuditFilter = {}) {
 		conds.push(like(t.action, `${prefix}%`));
 	}
 	if (filter.actorId) conds.push(eq(t.actorId, filter.actorId));
+	if (filter.impersonatorId) conds.push(eq(t.impersonatorId, filter.impersonatorId));
+	if (filter.involving) {
+		conds.push(
+			or(
+				eq(t.actorId, filter.involving),
+				eq(t.target, filter.involving),
+				eq(t.impersonatorId, filter.involving)
+			)
+		);
+	}
 	if (filter.target) conds.push(eq(t.target, filter.target));
 	if (filter.targets) {
 		// leere Liste → nichts finden (statt alles)

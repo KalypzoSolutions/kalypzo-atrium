@@ -17,6 +17,7 @@
 		PageTitle
 	} from '$lib/components/layout';
 	import { t } from '$lib/i18n';
+	import OverviewStats from './OverviewStats.svelte';
 
 	let { data } = $props();
 
@@ -155,6 +156,9 @@
 			</div>
 		{/if}
 	{:else}
+		{#if data.stats && Object.keys(data.stats).length}
+			<OverviewStats stats={data.stats} />
+		{/if}
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{#each sections as s (s.id)}
 				{@const SectionIcon = iconFor(s.icon)}

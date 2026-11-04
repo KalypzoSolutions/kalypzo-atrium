@@ -17,6 +17,7 @@ import { errors } from '../errors';
 import { getSettings, setSettings } from '../settings/service';
 import { newId } from '../util';
 import { t } from '$lib/i18n';
+import { assertNotImpersonating } from '../auth/admin/impersonation';
 
 /** Hosts der Push-Dienste (Chrome/Android: FCM, Firefox: Mozilla, Safari/iOS: Apple, Edge: Windows) */
 const PUSH_HOSTS = [
@@ -147,6 +148,8 @@ export async function addDevice(
 ): Promise<PushDevice> {
 	const userId = ctx.userId;
 	if (!userId) throw errors.unauthenticated();
+	// Das Gerät gehört der Admin-Person, nicht der Zielperson
+	assertNotImpersonating(ctx);
 	if (!(await pushEnabled())) throw errors.unavailable(t('notifications.pushDisabled'));
 	if (!isAllowedPushEndpoint(input.endpoint)) {
 		throw errors.validation([

@@ -6,6 +6,7 @@ import { sha256 } from '../crypto';
 import { errors } from '../errors';
 import { getUserPermissions } from '../permissions/service';
 import { getAuth } from './index';
+import { activeImpersonation } from './admin/impersonation';
 
 export interface SessionUser {
 	id: string;
@@ -13,6 +14,8 @@ export interface SessionUser {
 	email: string;
 	image: string | null;
 	twoFactorEnabled: boolean;
+	/** Passwort von der Verwaltung gesetzt – erst selbst ändern (Guard leitet ins Profil) */
+	mustChangePassword?: boolean;
 }
 
 export function systemContext(name = 'system'): RequestContext {
@@ -48,7 +51,8 @@ export async function contextForUser(
 			name: u.name,
 			email: u.email,
 			image: u.image,
-			twoFactorEnabled: u.twoFactorEnabled
+			twoFactorEnabled: u.twoFactorEnabled,
+			mustChangePassword: u.mustChangePassword
 		},
 		ctx: {
 			actor: { type: 'user', id: u.id, name: u.email },
@@ -60,16 +64,53 @@ export async function contextForUser(
 	};
 }
 
-/** Löst die Session aus den Request-Headern auf. Deaktivierte Benutzer werden abgelehnt. */
+/** Läuft „Als Person handeln“, steht hier, wer handelt und bis wann (für Banner und Sperren). */
+export interface ImpersonationInfo {
+	id: string;
+	admin: { id: string; name: string };
+	target: { id: string; name: string };
+	expiresAt: string;
+}
+
+/**
+ * Löst die Session aus den Request-Headern auf. Deaktivierte Benutzer werden abgelehnt.
+ * Hat die Sitzung eine offene Impersonation, laufen Kontext und `user` als Zielperson; `ctx.actor.impersonator`
+ * nennt das handelnde Admin-Konto (Audit). Gilt für Seiten, REST (Session) und Live-Streams gleichermaßen.
+ */
 export async function resolveSession(
 	headers: Headers,
 	meta: { ip?: string | null; requestId?: string } = {}
-): Promise<{ ctx: RequestContext; user: SessionUser; sessionId: string } | null> {
+): Promise<{
+	ctx: RequestContext;
+	user: SessionUser;
+	sessionId: string;
+	impersonation: ImpersonationInfo | null;
+} | null> {
 	const session = await getAuth().api.getSession({ headers });
 	if (!session) return null;
+	const imp = await activeImpersonation(session.session.id);
+	if (imp) {
+		const target = await contextForUser(imp.target.id, meta);
+		if (target) {
+			target.ctx.actor = {
+				...target.ctx.actor,
+				impersonator: { id: imp.admin.id, name: imp.admin.email }
+			};
+			return {
+				...target,
+				sessionId: session.session.id,
+				impersonation: {
+					id: imp.id,
+					admin: { id: imp.admin.id, name: imp.admin.name },
+					target: imp.target,
+					expiresAt: imp.expiresAt.toISOString()
+				}
+			};
+		}
+	}
 	const resolved = await contextForUser(session.user.id, meta);
 	if (!resolved) return null;
-	return { ...resolved, sessionId: session.session.id };
+	return { ...resolved, sessionId: session.session.id, impersonation: null };
 }
 
 export const API_KEY_PREFIX = 'epk_';

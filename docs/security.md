@@ -102,6 +102,29 @@ Die Verwaltung sieht unbestätigte Konten (Badge „Unbestätigt“ unter `/admi
   Mailfehler brechen das Speichern nicht ab). Das Audit enthält nur Zähler.
 - Startseite (`core.user.startPage`): nur interne Pfade (`^/(?!/)[a-z0-9\-/]*$`, kein `//`).
 
+## Benutzerverwaltung: Passwort, Sitzungen, „Als Person handeln“ (seit 2026-11-04, Core-Migration 0013)
+
+Code: `src/lib/server/core/auth/admin/` (`password.ts`, `sessions.ts`, `stats.ts`, `bulk.ts`, `impersonation.ts`), Seiten
+`/admin/users` und `/admin/users/<id>`. Für alle Funktionen gilt: nie für das eigene Konto (400 → Profil), `assertCanManageUser`
+(die handelnde Person braucht alle Rechte des Zielkontos), Audit je Konto ohne Passwörter/Links.
+
+- **Passwort durch die Verwaltung** (`core.users.edit`): Zurücksetzen-Mail (wartet auf den Versand, ohne SMTP 503), **Einmal-Link**
+  (1 h, nur einmal angezeigt, nie protokolliert; gleiche `verification`-Zeile wie Better Auth, ältere Links des Kontos verfallen) oder
+  **Passwort setzen** (eigenes oder zufällig ≥ 16 Zeichen, einmal angezeigt). Setzen beendet alle Sitzungen und offene Links; optional
+  „beim nächsten Besuch ändern“ (`user.must_change_password`, der Guard leitet bis zur Änderung ins Profil, Zurücksetzen per Link löscht es).
+- **Einladung**: Konto ohne Passwort (unbenutzbarer Zufallswert), Link zum Setzen 7 Tage gültig.
+- **Sitzungen/2FA**: Liste ohne Tokens, einzeln/alle beenden, 2FA zurücksetzen (Geheimnis + Backup-Codes weg, alle Sitzungen enden).
+- **Sammelaktionen** (≤ 500 Konten) laufen je Konto durch dieselben Prüfungen; abgelehnte Konten werden übersprungen und gemeldet.
+  CSV-Export mit Formelschutz, Audit `core.user.exported` (nur Anzahl).
+- **Als Person handeln** (`core.users.impersonate`, admin-gleich): Re-Auth (Passwort + TOTP), Pflichtgrund (nur in `user_impersonation`,
+  nicht im Audit), Dauer 15/30/60 min, Ziel aktiv, verwaltbar und **nie** Administrator*in. Gebunden an die Sitzung der Admin-Person;
+  `resolveSession` liefert dann Kontext und Konto der Zielperson (Seiten, REST per Session, Live-Streams), `ctx.actor.impersonator` →
+  `audit_log.impersonator_id` in **jeder** Zeile. Jede Anfrage prüft erneut (5-s-Cache): abgelaufen → `expired`, Recht weg/Ziel gesperrt oder
+  mit mehr Rechten → `revoked`. Gesperrt während des Handelns: Better-Auth-Pfade außer `get-session`/`sign-out` (Abmelden beendet zuerst das
+  Handeln), Profil-Aktionen Passwort/2FA/Sitzungen/E-Mail, API-Keys anlegen, Push-Gerät registrieren, QR-Login bestätigen, erneutes Handeln.
+  Re-Auth-Vorgänge (Backup, Reset, Installation) scheitern am unbekannten Passwort der Zielperson. Die Person bekommt standardmäßig eine Mail
+  (`core.system.impersonationNotify`), die Detailseite zeigt den Verlauf mit Grund. Banner mit Restzeit und „Beenden“ im internen Layout.
+
 ## Adress-Autovervollständigung (Modul `members`)
 
 Beim Tippen einer Adresse sendet **unser Server** (nicht der Browser) den Straßentext an das Straßenverzeichnis OpenPLZ

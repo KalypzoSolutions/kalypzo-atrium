@@ -21,6 +21,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		/** Sprache der Seite (`core/i18n/locale.ts`); `+layout.ts` lädt die Texte und setzt sie im Browser */
 		locale: locals.locale,
 		user: locals.user,
+		/** „Als Person handeln“ läuft (Banner im internen Layout), sonst `null` */
+		impersonation: locals.impersonation ?? null,
 		permissions: [...locals.ctx.permissions].sort(),
 		navigation,
 		/** Zähler der Seitenleiste (Pfad → Zahl), Aktualisierung über `GET /api/v1/nav/badges` */

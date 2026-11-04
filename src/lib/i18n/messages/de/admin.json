@@ -168,5 +168,26 @@
 		"all": "alle",
 		"none": "keine",
 		"privileged": "Admin-gleich"
+	},
+	"stats": {
+		"title": "Kennzahlen",
+		"accounts": "Aktive Konten",
+		"accountsSub": "von {total} insgesamt",
+		"sessions": "Angemeldete Sitzungen",
+		"failed24h": "Fehlgeschlagene Anmeldungen (24 h)",
+		"adminsWithout2fa": "Administrator*innen ohne 2FA",
+		"adminsWithout2faSub": "Zwei-Faktor-Anmeldung empfohlen",
+		"neverSignedIn": "Nie angemeldet",
+		"impersonating": "Laufendes „Als Person handeln“",
+		"apiCalls": "API-Aufrufe (24 h)",
+		"apiErrors": "{count, plural, =0 {keine Serverfehler} one {# Serverfehler} other {# Serverfehler}}",
+		"storage": "Speicher belegt",
+		"files": "{count, plural, one {# Datei} other {# Dateien}}",
+		"aiCost": "KI-Kosten (Monat)",
+		"aiTokens": "{count} Tokens",
+		"jobsFailed": "Fehlgeschlagene Hintergrundjobs",
+		"logins30": "Anmeldungen (30 Tage)",
+		"loginsAria": "Anmeldungen je Tag der letzten 30 Tage, insgesamt {count}",
+		"loginsBar": "{date}: {count, plural, one {# Anmeldung} other {# Anmeldungen}}"
 	}
 }

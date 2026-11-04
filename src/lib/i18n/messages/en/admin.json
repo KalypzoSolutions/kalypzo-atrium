@@ -168,5 +168,26 @@
 		"all": "all",
 		"none": "none",
 		"privileged": "Admin-level"
+	},
+	"stats": {
+		"title": "Key figures",
+		"accounts": "Active accounts",
+		"accountsSub": "of {total} in total",
+		"sessions": "Signed-in sessions",
+		"failed24h": "Failed sign-ins (24 h)",
+		"adminsWithout2fa": "Administrators without 2FA",
+		"adminsWithout2faSub": "Two-factor authentication recommended",
+		"neverSignedIn": "Never signed in",
+		"impersonating": "Active “act as user”",
+		"apiCalls": "API calls (24 h)",
+		"apiErrors": "{count, plural, =0 {no server errors} one {# server error} other {# server errors}}",
+		"storage": "Storage used",
+		"files": "{count, plural, one {# file} other {# files}}",
+		"aiCost": "AI cost (month)",
+		"aiTokens": "{count} tokens",
+		"jobsFailed": "Failed background jobs",
+		"logins30": "Sign-ins (30 days)",
+		"loginsAria": "Sign-ins per day over the last 30 days, {count} in total",
+		"loginsBar": "{date}: {count, plural, one {# sign-in} other {# sign-ins}}"
 	}
 }

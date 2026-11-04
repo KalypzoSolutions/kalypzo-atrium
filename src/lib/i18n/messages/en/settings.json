@@ -38,6 +38,10 @@
 		"label": "Legal notice (URL)",
 		"description": "Link to the legal notice (imprint). Shown on the sign-in page and all public pages."
 	},
+	"core.system.impersonationNotify": {
+		"label": "Notify users when an administrator acts as them",
+		"description": "Sends the person an email as soon as an administrator starts acting as them (with the administrator's name, without the reason)."
+	},
 	"core.retention.apiLogDays": {
 		"label": "Keep API log (days)",
 		"description": "Entries in the API access log (path, IP address, actor) are deleted after this. 1–3650 days."

@@ -4,7 +4,7 @@
 	import Smartphone from '@lucide/svelte/icons/smartphone';
 	import Copy from '@lucide/svelte/icons/copy';
 	import { toast } from 'svelte-sonner';
-	import { Alert, AlertDescription } from '$lib/components/ui/alert';
+	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -80,6 +80,16 @@
 </script>
 
 <div class="space-y-6">
+	{#if data.impersonating}
+		<Alert variant="warning"
+			><AlertDescription>{t('profile.security.impersonatingText')}</AlertDescription></Alert
+		>
+	{:else if data.mustChangePassword}
+		<Alert variant="warning">
+			<AlertTitle>{t('profile.security.mustChangeTitle')}</AlertTitle>
+			<AlertDescription>{t('profile.security.mustChangeText')}</AlertDescription>
+		</Alert>
+	{/if}
 	<Card>
 		<CardHeader
 			><CardTitle class="font-semibold">{t('profile.security.password')}</CardTitle></CardHeader

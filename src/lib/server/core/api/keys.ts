@@ -8,6 +8,7 @@ import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { assertCanGrant, existingKeys, requirePermission } from '../permissions/service';
 import { newId } from '../util';
+import { assertNotImpersonating } from '../auth/admin/impersonation';
 
 export interface ApiKeyItem {
 	id: string;
@@ -50,6 +51,8 @@ export async function createApiKey(
 	await requirePermission(ctx, 'core.api.manage');
 	if (!ctx.userId) throw errors.unauthenticated();
 	if (ctx.actor.type === 'api_key') throw errors.forbidden(t('api.keys.noKeysFromKeys'));
+	// Kein dauerhafter Zugang im Namen einer anderen Person
+	assertNotImpersonating(ctx);
 	const scopes = [...new Set(input.scopes)];
 	if (!scopes.length) throw errors.badRequest(t('api.keys.scopeRequired'));
 	const known = await existingKeys(scopes);

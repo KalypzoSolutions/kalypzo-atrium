@@ -17,6 +17,7 @@ import { accountMailLocale } from './account-mail';
 import { assertCanManageUser } from './manage-guard';
 import { maskEmail } from './mask-email';
 import { t } from '$lib/i18n';
+import { assertNotImpersonating } from './admin/impersonation';
 
 export { maskEmail };
 
@@ -61,6 +62,7 @@ export async function requestEmailChange(
 	headers: Headers,
 	input: { newEmail: string; password: string }
 ): Promise<void> {
+	assertNotImpersonating(ctx);
 	const userId = requireUser(ctx);
 	const parsed = emailSchema.safeParse(input.newEmail);
 	if (!parsed.success) {

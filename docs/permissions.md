@@ -17,6 +17,7 @@
 | `core.users.create` | Benutzer anlegen |
 | `core.users.edit` | Benutzer bearbeiten und deaktivieren |
 | `core.users.delete` | Benutzer löschen |
+| `core.users.impersonate` | Als andere Person handeln (admin-gleich, nur Administrator*innen vergeben; Re-Auth, Grund, ≤ 60 min, nie Administrator*innen als Ziel) |
 | `core.roles.view` | Rollen und Berechtigungen ansehen |
 | `core.roles.create` | Rollen anlegen |
 | `core.roles.edit` | Rollen bearbeiten |
@@ -121,6 +122,7 @@ Manche Rechte führen faktisch zur Übernahme des ganzen Systems und gelten desh
 | `core.system.backup` | Gesamt-Export aller Daten inkl. Zugangsdaten; Import einer (mit dem eigenen Passwort entschlüsselbaren, also veränderbaren) Sicherung |
 | `core.system.reset` | Löschen beliebiger Datenbereiche inkl. Konten und Rollen; Pflicht-Export enthält alle betroffenen Daten |
 | `core.privacy.export` | Liest sämtliche Daten einer Person aus allen Modulen, auch Gesundheitsdaten |
+| `core.users.impersonate` | Handelt mit Rechten und Daten anderer Personen (inkl. Änderungen in ihrem Namen) |
 
 Regeln:
 

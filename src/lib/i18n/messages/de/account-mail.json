@@ -22,5 +22,13 @@
 	"emailChangedByAdmin": {
 		"subject": "{system}: Die E-Mail-Adresse deines Kontos wurde geändert",
 		"text": "Hallo {name},\n\ndie E-Mail-Adresse deines Kontos wurde von der Administration auf {email} geändert. An diese Adresse gehen ab sofort alle Nachrichten, auch Links zum Zurücksetzen des Passworts. Alle bisherigen Anmeldungen wurden beendet.\n\nWenn diese Änderung nicht mit dir abgesprochen war, melde dich bitte umgehend bei der Administration."
+	},
+	"invite": {
+		"subject": "{system}: Einladung",
+		"text": "Hallo {name},\n\nfür dich wurde ein Konto bei {system} angelegt. Über den folgenden Link legst du dein Passwort fest ({days} Tage gültig):\n{url}\n\nDanach meldest du dich mit deiner E-Mail-Adresse an."
+	},
+	"impersonated": {
+		"subject": "{system}: Die Verwaltung handelt in deinem Konto",
+		"text": "Hallo {name},\n\n{admin} aus der Verwaltung handelt gerade für kurze Zeit in deinem Konto (z. B. um ein Problem nachzustellen). Alle Schritte werden protokolliert.\n\nWenn du das nicht erwartest, wende dich bitte an die Verwaltung."
 	}
 }

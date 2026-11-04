@@ -31,7 +31,11 @@ export const user = pgTable('user', {
 	active: boolean('active').notNull().default(true),
 	twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
 	createdAt: createdAt(),
-	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+	/** Letzte vollständige Anmeldung (Migration 0013; Passwort, 2FA oder QR) */
+	lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+	/** Passwort wurde von der Verwaltung gesetzt: vor allem anderen selbst ändern (Migration 0013) */
+	mustChangePassword: boolean('must_change_password').notNull().default(false)
 });
 
 export const session = pgTable(
@@ -93,6 +97,34 @@ export const twoFactor = pgTable('two_factor', {
 		.notNull()
 		.references(() => user.id, { onDelete: 'cascade' })
 });
+
+/**
+ * „Als Person handeln“ (Migration 0013): solange eine Zeile zur Sitzung offen und nicht abgelaufen ist,
+ * handelt die Admin-Sitzung als `target_user_id`. Endet bei Beenden, Ablauf oder Widerruf.
+ */
+export const userImpersonation = pgTable(
+	'user_impersonation',
+	{
+		id: id(),
+		sessionId: text('session_id').references(() => session.id, { onDelete: 'set null' }),
+		adminUserId: text('admin_user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		targetUserId: text('target_user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		reason: text('reason').notNull(),
+		ip: text('ip'),
+		startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+		expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+		endedAt: timestamp('ended_at', { withTimezone: true }),
+		endReason: text('end_reason', { enum: ['stopped', 'expired', 'revoked'] })
+	},
+	(t) => [
+		index('user_impersonation_target_idx').on(t.targetUserId, t.startedAt),
+		index('user_impersonation_admin_idx').on(t.adminUserId)
+	]
+);
 
 // ---------------------------------------------------------------------------
 // RBAC
@@ -351,7 +383,10 @@ export const apiLog = pgTable(
 		ip: text('ip'),
 		createdAt: createdAt()
 	},
-	(t) => [index('api_log_created_idx').on(t.createdAt)]
+	(t) => [
+		index('api_log_created_idx').on(t.createdAt),
+		index('api_log_actor_idx').on(t.actorId, t.createdAt)
+	]
 );
 
 // ---------------------------------------------------------------------------
@@ -370,6 +405,8 @@ export const auditLog = pgTable(
 		ip: text('ip'),
 		requestId: text('request_id'),
 		metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+		/** Admin-Konto, das „als diese Person“ gehandelt hat (Migration 0013) */
+		impersonatorId: text('impersonator_id'),
 		createdAt: createdAt()
 	},
 	(t) => [
@@ -405,7 +442,10 @@ export const file = pgTable(
 		createdBy: text('created_by'),
 		createdAt: createdAt()
 	},
-	(t) => [uniqueIndex('file_module_path_idx').on(t.moduleId, t.path)]
+	(t) => [
+		uniqueIndex('file_module_path_idx').on(t.moduleId, t.path),
+		index('file_created_by_idx').on(t.createdBy)
+	]
 );
 
 // ---------------------------------------------------------------------------

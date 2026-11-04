@@ -13,6 +13,11 @@ export interface Actor {
 	type: ActorType;
 	id: string | null;
 	name: string;
+	/**
+	 * Gesetzt, während eine Admin-Person „als diese Person handelt“ (Impersonation): `id`/`name` oben sind
+	 * dann die Zielperson, hier steht das handelnde Admin-Konto. Das Audit vermerkt es in jeder Zeile.
+	 */
+	impersonator?: { id: string; name: string };
 }
 
 /** Sicherheitskontext einer Anfrage. Wird von den Server-Hooks bzw. dem API-Router erzeugt. */

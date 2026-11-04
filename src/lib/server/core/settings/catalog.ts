@@ -145,6 +145,14 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		group: 'system'
 	}),
 
+	// „Als Person handeln“: betroffene Person per Mail informieren
+	g({
+		key: 'core.system.impersonationNotify',
+		schema: z.boolean(),
+		default: true,
+		group: 'system'
+	}),
+
 	// Aufbewahrungsfristen (Core-Job `core.housekeeping`, täglich)
 	g({
 		key: 'core.retention.apiLogDays',

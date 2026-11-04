@@ -4,6 +4,7 @@
 		"core.users.create": "Benutzer anlegen",
 		"core.users.edit": "Benutzer bearbeiten und deaktivieren",
 		"core.users.delete": "Benutzer löschen",
+		"core.users.impersonate": "Als andere Person handeln (Impersonation)",
 		"core.roles.view": "Rollen und Berechtigungen ansehen",
 		"core.roles.create": "Rollen anlegen",
 		"core.roles.edit": "Rollen bearbeiten",

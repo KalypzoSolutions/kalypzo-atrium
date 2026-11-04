@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { z } from 'zod';
 import { t } from '$lib/i18n';
 import { getAuth } from '$lib/server/core/auth';
+import { clearMustChangePassword } from '$lib/server/core/auth/admin/password';
 import { limitAuthAction, type AuthLimitKind } from '$lib/server/core/auth/auth-limits';
 import { clientAddress, withClientIp } from '$lib/server/core/auth/client-ip';
 import {
@@ -56,7 +57,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 		navigationFor(locals.ctx),
 		enabledModuleIds(),
 		getDb()
-			.select({ createdAt: schema.user.createdAt, emailVerified: schema.user.emailVerified })
+			.select({
+				createdAt: schema.user.createdAt,
+				emailVerified: schema.user.emailVerified,
+				mustChangePassword: schema.user.mustChangePassword
+			})
 			.from(schema.user)
 			.where(eq(schema.user.id, userId)),
 		// Manuelle Rollen plus von Modulen verliehene (z. B. über Ämter)
@@ -106,6 +111,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 		profile: locals.user!,
 		createdAt: dbUser?.createdAt ?? null,
 		emailVerified: dbUser?.emailVerified ?? false,
+		/** Passwort von der Verwaltung gesetzt: erst ändern (Hinweis im Reiter Sicherheit) */
+		mustChangePassword: (dbUser?.mustChangePassword ?? false) && !locals.impersonation,
+		/** Konto-Sicherheit ist gesperrt, während die Verwaltung als diese Person handelt */
+		impersonating: !!locals.impersonation,
 		roles: roles.map((r) => r.name),
 		// Session-Tokens verlassen den Server nie; Widerruf erfolgt über die Session-ID
 		sessions: sessions.map((s) => ({
@@ -153,8 +162,20 @@ function limitedHeaders(
 	return withClientIp(event.request.headers, ip);
 }
 
+/**
+ * Während „Als Person handeln“ gehören Better-Auth-Aufrufe mit den Request-Headern zur Sitzung der **Admin-Person**:
+ * Passwort, 2FA und Sitzungen bleiben deshalb gesperrt (sonst träfe die Änderung das Admin-Konto).
+ */
+function impersonationBlock(locals: App.Locals, section: string) {
+	return locals.impersonation
+		? fail(403, { section, error: t('admin-users.server.blockedWhileImpersonating') })
+		: null;
+}
+
 export const actions: Actions = {
 	changePassword: async (event) => {
+		const blocked = impersonationBlock(event.locals, 'password');
+		if (blocked) return blocked;
 		const f = await event.request.formData();
 		const current = String(f.get('currentPassword') ?? '');
 		const next = String(f.get('newPassword') ?? '');
@@ -180,10 +201,14 @@ export const actions: Actions = {
 				error: authErrorMessage(e, t('profile.errors.passwordChangeFailed'))
 			});
 		}
+		// Von der Verwaltung gesetztes Passwort ist damit ersetzt
+		await clearMustChangePassword(event.locals.user!.id);
 		return { section: 'password', success: t('profile.success.passwordChanged') };
 	},
 
 	enable2fa: async (event) => {
+		const blocked = impersonationBlock(event.locals, '2fa');
+		if (blocked) return blocked;
 		const f = await event.request.formData();
 		const headers = limitedHeaders(event, 'enableTwoFactor');
 		if (!headers) return fail(429, { section: '2fa', error: t('profile.errors.tooMany') });
@@ -211,6 +236,8 @@ export const actions: Actions = {
 	},
 
 	verify2fa: async (event) => {
+		const blocked = impersonationBlock(event.locals, '2fa');
+		if (blocked) return blocked;
 		const f = await event.request.formData();
 		const headers = limitedHeaders(event, 'verifyTotp');
 		if (!headers) return fail(429, { section: '2fa', error: t('profile.errors.tooMany') });
@@ -229,6 +256,8 @@ export const actions: Actions = {
 	},
 
 	disable2fa: async (event) => {
+		const blocked = impersonationBlock(event.locals, '2fa');
+		if (blocked) return blocked;
 		const f = await event.request.formData();
 		const headers = limitedHeaders(event, 'disableTwoFactor');
 		if (!headers) return fail(429, { section: '2fa', error: t('profile.errors.tooMany') });
@@ -247,6 +276,8 @@ export const actions: Actions = {
 	},
 
 	revokeSession: async ({ request, locals }) => {
+		const blocked = impersonationBlock(locals, 'sessions');
+		if (blocked) return blocked;
 		const f = await request.formData();
 		const id = String(f.get('id') ?? '');
 		const auth = getAuth();
@@ -259,7 +290,9 @@ export const actions: Actions = {
 		return { section: 'sessions', success: t('profile.success.sessionRevoked') };
 	},
 
-	revokeOtherSessions: async ({ request }) => {
+	revokeOtherSessions: async ({ request, locals }) => {
+		const blocked = impersonationBlock(locals, 'sessions');
+		if (blocked) return blocked;
 		try {
 			await getAuth().api.revokeOtherSessions({ headers: request.headers });
 		} catch (e) {
@@ -457,6 +490,8 @@ export const actions: Actions = {
 	},
 
 	changeEmail: async ({ request, locals }) => {
+		const blocked = impersonationBlock(locals, 'email');
+		if (blocked) return blocked;
 		const f = await request.formData();
 		const parsed = z
 			.object({

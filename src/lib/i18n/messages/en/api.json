@@ -101,7 +101,11 @@
 		"auditLogs": "Audit logs",
 		"rolesAdoptDefaultDescription": "Admin confirmation (#67, 01a-07): the role then automatically receives the defaultRoleGrants of the modules.",
 		"aiAssistDescription": "Response as `text/event-stream` with `delta`, `done` and `error` events. Permission `<module>.ai.use`; context only with access to the object.",
-		"pdfOrientation": "Page orientation. Ignored for templates with a fixed page layout (letter templates such as brief, briefkopf, briefkopf-quer); there the template sets the orientation."
+		"pdfOrientation": "Page orientation. Ignored for templates with a fixed page layout (letter templates such as brief, briefkopf, briefkopf-quer); there the template sets the orientation.",
+		"usersStats": "Statistics for an account",
+		"usersSessions": "Sessions of an account",
+		"usersSessionsRevoke": "End all sessions of an account",
+		"usersPasswordReset": "Send a password reset email to an account"
 	},
 	"tags": {
 		"system": "System",

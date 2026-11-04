@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
+	import { onMount } from 'svelte';
+	import DownloadIcon from '@lucide/svelte/icons/download';
 	import { toast } from 'svelte-sonner';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import MailCheckIcon from '@lucide/svelte/icons/mail-check';
@@ -17,6 +20,7 @@
 		FileField,
 		FormField,
 		LoadingState,
+		MobileActionBar,
 		PageHeader,
 		Pagination,
 		SearchInput,
@@ -29,9 +33,11 @@
 	import { Input } from '$lib/components/ui/input';
 	import * as Table from '$lib/components/ui/table';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import { SelectField } from '$lib/components/ui/select-field';
+	import { MultiSelect } from '$lib/components/ui/multi-select';
 	import PermissionPicker from '../_shared/PermissionPicker.svelte';
 	import { t } from '$lib/i18n';
-	import { formatDate } from '$lib/i18n/intl';
+	import { formatDate, formatRelative } from '$lib/i18n/intl';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -47,7 +53,10 @@
 	let busy = $state(false);
 	let editUserId = $state<string | null>(null);
 	/** Aus `data` abgeleitet, damit ein neues Profilbild nach dem Speichern sofort erscheint */
-	const editUser = $derived(data.users.find((u) => u.id === editUserId) ?? null);
+	const editUser = $derived(
+		data.users.find((u) => u.id === editUserId) ??
+			(data.editExtraUser?.id === editUserId ? data.editExtraUser : null)
+	);
 	let deleteUser = $state<UserRow | null>(null);
 	let editRoleIds = $state<string[]>([]);
 	let editPermissionKeys = $state<string[]>([]);
@@ -99,11 +108,123 @@
 		editOpen = true;
 	}
 
+	// `?edit=<id>` (Knopf „Bearbeiten“ auf der Detailseite) öffnet den Dialog direkt
+	onMount(() => {
+		const id = page.url.searchParams.get('edit');
+		const u = id
+			? (data.users.find((x) => x.id === id) ??
+				(data.editExtraUser?.id === id ? data.editExtraUser : null))
+			: null;
+		if (u && u.manageable) openEdit(u);
+	});
+
+	// --- Filter (URL-Parameter, Seite springt auf 1)
+	function setParams(changes: Record<string, string | string[] | null>) {
+		const url = new URL(page.url);
+		for (const [k, v] of Object.entries(changes)) {
+			url.searchParams.delete(k);
+			if (Array.isArray(v)) for (const x of v) url.searchParams.append(k, x);
+			else if (v) url.searchParams.set(k, v);
+		}
+		url.searchParams.delete('page');
+		url.searchParams.delete('edit');
+		selected = [];
+		void goto(url, { keepFocus: true, noScroll: true, replaceState: true });
+	}
+	const statusOptions = $derived([
+		{ value: 'active', label: t('admin-users.filter.statusActive') },
+		{ value: 'inactive', label: t('admin-users.filter.statusInactive') },
+		{ value: 'unverified', label: t('admin-users.filter.statusUnverified') },
+		{ value: 'never', label: t('admin-users.filter.statusNever') }
+	]);
+	const tfaOptions = $derived([
+		{ value: 'on', label: t('admin-users.filter.tfaOn') },
+		{ value: 'off', label: t('admin-users.filter.tfaOff') }
+	]);
+	const sortOptions = $derived([
+		{ value: 'name', label: t('admin-users.filter.sortName') },
+		{ value: 'lastLogin', label: t('admin-users.filter.sortLastLogin') },
+		{ value: 'created', label: t('admin-users.filter.sortCreated') }
+	]);
+	const roleOptions = $derived(data.roles.map((r) => ({ value: r.id, label: r.name })));
+	const filtered = $derived(
+		!!data.search ||
+			!!data.filter.status ||
+			!!data.filter.twoFactor ||
+			data.filter.roleIds.length > 0 ||
+			data.filter.admins
+	);
+	const exportHref = $derived(`/admin/users/export.csv${page.url.search}`);
+
+	// --- Auswahl und Sammelaktionen
+	let selected = $state<string[]>([]);
+	let bulkRole = $state<string | null>(null);
+	let bulkConfirm = $state<{ action: string; label: string } | null>(null);
+	let bulkForm = $state<HTMLFormElement | null>(null);
+	let bulkAction = $state('');
+	const pageIds = $derived(data.users.map((u) => u.id));
+	const allOnPage = $derived(pageIds.length > 0 && pageIds.every((id) => selected.includes(id)));
+	const canBulk = $derived(data.can.edit || data.can.assign);
+	const assignableRoles = $derived(
+		data.roles.filter((r) => r.assignable).map((r) => ({ value: r.id, label: r.name }))
+	);
+
+	function togglePage(v: boolean) {
+		selected = v
+			? [...new Set([...selected, ...pageIds])]
+			: selected.filter((id) => !pageIds.includes(id));
+	}
+
+	const selectAllSubmit: SubmitFunction = () => {
+		busy = true;
+		return async ({ result }) => {
+			busy = false;
+			if (result.type === 'success' && Array.isArray(result.data?.ids)) {
+				selected = result.data.ids as string[];
+			} else if (result.type === 'failure') {
+				toast.error((result.data?.message as string) ?? t('admin-users.actionFailed'));
+			}
+		};
+	};
+
+	function runBulk(action: string, label: string, confirm = true) {
+		bulkAction = action;
+		if (confirm) bulkConfirm = { action, label };
+		else queueMicrotask(() => bulkForm?.requestSubmit());
+	}
+
+	const bulkSubmit: SubmitFunction = () => {
+		busy = true;
+		return async ({ result }) => {
+			busy = false;
+			bulkConfirm = null;
+			if (result.type === 'success') {
+				const skipped = (result.data?.skipped ?? []) as { name: string; reason: string }[];
+				const message = (result.data?.message as string) ?? t('admin-users.saved');
+				if (skipped.length) {
+					toast.warning(message, {
+						description: skipped
+							.slice(0, 5)
+							.map((x) => `${x.name}: ${x.reason}`)
+							.join(' · ')
+					});
+				} else toast.success(message);
+				selected = [];
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				toast.error((result.data?.message as string) ?? t('admin-users.actionFailed'));
+			}
+		};
+	};
+
+	let createInvite = $state(false);
+
 	function openCreate() {
 		formError = '';
 		createRoleIds = [];
 		createPermissionKeys = [];
 		createTab = 'account';
+		createInvite = false;
 		createOpen = true;
 	}
 
@@ -153,7 +274,9 @@
 			return async ({ result, update }) => {
 				busy = false;
 				if (result.type === 'success') {
-					toast.success((result.data?.message as string) ?? t('admin-users.saved'));
+					const message = (result.data?.message as string) ?? t('admin-users.saved');
+					if (result.data?.warning) toast.warning(message);
+					else toast.success(message);
 					close?.();
 					await invalidateAll();
 				} else if (result.type === 'failure') {
@@ -171,6 +294,9 @@
 <div class="space-y-6">
 	<PageHeader title={t('admin-users.title')} description={t('admin-users.description')}>
 		{#snippet actions()}
+			<Button variant="outline" href={exportHref} data-sveltekit-reload
+				><DownloadIcon />{t('admin-users.exportCsv')}</Button
+			>
 			{#if data.can.create}
 				<Button onclick={openCreate}>{t('admin-users.create')}</Button>
 			{/if}
@@ -184,32 +310,108 @@
 		emptyTitle={t('admin-users.empty')}
 	>
 		{#snippet toolbar()}
-			<SearchInput
-				param="q"
-				resetParams={['page']}
-				placeholder={t('admin-users.searchPlaceholder')}
-				label={t('admin-users.searchLabel')}
-			/>
+			<div class="flex w-full flex-col gap-2">
+				<SearchInput
+					param="q"
+					resetParams={['page']}
+					placeholder={t('admin-users.searchPlaceholder')}
+					label={t('admin-users.searchLabel')}
+				/>
+				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+					<SelectField
+						label={t('admin-users.filter.status')}
+						options={statusOptions}
+						value={data.filter.status}
+						emptyLabel={t('admin-users.filter.statusAll')}
+						onchange={(v) => setParams({ status: v })}
+					/>
+					<SelectField
+						label={t('admin-users.filter.tfa')}
+						options={tfaOptions}
+						value={data.filter.twoFactor}
+						emptyLabel={t('admin-users.filter.tfaAll')}
+						onchange={(v) => setParams({ tfa: v })}
+					/>
+					{#if roleOptions.length}
+						<MultiSelect
+							label={t('admin-users.filter.roles')}
+							placeholder={t('admin-users.filter.rolesAll')}
+							options={roleOptions}
+							value={data.filter.roleIds}
+							onchange={(v) => setParams({ role: v })}
+						/>
+					{/if}
+					<SelectField
+						label={t('admin-users.filter.sort')}
+						options={sortOptions}
+						value={data.filter.sort}
+						onchange={(v) => setParams({ sort: v && v !== 'name' ? v : null })}
+					/>
+				</div>
+				{#if filtered}
+					<div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+						<span>{t('admin-users.filter.matches', { count: data.total })}</span>
+						{#if data.filter.admins}<Badge variant="outline"
+								>{t('admin-users.filter.adminsOnly')}</Badge
+							>{/if}
+						<Button
+							size="sm"
+							variant="link"
+							class="h-auto p-0 text-xs"
+							onclick={() =>
+								setParams({
+									q: null,
+									status: null,
+									tfa: null,
+									role: null,
+									admins: null,
+									sort: null
+								})}>{t('admin-users.filter.reset')}</Button
+						>
+					</div>
+				{/if}
+			</div>
 		{/snippet}
 		{#snippet head()}
 			<Table.Row>
+				{#if canBulk}
+					<Table.Head class="w-8">
+						<Checkbox
+							checked={allOnPage}
+							aria-label={t('admin-users.bulk.selectPage')}
+							onCheckedChange={(v) => togglePage(v === true)}
+						/>
+					</Table.Head>
+				{/if}
 				<Table.Head>{t('admin-users.col.name')}</Table.Head>
 				<Table.Head>{t('admin-users.col.email')}</Table.Head>
 				<Table.Head>{t('admin-users.col.roles')}</Table.Head>
 				<Table.Head>{t('admin-users.col.status')}</Table.Head>
 				<Table.Head>{t('admin-users.col.twoFactor')}</Table.Head>
-				<Table.Head>{t('admin-users.col.created')}</Table.Head>
+				<Table.Head>{t('admin-users.col.lastLogin')}</Table.Head>
 				<Table.Head class="text-right">{t('admin-users.col.actions')}</Table.Head>
 			</Table.Row>
 		{/snippet}
 		{#each data.users as u (u.id)}
 			{@const locked = !u.manageable}
 			<Table.Row>
+				{#if canBulk}
+					<Table.Cell class="w-8">
+						<Checkbox
+							checked={selected.includes(u.id)}
+							aria-label={t('admin-users.bulk.selectOne', { name: u.name })}
+							onCheckedChange={(v) => (selected = toggled(selected, u.id, v === true))}
+						/>
+					</Table.Cell>
+				{/if}
 				<Table.Cell class="font-medium">
-					<span class="flex items-center gap-2">
+					<a
+						href="/admin/users/{u.id}"
+						class="flex items-center gap-2 hover:underline focus-visible:underline"
+					>
 						<EntityAvatar name={u.name} src={u.image} size={28} />
 						{u.name}
-					</span>
+					</a>
 				</Table.Cell>
 				<Table.Cell>{u.email}</Table.Cell>
 				<Table.Cell>
@@ -238,7 +440,15 @@
 					</div>
 				</Table.Cell>
 				<Table.Cell>{u.twoFactorEnabled ? t('admin-users.yes') : t('admin-users.no')}</Table.Cell>
-				<Table.Cell>{fmt(u.createdAt)}</Table.Cell>
+				<Table.Cell>
+					{#if u.lastLoginAt}
+						<time datetime={new Date(u.lastLoginAt).toISOString()} title={fmt(u.lastLoginAt)}
+							>{formatRelative(new Date(u.lastLoginAt))}</time
+						>
+					{:else}
+						<span class="text-muted-foreground">{t('admin-users.never')}</span>
+					{/if}
+				</Table.Cell>
 				<Table.Cell class="text-right">
 					<div class="flex justify-end gap-1">
 						{#if data.can.edit}
@@ -307,7 +517,102 @@
 			<Pagination total={data.total} limit={data.pageSize} pageParam="page" />
 		{/snippet}
 	</DataTable>
+
+	{#if canBulk}
+		<MobileActionBar show={selected.length > 0} label={t('admin-users.bulk.label')}>
+			<span class="text-sm font-medium tabular-nums"
+				>{t('admin-users.bulk.selected', { count: selected.length })}</span
+			>
+			{#if selected.length < data.total}
+				<form method="POST" action="?/allIds" use:enhance={selectAllSubmit}>
+					<input type="hidden" name="query" value={page.url.searchParams.toString()} />
+					<Button size="sm" variant="link" type="submit" disabled={busy}
+						>{t('admin-users.bulk.selectAll', { count: data.total })}</Button
+					>
+				</form>
+			{/if}
+			<Button size="sm" variant="ghost" onclick={() => (selected = [])}
+				>{t('admin-users.bulk.clear')}</Button
+			>
+			{#if data.can.edit}
+				<Button
+					size="sm"
+					variant="outline"
+					disabled={busy}
+					onclick={() => runBulk('activate', t('admin-users.bulk.activate'), false)}
+					>{t('admin-users.bulk.activate')}</Button
+				>
+				<Button
+					size="sm"
+					variant="outline"
+					disabled={busy}
+					onclick={() => runBulk('deactivate', t('admin-users.bulk.deactivate'))}
+					>{t('admin-users.bulk.deactivate')}</Button
+				>
+				<Button
+					size="sm"
+					variant="outline"
+					disabled={busy}
+					onclick={() => runBulk('sendReset', t('admin-users.bulk.sendReset'))}
+					>{t('admin-users.bulk.sendReset')}</Button
+				>
+				<Button
+					size="sm"
+					variant="outline"
+					disabled={busy}
+					onclick={() => runBulk('revokeSessions', t('admin-users.bulk.revokeSessions'))}
+					>{t('admin-users.bulk.revokeSessions')}</Button
+				>
+			{/if}
+			{#if data.can.assign && assignableRoles.length}
+				<div class="flex flex-wrap items-center gap-1">
+					<SelectField
+						size="sm"
+						class="w-44"
+						label={t('admin-users.bulk.role')}
+						placeholder={t('admin-users.bulk.role')}
+						options={assignableRoles}
+						bind:value={bulkRole}
+					/>
+					<Button
+						size="sm"
+						variant="outline"
+						disabled={busy || !bulkRole}
+						onclick={() => runBulk('addRole', t('admin-users.bulk.addRole'), false)}
+						>{t('admin-users.bulk.addRole')}</Button
+					>
+					<Button
+						size="sm"
+						variant="outline"
+						disabled={busy || !bulkRole}
+						onclick={() => runBulk('removeRole', t('admin-users.bulk.removeRole'))}
+						>{t('admin-users.bulk.removeRole')}</Button
+					>
+				</div>
+			{/if}
+		</MobileActionBar>
+		<form method="POST" action="?/bulk" bind:this={bulkForm} use:enhance={bulkSubmit} hidden>
+			<input type="hidden" name="action" value={bulkAction} />
+			{#if bulkRole}<input type="hidden" name="roleId" value={bulkRole} />{/if}
+			{#each selected as id (id)}<input type="hidden" name="ids" value={id} />{/each}
+		</form>
+		{#if selected.length}<div class="h-16 sm:hidden" aria-hidden="true"></div>{/if}
+	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={
+		() => !!bulkConfirm,
+		(v) => {
+			if (!v) bulkConfirm = null;
+		}
+	}
+	title={t('admin-users.bulk.confirmTitle', { action: bulkConfirm?.label ?? '' })}
+	description={t('admin-users.bulk.confirmDescription', { count: selected.length })}
+	confirmLabel={bulkConfirm?.label ?? ''}
+	destructive={bulkConfirm?.action === 'deactivate' || bulkConfirm?.action === 'revokeSessions'}
+	onconfirm={() => bulkForm?.requestSubmit()}
+/>
 
 <!-- Rollen-Auswahl (Anlegen und Bearbeiten); nicht vergebbare, bereits gesetzte Rollen bleiben erhalten -->
 {#snippet rolePicker(selected: string[], onchange: (ids: string[]) => void, prefix: string)}
@@ -402,21 +707,38 @@
 								<Input id="c-email" name="email" type="email" required autocomplete="off" />
 							</FormField>
 						</div>
-						<FormField
-							label={t('admin-users.password')}
-							id="c-pw"
-							required
-							hint={t('admin-users.passwordHint')}
-						>
-							<Input
-								id="c-pw"
-								name="password"
-								type="password"
-								required
-								minlength={12}
-								autocomplete="new-password"
+						<div class="flex items-start gap-2 text-sm">
+							<Checkbox
+								id="c-invite"
+								name="invite"
+								bind:checked={createInvite}
+								class="mt-0.5"
+								aria-describedby="c-invite-hint"
 							/>
-						</FormField>
+							<div>
+								<label for="c-invite" class="font-medium">{t('admin-users.invite')}</label>
+								<p id="c-invite-hint" class="text-xs text-muted-foreground">
+									{t('admin-users.inviteHint')}
+								</p>
+							</div>
+						</div>
+						{#if !createInvite}
+							<FormField
+								label={t('admin-users.password')}
+								id="c-pw"
+								required
+								hint={t('admin-users.passwordHint')}
+							>
+								<Input
+									id="c-pw"
+									name="password"
+									type="password"
+									required
+									minlength={12}
+									autocomplete="new-password"
+								/>
+							</FormField>
+						{/if}
 					</Tabs.Content>
 					{#if showAccess}
 						<Tabs.Content value="access" class="space-y-6">

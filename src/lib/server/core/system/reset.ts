@@ -123,7 +123,8 @@ const USER_COLUMNS = [
 	'active',
 	'two_factor_enabled',
 	'created_at',
-	'updated_at'
+	'updated_at',
+	'last_login_at'
 ];
 const API_KEY_COLUMNS = [
 	'id',
@@ -237,7 +238,7 @@ const CORE_AREAS: CoreAreaDef[] = [
 		id: 'audit',
 		label: 'reset.area.audit.label',
 		description: 'reset.area.audit.description',
-		tables: [{ table: 'audit_log' }]
+		tables: [{ table: 'user_impersonation' }, { table: 'audit_log' }]
 	}
 ];
 

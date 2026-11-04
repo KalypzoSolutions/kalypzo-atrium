@@ -4,6 +4,7 @@
 		"core.users.create": "Create users",
 		"core.users.edit": "Edit and deactivate users",
 		"core.users.delete": "Delete users",
+		"core.users.impersonate": "Act as another user (impersonation)",
 		"core.roles.view": "View roles and permissions",
 		"core.roles.create": "Create roles",
 		"core.roles.edit": "Edit roles",

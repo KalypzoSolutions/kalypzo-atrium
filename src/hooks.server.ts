@@ -8,6 +8,7 @@ import { legacyAdminRedirect } from '$lib/server/core/admin-redirects';
 import { requestIdFrom } from '$lib/server/core/api/request-id';
 import { anonymousContext, resolveSession } from '$lib/server/core/auth/context';
 import { getAuth } from '$lib/server/core/auth';
+import { activeImpersonation, stopImpersonation } from '$lib/server/core/auth/admin/impersonation';
 import { applyClientIpHeader, clientAddress } from '$lib/server/core/auth/client-ip';
 import { logError } from '$lib/server/core/db-errors';
 import { initCore } from '$lib/server/core/init';
@@ -60,6 +61,7 @@ const init: Handle = async ({ event, resolve }) => {
 	event.locals.ctx = anonymousContext(ip);
 	event.locals.user = null;
 	event.locals.sessionId = null;
+	event.locals.impersonation = null;
 
 	// Better-Auth-Endpunkte löst Better Auth selbst auf
 	const isApi = event.url.pathname.startsWith('/api/');
@@ -71,6 +73,7 @@ const init: Handle = async ({ event, resolve }) => {
 				event.locals.ctx = session.ctx;
 				event.locals.user = session.user;
 				event.locals.sessionId = session.sessionId;
+				event.locals.impersonation = session.impersonation;
 			}
 		}
 	}
@@ -84,8 +87,43 @@ const init: Handle = async ({ event, resolve }) => {
 	return withLocale(locale, () => resolve(event));
 };
 
+/** Better-Auth-Pfade, die während „Als Person handeln“ erlaubt bleiben */
+const AUTH_PATHS_WHILE_IMPERSONATING = new Set(['/api/auth/get-session', '/api/auth/sign-out']);
+
+/**
+ * Während „Als Person handeln“ gehört die Better-Auth-Sitzung der **Admin-Person**: Passwort, 2FA, Sitzungen,
+ * E-Mail usw. träfen deren Konto. Deshalb sind diese Pfade gesperrt; Abmelden beendet zuerst das Handeln.
+ */
+const impersonationAuthGuard: Handle = async ({ event, resolve }) => {
+	const path = event.url.pathname;
+	// Ohne Sitzungs-Cookie (Anmelden, Passwort vergessen …) keine zusätzliche Abfrage
+	if (
+		!path.startsWith('/api/auth/') ||
+		!event.request.headers.get('cookie')?.includes('session_token')
+	)
+		return resolve(event);
+	const session = await Promise.resolve()
+		.then(() => getAuth().api.getSession({ headers: event.request.headers }))
+		.catch(() => null);
+	if (!session) return resolve(event);
+	const imp = await activeImpersonation(session.session.id);
+	if (!imp) return resolve(event);
+	if (path === '/api/auth/sign-out') {
+		await stopImpersonation(session.session.id);
+		return resolve(event);
+	}
+	if (AUTH_PATHS_WHILE_IMPERSONATING.has(path)) return resolve(event);
+	return new Response(
+		JSON.stringify({ message: t('admin-users.server.blockedWhileImpersonating') }),
+		{ status: 403, headers: { 'content-type': 'application/json' } }
+	);
+};
+
 const authHandler: Handle = ({ event, resolve }) =>
 	svelteKitHandler({ auth: getAuth(), event, resolve, building });
+
+/** Seiten, die bei „Passwort ändern“-Pflicht erreichbar bleiben (Profil, Abmelden, Beenden des Handelns) */
+const MUST_CHANGE_ALLOWED = ['/profile', '/admin/impersonation/stop'];
 
 const guard: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
@@ -100,6 +138,17 @@ const guard: Handle = async ({ event, resolve }) => {
 				303,
 				`/login${path !== '/' ? `?redirectTo=${encodeURIComponent(path + event.url.search)}` : ''}`
 			);
+		}
+		// Von der Verwaltung gesetztes Passwort: zuerst selbst ändern (nicht während „Als Person handeln“)
+		if (
+			event.locals.user &&
+			!event.locals.impersonation &&
+			!isPublic &&
+			!MUST_CHANGE_ALLOWED.some((p) => path === p || path.startsWith(`${p}/`)) &&
+			!path.startsWith('/_app/') &&
+			event.locals.user.mustChangePassword
+		) {
+			throw redirect(303, '/profile?tab=security&mustChange=1');
 		}
 		// Moduloberfläche (auch eingebettet): deaktivierte Module sind nicht erreichbar
 		const m = /^\/(?:modules|p|embed)\/([^/]+)/.exec(path);
@@ -191,7 +240,7 @@ const headers: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-export const handle: Handle = sequence(headers, init, authHandler, guard);
+export const handle: Handle = sequence(headers, init, impersonationAuthGuard, authHandler, guard);
 
 export const handleError: HandleServerError = ({ error, event }) => {
 	// Parameterfrei loggen (keine SQL-Werte), Stack nur serverseitig (#56)

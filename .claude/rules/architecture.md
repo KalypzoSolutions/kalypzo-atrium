@@ -226,6 +226,30 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   `atrium_qr`, SW `ep:*` → `atrium:*`; Datenauskunft `atrium-datenauskunft`. **Bleibt**: HKDF-Salz `'ep-intern'` (`crypto.ts`, sonst wären alle
   Geheimnisse unlesbar), Backup-Header `EPBK`, Compose-Aliase/Volumes.
 
+## Benutzerverwaltung ausgebaut (2026-11-04, Core-Migration 0013)
+- `core/auth/admin/`: `password.ts` (`sendPasswordReset` wartet auf den Versand → 503 ohne SMTP, `createPasswordResetLink` 1 h einmal
+  sichtbar, `setUserPassword` eigenes/`generate` + `mustChange`, `sendInvitation` 7 Tage, Token = Better-Auth-`verification`
+  `reset-password:<token>` → bestehende Seite `/reset-password?token=…`), `sessions.ts` (`sessionsOfUser`, `listUserSessions`,
+  `revokeUserSessions`, `resetTwoFactor`), `stats.ts` (`userStats`, `explainUserPermissions` = Rechte mit Herkunft Rolle/Modul/Einzelrecht),
+  `bulk.ts` (`bulkUserAction` ≤ 500, je Konto dieselben Prüfungen, `exportUsersCsv`), `impersonation.ts`. Gemeinsame Prüfung
+  `loadManageableTarget` (Recht, nicht eigenes Konto → 400, `assertCanManageUser`).
+- `user.last_login_at` (gesetzt in `logAudit` bei `core.auth.login`, alle Anmeldewege) und `user.must_change_password` (Guard leitet auf
+  `/profile?tab=security&mustChange=1`, gelöscht durch `changePassword` im Profil und `onPasswordReset`; `SessionUser.mustChangePassword`).
+  `listUsers` filtert `status` active|inactive|unverified|never, `twoFactor`, `roleIds` (auch Modul-Verleihungen), `admins`, `sort`
+  name|created|lastLogin; `listUserIds`. URL-Filter der Seite: `parseUserFilter` (`admin/users/filter.ts`), CSV `/admin/users/export.csv`.
+- **Als Person handeln** (`core.users.impersonate`, privilegiert): Tabelle `user_impersonation` (an `session.id`, Grund, Ablauf ≤ 60 min),
+  `resolveSession` liefert Kontext der Zielperson + `impersonation`, `Actor.impersonator` → `audit_log.impersonator_id`
+  (`listAudit({ involving | impersonatorId })`). `locals.impersonation` / Layout-Daten `impersonation` → `ImpersonationBanner`
+  (`--impersonation-h` für `fullBleed`). Sperren: `assertNotImpersonating` (API-Keys, Push-Gerät, QR-Login, E-Mail-Wechsel), Profil-Aktionen
+  Passwort/2FA/Sitzungen/E-Mail, `impersonationAuthGuard` in `hooks.server.ts` (Better-Auth-Pfade außer `get-session`/`sign-out`; Abmelden
+  beendet zuerst das Handeln). Ende `POST /admin/impersonation/stop`. Einstellung `core.system.impersonationNotify` (Mail an die Person).
+- Seiten: `/admin/users` (Filter, „Zuletzt angemeldet“, Auswahl + `MobileActionBar` Sammelaktionen, Einladung statt Passwort, `?edit=<id>`
+  öffnet den Bearbeiten-Dialog), `/admin/users/<id>` (Reiter Übersicht · Aktivität · Sitzungen · Sicherheit · Rechte, `ActivityChart`),
+  `/admin` Kennzahlen-Kacheln (`core/admin/overview-stats.ts`, je Recht, 30 s Cache). Globale Suche verlinkt Konten auf die Detailseite.
+  REST: `GET /users/:id/stats`, `GET|DELETE /users/:id/sessions`, `POST /users/:id/password-reset`, `GET /users?status=&twoFactor=&sort=`.
+  Backup: `user_impersonation` nie (Verlauf im Audit); Reset-Bereich `core:audit` leert sie. Tests `core-user-admin.test.ts`,
+  E2E `admin-users-detail.spec.ts`. Doku `docs/security.md` → „Benutzerverwaltung“.
+
 ## Einzelrechte am Benutzer (2026-10-21)
 - Tabelle `user_permission` (Core-Migration 0009): Rechte direkt am Benutzer zusätzlich zu Rollen; `getUserPermissions` vereinigt sie
   (Modulrechte nur bei aktivem Modul). Vergabe in `auth/users.ts` (`permissionKeys`, `planUserPermissions`) mit denselben Regeln wie Rollen

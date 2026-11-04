@@ -134,7 +134,10 @@
 		"disabling": "Deaktiviert …",
 		"revokeAllTitle": "Alle anderen Sitzungen beenden?",
 		"revokeAllDescription": "Auf allen anderen Geräten wirst du abgemeldet. Diese Sitzung bleibt bestehen.",
-		"revokeAllConfirm": "Alle beenden"
+		"revokeAllConfirm": "Alle beenden",
+		"mustChangeTitle": "Bitte neues Passwort festlegen",
+		"mustChangeText": "Dein Passwort wurde von der Verwaltung gesetzt. Lege jetzt ein eigenes fest, um weiterzumachen.",
+		"impersonatingText": "Während die Verwaltung als diese Person handelt, sind Passwort, 2FA und Sitzungen gesperrt."
 	},
 	"appearance": {
 		"light": "Hell",

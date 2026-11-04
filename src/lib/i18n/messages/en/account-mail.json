@@ -22,5 +22,13 @@
 	"emailChangedByAdmin": {
 		"subject": "{system}: The email address of your account was changed",
 		"text": "Hello {name},\n\nthe administrators changed the email address of your account to {email}. From now on all messages, including password reset links, go to this address. All previous sessions have been ended.\n\nIf this change wasn't agreed with you, please contact the administrators right away."
+	},
+	"invite": {
+		"subject": "{system}: Invitation",
+		"text": "Hello {name},\n\nan account has been created for you at {system}. Use the following link to set your password (valid for {days} days):\n{url}\n\nAfterwards, sign in with your email address."
+	},
+	"impersonated": {
+		"subject": "{system}: An administrator is acting in your account",
+		"text": "Hello {name},\n\n{admin} (administration) is acting in your account for a short time (for example to reproduce a problem). Every step is logged.\n\nIf you did not expect this, please contact the administration."
 	}
 }

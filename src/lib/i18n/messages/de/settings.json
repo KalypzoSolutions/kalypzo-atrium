@@ -38,6 +38,10 @@
 		"label": "Impressum (URL)",
 		"description": "Link auf das Impressum. Erscheint auf der Anmeldeseite und allen öffentlichen Seiten."
 	},
+	"core.system.impersonationNotify": {
+		"label": "Person informieren, wenn die Verwaltung als sie handelt",
+		"description": "Schickt der Person eine E-Mail, sobald jemand aus der Verwaltung „als sie“ handelt (mit Name der handelnden Person, ohne Grund)."
+	},
 	"core.retention.apiLogDays": {
 		"label": "API-Protokoll aufbewahren (Tage)",
 		"description": "Einträge im API-Zugriffsprotokoll (Pfad, IP-Adresse, Akteur) werden danach gelöscht. 1–3650 Tage."

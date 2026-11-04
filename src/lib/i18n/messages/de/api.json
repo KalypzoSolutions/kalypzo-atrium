@@ -101,7 +101,11 @@
 		"auditLogs": "Audit-Logs",
 		"rolesAdoptDefaultDescription": "Admin-Bestätigung (#67, 01a-07): Die Rolle erhält danach automatisch die defaultRoleGrants der Module.",
 		"aiAssistDescription": "Antwort als `text/event-stream` mit `delta`-, `done`- und `error`-Ereignissen. Recht `<modul>.ai.use`; Kontext nur mit Zugriff auf das Objekt.",
-		"pdfOrientation": "Seitenausrichtung. Wird bei Vorlagen mit festem Seitenlayout (Briefvorlagen wie brief, briefkopf, briefkopf-quer) ignoriert; dort bestimmt die Vorlage die Ausrichtung."
+		"pdfOrientation": "Seitenausrichtung. Wird bei Vorlagen mit festem Seitenlayout (Briefvorlagen wie brief, briefkopf, briefkopf-quer) ignoriert; dort bestimmt die Vorlage die Ausrichtung.",
+		"usersStats": "Kennzahlen zu einem Konto",
+		"usersSessions": "Sitzungen eines Kontos",
+		"usersSessionsRevoke": "Alle Sitzungen eines Kontos beenden",
+		"usersPasswordReset": "Zurücksetzen-Mail an ein Konto senden"
 	},
 	"tags": {
 		"system": "System",

@@ -17,6 +17,7 @@ import { errors } from '../errors';
 import { hit } from '../rate-limit';
 import { maskEmail } from './mask-email';
 import { t } from '$lib/i18n';
+import { assertNotImpersonating } from './admin/impersonation';
 
 /** Gültigkeit eines angezeigten Codes */
 export const QR_TTL_SEC = 120;
@@ -141,6 +142,7 @@ export async function decideQrLogin(
 	approve: boolean
 ): Promise<'approved' | 'denied'> {
 	const userId = requireUserCtx(ctx);
+	assertNotImpersonating(ctx);
 	if (!hit(`qr-login:decide:${userId}`, 20, 600).allowed) throw errors.rateLimited();
 	const row = await byToken(token);
 	if (!row) throw errors.notFound(t('auth.qrInvalid'));

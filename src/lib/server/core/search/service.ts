@@ -82,7 +82,7 @@ async function searchUsers(q: string, limit: number): Promise<SearchHit[]> {
 		id: u.id,
 		title: u.name,
 		subtitle: u.active ? u.email : `${u.email} · ${t('search.deactivated')}`,
-		href: `/admin/users?q=${encodeURIComponent(u.email)}`,
+		href: `/admin/users/${encodeURIComponent(u.id)}`,
 		icon: 'users',
 		type: t('search.typeUser')
 	}));

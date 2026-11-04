@@ -3,7 +3,7 @@
  *
  * Core-Bereiche sind fest (`CORE_SCOPE_KEYS`); jedes registrierte Modul mit vorhandenem Schema
  * `mod_<id>` ist ein Bereich (alle Basistabellen + seine Zeilen in `public.file`).
- * Nie gesichert: `session`, `verification`, `push_subscription`, `notification_queue` (gerätegebunden/flüchtig), `permission`, `module_state`, `module_migration`, `drizzle.*`.
+ * Nie gesichert: `session`, `verification`, `push_subscription`, `notification_queue` (gerätegebunden/flüchtig), `user_impersonation` (an Sitzungen gebunden; Verlauf steht im Audit), `permission`, `module_state`, `module_migration`, `drizzle.*`.
  */
 import { sql } from 'drizzle-orm';
 import { getDb, type DbOrTx } from '../database/client';

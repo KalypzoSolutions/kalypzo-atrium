@@ -3,6 +3,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { AppSidebar, Topbar } from '$lib/components/layout';
+	import ImpersonationBanner from '$lib/components/layout/ImpersonationBanner.svelte';
 	import { t } from '$lib/i18n';
 	import { refreshNavBadges, seedNavBadges } from '$lib/sdk/client/nav-badges.svelte';
 
@@ -51,6 +52,9 @@
 		ontoggle={toggleSidebar}
 	/>
 	<div class="flex min-w-0 flex-1 flex-col">
+		{#if data.impersonation}
+			<ImpersonationBanner impersonation={data.impersonation} />
+		{/if}
 		{#if data.user}
 			<Topbar
 				user={data.user}
@@ -65,7 +69,7 @@
 			<main
 				id="main"
 				tabindex="-1"
-				class="flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col outline-none"
+				class="flex h-[calc(100dvh-3.5rem-var(--impersonation-h,0px))] min-h-0 flex-col outline-none"
 			>
 				{@render children()}
 			</main>
