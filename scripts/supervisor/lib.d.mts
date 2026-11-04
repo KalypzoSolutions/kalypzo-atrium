@@ -22,6 +22,11 @@ export declare function modulePackagesFor(
 	modulesDir: string,
 	corePkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> }
 ): Record<string, string>;
+export declare function coreChanged(
+	info: { core?: string; coreBuild?: string | null } | null,
+	coreVersion: string,
+	coreBuild: string | null
+): boolean;
 export declare function mergeLock(
 	prev: { modules?: Record<string, LockEntry> } | null,
 	request: { modules?: Record<string, LockEntry>; remove?: string[] } | null,

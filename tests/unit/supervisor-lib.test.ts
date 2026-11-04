@@ -8,6 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { contentHash, readModuleArchive } from '$lib/server/core/modules/install/archive';
 import {
 	contentHashOfDir,
+	coreChanged,
 	dedupeModulePackages,
 	mergeLock,
 	moduleFolders,
@@ -128,5 +129,18 @@ describe('dedupeModulePackages', () => {
 			'prosemirror-model'
 		]);
 		expect(dedupeModulePackages(mods, core, { yjs: '13.6.33' })).toEqual([]);
+	});
+});
+
+describe('coreChanged (Neubau nach Image-Wechsel)', () => {
+	it('neue Version oder neuer Core-Build → Neubau', () => {
+		expect(coreChanged({ core: '2.0.0', coreBuild: 'a' }, '2.0.1', 'a')).toBe(true);
+		expect(coreChanged({ core: '2.0.0', coreBuild: 'a' }, '2.0.0', 'b')).toBe(true);
+		expect(coreChanged({ core: '2.0.0', coreBuild: 'a' }, '2.0.0', 'a')).toBe(false);
+	});
+	it('alte Generation ohne Build-Kennung wird neu gebaut, unbekannter Build nicht', () => {
+		expect(coreChanged({ core: '2.0.0' }, '2.0.0', 'b')).toBe(true);
+		expect(coreChanged({ core: '2.0.0' }, '2.0.0', null)).toBe(false);
+		expect(coreChanged(null, '2.0.0', 'b')).toBe(false);
 	});
 });

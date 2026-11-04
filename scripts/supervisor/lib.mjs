@@ -148,6 +148,18 @@ export function dedupeModulePackages(modulesDir, coreRoot, wanted = {}) {
 }
 
 /** Lock-Datei der neuen Generation: bisheriger Stand + Auftrag; Module ohne Eintrag als `builtin` */
+/**
+ * Muss eine Generation nach einem Image-Wechsel neu gebaut werden? Ja bei anderer Core-Version **oder** anderem
+ * Core-Build (neues Image mit gleicher Version). Generationen ohne `coreBuild` (vor dieser Prüfung gebaut) gelten
+ * als veraltet, sobald der Core-Build bekannt ist.
+ */
+export function coreChanged(info, coreVersion, coreBuild) {
+	if (!info) return false;
+	if (info.core !== coreVersion) return true;
+	if (!coreBuild) return false;
+	return info.coreBuild !== coreBuild;
+}
+
 export function mergeLock(prev, request, modulesDir, coreVersion) {
 	const modules = { ...(prev?.modules ?? {}) };
 	for (const id of request?.remove ?? []) delete modules[id];
@@ -214,6 +226,12 @@ export class Supervisor {
 		/** GitHub-Archiv laden (für Tests ersetzbar) */
 		this.download = opts.download ?? downloadZipball;
 		this.corePkg = readJson(join(this.coreRoot, 'package.json'), {});
+		/**
+		 * Kennung des mitgelieferten Core-Builds (SvelteKit schreibt beim Bauen einen Zeitstempel nach
+		 * `_app/version.json`): ändert sich mit jedem Image, auch ohne neue Versionsnummer in `package.json`.
+		 */
+		this.coreBuild =
+			readJson(join(this.baseBuildDir, 'client', '_app', 'version.json'), {}).version ?? null;
 		/** @type {import('node:child_process').ChildProcess | null} */
 		this.child = null;
 		this.expectedExit = false;
@@ -379,8 +397,10 @@ export class Supervisor {
 		this.startChild(current);
 		// Neue Core-Version (neues Image): Module der Generation mit dem neuen Core neu bauen
 		const info = current ? readJson(join(this.genDir(current), 'BUILD_INFO.json'), {}) : null;
-		if (info && info.core !== this.corePkg.version) {
-			this.log(`Core ${info.core} → ${this.corePkg.version}: Neubau der Generation`);
+		if (info && coreChanged(info, this.corePkg.version, this.coreBuild)) {
+			this.log(
+				`Core ${info.core}${info.coreBuild ? ` (${info.coreBuild})` : ''} → ${this.corePkg.version} (${this.coreBuild ?? '?'}): Neubau der Generation`
+			);
 			this.enqueue(() => this.build(null));
 		}
 		// Frisches Deployment: Module aus der Seed-Liste holen und bauen (einmal je Seed-Inhalt)
@@ -575,6 +595,7 @@ export class Supervisor {
 			writeJson(join(genDir, 'BUILD_INFO.json'), {
 				generation: genId,
 				core: this.corePkg.version,
+				coreBuild: this.coreBuild,
 				planId,
 				createdAt: new Date().toISOString(),
 				modules: Object.fromEntries(report.modules.map((m) => [m.id, m.version]))
