@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-node';
+import adapter from './tools/adapter-atrium.js';
 import { relative } from 'node:path';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { CORE_ROOT, modulesDir } from './tools/modules-dir.js';
