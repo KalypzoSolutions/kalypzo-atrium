@@ -28,6 +28,8 @@ export interface AdminOverviewStats {
 	storage?: { bytes: number; files: number };
 	ai?: { costMonthUsd: number; tokensMonth: number };
 	jobs?: { failed: number };
+	/** Module mit verfügbarem Update (letzter Prüfstand, nur mit `core.modules.install`) */
+	modules?: { updates: number };
 }
 
 const TTL_MS = 30_000;
@@ -44,7 +46,8 @@ export async function adminOverviewStats(ctx: RequestContext): Promise<AdminOver
 		api: has('core.api.view'),
 		storage: has('core.storage.manage'),
 		ai: has('core.ai.manage') || has('core.ai.view'),
-		jobs: has('core.jobs.manage')
+		jobs: has('core.jobs.manage'),
+		modules: has('core.modules.install')
 	};
 	const key = JSON.stringify(flags);
 	const hit = cache.get(key);
@@ -134,6 +137,10 @@ export async function adminOverviewStats(ctx: RequestContext): Promise<AdminOver
 			sql`SELECT count(*) AS n FROM job_run WHERE last_status = 'error'`
 		);
 		out.jobs = { failed: num(r?.n) };
+	}
+	if (flags.modules) {
+		const { availableUpdateCount } = await import('../modules/install/updates');
+		out.modules = { updates: await availableUpdateCount() };
 	}
 	cache.set(key, { at: Date.now(), value: out });
 	return out;

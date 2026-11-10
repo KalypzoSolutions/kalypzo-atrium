@@ -56,6 +56,11 @@ export declare class Supervisor {
 	constructor(opts: SupervisorOptions);
 	start(): Promise<void>;
 	stop(): Promise<void>;
+	/** Zustand `state.json` (laufende und vorige Generation, `null` = mitgelieferter Build) */
+	state(): { current: string | null; previous: string | null; seed?: string };
+	setState(s: { current?: string | null; previous?: string | null; seed?: string }): void;
+	/** Zurück zur vorigen Generation (Ergebnis unter `results/<planId>.json`) */
+	rollback(planId: string): Promise<void>;
 	/** Wartet, bis alle anstehenden Neubauten fertig sind */
 	readonly queue: Promise<void>;
 }

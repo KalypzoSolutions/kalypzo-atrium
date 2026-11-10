@@ -120,6 +120,59 @@ export async function resolveGithubSource(
 	throw errors.notFound(t('install.github.refNotFound', { ref: source.ref }));
 }
 
+const TAG_PAGES = 3;
+
+/** Tags des Repositorys mit Commit (höchstens 300, neueste zuerst wie bei GitHub) */
+export async function listTags(
+	owner: string,
+	repo: string
+): Promise<{ name: string; sha: string }[]> {
+	const out: { name: string; sha: string }[] = [];
+	for (let page = 1; page <= TAG_PAGES; page++) {
+		const res = await get(api(`/repos/${enc(owner)}/${enc(repo)}/tags?per_page=100&page=${page}`));
+		if (res.status === 404) throw errors.notFound(t('install.github.repoNotFound'));
+		if (!res.ok) throw errors.unavailable(t('install.github.status', { status: res.status }));
+		const body = (await res.json()) as { name?: unknown; commit?: { sha?: unknown } }[];
+		if (!Array.isArray(body)) break;
+		for (const tag of body) {
+			const name = typeof tag.name === 'string' ? tag.name : '';
+			const sha = typeof tag.commit?.sha === 'string' ? tag.commit.sha : '';
+			if (name && SHA_RE.test(sha)) out.push({ name, sha });
+		}
+		if (body.length < 100) break;
+	}
+	return out;
+}
+
+/**
+ * Commits, die `path` betreffen, von `head` rückwärts bis ausschließlich `until` (höchstens `limit`) – als
+ * Änderungsnotizen, wenn das Modul keine `CHANGELOG.md` mitbringt. Nur die erste Zeile der Nachricht.
+ */
+export async function listPathCommits(
+	owner: string,
+	repo: string,
+	head: string,
+	path: string,
+	until: string,
+	limit = 20
+): Promise<{ sha: string; message: string }[]> {
+	if (!SHA_RE.test(head)) throw errors.badRequest(t('install.github.invalidCommit'));
+	const q = new URLSearchParams({ sha: head, per_page: String(Math.min(limit + 1, 100)) });
+	if (path) q.set('path', path);
+	const res = await get(api(`/repos/${enc(owner)}/${enc(repo)}/commits?${q}`));
+	if (!res.ok) throw errors.unavailable(t('install.github.status', { status: res.status }));
+	const body = (await res.json()) as { sha?: unknown; commit?: { message?: unknown } }[];
+	const out: { sha: string; message: string }[] = [];
+	for (const c of Array.isArray(body) ? body : []) {
+		const sha = typeof c.sha === 'string' ? c.sha : '';
+		if (!SHA_RE.test(sha) || sha === until) break;
+		const message = typeof c.commit?.message === 'string' ? c.commit.message : '';
+		out.push({ sha, message: message.split('\n')[0]!.slice(0, 200) });
+		if (out.length >= limit) break;
+	}
+	return out;
+}
+
 /** Archiv des Repositorys am Commit `sha` (ZIP), höchstens `ARCHIVE_LIMITS.maxArchiveBytes` */
 export async function downloadGithubArchive(
 	owner: string,

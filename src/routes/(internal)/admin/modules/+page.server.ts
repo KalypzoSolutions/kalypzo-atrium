@@ -8,11 +8,19 @@ import {
 	listModules
 } from '$lib/server/core/modules/service';
 import {
-	checkUpdates,
 	installDrift,
 	restoreFromDatabase,
+	rollbackInstall,
+	rollbackPreview,
 	uninstallModule
 } from '$lib/server/core/modules/install/manage';
+import {
+	checkUpdates,
+	ignoreUpdate,
+	listUpdateChecks,
+	setUpdateChannel
+} from '$lib/server/core/modules/install/updates';
+import { UPDATE_CHANNELS } from '$lib/server/core/modules/install/update-rules';
 import { installStatus, listInstalledSources } from '$lib/server/core/modules/install/service';
 import { isAdministrator } from '$lib/server/core/permissions/service';
 import { failWithFields, invalid, requirePerm, toFail } from '../_shared/server-utils';
@@ -20,12 +28,15 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requirePerm(locals, 'core.modules.view');
-	const [modules, problems, sources, drift] = await Promise.all([
-		listModules(),
-		listModuleProblems(),
-		listInstalledSources(locals.ctx),
-		installDrift(locals.ctx)
-	]);
+	const canInstall =
+		locals.ctx.permissions.has('core.modules.install') && isAdministrator(locals.ctx);
+	// Nacheinander: PGlite hat nur eine Sitzung
+	const modules = await listModules();
+	const problems = await listModuleProblems();
+	const sources = await listInstalledSources(locals.ctx);
+	const drift = await installDrift(locals.ctx);
+	const updates = canInstall ? await listUpdateChecks(locals.ctx) : [];
+	const rollback = canInstall ? await rollbackPreview(locals.ctx) : null;
 	return {
 		/** Herkunft je Modul (Quelle aus `module_install`, sonst im Build enthalten) */
 		origins: Object.fromEntries(
@@ -45,7 +56,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 		),
 		/** Gewünscht, aber nicht im laufenden Stand (z. B. nach Verlust des Volumes) */
 		drift,
-		canInstall: locals.ctx.permissions.has('core.modules.install') && isAdministrator(locals.ctx),
+		canInstall,
+		/** Letzter Stand der Update-Prüfung je Modul aus einer Quelle */
+		updates,
+		/** Zurück zur vorigen Version (nur Supervisor mit voriger Generation) */
+		rollback,
 		installStatus: installStatus(),
 		twoFactorEnabled: locals.user?.twoFactorEnabled ?? false,
 		/** Gefunden, aber nicht geladen (defekt) bzw. nicht mehr installiert mit vorhandenen Daten */
@@ -71,6 +86,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 const idSchema = z.object({ id: z.string().min(1).max(40) });
+const channelSchema = z.object({
+	id: z.string().min(1).max(40),
+	channel: z.enum(UPDATE_CHANNELS as readonly ['release', 'branch'])
+});
 
 export const actions: Actions = {
 	enable: async ({ request, locals }) => {
@@ -87,7 +106,51 @@ export const actions: Actions = {
 	checkUpdates: async ({ locals }) => {
 		requirePerm(locals, 'core.modules.install');
 		try {
-			return { updates: await checkUpdates(locals.ctx) };
+			const updates = await checkUpdates(locals.ctx);
+			const n = updates.filter((u) => u.status === 'update' || u.status === 'changed').length;
+			return { message: t('admin-modules.server.updatesFound', { count: n }) };
+		} catch (e) {
+			return failWithFields(e);
+		}
+	},
+	setChannel: async ({ request, locals }) => {
+		requirePerm(locals, 'core.modules.install');
+		const form = await request.formData();
+		const parsed = channelSchema.safeParse({ id: form.get('id'), channel: form.get('channel') });
+		if (!parsed.success) return invalid(parsed.error);
+		try {
+			await setUpdateChannel(locals.ctx, parsed.data.id, parsed.data.channel);
+			return { message: t('admin-modules.server.channelSaved') };
+		} catch (e) {
+			return failWithFields(e);
+		}
+	},
+	ignoreUpdate: async ({ request, locals }) => {
+		requirePerm(locals, 'core.modules.install');
+		const form = await request.formData();
+		const parsed = idSchema.safeParse({ id: form.get('id') });
+		if (!parsed.success) return invalid(parsed.error);
+		const ignore = form.get('ignore') !== 'off';
+		try {
+			await ignoreUpdate(locals.ctx, parsed.data.id, ignore);
+			return {
+				message: ignore
+					? t('admin-modules.server.updateIgnored')
+					: t('admin-modules.server.updateUnignored')
+			};
+		} catch (e) {
+			return failWithFields(e);
+		}
+	},
+	rollback: async ({ request, locals }) => {
+		requirePerm(locals, 'core.modules.install');
+		const form = await request.formData();
+		try {
+			const result = await rollbackInstall(locals.ctx, {
+				password: String(form.get('password') ?? ''),
+				totp: String(form.get('totp') ?? '')
+			});
+			return { planId: result.planId, message: t('admin-modules.server.rollbackRequested') };
 		} catch (e) {
 			return failWithFields(e);
 		}

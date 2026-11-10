@@ -5,7 +5,8 @@ import {
 	confirmInstall,
 	inspectSource,
 	installStatus,
-	previewInstall
+	previewInstall,
+	previewUpdates
 } from '$lib/server/core/modules/install/service';
 import { readSupervisorStatus } from '$lib/server/core/modules/install/supervisor-link';
 import { getSetting, setSettings } from '$lib/server/core/settings/service';
@@ -51,6 +52,21 @@ export const actions: Actions = {
 			const preview = await previewInstall(locals.ctx, {
 				sourceToken: String(form.get('sourceToken') ?? ''),
 				selected: form.getAll('selected').map(String)
+			});
+			return { step: 'preview' as const, preview };
+		} catch (e) {
+			return failWith(e);
+		}
+	},
+	updates: async ({ request, locals }) => {
+		requirePerm(locals, PERM);
+		const form = await request.formData();
+		try {
+			const preview = await previewUpdates(locals.ctx, {
+				ids: String(form.get('ids') ?? '')
+					.split(',')
+					.map((s) => s.trim())
+					.filter(Boolean)
 			});
 			return { step: 'preview' as const, preview };
 		} catch (e) {

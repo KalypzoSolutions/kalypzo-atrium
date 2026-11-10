@@ -282,7 +282,27 @@ export const moduleInstall = pgTable('module_install', {
 	commit: text('commit'),
 	contentHash: text('content_hash').notNull(),
 	installedAt: timestamp('installed_at', { withTimezone: true }).notNull().defaultNow(),
-	installedBy: text('installed_by')
+	installedBy: text('installed_by'),
+	/** Update-Kanal (Migration 0014): `release` (Versions-Tags) | `branch` (Kopf des Branches) */
+	channel: text('channel').notNull().default('branch'),
+	/** „Diese Version ignorieren“: `<version>#<hash-anfang>` (`ignoreKey`), sonst `null` */
+	ignoredUpdate: text('ignored_update')
+});
+
+/** Letzter Stand der Update-Prüfung je Modul (Migration 0014; nie in der Datensicherung) */
+export const moduleUpdateCheck = pgTable('module_update_check', {
+	id: text('id').primaryKey(),
+	checkedAt: timestamp('checked_at', { withTimezone: true }).notNull(),
+	/** `ok` | `error` | `no-source` (der angezeigte Status wird beim Lesen berechnet) */
+	result: text('result').notNull(),
+	latestVersion: text('latest_version'),
+	latestRef: text('latest_ref'),
+	latestCommit: text('latest_commit'),
+	latestContentHash: text('latest_content_hash'),
+	/** Änderungsnotizen, Commits, Analyse, Hinweis (`CheckDetails` in `install/updates.ts`) */
+	details: jsonb('details').$type<Record<string, unknown>>().notNull().default({}),
+	/** Zuletzt gemeldeter Stand (`ignoreKey`) – gemeldet wird nur Neues */
+	notifiedKey: text('notified_key')
 });
 
 /** Verlauf der Installationen (Anzeige unter Administration → Module → Verlauf) */

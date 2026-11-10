@@ -201,6 +201,20 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
 - UI `/admin/modules`: Herkunft je Modul, „Nach Updates suchen“, „Entfernen …“ (Dialog, Bestätigung per ID), Hinweis + „Aus der Datenbank
   wiederherstellen“; `/admin/modules/install?url=…&select=…` belegt vor. Tests `module-lifecycle.test.ts`, `supervisor-seed.test.ts`,
   `backup-compat.test.ts`, E2E `tests/e2e-install` (installieren + entfernen).
+- **Updates 2.0** (2026-11-10, Core-Migration **0014**): `install/updates.ts` (`runUpdateCheck`, `listUpdateChecks`, `setUpdateChannel`,
+  `ignoreUpdate`, `availableUpdateCount`, `updateTargets`), reine Regeln `install/update-rules.ts` (`pickReleaseTag`, `computeUpdateStatus`,
+  `changelogBetween`, `defaultChannelFor`, `ignoreKey`). `module_install.channel` (`release`|`branch`, Bestand `branch`) und `ignored_update`;
+  Tabelle `module_update_check` (letzter Prüfstand, nie gesichert). Vergleich über **Inhaltshash + Version** (kein Update bei fremdem Commit),
+  je Repo/Commit ein Download (`githubFiles`-Cache), Repos ≤ 3 parallel; `github.ts` `listTags`, `listPathCommits`. `previewUpdates` (service)
+  baut den Plan aus dem Prüfstand → gleiche Bestätigung wie die Installation (`/admin/modules/install?update=a,b`). Job `core.module-updates`
+  (täglich, nicht bei `ATRIUM_MODULE_INSTALL=off`), **Core-Benachrichtigungstypen** `coreNotificationTypes()` in `notifications/catalog.ts`
+  (Pseudo-Modul `core`, Gruppe „Verwaltung“ im Profil), Kachel „Modul-Updates“ auf `/admin`. Rücksprung: IPC `atrium:rollback` →
+  `Supervisor.rollback` (Zustand tauschen, Health, sonst zurück), App `rollbackPreview`/`rollbackInstall` (manage.ts, Ereignisse `rollback`,
+  `reconcileInstallEvents` entfernt Module ohne `toVersion`). UI `UpdatesCard.svelte`, `RollbackCard.svelte`. Tests `module-update-rules`,
+  `module-updates`, `supervisor-lib` (Rücksprung).
+- **Schnellerer Neubau** (2026-11-10): eigener Adapter `tools/adapter-atrium.js` (adapter-node-Startdateien, Server-Bündelung mit Rolldown,
+  Brotli 9; `env.js`-Pfad wird auf den tatsächlichen Chunk umgerechnet, weil Rolldown Einstiege als Fassade anlegt). `rolldown` als
+  devDependency in Vites Version. Plan für Module als einzeln gebaute Pakete (Phase 3–6): `~/.claude/plans/polymorphic-strolling-stonebraker.md`.
 
 ## Mehrsprachigkeit und Neutralität (Kalypzo Atrium Phase N, 2026-11-01)
 - `$lib/i18n` (Client + Server): `t(key, params)`, `tl(locale, …)`, `getLocale()`, `localized(LocalizedText)`, `ensureLocale`; Format `{name}`,

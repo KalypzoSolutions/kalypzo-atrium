@@ -14,15 +14,35 @@
 		"current": "aktuell",
 		"update": "Update verfügbar",
 		"noSource": "keine Quelle",
-		"error": "Fehler"
+		"error": "Fehler",
+		"changed": "geändert (gleiche Version)",
+		"incompatible": "nicht installierbar",
+		"ignored": "ignoriert",
+		"unchecked": "nicht geprüft"
 	},
 	"updates": {
 		"title": "Updates",
-		"descriptionBefore": "Vergleicht den gespeicherten Commit mit dem aktuellen Stand der Quelle. Vor einem Update empfiehlt sich eine",
+		"descriptionBefore": "Vergleicht den Inhalt jedes Moduls mit dem neuesten Stand seines Kanals (Release-Tag oder Branch). Vor einem Update empfiehlt sich eine",
 		"backupLink": "Datensicherung",
 		"descriptionAfter": ".",
-		"none": "Keine Module aus einer Quelle installiert – Module aus dem Build werden mit dem Server aktualisiert.",
-		"update": "Aktualisieren"
+		"lastChecked": "Zuletzt geprüft: {at}",
+		"neverChecked": "Noch nicht geprüft.",
+		"updateSelected": "Ausgewählte aktualisieren ({count})",
+		"updateAll": "Alle aktualisieren ({count})",
+		"listLabel": "Module aus einer Quelle",
+		"select": "{name} zum Aktualisieren auswählen",
+		"newerInstalled": "Installiert ist ein neuerer Stand als der neueste des Kanals.",
+		"channelRelease": "Kanal: Releases (Tags)",
+		"channelBranch": "Kanal: Branch",
+		"channel": "Update-Kanal für {name}",
+		"ignore": "Diese Version ignorieren",
+		"unignore": "Nicht mehr ignorieren",
+		"onGithub": "Auf GitHub ansehen",
+		"details": "Änderungen und Auswirkungen",
+		"noNotes": "Keine Änderungsnotizen (keine CHANGELOG.md im Modul).",
+		"permissionsAdded": "Neue Rechte: {list}",
+		"newMigrations": "Neue Migrationen: {list}",
+		"npmNew": "Neue npm-Pakete: {list}"
 	},
 	"drift": {
 		"title": "Installierte Module fehlen im laufenden Stand",
@@ -80,7 +100,12 @@
 		"buildRequested": "Neubau angefordert",
 		"invalidInput": "Eingaben ungültig",
 		"saved": "Gespeichert",
-		"unknown": "Unbekannt"
+		"unknown": "Unbekannt",
+		"updatesFound": "{count, plural, =0 {Keine Updates gefunden} one {Ein Update gefunden} other {# Updates gefunden}}",
+		"channelSaved": "Update-Kanal gespeichert",
+		"updateIgnored": "Version wird ignoriert",
+		"updateUnignored": "Version wird nicht mehr ignoriert",
+		"rollbackRequested": "Rücksprung angefordert – der Server startet gleich neu"
 	},
 	"history": {
 		"title": "Modul-Verlauf",
@@ -201,6 +226,22 @@
 		"allowedSources": "Erlaubte Quellen",
 		"allowedSourcesHint": "Je Zeile owner/repo oder owner/*. Leer = alle GitHub-Quellen und ZIP-Dateien; sonst keine ZIP-Dateien.",
 		"saving": "Speichert …",
-		"save": "Speichern"
+		"save": "Speichern",
+		"updatesTitle": "Updates installieren",
+		"updatesDescription": "Aus dem letzten Prüfstand: {list}. Die Vorschau zeigt Abhängigkeiten, Rechte und Migrationen."
+	},
+	"rollback": {
+		"title": "Zurück zur vorigen Version",
+		"descriptionAt": "Vorige Version vom {at}. Der Server startet dafür neu.",
+		"descriptionBase": "Zurück zum mitgelieferten Stand ohne installierte Module. Der Server startet dafür neu.",
+		"removed": "{version} → entfernt",
+		"added": "→ {version} (wieder da)",
+		"noChanges": "Module unverändert (nur der Build unterscheidet sich).",
+		"migrationsTitle": "Datenbank bleibt auf dem neuen Stand",
+		"migrationsText": "Seit der vorigen Version liefen Migrationen von {list}. Sie werden nicht zurückgenommen – die alte Version muss mit dem neueren Schema umgehen können.",
+		"start": "Zurück zur vorigen Version …",
+		"confirm": "Zurückspringen",
+		"requested": "Rücksprung angefordert. Den Stand siehst du im",
+		"toHistory": "Verlauf"
 	}
 }

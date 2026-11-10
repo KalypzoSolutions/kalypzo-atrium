@@ -532,8 +532,10 @@ Compose (`docker-compose.dokploy*.yml`): Volume `atrium-data:/data/atrium`, `mem
 `stop_grace_period` 45 s. Ausgehend nötig: `api.github.com`, `codeload.github.com` (Quellen) und ggf. `registry.npmjs.org`
 (Module mit eigenen npm-Paketen). Das Image enthält dafür alle Abhängigkeiten und die Quellen (größer als vorher).
 
-**Messwerte:** lokal (Windows, 8 Kerne) dauert ein Neubau mit allen 14 Fachmodulen etwa 40–60 s; im Container mit
-`--cpus 1 --memory 3g` noch nicht gemessen (Phase 0 offen).
+**Messwerte** (2026-11-10, lokal, Windows, 8 Kerne): `vite build` mit allen 14 Fachmodulen **~38 s** (vorher ~65 s), nur Core
+**~17 s** (vorher ~37 s). Den Großteil sparte der eigene Adapter `tools/adapter-atrium.js` (wie `adapter-node`, Server-Bündelung mit
+Rolldown statt Rollup: ~1 s statt ~24 s; Brotli Stufe 9 statt 11). npm-Pakete der Module kommen nur bei geändertem Paket-Satz dazu
+(~13–20 s). Im Container (1 CPU) entsprechend länger; Messung nach dem Umbau steht aus.
 
 Lokal: `node scripts/demo-server.mjs` startet ebenfalls über den Supervisor (Daten in `.data/atrium`, PGlite bleibt
 im Elternprozess offen); `.data/stop` beendet App und Datenbank geordnet.
@@ -557,9 +559,19 @@ Seed (`state.json` → `seed`); bis dahin läuft der mitgelieferte Build. Die Ap
 
 ### Updates, Entfernen, Wiederherstellen
 
-- **Updates**: Administration → Module → „Nach Updates suchen“ vergleicht je Modul aus GitHub den gespeicherten Commit mit dem Kopf
-  des Refs; „Aktualisieren“ öffnet die Installation mit vorbelegter Quelle. Die Vorschau zeigt geänderte Dateien, neue Migrationen und
-  Rechte. Vorher eine Datensicherung erstellen (Migrationen sind nicht rückgängig zu machen).
+- **Updates** (Karte „Updates“ unter Administration → Module, täglicher Job `core.module-updates`, Benachrichtigung
+  „Modul-Updates“ an alle mit `core.modules.install`, nur bei neuem Stand): je Modul ein **Kanal** – *Releases* (höchster
+  Versions-Tag; Modul-Tags `<id>@1.2.3` bzw. `<id>-v1.2.3` vor Repo-Tags `v1.2.3`, Vorabversionen nur, wenn installiert selbst
+  eine ist) oder *Branch*
+  (Kopf des Branches; über einen festen Commit installierte Module folgen dem Standard-Branch). Installiert über einen Tag → Releases,
+  sonst Branch (umschaltbar). Verglichen wird der **Inhalt** des Modulordners (Hash + Version), nicht der Commit: ein Commit an anderer
+  Stelle im Repo ist kein Update. Je Repository und Commit ein Download. Status *Update* · *geändert* (gleiche Version) · *nicht
+  installierbar* (Core-Version, Migrationen …) · *ignoriert* („Diese Version ignorieren“). Änderungsnotizen aus `CHANGELOG.md` im
+  Modul (`## 1.2.3`), sonst die Commits des Modulpfads. „Ausgewählte/Alle aktualisieren“ führt direkt zur Vorschau (Abhängigkeiten, Rechte,
+  Migrationen) → Re-Auth → **ein** Neubau. Vorher eine Datensicherung erstellen (Migrationen sind nicht rückgängig zu machen).
+- **Zurück zur vorigen Version** (nur Supervisor): Karte unter Module zeigt die Unterschiede zur vorigen Generation; nach Re-Auth tauscht
+  der Supervisor die Generationen, startet neu und prüft Health (sonst bleibt die bisherige). Migrationen werden **nicht** zurückgenommen
+  (Hinweis, wenn seitdem welche liefen); der Wunschzustand `module_install` folgt nach dem Neustart.
 - **Entfernen** (nur deaktivierte Module, die kein anderes braucht): Standard **Daten behalten** – Schema, Einstellungen, Rechte und
   Dateien bleiben und sind nach erneuter Installation wieder da. „Daten löschen“ (Bestätigung mit der Modul-ID) löscht Schema,
   Migrationsstand, Zustand, Rechte samt Rollen-/Einzelrechten, Rollen-Verleihungen, Einstellungen, Benachrichtigungs-Einstellungen,

@@ -12,6 +12,7 @@ import { getDb, schema } from '../../database/client';
 import { t } from '$lib/i18n';
 import { errors } from '../../errors';
 import type { ArchiveFiles } from './archive';
+import { defaultChannelFor } from './update-rules';
 
 export interface LockEntry {
 	version: string;
@@ -96,6 +97,66 @@ export async function requestSupervisorBuild(
 	process.send!({ type: 'atrium:build', planId: request.planId });
 }
 
+/** Rücksprung auf die vorige Generation anfordern (Supervisor tauscht, startet neu, prüft Health) */
+export function requestSupervisorRollback(planId: string): void {
+	if (!supervisorDataDir() || !supervisorAvailable())
+		throw errors.unavailable(t('install.service.noSupervisorAvailable'));
+	if (!/^[A-Za-z0-9_-]{8,80}$/.test(planId))
+		throw errors.badRequest(t('install.service.invalidPlan'));
+	process.send!({ type: 'atrium:rollback', planId });
+}
+
+export interface GenerationInfo {
+	/** Generations-ID bzw. `base` (mitgelieferter Build) */
+	id: string;
+	createdAt: string | null;
+	/** Module mit Quelle (ohne eingebaute) laut Lock-Datei */
+	modules: Record<string, LockEntry>;
+}
+
+function readGeneration(data: string, id: string | null): GenerationInfo {
+	if (!id) return { id: 'base', createdAt: null, modules: {} };
+	const dir = join(data, 'gen', id);
+	const read = (f: string) => {
+		try {
+			return JSON.parse(readFileSync(join(dir, f), 'utf8')) as Record<string, unknown>;
+		} catch {
+			return null;
+		}
+	};
+	const lock = read('atrium-modules.lock.json') as { modules?: Record<string, LockEntry> } | null;
+	const info = read('BUILD_INFO.json') as { createdAt?: string } | null;
+	const modules = Object.fromEntries(
+		Object.entries(lock?.modules ?? {}).filter(([, e]) => e.sourceType !== 'builtin')
+	);
+	return { id, createdAt: info?.createdAt ?? null, modules };
+}
+
+/** Laufende und vorige Generation (unter dem Supervisor), sonst `null`; ohne Rückweg `previous = null` */
+export function generationsForRollback(): {
+	current: GenerationInfo;
+	previous: GenerationInfo | null;
+} | null {
+	const data = supervisorDataDir();
+	const running = process.env.ATRIUM_GENERATION;
+	if (!data || !running) return null;
+	let state: { current?: string | null; previous?: string | null };
+	try {
+		state = JSON.parse(readFileSync(join(data, 'state.json'), 'utf8'));
+	} catch {
+		return null;
+	}
+	// Nur wenn die laufende App die aktuelle Generation ist (sonst läuft gerade ein Wechsel)
+	if ((state.current ?? 'base') !== running) return null;
+	const current = readGeneration(data, state.current ?? null);
+	if (!state.current) return { current, previous: null };
+	const prevId = state.previous ?? null;
+	if (prevId && !existsSync(join(data, 'gen', prevId, 'build', 'index.js'))) {
+		return { current, previous: null };
+	}
+	return { current, previous: readGeneration(data, prevId) };
+}
+
 const IDLE: SupervisorStatus = {
 	state: 'idle',
 	planId: null,
@@ -158,12 +219,23 @@ export async function reconcileInstallEvents(): Promise<number> {
 				commit: ev.commit,
 				contentHash: ev.contentHash,
 				installedAt: new Date(),
-				installedBy: ev.actorId
+				installedBy: ev.actorId,
+				ignoredUpdate: null
 			};
+			const ref = typeof ev.source.ref === 'string' ? ev.source.ref : null;
 			await db
 				.insert(schema.moduleInstall)
-				.values({ id: ev.moduleId, ...row })
+				.values({
+					id: ev.moduleId,
+					...row,
+					// Kanal nur bei der ersten Installation; ein Update behält die Wahl
+					channel: ev.sourceType === 'github' ? defaultChannelFor(ref) : 'branch'
+				})
 				.onConflictDoUpdate({ target: schema.moduleInstall.id, set: row });
+		}
+		// Rücksprung auf eine Version ohne dieses Modul: Wunschzustand entfernen
+		if (r.status === 'done' && ev.action === 'rollback' && !ev.toVersion) {
+			await db.delete(schema.moduleInstall).where(eq(schema.moduleInstall.id, ev.moduleId));
 		}
 		await db
 			.update(schema.moduleInstallEvent)

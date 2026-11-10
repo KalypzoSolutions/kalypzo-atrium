@@ -29,8 +29,13 @@
 	// Vorbelegung aus „Aktualisieren“ bzw. der Datensicherung: ?url=…&select=<modul>
 	let url = $state(page.url.searchParams.get('url') ?? '');
 	const preselect = page.url.searchParams.get('select');
+	/** Aus „Aktualisieren“ unter Module: `?update=a,b` – Vorschau direkt aus dem letzten Prüfstand */
+	const updateIds = (page.url.searchParams.get('update') ?? '')
+		.split(',')
+		.map((s) => s.trim())
+		.filter((s) => /^[a-z][a-z0-9-]{1,30}$/.test(s));
 	let file = $state<File | null>(null);
-	let busy = $state<'inspect' | 'preview' | 'install' | 'settings' | null>(null);
+	let busy = $state<'inspect' | 'preview' | 'updates' | 'install' | 'settings' | null>(null);
 	let fields = $state<Record<string, string>>({});
 	let inspection = $state<SourceInspection | null>(null);
 	let selected = $state<string[]>([]);
@@ -140,6 +145,13 @@
 		password = '';
 		totp = '';
 	});
+	const onUpdates = submit('updates', (d) => {
+		preview = d.preview as InstallPreview;
+		inspection = null;
+		accepted = false;
+		password = '';
+		totp = '';
+	});
 	const onInstall = submit('install', (d) => {
 		result = d.result as InstallResult;
 		preview = null;
@@ -166,6 +178,31 @@
 			<Alert.Title>{t('admin-modules.install.previewOnly')}</Alert.Title>
 			<Alert.Description>{data.status.reason}</Alert.Description>
 		</Alert.Root>
+	{/if}
+
+	<!-- Updates aus dem letzten Prüfstand -->
+	{#if updateIds.length && !preview && !result}
+		<Card.Root>
+			<Card.Header>
+				<Card.Title>{t('admin-modules.install.updatesTitle')}</Card.Title>
+				<Card.Description>
+					{t('admin-modules.install.updatesDescription', { list: updateIds.join(', ') })}
+				</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<form method="POST" action="?/updates" use:enhance={onUpdates}>
+					<input type="hidden" name="ids" value={updateIds.join(',')} />
+					{#if fields.ids}<p class="mb-2 text-xs text-destructive" role="alert">
+							{fields.ids}
+						</p>{/if}
+					<Button type="submit" disabled={busy !== null}>
+						{busy === 'updates'
+							? t('admin-modules.install.checking')
+							: t('admin-modules.install.showPreview')}
+					</Button>
+				</form>
+			</Card.Content>
+		</Card.Root>
 	{/if}
 
 	<!-- 1. Quelle -->

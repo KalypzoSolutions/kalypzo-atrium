@@ -2,12 +2,15 @@
 	"core": {
 		"housekeeping": "Aufbewahrungsfristen durchsetzen (API-Protokoll, Audit-Log)",
 		"avatarsReprocess": "Alte Profilbilder bereinigen (neu kodieren, Metadaten entfernen)",
-		"notificationsDigest": "Tageszusammenfassung der Benachrichtigungen (E-Mail/Push) verschicken"
+		"notificationsDigest": "Tageszusammenfassung der Benachrichtigungen (E-Mail/Push) verschicken",
+		"moduleUpdates": "Nach Updates der installierten Module suchen"
 	},
 	"result": {
 		"housekeeping": "API-Protokoll: {apiLog} gelöscht; Audit-Log: {audit} gelöscht, {ips} IP-Adressen entfernt",
 		"avatars": "Profilbilder: {processed} bereinigt, {removed} entfernt, {skipped} übersprungen",
-		"digest": "Tageszusammenfassung: {users} Personen, {email} Mails, {push} Push, {expired} verworfen"
+		"digest": "Tageszusammenfassung: {users} Personen, {email} Mails, {push} Push, {expired} verworfen",
+		"moduleUpdates": "Module geprüft: {checked}; Updates: {updates}; Fehler: {errors}; Benachrichtigungen: {notified}",
+		"moduleUpdatesOff": "Übersprungen: Installieren ist auf diesem Server ausgeschaltet"
 	},
 	"legacyMessage": "Fehler (Details aus Datenschutzgründen entfernt)",
 	"notFound": "Job nicht gefunden",
