@@ -87,8 +87,11 @@ sync_objects() {
 	export RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY="${BACKUP_S3_SECRET_ACCESS_KEY:-}"
 	export RCLONE_CONFIG_SRC_FORCE_PATH_STYLE="${BACKUP_S3_FORCE_PATH_STYLE:-true}"
 	mkdir -p "$OBJ_DIR"
-	log "Objektspeicher spiegeln (Bucket $BACKUP_S3_BUCKET)"
-	rclone sync "src:$BACKUP_S3_BUCKET" "$OBJ_DIR" --fast-list --checksum --transfers 4 --stats-one-line --stats 0
+	# Optionaler Unterpfad (S3_PREFIX der App): nur diesen Teil des Buckets spiegeln
+	prefix=$(printf '%s' "${BACKUP_S3_PREFIX:-}" | sed -e 's#^/*##' -e 's#/*$##')
+	src="src:$BACKUP_S3_BUCKET${prefix:+/$prefix}"
+	log "Objektspeicher spiegeln (Bucket $BACKUP_S3_BUCKET${prefix:+, Pfad $prefix})"
+	rclone sync "$src" "$OBJ_DIR" --fast-list --checksum --transfers 4 --stats-one-line --stats 0
 }
 
 run_backup() {

@@ -112,6 +112,13 @@ Hinweise:
   in den neuen Bucket, Speicher-Einstellungen in der Oberfläche umstellen, testen, dann Compose-Pfad in Dokploy wechseln und
   deployen. Das Volume `s3-data` erst nach erfolgreicher Prüfung löschen.
 - Browser-Uploads über signierte URLs (`/storage/upload-url`) brauchen CORS am Bucket für den eigenen `ORIGIN` (`PUT`).
+- **Unterpfad im Bucket** (`S3_PREFIX`, Einstellung „Unterpfad im Bucket“ unter Administration → Einstellungen → Speicher): alle
+  Objekte liegen unter z. B. `atrium/prod/…` – für einen gemeinsamen Bucket mehrerer Installationen. Erlaubt sind Abschnitte aus
+  `A–Z a–z 0–9 . _ -`, getrennt durch `/`. In der Datenbank und in Sicherungen (`.atriumbackup`) stehen die Schlüssel **ohne**
+  Unterpfad; der Pfad wird nur bei den Anfragen an S3 davorgesetzt. Ein **Wechsel** verschiebt nichts: vorher die Objekte im Bucket
+  umkopieren (`rclone move src:bucket/alt src:bucket/neu`), sonst sind vorhandene Dateien nicht mehr auffindbar. Bei geteiltem
+  Bucket möglichst je Installation einen Schlüssel, der nur auf den eigenen Pfad zugreifen darf (Bucket-Policy; nicht jeder
+  Anbieter kann das). `db-backup` spiegelt dann nur diesen Pfad (`BACKUP_S3_PREFIX`, Standard `S3_PREFIX`).
 
 ## Dokploy mit externer Datenbank und externem S3 (zentralisiert)
 
@@ -331,6 +338,7 @@ gemeinsamer Upload-Helfer mit `Content-Length`-Pflicht.
 | `RESTIC_REPOSITORY` | Ziel. Standard `/backups/restic` (Volume `backup-repo` auf **demselben Host**, schützt nur vor Fehlbedienung – Log-Hinweis). Für Offsite z. B. `s3:https://fsn1.your-objectstorage.com/ep-intern-backup`, `b2:bucket:pfad`, `rest:https://…` |
 | `BACKUP_REPO_ACCESS_KEY_ID/SECRET_ACCESS_KEY/REGION` | Zugang zum S3-Ziel (eigener Schlüssel, nur für dieses Bucket; am besten mit Objekt-Sperre/Versionierung beim Anbieter) |
 | `BACKUP_S3_ENDPOINT/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY/REGION/FORCE_PATH_STYLE` | Quelle Objektspeicher (Lesezugriff genügt). `docker-compose.yml`: ohne Angabe nur DB |
+| `BACKUP_S3_PREFIX` | optional: nur diesen Unterpfad des Buckets spiegeln (in den Stacks mit externem S3 Standard = `S3_PREFIX`) |
 | `BACKUP_TIME`, `BACKUP_KEEP_DAILY/WEEKLY/MONTHLY`, `BACKUP_RUN_ON_START` | Zeitplan, Aufbewahrung, Sofortlauf beim Start |
 | `BACKUP_HEARTBEAT_URL` | GET nach jedem Erfolg (z. B. healthchecks.io – meldet auch ausbleibende Läufe) |
 | `BACKUP_NOTIFY_URL` | POST mit Fehlertext bei jedem Fehlschlag (z. B. ntfy-Thema mit Mail-Weiterleitung) |

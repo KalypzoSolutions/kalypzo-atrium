@@ -82,6 +82,8 @@ export interface StorageConfig {
 	accessKeyId: string;
 	secretAccessKey: string;
 	forcePathStyle: boolean;
+	/** Unterpfad im Bucket, normalisiert mit abschließendem `/` (leer = Wurzel des Buckets) */
+	prefix: string;
 	maxFileSizeMb: number;
 	allowedContentTypes: string[];
 }
@@ -188,6 +190,7 @@ async function readConfig(): Promise<StorageConfig> {
 		'core.storage.accessKeyId',
 		'core.storage.secretAccessKey',
 		'core.storage.forcePathStyle',
+		'core.storage.prefix',
 		'core.storage.maxFileSizeMb',
 		'core.storage.allowedContentTypes'
 	]);
@@ -198,8 +201,66 @@ async function readConfig(): Promise<StorageConfig> {
 		accessKeyId: String(s['core.storage.accessKeyId'] ?? ''),
 		secretAccessKey: String(s['core.storage.secretAccessKey'] ?? ''),
 		forcePathStyle: Boolean(s['core.storage.forcePathStyle']),
+		prefix: normalizeStoragePrefix(String(s['core.storage.prefix'] ?? '')),
 		maxFileSizeMb: Number(s['core.storage.maxFileSizeMb'] ?? 50),
 		allowedContentTypes: (s['core.storage.allowedContentTypes'] as string[] | undefined) ?? []
+	};
+}
+
+/** `a//b/` → `a/b/`, leer bleibt leer (Wurzel des Buckets). */
+export function normalizeStoragePrefix(raw: string): string {
+	const parts = raw
+		.trim()
+		.split('/')
+		.filter((p) => p !== '');
+	return parts.length ? `${parts.join('/')}/` : '';
+}
+
+/**
+ * Legt den Unterpfad (`core.storage.prefix`) transparent um alle Objektschlüssel: In der Datenbank (`file.object_key`),
+ * in Sicherungen und für Aufrufer bleiben Schlüssel ohne Unterpfad; nur die Anfragen an S3 tragen ihn.
+ * Ein späterer Wechsel des Unterpfads verschiebt keine vorhandenen Objekte (siehe docs/deployment.md).
+ */
+export function withKeyPrefix(inner: S3Handle, prefix: string): S3Handle {
+	if (!prefix) return inner;
+	const applied = new WeakSet<object>();
+	const apply = (command: object) => {
+		if (applied.has(command)) return;
+		applied.add(command);
+		const input = (
+			command as { input?: { Key?: unknown; Delete?: { Objects?: { Key?: string }[] } } }
+		).input;
+		if (!input) return;
+		if (typeof input.Key === 'string') input.Key = prefix + input.Key;
+		for (const o of input.Delete?.Objects ?? []) {
+			if (typeof o.Key === 'string') o.Key = prefix + o.Key;
+		}
+	};
+	const strip = (key: string | undefined) =>
+		key?.startsWith(prefix) ? key.slice(prefix.length) : key;
+	return {
+		bucket: inner.bucket,
+		async send(command) {
+			apply(command);
+			const res = (await inner.send(command)) as
+				{ Errors?: { Key?: string }[]; Deleted?: { Key?: string }[] } | undefined;
+			if (res && typeof res === 'object') {
+				for (const e of res.Errors ?? []) e.Key = strip(e.Key);
+				for (const d of res.Deleted ?? []) d.Key = strip(d.Key);
+			}
+			return res;
+		},
+		presign(command, expiresInSec) {
+			apply(command);
+			return inner.presign(command, expiresInSec);
+		},
+		get putLarge() {
+			const large = inner.putLarge;
+			return large
+				? (key: string, body: Uint8Array, contentType: string) =>
+						large.call(inner, prefix + key, body, contentType)
+				: undefined;
+		}
 	};
 }
 
@@ -252,12 +313,13 @@ async function connect(): Promise<{ s3: S3Handle; config: StorageConfig }> {
 		config.bucket,
 		config.accessKeyId,
 		config.secretAccessKey,
-		config.forcePathStyle
+		config.forcePathStyle,
+		config.prefix
 	]);
 	let s3 = handleCache.get(cacheKey);
 	if (!s3) {
 		handleCache.clear();
-		s3 = factory(config);
+		s3 = withKeyPrefix(factory(config), config.prefix);
 		handleCache.set(cacheKey, s3);
 	}
 	return { s3, config };

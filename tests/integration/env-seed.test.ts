@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { useTestDatabase } from '../helpers/db';
 import { systemContext } from '$lib/server/core/auth/context';
-import { getSetting, setSetting } from '$lib/server/core/settings/service';
+import { getSetting, setSetting, setSettings } from '$lib/server/core/settings/service';
 import { seedSettingsFromEnv } from '$lib/server/core/settings/env-seed';
 
 beforeAll(async () => {
@@ -38,5 +38,20 @@ describe('Einstellungen aus der Umgebung', () => {
 	it('ignoriert ungültige Werte, ohne zu werfen', async () => {
 		const applied = await seedSettingsFromEnv({ S3_ENDPOINT: 'kein-url' });
 		expect(applied).not.toContain('core.storage.endpoint');
+	});
+
+	it('übernimmt S3_PREFIX und prüft den Unterpfad', async () => {
+		const applied = await seedSettingsFromEnv({ S3_PREFIX: 'atrium/prod' });
+		expect(applied).toContain('core.storage.prefix');
+		expect(await getSetting('core.storage.prefix')).toBe('atrium/prod');
+
+		const ctx = systemContext('test');
+		await setSettings(ctx, { 'core.storage.prefix': '/kunden/a_1/' });
+		expect(await getSetting('core.storage.prefix')).toBe('/kunden/a_1/');
+		for (const bad of ['../x', 'a/./b', 'mit leerzeichen', 'ä']) {
+			await expect(setSettings(ctx, { 'core.storage.prefix': bad })).rejects.toMatchObject({
+				code: 'validation_failed'
+			});
+		}
 	});
 });

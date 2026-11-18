@@ -115,6 +115,10 @@
 	"core.storage.forcePathStyle": {
 		"label": "Path-style URLs (MinIO)"
 	},
+	"core.storage.prefix": {
+		"label": "Path in bucket (optional)",
+		"description": "All files are stored below this path in the bucket, e.g. atrium/prod – for one bucket shared by several installations. Empty = bucket root. Note: changing it does not move existing files; copy them within the bucket first."
+	},
 	"core.storage.maxFileSizeMb": {
 		"label": "Max. file size (MB)"
 	},
@@ -264,7 +268,8 @@
 		"ownOnly": "Only your own settings can be changed",
 		"notClearable": "This setting cannot be cleared",
 		"invalidValue": "Invalid value for {key}",
-		"invalidMany": "Invalid settings"
+		"invalidMany": "Invalid settings",
+		"storagePrefix": "Path: only letters, digits, . _ - and / as separator (no . or ..)"
 	},
 	"options": {
 		"locale": {

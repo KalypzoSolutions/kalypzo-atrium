@@ -115,6 +115,10 @@
 	"core.storage.forcePathStyle": {
 		"label": "Path-Style-URLs (MinIO)"
 	},
+	"core.storage.prefix": {
+		"label": "Unterpfad im Bucket (optional)",
+		"description": "Alle Dateien liegen unter diesem Pfad im Bucket, z. B. atrium/prod – für einen gemeinsamen Bucket mehrerer Installationen. Leer = Wurzel des Buckets. Achtung: Ein Wechsel verschiebt keine vorhandenen Dateien; diese vorher im Bucket umkopieren."
+	},
 	"core.storage.maxFileSizeMb": {
 		"label": "Max. Dateigröße (MB)"
 	},
@@ -264,7 +268,8 @@
 		"ownOnly": "Nur eigene Einstellungen änderbar",
 		"notClearable": "Diese Einstellung kann nicht gelöscht werden",
 		"invalidValue": "Ungültiger Wert für {key}",
-		"invalidMany": "Ungültige Einstellungen"
+		"invalidMany": "Ungültige Einstellungen",
+		"storagePrefix": "Unterpfad: nur Buchstaben, Ziffern, . _ - und / als Trenner (ohne . und ..)"
 	},
 	"options": {
 		"locale": {

@@ -77,6 +77,8 @@ services:
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?S3_ACCESS_KEY_ID muss gesetzt sein}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?S3_SECRET_ACCESS_KEY muss gesetzt sein}
       S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+      # Optional: Unterpfad im Bucket (z. B. atrium/prod), wenn sich mehrere Installationen einen Bucket teilen
+      S3_PREFIX: ${S3_PREFIX:-}
       # E-Mail (optional; für Bestätigungs-Mails und Passwort-Reset)
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -144,6 +146,7 @@ services:
       BACKUP_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-${S3_ACCESS_KEY_ID}}
       BACKUP_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-${S3_SECRET_ACCESS_KEY}}
       BACKUP_S3_FORCE_PATH_STYLE: ${BACKUP_S3_FORCE_PATH_STYLE:-${S3_FORCE_PATH_STYLE:-false}}
+      BACKUP_S3_PREFIX: ${BACKUP_S3_PREFIX:-${S3_PREFIX:-}}
     volumes:
       - backup-work:/work
       - backup-repo:/backups

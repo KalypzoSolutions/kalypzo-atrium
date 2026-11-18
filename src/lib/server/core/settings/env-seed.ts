@@ -16,6 +16,7 @@ const MAPPING: { env: string; key: string; parse?: (v: string) => unknown }[] = 
 	{ env: 'S3_ACCESS_KEY_ID', key: 'core.storage.accessKeyId' },
 	{ env: 'S3_SECRET_ACCESS_KEY', key: 'core.storage.secretAccessKey' },
 	{ env: 'S3_FORCE_PATH_STYLE', key: 'core.storage.forcePathStyle', parse: bool },
+	{ env: 'S3_PREFIX', key: 'core.storage.prefix' },
 	{ env: 'SMTP_HOST', key: 'core.smtp.host' },
 	{ env: 'SMTP_PORT', key: 'core.smtp.port', parse: (v) => Number(v) },
 	{ env: 'SMTP_SECURE', key: 'core.smtp.secure', parse: bool },
