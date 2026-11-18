@@ -10,7 +10,7 @@ import {
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { and, eq, inArray, like, sql } from 'drizzle-orm';
-import { DEFAULT_ALLOWED_CONTENT_TYPES } from '$lib/sdk/content-types';
+import { canonicalContentType, DEFAULT_ALLOWED_CONTENT_TYPES } from '$lib/sdk/content-types';
 import type { RequestContext, StoredFile } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getDb, schema } from '../database/client';
@@ -125,8 +125,9 @@ export function validatePath(path: string): void {
 	}
 }
 
+/** Ohne Parameter, klein, Aliasse vereinheitlicht (`application/x-zip-compressed` → `application/zip`) */
 function normalizeContentType(ct: string | undefined): string {
-	return (ct ?? 'application/octet-stream').split(';')[0]!.trim().toLowerCase();
+	return canonicalContentType(ct) || 'application/octet-stream';
 }
 
 function contentTypeAllowed(ct: string, configured: string[]): boolean {
