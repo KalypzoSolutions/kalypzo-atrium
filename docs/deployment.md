@@ -4,7 +4,7 @@
 
 - `Dockerfile`: Multi-Stage (base → deps → build → prod-deps → runtime), `node:24.22.0-bookworm-slim` mit Digest, Chromium (Playwright) für PDF, läuft als Benutzer `app` (UID 10001), Healthcheck auf `/api/v1/health`.
 - `docker-compose.yml`: `db` (PostgreSQL 17, Volume `db-data`, `pg_isready`-Healthcheck), `app`, `website`, optional `nginx` (Profil `proxy`) und `db-backup` (Profil `backup`).
-- `docker-compose.dokploy.yml`: Dokploy-Stack mit MinIO im Stack; `docker-compose.dokploy-external-s3.yml`: derselbe Stack **ohne** MinIO für einen externen S3-Dienst (siehe „Dokploy mit externem S3“).
+- `docker-compose.dokploy.yml`: Dokploy-Stack mit MinIO im Stack; `docker-compose.dokploy-external-s3.yml`: derselbe Stack **ohne** MinIO für einen externen S3-Dienst (siehe „Dokploy mit externem S3“); `docker-compose.dokploy-external.yml`: nur App, **ohne** PostgreSQL und MinIO für zentrale Datenbank + externen S3 (siehe „Dokploy mit externer Datenbank und externem S3“).
 - `docker-compose.dev.yml`: nur PostgreSQL + MinIO für lokale Entwicklung (Ports nur auf `127.0.0.1`).
 - `deploy/nginx/nginx.conf`: nginx-Vorlage (HTTP→HTTPS, TLS, Größengrenzen je Pfad, Proxy-Header), `deploy/backup/`: Sicherungsdienst.
 
@@ -113,11 +113,42 @@ Hinweise:
   deployen. Das Volume `s3-data` erst nach erfolgreicher Prüfung löschen.
 - Browser-Uploads über signierte URLs (`/storage/upload-url`) brauchen CORS am Bucket für den eigenen `ORIGIN` (`PUT`).
 
+## Dokploy mit externer Datenbank und externem S3 (zentralisiert)
+
+`docker-compose.dokploy-external.yml` enthält nur noch `app` (und optional `db-backup`): **kein** `db`, **kein** MinIO. PostgreSQL und
+Objektspeicher werden zentral betrieben und von mehreren Stacks geteilt. Variablen-Vorlage: `.env.dokploy-external.example`.
+
+1. Auf der zentralen PostgreSQL-Instanz (≥ 16, empfohlen 17) je Stack eine eigene Datenbank mit eigenem Benutzer anlegen:
+   `CREATE ROLE atrium_prod LOGIN PASSWORD '…'; CREATE DATABASE atrium_prod OWNER atrium_prod;` – die App muss Besitzerin sein
+   (legt je Modul ein Schema `mod_<id>` an, Trigger in den Core-Migrationen); Erweiterungen sind nicht nötig.
+2. Bucket + Zugangsschlüssel wie unter „Dokploy mit externem S3“.
+3. In Dokploy anlegen, Compose-Pfad `./docker-compose.dokploy-external.yml`. Environment: Pflicht `ORIGIN`, `APP_SECRET`,
+   `DATABASE_URL`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`; `POSTGRES_*` entfällt.
+4. Deploy → Migrationen laufen beim Start; danach Speicher-Verbindung testen.
+
+Hinweise:
+- **Erreichbarkeit**: `app` hängt im `dokploy-network`. Eine von Dokploy verwaltete Datenbank erreicht sie dort über den
+  „Internal Host“ aus Dokploy (eindeutiger Name, nie `db`). Datenbank auf einem anderen Server: Hostname in `DATABASE_URL` und
+  `?sslmode=require`; Port 5432 nur für die App-Server freigeben. Achtung: Der Node-Treiber `pg` behandelt `require` wie
+  `verify-full` (Zertifikat muss gültig sein und zum Hostnamen passen). Selbst signiert: `?sslmode=no-verify` (verschlüsselt, ohne
+  Prüfung) oder libpq-Verhalten mit `?uselibpqcompat=true&sslmode=require`.
+- **Pooler**: direkt oder PgBouncer im **Session**-Modus. Im Transaction-Modus hält die sitzungsgebundene Migrationssperre
+  (`pg_advisory_lock`) nicht zuverlässig – nicht verwenden.
+- **Verbindungen**: `DATABASE_POOL_MAX` (Standard 10) je Stack; die Summe aller Stacks plus Reserve muss unter `max_connections`
+  der Instanz bleiben.
+- **Sicherung**: Die zentrale Instanz sichern (Dokploy-Backups der verwalteten Datenbank, pgBackRest …). Alternativ
+  `COMPOSE_PROFILES=backup` mit `BACKUP_PGHOST/PORT/USER/PASSWORD/DATABASE/SSLMODE` – `pg_dump` im Sicherungs-Image ist Version 17,
+  die Instanz darf nicht neuer sein. Der Bucket wird wie beim S3-Stack mitgespiegelt.
+- **Umzug** von einem Stack mit eigener `db`: Wartungsfenster, App stoppen, `pg_dump --format=custom --no-owner` aus dem alten
+  `db`-Container, `pg_restore --no-owner --role=atrium_prod -d atrium_prod` in die zentrale Datenbank, `APP_SECRET` unverändert
+  übernehmen, Compose-Pfad umstellen, deployen und prüfen. Das Volume `db-data` erst danach löschen.
+
 ## Umgebungsvariablen
 
 | Variable | Beschreibung |
 |---|---|
-| `POSTGRES_DB/USER/PASSWORD` | Datenbank-Container (Passwort Pflicht) |
+| `POSTGRES_DB/USER/PASSWORD` | Datenbank-Container (Passwort Pflicht; entfällt bei `docker-compose.dokploy-external.yml`) |
+| `DATABASE_URL` | Verbindung zur Datenbank; in den Stacks mit eigener `db` automatisch gebildet, bei `docker-compose.dokploy-external.yml` Pflicht (externes PostgreSQL, ggf. `?sslmode=require`) |
 | `APP_SECRET` | Pflicht, ≥ 32 Zeichen, zufällig. **Nicht ändern**, ohne Secrets neu einzugeben (siehe [Sicherheit](security.md)). Mit `NODE_ENV=production` (Image) bricht der Start ab, wenn es der Build-Platzhalter ist oder < 6 verschiedene Zeichen hat |
 | `ORIGIN` | Pflicht, öffentliche URL. Mit `NODE_ENV=production` muss sie gesetzt sein und `https://` verwenden (Ausnahme `localhost`/`127.0.0.1` für Demo/E2E) |
 | `JOBS_DAILY_WINDOW` | optional: Zeitfenster der täglichen Hintergrundjobs (Mails, Zusammenfassungen) als `von-bis` in vollen Stunden Europe/Berlin, Standard `6-20` |

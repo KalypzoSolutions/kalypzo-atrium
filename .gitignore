@@ -18,6 +18,7 @@ Thumbs.db
 !.env.example
 !.env.dokploy.example
 !.env.dokploy-external-s3.example
+!.env.dokploy-external.example
 !.env.test
 
 # Vite
