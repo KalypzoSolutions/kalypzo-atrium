@@ -116,3 +116,12 @@ docs/                            Dokumentation
 - [Datenbank](docs/database.md)
 - [Deployment](docs/deployment.md)
 - [Sicherheit](docs/security.md)
+
+## Lizenz
+
+Kalypzo Atrium © 2026 Philipp Hethey, lizenziert unter der [Apache License 2.0](LICENSE).
+
+- Verwendung, Veränderung, Erweiterung und Weitergabe – auch kommerziell – sind ausdrücklich erwünscht, solange
+  [LICENSE](LICENSE) und [NOTICE](NOTICE) mit dem Urheberhinweis erhalten bleiben und Änderungen kenntlich gemacht werden.
+- Beiträge per Pull Request werden, sofern nicht anders vereinbart, unter derselben Lizenz eingebracht (Abschnitt 5 der Lizenz).
+- Fachmodule in eigenen Repositories können eine eigene Lizenz haben.
