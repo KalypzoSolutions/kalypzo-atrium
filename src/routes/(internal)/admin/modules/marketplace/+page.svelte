@@ -87,7 +87,7 @@
 <div class="space-y-6">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
-			<h1 class="text-title">{t('admin-marketplace.title')}</h1>
+			<h2 class="text-section">{t('admin-marketplace.title')}</h2>
 			<p class="text-muted-foreground">{t('admin-marketplace.description')}</p>
 		</div>
 		{#if data.canRefresh}<form method="POST" action="?/refresh" use:enhance>
