@@ -20,9 +20,10 @@ export default defineConfig({
 		testTimeout: 30000,
 		// PGlite-Setups (Migrationen, Module) brauchen unter paralleler Last mehr als 10 s
 		hookTimeout: 60000,
-		// `npx vitest run --coverage` (CI): Bericht in coverage/ (lcov) + Kurzfassung im Log
+		// `bun run vitest run --coverage` (CI): Bericht in coverage/ (lcov) + Kurzfassung im Log.
+		// istanbul statt v8: unter Bun (JavaScriptCore) gibt es keine V8-Coverage
 		coverage: {
-			provider: 'v8',
+			provider: 'istanbul',
 			reporter: ['text-summary', 'lcov'],
 			reportsDirectory: 'coverage',
 			// Bericht auch bei roten Tests (CI-Artefakt)

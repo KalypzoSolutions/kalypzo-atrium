@@ -1,0 +1,10 @@
+# Bun-Konfiguration (Kalypzo Atrium läuft vollständig unter Bun: Paketmanager, Skripte, Laufzeit)
+
+[install]
+# Flaches node_modules wie bei npm: Supervisor, Dockerfile und Generationen-Junction erwarten feste Pfade
+# (node_modules/@sveltejs/kit/svelte-kit.js, vite/bin/vite.js, playwright/cli.js, node_modules/.vite-temp)
+linker = "hoisted"
+
+[run]
+# Werkzeuge mit `#!/usr/bin/env node` (vite, svelte-check, eslint, vitest …) unter Bun statt Node ausführen
+bun = true

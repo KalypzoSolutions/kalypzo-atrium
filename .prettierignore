@@ -2,7 +2,7 @@ build
 .svelte-kit
 node_modules
 drizzle
-package-lock.json
+bun.lock
 docs/openapi.json
 *.md
 website
