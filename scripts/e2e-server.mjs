@@ -30,6 +30,8 @@ const env = {
 	...(process.env.E2E_DATABASE_URL ? {} : { DATABASE_POOL_MAX: '1' }),
 	// Alle Specs melden sich von 127.0.0.1 an – Auth-Rate-Limits (#14) entsprechend anheben
 	AUTH_RATE_LIMIT_FACTOR: '50',
+	// Kein Netzaufruf zum Modul-Marktplatz der Website (Job und Modulverwaltung zeigen „nicht erreichbar“)
+	ATRIUM_MARKETPLACE_OFFLINE: '1',
 	PORT: '4173',
 	HOST: '127.0.0.1'
 };

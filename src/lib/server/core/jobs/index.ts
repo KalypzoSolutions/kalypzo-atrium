@@ -31,6 +31,7 @@ import type { ModuleJob } from '../modules/types';
 import { runHousekeeping } from './housekeeping';
 import { reprocessLegacyAvatars } from '../auth/profile';
 import { runNotificationDigest } from '../notifications/service';
+import { refreshMarketplace } from '../modules/install/marketplace';
 
 type Row = Record<string, unknown>;
 
@@ -112,6 +113,20 @@ const CORE_JOBS: ModuleJob[] = [
 				push: r.push,
 				expired: r.expired
 			});
+		}
+	},
+	{
+		// Wirft nie: eine nicht erreichbare Website ist nur eine Statusmeldung
+		id: 'marketplace-refresh',
+		summary: 'marketplace.job.summary',
+		schedule: 'hourly',
+		run: async () => {
+			const r = await refreshMarketplace();
+			const error = r.error ?? '';
+			if (r.status === 'ok') {
+				return t('marketplace.job.result.ok', { count: r.index?.sources.length ?? 0 });
+			}
+			return t(`marketplace.job.result.${r.status}`, { error });
 		}
 	}
 ];
