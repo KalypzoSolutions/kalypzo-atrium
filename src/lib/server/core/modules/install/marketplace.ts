@@ -8,7 +8,7 @@
  * - `getMarketplace()` liefert sofort den Cache; ist er älter als 15 min, startet eine Aktualisierung im
  *   Hintergrund, auf die höchstens `waitMs` gewartet wird. Gleichzeitige Aufrufe teilen sich einen Abruf.
  * - `refreshMarketplace()` ruft wirklich ab (Job `core.marketplace-refresh`, Knopf „Jetzt aktualisieren“).
- * - Abruf ohne Nutzer- oder Instanzbezug (nur `user-agent`, `accept`, ggf. `If-None-Match`), 5 s Zeitlimit,
+ * - Abruf ohne Nutzer- oder Instanzbezug (nur `user-agent`, `accept`, ggf. `If-None-Match`), 2,5 s Zeitlimit,
  *   ≤ 2 MB, Weiterleitungen nur auf https.
  * - Tolerantes Parsen: unbekannte Felder werden ignoriert, ungültige Einzel-Einträge übersprungen, nur https-Links;
  *   Installationslinks nur auf `https://github.com/` (Installation geht ohnehin nur über GitHub).
@@ -104,7 +104,7 @@ export const MARKETPLACE_TTL_MS = 15 * 60_000;
 const STALE_AFTER_MS = 2 * 60 * 60_000;
 /** Nach einem Fehlschlag frühestens dann automatisch erneut versuchen (Knopf/Job dürfen immer) */
 const RETRY_AFTER_FAILURE_MS = 60_000;
-const FETCH_TIMEOUT_MS = 5_000;
+const FETCH_TIMEOUT_MS = 2_500;
 const DEFAULT_WAIT_MS = 2_500;
 export const MARKETPLACE_MAX_BYTES = 2 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
@@ -248,9 +248,10 @@ export function parseMarketplaceIndex(raw: unknown): ParseResult {
 	if (raw.schema !== 1) {
 		return { ok: false, reason: typeof raw.schema === 'number' ? 'incompatible' : 'invalid' };
 	}
+	if (!Array.isArray(raw.sources)) return { ok: false, reason: 'invalid' };
 	const sources: MarketplaceSource[] = [];
 	const seen = new Set<string>();
-	for (const entry of (Array.isArray(raw.sources) ? raw.sources : []).slice(0, MAX_SOURCES)) {
+	for (const entry of raw.sources.slice(0, MAX_SOURCES)) {
 		const s = parseSource(entry);
 		if (s && !seen.has(s.id)) {
 			seen.add(s.id);
@@ -480,7 +481,7 @@ async function persist(e: Entry, withData: boolean): Promise<void> {
 }
 
 /** GET mit eigener Weiterleitungsbehandlung (nur https), Zeitlimit und Größenlimit */
-async function download(
+async function downloadResponse(
 	doFetch: FetchLike,
 	url: string,
 	etag: string | null
@@ -525,6 +526,24 @@ async function download(
 		return { notModified: false, body, etag: res.headers.get('etag') };
 	}
 	throw new MarketplaceError('redirect');
+}
+
+async function download(
+	doFetch: FetchLike,
+	url: string,
+	etag: string | null
+): ReturnType<typeof downloadResponse> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		return await Promise.race([
+			downloadResponse(doFetch, url, etag),
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(() => reject(new MarketplaceError('timeout')), FETCH_TIMEOUT_MS);
+			})
+		]);
+	} finally {
+		clearTimeout(timer);
+	}
 }
 
 async function doRefresh(url: string): Promise<MarketplaceState> {

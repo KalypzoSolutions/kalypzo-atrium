@@ -134,7 +134,10 @@
 				working = false;
 				if (result.type === 'success') {
 					const d = (result.data ?? {}) as Record<string, unknown>;
-					if (d.message) toast.success(String(d.message));
+					const removal = (d.uninstalledMany ?? d.uninstalled) as
+						{ warnings?: string[] } | undefined;
+					if (removal?.warnings?.length) toast.error(removal.warnings.join(' '));
+					else if (d.message) toast.success(String(d.message));
 					onok(d);
 					await invalidateAll();
 				} else if (result.type === 'failure') {

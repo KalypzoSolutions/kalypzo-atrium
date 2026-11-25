@@ -300,4 +300,45 @@ describe('uninstallModules', () => {
 			rmSync(data, { recursive: true, force: true });
 		}
 	});
+	it('protokolliert gelöschte Daten auch bei fehlgeschlagener Supervisor-Anforderung', async () => {
+		const data = mkdtempSync(join(tmpdir(), 'atrium-bulk-fail-'));
+		const originalSend = process.send;
+		process.env.ATRIUM_MODULE_INSTALL = 'supervisor';
+		process.env.ATRIUM_SUPERVISOR = '1';
+		process.env.ATRIUM_DATA_DIR = data;
+		process.send = (() => {
+			throw new Error('Supervisor nicht erreichbar');
+		}) as typeof process.send;
+		resetEnvForTests();
+		try {
+			const result = await uninstallModules(admin, {
+				ids: ['fx-people'],
+				deleteData: true,
+				confirm: 'ENTFERNEN',
+				password: PW
+			});
+			expect(result.results[0]).toMatchObject({ dataDeleted: true });
+			expect(result.warnings.join(' ')).toContain('Supervisor nicht erreichbar');
+			const events = await getDb()
+				.select()
+				.from(schema.moduleInstallEvent)
+				.where(eq(schema.moduleInstallEvent.moduleId, 'fx-people'));
+			expect(events.at(-1)).toMatchObject({
+				status: 'failed',
+				detail: 'install.detail.removedDataDeleted'
+			});
+			expect((await listAudit({ action: 'core.module.uninstalled' })).rows).toContainEqual(
+				expect.objectContaining({
+					target: 'fx-people',
+					metadata: expect.objectContaining({ dataDeleted: true })
+				})
+			);
+		} finally {
+			process.send = originalSend;
+			for (const k of ['ATRIUM_MODULE_INSTALL', 'ATRIUM_SUPERVISOR', 'ATRIUM_DATA_DIR'])
+				delete process.env[k];
+			resetEnvForTests();
+			rmSync(data, { recursive: true, force: true });
+		}
+	});
 });

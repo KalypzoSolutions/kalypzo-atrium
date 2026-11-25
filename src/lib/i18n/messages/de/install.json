@@ -114,7 +114,8 @@
 		"confirmWord": "ENTFERNEN",
 		"confirmWordHint": "Zum Löschen der Daten bitte genau „{word}“ eingeben",
 		"noIds": "Bitte mindestens ein Modul auswählen",
-		"tooMany": "Höchstens {max} Module auf einmal"
+		"tooMany": "Höchstens {max} Module auf einmal",
+		"removeFailed": "Entfernen von {id} fehlgeschlagen ({error})"
 	},
 	"detail": {
 		"copied": "Dateien kopiert",

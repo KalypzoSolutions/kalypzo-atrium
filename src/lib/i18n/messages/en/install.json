@@ -114,7 +114,8 @@
 		"confirmWord": "REMOVE",
 		"confirmWordHint": "To delete the data, please type exactly “{word}”",
 		"noIds": "Please select at least one module",
-		"tooMany": "At most {max} modules at once"
+		"tooMany": "At most {max} modules at once",
+		"removeFailed": "Failed to remove {id} ({error})"
 	},
 	"detail": {
 		"copied": "Files copied",
