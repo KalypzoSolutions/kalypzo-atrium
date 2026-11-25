@@ -548,3 +548,16 @@ export const loginQrRequest = pgTable(
 		index('login_qr_request_user_idx').on(t.userId)
 	]
 );
+
+/**
+ * Modul-Marktplatz (Migration 0014): letzte gültige Fassung des öffentlichen Index je URL, damit die
+ * Modulverwaltung auch ohne erreichbare Website etwas anzeigen kann. Nie gesichert.
+ */
+export const marketplaceCache = pgTable('marketplace_cache', {
+	url: text('url').primaryKey(),
+	data: jsonb('data').$type<Record<string, unknown>>().notNull(),
+	etag: text('etag'),
+	fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull(),
+	lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
+	lastError: text('last_error')
+});

@@ -21,7 +21,8 @@ const MAPPING: { env: string; key: string; parse?: (v: string) => unknown }[] = 
 	{ env: 'SMTP_SECURE', key: 'core.smtp.secure', parse: bool },
 	{ env: 'SMTP_USER', key: 'core.smtp.user' },
 	{ env: 'SMTP_PASSWORD', key: 'core.smtp.password' },
-	{ env: 'SMTP_FROM', key: 'core.smtp.from' }
+	{ env: 'SMTP_FROM', key: 'core.smtp.from' },
+	{ env: 'ATRIUM_MARKETPLACE_URL', key: 'core.modules.marketplaceUrl' }
 ];
 
 function bool(v: string): boolean {
