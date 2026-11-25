@@ -30,6 +30,7 @@
 	let url = $state(page.url.searchParams.get('url') ?? '');
 	const preselect = page.url.searchParams.get('select');
 	let file = $state<File | null>(null);
+	let inspectForm: HTMLFormElement;
 	let busy = $state<'inspect' | 'preview' | 'install' | 'settings' | null>(null);
 	let fields = $state<Record<string, string>>({});
 	let inspection = $state<SourceInspection | null>(null);
@@ -89,6 +90,7 @@
 	onDestroy(stopPolling);
 	// Läuft schon ein Neubau (z. B. aus einem anderen Tab), Stand gleich zeigen
 	onMount(() => {
+		if (data.canAutoInspect && url.trim()) inspectForm?.requestSubmit();
 		const sup = data.supervisor;
 		if (sup && ACTIVE.has(sup.state)) startPolling(sup.planId);
 	});
@@ -181,6 +183,7 @@
 			<form
 				method="POST"
 				action="?/inspect"
+				bind:this={inspectForm}
 				enctype="multipart/form-data"
 				use:enhance={onInspect}
 				class="space-y-4"

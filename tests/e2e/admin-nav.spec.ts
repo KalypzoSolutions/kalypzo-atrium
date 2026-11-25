@@ -147,3 +147,12 @@ test('/admin/settings leitet auf den ersten erlaubten Reiter', async ({ page }) 
 		'page'
 	);
 });
+
+test('Modulverwaltung zeigt den Marktplatz als Reiter', async ({ page }) => {
+	await login(page);
+	await page.goto('/admin/modules');
+	await expect(page.getByRole('link', { name: 'Marktplatz', exact: true })).toHaveAttribute(
+		'href',
+		'/admin/modules/marketplace'
+	);
+});
