@@ -1,0 +1,25 @@
+{
+	"schema": 1,
+	"sources": [
+		{
+			"id": "fixture-package",
+			"name": "Beispielpaket",
+			"description": { "de": "Werkzeuge für Gruppen", "en": "Tools for groups" },
+			"repository": "https://github.com/example/atrium-modules",
+			"source": "https://github.com/example/atrium-modules",
+			"publisher": { "name": "Beispiel" },
+			"official": true,
+			"categories": ["organisation"],
+			"tags": ["gruppen"],
+			"license": "MIT",
+			"modules": [
+				{
+					"id": "fixture-module",
+					"name": { "de": "Gruppenmodul", "en": "Group module" },
+					"description": { "de": "Verwaltet Gruppen", "en": "Manages groups" },
+					"source": "https://github.com/example/atrium-modules"
+				}
+			]
+		}
+	]
+}

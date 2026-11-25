@@ -68,7 +68,10 @@ function section(id: AdminSectionId, icon: string): AdminSection {
 }
 
 function entry(def: Omit<AdminEntry, 'label' | 'description' | 'keywords'>): AdminEntry {
-	const base = `admin.entries.${def.id.replace(/\./g, '-')}`;
+	const base =
+		def.id === 'modules.marketplace'
+			? 'admin-marketplace.registry'
+			: `admin.entries.${def.id.replace(/\./g, '-')}`;
 	return {
 		...def,
 		get label() {
@@ -222,6 +225,14 @@ export const ADMIN_ENTRIES: readonly AdminEntry[] = [
 		icon: 'puzzle',
 		permission: 'core.modules.view',
 		nav: true
+	}),
+	entry({
+		id: 'modules.marketplace',
+		section: 'modules',
+		href: '/admin/modules/marketplace',
+		icon: 'store',
+		permission: 'core.modules.view',
+		parent: 'modules'
 	}),
 	entry({
 		id: 'modules.install',

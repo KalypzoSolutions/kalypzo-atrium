@@ -8,6 +8,7 @@ import {
 	previewInstall
 } from '$lib/server/core/modules/install/service';
 import { readSupervisorStatus } from '$lib/server/core/modules/install/supervisor-link';
+import { isAdministrator } from '$lib/server/core/permissions/service';
 import { getSetting, setSettings } from '$lib/server/core/settings/service';
 import { failWithFields as failWith, requirePerm } from '../../_shared/server-utils';
 import type { PageServerLoad } from './$types';
@@ -17,6 +18,7 @@ const PERM = 'core.modules.install';
 export const load: PageServerLoad = async ({ locals }) => {
 	requirePerm(locals, PERM);
 	return {
+		canAutoInspect: isAdministrator(locals.ctx),
 		status: installStatus(),
 		supervisor: installStatus().mode === 'supervisor' ? readSupervisorStatus() : null,
 		twoFactorEnabled: locals.user?.twoFactorEnabled ?? false,
