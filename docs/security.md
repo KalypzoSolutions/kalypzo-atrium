@@ -405,4 +405,4 @@ Test `tests/unit/website-security-headers.test.ts`.
 - [ ] Regelmäßige Backups (DB, Objektspeicher) inkl. Restore-Test
 - [ ] Least-Privilege-Rollen und API-Key-Scopes, kurze Key-Laufzeiten
 - [ ] Audit-Logs regelmäßig prüfen
-- [ ] Abhängigkeiten aktualisieren (`npm audit`)
+- [ ] Abhängigkeiten aktualisieren (`bun audit`)

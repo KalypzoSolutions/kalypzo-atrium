@@ -1,7 +1,7 @@
 /**
  * Wächter (Phase N): Der Core enthält keine fest eingetragenen Oberflächentexte mehr – alles läuft über
  * `t()` aus `$lib/i18n` mit Texten in `src/lib/i18n/messages/{de,en}/*.json`. Einzelne Bereiche prüfen:
- * `I18N_GUARD_PATHS=src/routes/login npx vitest run tests/unit/i18n-guard.test.ts`.
+ * `I18N_GUARD_PATHS=src/routes/login bun run vitest run tests/unit/i18n-guard.test.ts`.
  */
 import { describe, expect, it } from 'vitest';
 import { I18N_ALLOWLIST } from './i18n-allowlist';

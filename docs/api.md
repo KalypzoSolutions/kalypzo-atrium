@@ -1,6 +1,6 @@
 # REST API
 
-Basisroute: `/api/v1`. OpenAPI 3.1: `GET /api/v1/openapi.json` (angemeldet) bzw. statisch `docs/openapi.json` (`npm run openapi`).
+Basisroute: `/api/v1`. OpenAPI 3.1: `GET /api/v1/openapi.json` (angemeldet) bzw. statisch `docs/openapi.json` (`bun run openapi`).
 
 ## Authentifizierung
 

@@ -593,7 +593,7 @@ Vorlage: `tests/integration/core.test.ts` (Modulaktivierung, Abhängigkeiten, AP
 ## Checkliste
 
 - [ ] Manifest valide, Berechtigungen mit Modulpräfix
-- [ ] Nur `$lib/sdk/*`-Importe (`npm run lint`)
+- [ ] Nur `$lib/sdk/*`-Importe (`bun run lint`)
 - [ ] Migrationen idempotent im Modulschema
 - [ ] Jede Operation mit `ctx` und `core.permissions.require`
 - [ ] Tests für Rechte und Modulstatus

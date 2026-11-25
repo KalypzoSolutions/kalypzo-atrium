@@ -2,12 +2,12 @@
 
 ## Definition „fertig“
 Vor jeder Fertigmeldung, in dieser Reihenfolge, alles grün:
-1. `npx prettier --write <geänderte Dateien>`
-2. `npm run check` → 0 Fehler, 0 Warnungen
-3. `npx eslint .`
-4. `npx vitest run` (Unit + Integration)
-5. `npm run build`
-6. bei UI/Core-Änderungen: `npx playwright test` **und** Screenshot-Prüfung (siehe `workflow.md`)
+1. `bun run prettier --write <geänderte Dateien>`
+2. `bun run check` → 0 Fehler, 0 Warnungen
+3. `bun run eslint .`
+4. `bun run vitest run` (Unit + Integration)
+5. `bun run build`
+6. bei UI/Core-Änderungen: `bun run playwright test` **und** Screenshot-Prüfung (siehe `workflow.md`)
 Ehrlich berichten: was **nicht** geprüft wurde (z. B. Upload mit echtem S3, Mobilansicht) ausdrücklich nennen.
 
 ## Wo liegt was (seit 2026-11-01, Kalypzo Atrium Phase 4)
@@ -17,8 +17,8 @@ Ehrlich berichten: was **nicht** geprüft wurde (z. B. Upload mit echtem S3, Mob
 - **Modultests** `modules/<id>/tests/{unit,integration}`, E2E `modules/<id>/e2e`; **modulübergreifende** (Backup mit echten Daten, Suche,
   Datenschutz, Freigaben mit `members`, Endpunkt-/Reset-/Doku-Abgleich aller Module) in `modules/_integration/{tests,e2e,helpers}`.
   Sie nutzen `$testing` (Vitest) bzw. `$testing/e2e` (Playwright) statt `$lib/server/*`/`tests/helpers/*`.
-- Läufe: `npx vitest run` = Core + alle Module; `npm run test:core` / `npm run check:core` = nur Core mit Fixtures
-  (`ATRIUM_MODULES_DIR=tests/fixtures/modules`, muss grün sein); `npm run test:modules`. Playwright-Projekte `core`, `modules`, `integration`
+- Läufe: `bun run vitest run` = Core + alle Module; `bun run test:core` / `bun run check:core` = nur Core mit Fixtures
+  (`ATRIUM_MODULES_DIR=tests/fixtures/modules`, muss grün sein); `bun run test:modules`. Playwright-Projekte `core`, `modules`, `integration`
   (in dieser Reihenfolge; einige Specs sind reihenfolgeabhängig: Rate-Limits/Daten des gemeinsamen Servers).
 - `tests/unit/*.test.ts` – reine Funktionen (Berechnung, Parser, Schemas, Routen-Matcher).
 - `tests/integration/*.test.ts` – Core/Module gegen PGlite im Speicher (kein Docker), z. B. `core.test.ts`, `members.test.ts`,
@@ -93,9 +93,9 @@ Backup-Route-Guards in `tests/unit/admin-backup-http.test.ts`; Core-REST-Lücken
 Heute durchgängig ersetzt (`fake-storage.ts`, `s3-mock.ts`, `setMailTransportForTests`, `setPdfRendererForTests`). Vorschlag für einen
 Nightly-Lauf mit echten Diensten (Docker, Ports ≠ Demo):
 - Dienste wie `docker-compose.demo.yml`, aber eigene Ports: MinIO (`bitnamilegacy/minio`, :59100), Mailpit (`axllent/mailpit`, SMTP :51025,
-  API :58025), Chromium über `npx playwright install chromium`; per `services:` im CI-Job oder `testcontainers` (npm, startet je Lauf
+  API :58025), Chromium über `bun run playwright install chromium`; per `services:` im CI-Job oder `testcontainers` (npm, startet je Lauf
   Wegwerf-Container und liefert Host/Port).
-- `tests/external/*.test.ts` + `npm run test:external` (eigene Vitest-Konfiguration, nicht im Standardlauf): Storage-Einstellungen auf
+- `tests/external/*.test.ts` + `bun run test:external` (eigene Vitest-Konfiguration, nicht im Standardlauf): Storage-Einstellungen auf
   MinIO setzen → Upload/Download/Signed URL/Löschen; MinIO stoppen → kontrolliert **503**; `setSmtp…` auf Mailpit → eine Mail senden und
   über die Mailpit-API (`GET /api/v1/messages`) prüfen, falsches Passwort → Fehler gezählt; ein Briefvorlagen-PDF mit echtem Chromium
   rendern (Seitenzahl, Schrift Carlito eingebettet).

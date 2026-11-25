@@ -207,7 +207,7 @@ Vorlagen mit festem Seitenlayout (Briefkopf, Falzmarken, Adressfeld, Fußzeile) 
 2. Bausteine aus `parts/` verwenden oder neu anlegen (Maße in mm).
 3. Datei `templates/<id>.ts` mit `export default` eines `PdfTemplate` (`id`, `label`, `description`, `source`, `page`, `overlay`, `parts`).
 4. Vorschau in der Admin-Ansicht prüfen und gegen das Referenzbild abgleichen (Screenshot, `pdftotext -bbox`).
-5. Test ergänzen und `npm run check`, `npx eslint .`, `npx vitest run` ausführen.
+5. Test ergänzen und `bun run check`, `bun run eslint .`, `bun run vitest run` ausführen.
 
 ## Modul-Dienste (`ModuleDefinition.provides`, `core.modules.use`)
 

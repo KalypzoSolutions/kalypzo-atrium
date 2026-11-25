@@ -86,6 +86,8 @@ defineEndpoint({
   (`$lib/sdk/server`) → `{ bytes, contentType, name, size }`; Mehrfeld-Formular `readFormData(request)` + `takeUpload(form, rules)` (`required: false`
   = optional), schon gelesene Bytes `checkUploadBytes`. Einheitlich: kaputter Body 400, Feld fehlt/leer/Typ/Inhalt ≠ Typ (Magic Bytes, `sniff`
   Standard an) **422** Pfad `file`, zu groß **413**. Bilder: `sniff: false` + `detectMissingType` (Inhalt prüft `core.images.process`, 400).
+  Unbekannter Dateityp (leer/`application/octet-stream`) → `takeUpload`/`readUpload` ermitteln ihn aus dem Inhalt (Bun leitet `File.type` aus der
+  Endung ab statt aus dem Content-Type des Teils; Test `sdk-upload.test.ts`).
   Speicherpfad-Name `safeFileName(name)` (`$lib/sdk/file-names`, auch über `$lib/sdk/server`), Header `contentDisposition`/`secureFileResponse`.
 - **„Heute“ und Datum** (#32): nur `todayBerlin()` aus `$lib/sdk/dates` (Server und Browser, Europe/Berlin), nie `new Date().toISOString().slice(0, 10)`
   oder Lokalzeit; dazu `addDays`, `daysBetween`, `isRealDate`, `formatDateDe`, `formatDateTimeDe`, `ageFromBirthDate`. Tests: `setTodayForTests(d|null)`
@@ -222,5 +224,5 @@ return result;
 - Der Router beantwortet **jedes** `POST` mit 201 (auch `reimburse`, `close`, `rotate-token`); UI nicht auf 200 prüfen.
 - Berechtigung mit `_` → App-Start bricht ab (Registry-Validierung). Tests fangen das (`registerModule`).
 - Core-Service in offener Modul-Transaktion → hängt auf PGlite (Tests/Demo).
-- Patch-Skripte, die mehrfach laufen, duplizieren Zeilen – nach automatischen Änderungen immer `npm run check` + Diff-Blick.
+- Patch-Skripte, die mehrfach laufen, duplizieren Zeilen – nach automatischen Änderungen immer `bun run check` + Diff-Blick.
 - `noUncheckedIndexedAccess`: `arr[0]!` in Tests, sonst Typfehler.
