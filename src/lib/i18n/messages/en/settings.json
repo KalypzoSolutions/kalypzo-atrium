@@ -7,6 +7,10 @@
 		"label": "Allowed sources",
 		"description": "Optional: one `owner/repo` or `owner/*` per line. Empty = all GitHub sources and ZIP files allowed; otherwise no ZIP files."
 	},
+	"core.modules.marketplaceUrl": {
+		"label": "Marketplace URL",
+		"description": "Index of the module marketplace (https only). Empty = marketplace off; installing via link or ZIP still works."
+	},
 	"core.system.name": {
 		"label": "System name"
 	},
