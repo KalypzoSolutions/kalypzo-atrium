@@ -26,14 +26,14 @@ test('Fixture: Suche, Filter und Installationslink', async ({ page }) => {
 	await page.getByLabel('Marktplatz-URL').fill('https://fixture.example.test/marketplace.json');
 	await page.getByRole('button', { name: 'Speichern' }).click();
 	await expect(page.getByText('Beispielpaket')).toBeVisible();
-	await page.getByLabel('Suche').fill('gruppen');
+	await page.getByLabel('Suche', { exact: true }).fill('gruppen');
 	await page.getByRole('button', { name: 'Organisation', exact: true }).click();
 	await page.getByLabel('Nur offizielle').check();
 	await expect(page.getByText('Beispielpaket')).toBeVisible();
 	await page.getByRole('button', { name: 'Einzelne Module' }).click();
 	const link = page.getByRole('link', { name: 'Installieren', exact: true });
 	await expect(link).toHaveAttribute('href', /select=fixture-module/);
-	await page.getByLabel('Suche').fill('kein-treffer');
+	await page.getByLabel('Suche', { exact: true }).fill('kein-treffer');
 	await expect(page.getByText('Keine passenden Einträge gefunden.')).toBeVisible();
 	await page.getByText('Marktplatz-Einstellungen').click();
 	await page.getByLabel('Marktplatz-URL').fill(originalUrl);
