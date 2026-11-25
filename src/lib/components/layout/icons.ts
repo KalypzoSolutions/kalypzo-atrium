@@ -27,6 +27,7 @@ import History from '@lucide/svelte/icons/history';
 import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 import ShoppingBasket from '@lucide/svelte/icons/shopping-basket';
 import ScrollText from '@lucide/svelte/icons/scroll-text';
+import Store from '@lucide/svelte/icons/store';
 import Settings from '@lucide/svelte/icons/settings';
 import Shield from '@lucide/svelte/icons/shield';
 import Sparkles from '@lucide/svelte/icons/sparkles';
@@ -72,6 +73,7 @@ const ICONS: Record<string, Icon> = {
 	'rotate-ccw': RotateCcw,
 	'scroll-text': ScrollText,
 	settings: Settings,
+	store: Store,
 	'shopping-basket': ShoppingBasket,
 	shield: Shield,
 	sparkles: Sparkles,

@@ -2,14 +2,17 @@
 // und die gebaute App dagegen. Es ist kein Docker nötig.
 // Mit E2E_DATABASE_URL kann stattdessen eine echte PostgreSQL-Datenbank verwendet werden.
 import { spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 
 let databaseUrl = process.env.E2E_DATABASE_URL;
 let closeDb = async () => {};
+let fixtureDb;
 
 if (!databaseUrl) {
 	const { PGlite } = await import('@electric-sql/pglite');
 	const { PGLiteSocketServer } = await import('@electric-sql/pglite-socket');
 	const db = await PGlite.create();
+	fixtureDb = db;
 	const server = new PGLiteSocketServer({ db, port: 54329, host: '127.0.0.1', maxConnections: 10 });
 	await server.start();
 	databaseUrl = 'postgres://postgres:postgres@127.0.0.1:54329/postgres?sslmode=disable';
@@ -36,6 +39,31 @@ const env = {
 	HOST: '127.0.0.1'
 };
 const child = spawn(process.execPath, ['build'], { env, stdio: 'inherit' });
+// Nur die lokale E2E-Datenbank erhält eine gespeicherte Registry; externe Abrufe bleiben deaktiviert.
+if (fixtureDb) {
+	const fixture = await readFile(
+		new URL('../tests/fixtures/marketplace/index.json', import.meta.url),
+		'utf8'
+	);
+	const seed = async () => {
+		for (let attempt = 0; attempt < 120; attempt++) {
+			try {
+				// Erst nach den Migrationen schreiben, sonst stört die Abfrage deren Transaktion.
+				const ready = await fetch('http://127.0.0.1:4173/api/v1/health');
+				if (!ready.ok) throw new Error('Server nicht bereit');
+				await fixtureDb.query(
+					'INSERT INTO marketplace_cache (url, data, fetched_at) VALUES ($1, $2::jsonb, now()) ON CONFLICT (url) DO NOTHING',
+					['https://fixture.example.test/marketplace.json', fixture]
+				);
+				return;
+			} catch {
+				await new Promise((resolve) => setTimeout(resolve, 500));
+			}
+		}
+		console.error('E2E-Marktplatz-Fixture konnte nicht gespeichert werden');
+	};
+	void seed();
+}
 const stop = async (code) => {
 	child.kill();
 	await closeDb();
