@@ -11,6 +11,7 @@ import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
 import { syncModules } from '$lib/server/core/modules/service';
 import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { actions } from '../../src/routes/(internal)/admin/modules/marketplace/+page.server';
 import { listJobs, runJobNow } from '$lib/server/core/jobs';
 import { setSetting } from '$lib/server/core/settings/service';
 import {
@@ -183,6 +184,20 @@ describe('Marktplatz', () => {
 		expect((await cacheRow())?.lastError).toBe('incompatible');
 	});
 
+	it('ungültige Quellenliste erhält den gespeicherten Cache', async () => {
+		await refreshMarketplace();
+		const before = await cacheRow();
+		handler = () => ok(JSON.stringify({ schema: 1, sources: 'defekt' }));
+		const result = await refreshMarketplace();
+		expect(result.status).toBe('stale');
+		expect(result.index?.sources).toHaveLength(1);
+		expect(await cacheRow()).toMatchObject({
+			data: before?.data,
+			etag: before?.etag,
+			lastError: 'invalid'
+		});
+	});
+
 	it('leere URL → „disabled“ ohne Abruf', async () => {
 		await setSetting(admin, 'core.modules.marketplaceUrl', '');
 		expect((await getMarketplace()).status).toBe('disabled');
@@ -220,6 +235,18 @@ describe('Marktplatz', () => {
 		handler = () => ok('{kaputt');
 		expect((await refreshMarketplace()).status).toBe('unreachable');
 	});
+
+	it('begrenzt Job und Refresh-Aktion auch bei einem hängenden Body', async () => {
+		handler = () => new Response(new ReadableStream({ start() {} }));
+		const start = Date.now();
+		await runJobNow(admin, 'core.marketplace-refresh');
+		expect(Date.now() - start).toBeLessThan(3000);
+		const actionStart = Date.now();
+		await actions.refresh!({ locals: { ctx: admin, user: { id: admin.userId } } } as Parameters<
+			NonNullable<typeof actions.refresh>
+		>[0]);
+		expect(Date.now() - actionStart).toBeLessThan(3000);
+	}, 10000);
 
 	it('Core-Job läuft ohne Wurf, auch wenn die Website fehlt', async () => {
 		const job = (await listJobs()).find((j) => j.key === 'core.marketplace-refresh');

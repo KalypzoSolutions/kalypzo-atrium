@@ -153,9 +153,13 @@ describe('parseMarketplaceIndex', () => {
 		expect(parseMarketplaceIndex('x')).toEqual({ ok: false, reason: 'invalid' });
 	});
 
-	it('ohne Quellen-Liste bleibt der Index gültig und leer', () => {
-		const r = parseMarketplaceIndex({ schema: 1 });
-		expect(r).toMatchObject({ ok: true, index: { sources: [], site: null, generatedAt: null } });
+	it('verlangt eine Quellen-Liste', () => {
+		expect(parseMarketplaceIndex({ schema: 1 })).toEqual({ ok: false, reason: 'invalid' });
+		expect(parseMarketplaceIndex({ schema: 1, sources: 'defekt' })).toEqual({
+			ok: false,
+			reason: 'invalid'
+		});
+		expect(parseMarketplaceIndex({ schema: 1, sources: [] }).ok).toBe(true);
 	});
 });
 

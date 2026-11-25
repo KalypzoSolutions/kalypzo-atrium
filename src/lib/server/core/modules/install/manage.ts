@@ -292,74 +292,126 @@ async function uninstallMany(
 	}
 
 	const warnings: string[] = [];
-	const warningsById = new Map<string, string[]>();
-	if (input.deleteData) {
-		for (const x of targets) {
-			const w = (await deleteModuleData(x.id)).warnings;
-			warningsById.set(x.id, w);
-			warnings.push(...w);
-		}
-	}
-
-	let planId: string | null = null;
-	if (withCode.length && status.mode === 'copy') {
-		const root = resolve(runtimeModulesDir());
-		for (const id of withCode) {
-			const dir = resolve(root, id);
-			if (!dir.startsWith(root + sep)) {
-				throw errors.badRequest(t('install.service.invalidModuleDir'));
-			}
-			await rm(dir, { recursive: true, force: true });
-		}
-	} else if (withCode.length && status.mode === 'supervisor') {
-		planId = crypto.randomUUID().replace(/-/g, '');
-		await requestSupervisorBuild(
-			{
-				planId,
-				requestedBy: userId,
-				requestedAt: new Date().toISOString(),
-				modules: {},
-				remove: withCode
-			},
-			new Map()
-		);
-	}
-
 	const results: UninstallResult[] = [];
-	for (const { id, row, def, state, removeCode } of targets) {
-		const modulePlan = removeCode ? planId : null;
-		await db.delete(schema.moduleInstall).where(eq(schema.moduleInstall.id, id));
+	const eventIds = new Map<string, string>();
+	const eligible: UninstallTarget[] = [];
+	const planId =
+		withCode.length && status.mode === 'supervisor' ? crypto.randomUUID().replace(/-/g, '') : null;
+
+	for (const x of targets) {
+		const moduleWarnings: string[] = [];
+		let dataDeleted = false;
+		let failed = false;
+		if (input.deleteData) {
+			try {
+				moduleWarnings.push(...(await deleteModuleData(x.id)).warnings);
+				dataDeleted = true;
+			} catch (e) {
+				failed = true;
+				moduleWarnings.push(
+					t('install.manage.removeFailed', {
+						id: x.id,
+						error: e instanceof Error ? e.message : String(e)
+					})
+				);
+			}
+		}
+		const eventId = crypto.randomUUID();
+		const modulePlan = x.removeCode && !failed ? planId : null;
 		await db.insert(schema.moduleInstallEvent).values({
-			id: crypto.randomUUID(),
-			moduleId: id,
+			id: eventId,
+			moduleId: x.id,
 			action: 'uninstall',
-			fromVersion: def?.manifest.version ?? row?.version ?? state?.installedVersion ?? null,
+			fromVersion: x.def?.manifest.version ?? x.row?.version ?? x.state?.installedVersion ?? null,
 			toVersion: null,
-			sourceType: row?.sourceType ?? null,
-			source: row?.source ?? {},
-			commit: row?.commit ?? null,
-			contentHash: row?.contentHash ?? null,
+			sourceType: x.row?.sourceType ?? null,
+			source: x.row?.source ?? {},
+			commit: x.row?.commit ?? null,
+			contentHash: x.row?.contentHash ?? null,
 			actorId: userId,
 			planId: modulePlan,
-			status: modulePlan ? 'requested' : 'done',
-			detail: input.deleteData
-				? 'install.detail.removedDataDeleted'
-				: 'install.detail.removedDataKept'
+			status: failed ? 'failed' : 'requested',
+			detail: dataDeleted ? 'install.detail.removedDataDeleted' : 'install.detail.removedDataKept'
 		});
 		await auditFromContext(ctx, 'core.module.uninstalled', {
-			target: id,
+			target: x.id,
 			metadata: input.bulk
-				? { dataDeleted: input.deleteData, planId: modulePlan, bulk: true, count: ids.length }
-				: { dataDeleted: input.deleteData, planId: modulePlan }
+				? { dataDeleted, planId: modulePlan, bulk: true, count: ids.length }
+				: { dataDeleted, planId: modulePlan }
 		});
-		results.push({
-			id,
-			dataDeleted: input.deleteData,
-			warnings: warningsById.get(id) ?? [],
-			planId: modulePlan
-		});
+		eventIds.set(x.id, eventId);
+		if (!failed) eligible.push(x);
+		warnings.push(...moduleWarnings);
+		results.push({ id: x.id, dataDeleted, warnings: moduleWarnings, planId: modulePlan });
 	}
-	return { ids, dataDeleted: input.deleteData, warnings, planId, results };
+
+	const fail = async (id: string, e: unknown) => {
+		const message = t('install.manage.removeFailed', {
+			id,
+			error: e instanceof Error ? e.message : String(e)
+		});
+		warnings.push(message);
+		results.find((r) => r.id === id)!.warnings.push(message);
+		await db
+			.update(schema.moduleInstallEvent)
+			.set({ status: 'failed' })
+			.where(eq(schema.moduleInstallEvent.id, eventIds.get(id)!));
+	};
+	if (status.mode === 'copy') {
+		const root = resolve(runtimeModulesDir());
+		for (const x of eligible) {
+			try {
+				if (x.removeCode) {
+					const dir = resolve(root, x.id);
+					if (!dir.startsWith(root + sep))
+						throw errors.badRequest(t('install.service.invalidModuleDir'));
+					await rm(dir, { recursive: true, force: true });
+				}
+				await db.delete(schema.moduleInstall).where(eq(schema.moduleInstall.id, x.id));
+				await db
+					.update(schema.moduleInstallEvent)
+					.set({ status: 'done' })
+					.where(eq(schema.moduleInstallEvent.id, eventIds.get(x.id)!));
+			} catch (e) {
+				await fail(x.id, e);
+			}
+		}
+	} else {
+		const code = eligible.filter((x) => x.removeCode);
+		let planFailed = false;
+		if (code.length && planId) {
+			try {
+				await requestSupervisorBuild(
+					{
+						planId,
+						requestedBy: userId,
+						requestedAt: new Date().toISOString(),
+						modules: {},
+						remove: code.map((x) => x.id)
+					},
+					new Map()
+				);
+			} catch (e) {
+				planFailed = true;
+				for (const x of code) await fail(x.id, e);
+			}
+		}
+		for (const x of eligible) {
+			if (x.removeCode && planFailed) continue;
+			try {
+				await db.delete(schema.moduleInstall).where(eq(schema.moduleInstall.id, x.id));
+				if (!x.removeCode)
+					await db
+						.update(schema.moduleInstallEvent)
+						.set({ status: 'done' })
+						.where(eq(schema.moduleInstallEvent.id, eventIds.get(x.id)!));
+			} catch (e) {
+				await fail(x.id, e);
+			}
+		}
+	}
+
+	return { ids, dataDeleted: results.every((r) => r.dataDeleted), warnings, planId, results };
 }
 
 export async function uninstallModule(
