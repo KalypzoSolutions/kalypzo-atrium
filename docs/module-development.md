@@ -79,6 +79,12 @@ oder zu alte harte Abhängigkeit, eine unpassende Core-Version oder ein Abhängi
 nicht geladen und erscheint unter Administration → Module als „Defekt“ (Grund), seine Daten bleiben. Module mit Zustand in der
 Datenbank, die nicht mehr installiert sind, erscheinen dort als „Nicht installiert“. Test: `tests/unit/module-packages.test.ts`.
 
+### Lizenz
+
+Der Core steht unter der [Apache License 2.0](../LICENSE) (Urheberhinweis in [`NOTICE`](../NOTICE)). Module, die nur über das
+öffentliche SDK (`$lib/sdk/*`, `$lib/components/{ui,layout}`) angebunden sind, dürfen eine eigene Lizenz wählen. Empfohlen ist eine
+eigene `LICENSE`-Datei im Modul-Repository.
+
 ## 1. Manifest und Definition
 
 ```ts
