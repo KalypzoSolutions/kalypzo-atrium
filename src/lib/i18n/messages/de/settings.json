@@ -7,6 +7,10 @@
 		"label": "Erlaubte Quellen",
 		"description": "Optional: je Zeile `owner/repo` oder `owner/*`. Leer = alle GitHub-Quellen und ZIP-Dateien erlaubt; sonst keine ZIP-Dateien."
 	},
+	"core.modules.marketplaceUrl": {
+		"label": "Marktplatz-Adresse",
+		"description": "Index des Modul-Marktplatzes (nur https). Leer = Marktplatz aus; Installation per Link oder ZIP bleibt möglich."
+	},
 	"core.system.name": {
 		"label": "Systemname"
 	},
