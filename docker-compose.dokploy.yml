@@ -170,9 +170,8 @@ services:
       # Temp-Dateien der Datensicherung auf dem Volume `backup-tmp` statt im RAM-tmpfs /tmp (Issue #38)
       BACKUP_TMP_DIR: /var/tmp/ep-backup
       # Modul-Installation im Panel (Kalypzo Atrium): Supervisor baut im Container neu (Volume `atrium-data`).
-      # `off` = nur Vorschau. Heap des Neubaus in MB (mem_limit entsprechend höher als im Normalbetrieb).
+      # `off` = nur Vorschau.
       ATRIUM_MODULE_INSTALL: ${ATRIUM_MODULE_INSTALL:-supervisor}
-      ATRIUM_BUILD_HEAP: ${ATRIUM_BUILD_HEAP:-3072}
       # Frisches Deployment: Module, die der Server beim ersten Start selbst holt (JSON, siehe docs/deployment.md)
       ATRIUM_MODULES_SEED: ${ATRIUM_MODULES_SEED:-}
       # Traefik (Dokploy) setzt die Forwarded-Header

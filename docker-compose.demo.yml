@@ -1,6 +1,6 @@
 # Demo-/Testumgebung: S3-kompatibler Storage (MinIO) fuer Belege und Dokumente, Mailpit als Mail-Faenger.
 # Start:  docker compose -f docker-compose.demo.yml up -d
-# Danach: node scripts/setup-demo-storage.mjs   (hinterlegt die Verbindung im laufenden Demo-System)
+# Danach: bun scripts/setup-demo-storage.mjs   (hinterlegt die Verbindung im laufenden Demo-System)
 # Hinweis: Das offizielle Image `minio/minio` wird nicht mehr auf Docker Hub veroeffentlicht;
 # `bitnamilegacy/minio` ist ein eingefrorenes, funktionsfaehiges MinIO-Image fuer lokale Tests.
 # Feste Versionen + Digest (Issue #74); 2025.7.23 entspricht dem bisherigen `latest`.
@@ -25,7 +25,7 @@ services:
       - '127.0.0.1:1026:1025'
       - '127.0.0.1:8026:8025'
   # IMAP-Server als Catch-all-Postfach für den Posteingang des Moduls Nachrichten (IMAP ohne TLS auf
-  # 127.0.0.1:1143, jedes Passwort wird angenommen). Befüllen: node scripts/seed-demo-inbox.mjs
+  # 127.0.0.1:1143, jedes Passwort wird angenommen). Befüllen: bun scripts/seed-demo-inbox.mjs
   greenmail:
     image: greenmail/standalone:2.1.2@sha256:572d22796908375678119a13fabfcdc5416c9003404ab975fe824692fe02ba03
     environment:

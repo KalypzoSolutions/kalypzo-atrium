@@ -1,20 +1,20 @@
 # syntax=docker/dockerfile:1.7
-# Basis-Image mit fester Version UND Digest (Issue #74): gleiche Basis wie website/Dockerfile, Node-Major = .nvmrc.
+# Basis-Image mit fester Version UND Digest (Issue #74): Bun (Debian slim), Version = .bun-version.
 # Updates kommen per Dependabot (Tag + Digest gemeinsam anheben).
-FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS base
+FROM oven/bun:1.4.4-slim@sha256:1846adf22496bd711036aae8be147e57bdebbaea2e5264e3e0b5af1db187d9a4 AS base
 
 # ---- deps: alle Abhaengigkeiten (Build) ----
 FROM base AS deps
 WORKDIR /app
-COPY package.json package-lock.json .npmrc ./
-RUN npm ci --ignore-scripts
+COPY package.json bun.lock bunfig.toml ./
+RUN bun install --frozen-lockfile --ignore-scripts
 
 # ---- build ----
 FROM deps AS build
 WORKDIR /app
 COPY . .
 ENV APP_SECRET=build-time-placeholder-build-time-placeholder
-RUN npm run build
+RUN bun run build
 
 # ---- runtime ----
 FROM base AS runtime
@@ -25,17 +25,17 @@ ENV NODE_ENV=production \
     BODY_SIZE_LIMIT=110M
 # Kalypzo Atrium (Phase 6): Module lassen sich im Panel installieren; der Supervisor baut die App dann im Container
 # neu. Dafür braucht das Laufzeit-Image die Quellen und ALLE Abhängigkeiten (Vite, SvelteKit …). Der Ordner bleibt
-# schreibgeschützt: Generationen, Build-Ausgabe, Vite-Cache und npm-Cache liegen im Volume /data/atrium.
+# schreibgeschützt: Generationen, Build-Ausgabe, Vite-Cache und Bun-Cache liegen im Volume /data/atrium.
 ENV ATRIUM_DATA_DIR=/data/atrium \
     ATRIUM_MODULE_INSTALL=supervisor \
     ATRIUM_VITE_CACHE=/data/atrium/cache/vite \
-    npm_config_cache=/data/atrium/cache/npm \
+    BUN_INSTALL_CACHE_DIR=/data/atrium/cache/bun \
     TMPDIR=/data/atrium/tmp
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 # Chromium fuer den PDF-Service (inkl. Systembibliotheken)
 # TMPDIR zeigt erst zur Laufzeit ins Volume (/data/atrium/tmp legt der Supervisor an) – beim Bauen /tmp
-RUN TMPDIR=/tmp node node_modules/playwright/cli.js install --with-deps chromium \
+RUN TMPDIR=/tmp bun node_modules/playwright/cli.js install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/* \
     && chmod -R a+rX /ms-playwright
 # Mitgelieferter Build (läuft, solange keine eigene Generation gebaut ist) und alles für den Neubau
@@ -48,7 +48,7 @@ COPY --from=build /app/tools ./tools
 COPY --from=build /app/modules ./modules
 COPY --from=build /app/scripts/supervisor.mjs ./scripts/supervisor.mjs
 COPY --from=build /app/scripts/supervisor ./scripts/supervisor
-COPY --from=build /app/svelte.config.js /app/vite.config.ts /app/tsconfig.json /app/package.json /app/package-lock.json ./
+COPY --from=build /app/svelte.config.js /app/vite.config.ts /app/tsconfig.json /app/package.json /app/bun.lock /app/bunfig.toml ./
 # Vite legt die gebündelte Config in node_modules/.vite-temp ab (auch in SvelteKits zweitem Build):
 # Link ins Volume, weil /app schreibgeschützt ist (das Ziel legt der Supervisor beim Start an)
 RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app \
@@ -64,7 +64,7 @@ USER app
 EXPOSE 3000
 # start-period großzügig: nach einem Core-Update baut der Supervisor die Module neu (mehrere Minuten)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15m --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD bun -e "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 # Supervisor beendet die App geordnet (IPC → adapter-node schließt den Server); Compose gibt stop_grace_period 45s
 STOPSIGNAL SIGTERM
-CMD ["node", "scripts/supervisor.mjs"]
+CMD ["bun", "scripts/supervisor.mjs"]
