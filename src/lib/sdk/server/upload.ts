@@ -53,6 +53,9 @@ export interface UploadedFile {
 /** Zuschlag für Multipart-Grenzen und Textfelder bei der Vorprüfung über `content-length` */
 const BODY_OVERHEAD = 1024 * 1024;
 
+/** Typangaben, die nichts über den Inhalt sagen (siehe `takeUpload`) */
+const UNKNOWN_TYPES = new Set(['', 'application/octet-stream']);
+
 const baseType = (t: string | null | undefined) => (t ?? '').split(';')[0]!.trim().toLowerCase();
 
 function formatMb(bytes: number): string {
@@ -124,7 +127,15 @@ export async function takeUpload(form: FormData, rules: UploadRules): Promise<Up
 		throw errors.tooLarge(t('sdk.upload.tooLarge', { mb: formatMb(rules.maxBytes) }));
 	}
 	const bytes = new Uint8Array(await file.arrayBuffer());
-	return checkUploadBytes({ bytes, contentType: file.type, name: file.name }, rules);
+	// Unbekannter Typ (leer bzw. `application/octet-stream`, wie Browser ihn ohne passende Endung schicken) → aus dem
+	// Inhalt ermitteln, die Prüfung per Magic Bytes bleibt. Bun übernimmt beim Parsen von multipart zudem nicht den
+	// Content-Type des Teils, sondern leitet ihn aus der Dateiendung ab: ohne bekannte Endung (z. B. „scan“,
+	// „Beleg.pdf “) ist `file.type` leer, obwohl der Browser einen Typ geschickt hat.
+	const unknownType = UNKNOWN_TYPES.has(baseType(file.type));
+	return checkUploadBytes(
+		{ bytes, contentType: unknownType ? '' : file.type, name: file.name },
+		{ ...rules, detectMissingType: rules.detectMissingType || unknownType }
+	);
 }
 
 /**

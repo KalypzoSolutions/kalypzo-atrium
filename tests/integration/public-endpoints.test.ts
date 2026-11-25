@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
+import { encodeMultipart } from '../helpers/multipart';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
@@ -94,10 +95,10 @@ async function upload(
 	const fd = new FormData();
 	for (const [k, v] of Object.entries(fields)) fd.append(k, v);
 	for (const f of files) fd.append('file', new File([f.bytes as BlobPart], f.name));
-	const encoded = new Response(fd);
-	const body = new Uint8Array(await encoded.arrayBuffer());
+	const encoded = await encodeMultipart(fd);
+	const body = encoded.body;
 	const headers = new Headers({
-		'content-type': opts.contentType ?? encoded.headers.get('content-type')!
+		'content-type': opts.contentType ?? encoded.contentType
 	});
 	if (!opts.noLength) headers.set('content-length', opts.lengthOverride ?? String(body.byteLength));
 	const url = new URL(`http://localhost:5173/api/v1${BASE}/upload`);
