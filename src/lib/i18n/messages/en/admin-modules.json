@@ -202,5 +202,23 @@
 		"allowedSourcesHint": "One owner/repo or owner/* per line. Empty = all GitHub sources and ZIP files; otherwise no ZIP files.",
 		"saving": "Saving …",
 		"save": "Save"
+	},
+	"bulk": {
+		"selectAll": "Select all",
+		"toolbar": "Bulk actions",
+		"selected": "{count} selected",
+		"clear": "Clear selection",
+		"selectModule": "Select {name}",
+		"removeBlocked": "All selected modules must be inactive before removal.",
+		"summary": "{ok} succeeded, {failed} failed",
+		"errors": "Show errors ({count})",
+		"dependenciesTitle": "Enable dependencies too?",
+		"dependenciesDescription": "These inactive dependencies will also be enabled: {list}.",
+		"disableTitle": "Disable modules?",
+		"disableDescription": "Other active modules are affected: {list}. Disabling may fail while they remain active.",
+		"removeTitle": "Remove multiple modules",
+		"removeDescription": "The modules will be removed from the server. Their data is kept unless you choose to delete it.",
+		"removeRebuild": "The modules will be removed and the server rebuilt and restarted. Their data is kept unless you choose to delete it.",
+		"confirmWord": "Enter {word} to confirm"
 	}
 }
