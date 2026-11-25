@@ -108,7 +108,13 @@
 		"restoreNeedsSupervisor": "Restoring requires the supervisor",
 		"nothingToRestore": "There is nothing to restore",
 		"notInSource": "Module {id} is no longer included in its source",
-		"contentDiffers": "Content of {id} differs from the saved version"
+		"contentDiffers": "Content of {id} differs from the saved version",
+		"notFoundIds": "Modules not found: {ids}",
+		"activeIds": "These modules are active – please disable them first: {ids}",
+		"confirmWord": "REMOVE",
+		"confirmWordHint": "To delete the data, please type exactly “{word}”",
+		"noIds": "Please select at least one module",
+		"tooMany": "At most {max} modules at once"
 	},
 	"detail": {
 		"copied": "Files copied",

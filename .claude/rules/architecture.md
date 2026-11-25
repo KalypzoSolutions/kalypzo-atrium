@@ -201,6 +201,10 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
 - UI `/admin/modules`: Herkunft je Modul, „Nach Updates suchen“, „Entfernen …“ (Dialog, Bestätigung per ID), Hinweis + „Aus der Datenbank
   wiederherstellen“; `/admin/modules/install?url=…&select=…` belegt vor. Tests `module-lifecycle.test.ts`, `supervisor-seed.test.ts`,
   `backup-compat.test.ts`, E2E `tests/e2e-install` (installieren + entfernen).
+- **Sammelaktionen** (2026-11-25): `core/modules/bulk.ts` `bulkModuleAction(ctx, { action: enable|disable, ids ≤ 100, withDependencies? })` (je ID
+  `enableModule`/`disableModule`, Reihenfolge nach `dependencies`, Fehler je ID, `skipped`, `addedDependencies`); `checkUpdates(ctx, ids?)`;
+  `uninstallModules(ctx, { ids, deleteData, confirm, password, totp })` (alle Prüfungen zuerst, Wort `ENTFERNEN`/übersetzt, eine Re-Auth, **ein**
+  Supervisor-Plan, Event + Audit `core.module.uninstalled` je Modul mit `bulk`/`count`). Form-Actions `bulk`, `bulkCheckUpdates`, `bulkUninstall`. Tests `module-bulk*.test.ts`.
 
 ## Mehrsprachigkeit und Neutralität (Kalypzo Atrium Phase N, 2026-11-01)
 - `$lib/i18n` (Client + Server): `t(key, params)`, `tl(locale, …)`, `getLocale()`, `localized(LocalizedText)`, `ensureLocale`; Format `{name}`,

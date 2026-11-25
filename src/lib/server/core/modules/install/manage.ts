@@ -1,7 +1,8 @@
 /**
  * Lebenszyklus installierter Module (Kalypzo Atrium, Phase 7):
  * - `checkUpdates`: je Modul aus GitHub den Kopf des Refs mit dem gespeicherten Commit vergleichen,
- * - `uninstallModule`: entfernen (Daten behalten oder vollständig löschen), danach Neubau bzw. Kopie entfernen,
+ * - `uninstallModule` / `uninstallModules`: entfernen (Daten behalten oder vollständig löschen), danach Neubau bzw.
+ *   Kopie entfernen (mehrere Module: eine Re-Auth, ein gemeinsamer Neubau),
  * - `installDrift` / `restoreFromDatabase`: Wunschzustand (`module_install`) gegen den laufenden Stand – z. B. nach
  *   Verlust des Volumes oder Wiederherstellen einer Sicherung auf einem neuen Server – und Module neu einspielen,
  * - `syncInstallsFromLock`: beim Start Einträge der Lock-Datei (Seed, frühere Builds) in `module_install` übernehmen,
@@ -68,9 +69,13 @@ export interface UpdateInfo {
 	message: string | null;
 }
 
-export async function checkUpdates(ctx: RequestContext): Promise<UpdateInfo[]> {
+/** `ids`: nur diese Module prüfen (Sammelaktion); ohne Angabe alle installierten */
+export async function checkUpdates(ctx: RequestContext, ids?: string[]): Promise<UpdateInfo[]> {
 	await assertInstaller(ctx);
-	const rows = await getDb().select().from(schema.moduleInstall);
+	const only = ids ? new Set(ids) : null;
+	const rows = (await getDb().select().from(schema.moduleInstall)).filter(
+		(r) => !only || only.has(r.id)
+	);
 	const out: UpdateInfo[] = [];
 	for (const r of rows.sort((a, b) => a.id.localeCompare(b.id))) {
 		const base: UpdateInfo = {
@@ -178,48 +183,135 @@ export interface UninstallResult {
 	planId: string | null;
 }
 
-export async function uninstallModule(
+/** Deutsches Bestätigungswort für „Daten löschen“ bei mehreren Modulen – gilt in jeder Sprache zusätzlich */
+export const UNINSTALL_CONFIRM_WORD = 'ENTFERNEN';
+
+/** Bestätigungswort in der aktuellen Sprache (Anzeige und Prüfung) */
+export function uninstallConfirmWord(): string {
+	return t('install.manage.confirmWord');
+}
+
+/** Eingabe = Wort der aktuellen Sprache oder das deutsche Wort */
+export function isUninstallConfirmWord(input: string): boolean {
+	return input === uninstallConfirmWord() || input === UNINSTALL_CONFIRM_WORD;
+}
+
+/** Höchstzahl an Modulen je Sammel-Entfernen */
+export const UNINSTALL_MAX_IDS = 100;
+
+export interface UninstallManyResult {
+	ids: string[];
+	dataDeleted: boolean;
+	warnings: string[];
+	/** Ein gemeinsamer Neubau über den Supervisor für alle Module mit Code */
+	planId: string | null;
+	/** Je Modul (Reihenfolge wie `ids`) */
+	results: UninstallResult[];
+}
+
+interface UninstallTarget {
+	id: string;
+	state: typeof schema.moduleState.$inferSelect | undefined;
+	row: typeof schema.moduleInstall.$inferSelect | undefined;
+	def: ReturnType<typeof getDefinition>;
+	removeCode: boolean;
+}
+
+/**
+ * Gemeinsamer Ablauf für Einzel- und Sammel-Entfernen: erst alle Prüfungen für alle IDs (unbekannt 404, aktiv 409,
+ * abhängige Module außerhalb der Auswahl 409), dann `checkConfirm` (Bestätigung beim Löschen der Daten), EINE Re-Auth,
+ * Ausführmodus prüfen; danach Daten löschen, Code entfernen (Kopie je Verzeichnis bzw. EIN Supervisor-Neubau),
+ * je Modul ein `module_install_event` und ein Audit `core.module.uninstalled`.
+ */
+async function uninstallMany(
 	ctx: RequestContext,
-	input: { id: string; deleteData: boolean; confirmId?: string; password: string; totp?: string }
-): Promise<UninstallResult> {
-	const userId = await assertInstaller(ctx);
-	const id = String(input.id ?? '');
-	if (!MODULE_ID.test(id)) throw errors.notFound(t('install.manage.notFound'));
+	userId: string,
+	ids: string[],
+	input: { deleteData: boolean; password: string; totp?: string; bulk: boolean },
+	checkConfirm: () => void
+): Promise<UninstallManyResult> {
 	const db = getDb();
-	const [state] = await db.select().from(schema.moduleState).where(eq(schema.moduleState.id, id));
-	const [row] = await db.select().from(schema.moduleInstall).where(eq(schema.moduleInstall.id, id));
-	const def = getDefinition(id);
-	if (!def && !state && !row) throw errors.notFound(t('install.manage.notFound'));
-	if (state?.enabled) throw errors.conflict(t('install.manage.active'));
+	const selected = new Set(ids);
+	const targets: UninstallTarget[] = [];
+	const unknown: string[] = [];
+	for (const id of ids) {
+		if (!MODULE_ID.test(id)) {
+			unknown.push(id);
+			continue;
+		}
+		const [state] = await db.select().from(schema.moduleState).where(eq(schema.moduleState.id, id));
+		const [row] = await db
+			.select()
+			.from(schema.moduleInstall)
+			.where(eq(schema.moduleInstall.id, id));
+		const def = getDefinition(id);
+		if (!def && !state && !row) {
+			unknown.push(id);
+			continue;
+		}
+		targets.push({
+			id,
+			state,
+			row,
+			def,
+			removeCode: !!def || existsSync(join(runtimeModulesDir(), id))
+		});
+	}
+	if (unknown.length) {
+		throw errors.notFound(
+			input.bulk
+				? t('install.manage.notFoundIds', { ids: unknown.join(', ') })
+				: t('install.manage.notFound')
+		);
+	}
+	const active = targets.filter((x) => x.state?.enabled).map((x) => x.id);
+	if (active.length) {
+		throw errors.conflict(
+			input.bulk
+				? t('install.manage.activeIds', { ids: active.join(', ') })
+				: t('install.manage.active')
+		);
+	}
+	// Abhängigkeiten innerhalb der Auswahl sind erlaubt (werden mit entfernt)
 	const dependents = allDefinitions()
-		.filter((d) => d.manifest.id !== id && d.manifest.dependencies.includes(id))
+		.filter(
+			(d) =>
+				!selected.has(d.manifest.id) && d.manifest.dependencies.some((dep) => selected.has(dep))
+		)
 		.map((d) => d.manifest.id);
 	if (dependents.length) {
 		throw errors.conflict(t('install.manage.dependents', { ids: dependents.join(', ') }));
 	}
-	if (input.deleteData && input.confirmId !== id) {
-		throw errors.validation([
-			{ path: ['confirmId'], message: t('install.manage.confirmId', { id }) }
-		]);
-	}
+	if (input.deleteData) checkConfirm();
 	await verifyReauth(userId, { password: input.password, totp: input.totp }, 'module-install');
 	const status = installStatus();
 	// Nur Daten löschen geht immer; Code entfernen braucht copy/supervisor
-	const removeCode = !!def || existsSync(join(runtimeModulesDir(), id));
-	if (removeCode && !status.available) {
+	const withCode = targets.filter((x) => x.removeCode).map((x) => x.id);
+	if (withCode.length && !status.available) {
 		throw errors.unavailable(status.reason ?? t('install.manage.removeNotPossible'));
 	}
 
 	const warnings: string[] = [];
-	if (input.deleteData) warnings.push(...(await deleteModuleData(id)).warnings);
+	const warningsById = new Map<string, string[]>();
+	if (input.deleteData) {
+		for (const x of targets) {
+			const w = (await deleteModuleData(x.id)).warnings;
+			warningsById.set(x.id, w);
+			warnings.push(...w);
+		}
+	}
 
 	let planId: string | null = null;
-	if (removeCode && status.mode === 'copy') {
+	if (withCode.length && status.mode === 'copy') {
 		const root = resolve(runtimeModulesDir());
-		const dir = resolve(root, id);
-		if (!dir.startsWith(root + sep)) throw errors.badRequest(t('install.service.invalidModuleDir'));
-		await rm(dir, { recursive: true, force: true });
-	} else if (removeCode && status.mode === 'supervisor') {
+		for (const id of withCode) {
+			const dir = resolve(root, id);
+			if (!dir.startsWith(root + sep)) {
+				throw errors.badRequest(t('install.service.invalidModuleDir'));
+			}
+			await rm(dir, { recursive: true, force: true });
+		}
+	} else if (withCode.length && status.mode === 'supervisor') {
 		planId = crypto.randomUUID().replace(/-/g, '');
 		await requestSupervisorBuild(
 			{
@@ -227,34 +319,105 @@ export async function uninstallModule(
 				requestedBy: userId,
 				requestedAt: new Date().toISOString(),
 				modules: {},
-				remove: [id]
+				remove: withCode
 			},
 			new Map()
 		);
 	}
-	await db.delete(schema.moduleInstall).where(eq(schema.moduleInstall.id, id));
-	await db.insert(schema.moduleInstallEvent).values({
-		id: crypto.randomUUID(),
-		moduleId: id,
-		action: 'uninstall',
-		fromVersion: def?.manifest.version ?? row?.version ?? state?.installedVersion ?? null,
-		toVersion: null,
-		sourceType: row?.sourceType ?? null,
-		source: row?.source ?? {},
-		commit: row?.commit ?? null,
-		contentHash: row?.contentHash ?? null,
-		actorId: userId,
-		planId,
-		status: planId ? 'requested' : 'done',
-		detail: input.deleteData
-			? 'install.detail.removedDataDeleted'
-			: 'install.detail.removedDataKept'
-	});
-	await auditFromContext(ctx, 'core.module.uninstalled', {
-		target: id,
-		metadata: { dataDeleted: input.deleteData, planId }
-	});
-	return { id, dataDeleted: input.deleteData, warnings, planId };
+
+	const results: UninstallResult[] = [];
+	for (const { id, row, def, state, removeCode } of targets) {
+		const modulePlan = removeCode ? planId : null;
+		await db.delete(schema.moduleInstall).where(eq(schema.moduleInstall.id, id));
+		await db.insert(schema.moduleInstallEvent).values({
+			id: crypto.randomUUID(),
+			moduleId: id,
+			action: 'uninstall',
+			fromVersion: def?.manifest.version ?? row?.version ?? state?.installedVersion ?? null,
+			toVersion: null,
+			sourceType: row?.sourceType ?? null,
+			source: row?.source ?? {},
+			commit: row?.commit ?? null,
+			contentHash: row?.contentHash ?? null,
+			actorId: userId,
+			planId: modulePlan,
+			status: modulePlan ? 'requested' : 'done',
+			detail: input.deleteData
+				? 'install.detail.removedDataDeleted'
+				: 'install.detail.removedDataKept'
+		});
+		await auditFromContext(ctx, 'core.module.uninstalled', {
+			target: id,
+			metadata: input.bulk
+				? { dataDeleted: input.deleteData, planId: modulePlan, bulk: true, count: ids.length }
+				: { dataDeleted: input.deleteData, planId: modulePlan }
+		});
+		results.push({
+			id,
+			dataDeleted: input.deleteData,
+			warnings: warningsById.get(id) ?? [],
+			planId: modulePlan
+		});
+	}
+	return { ids, dataDeleted: input.deleteData, warnings, planId, results };
+}
+
+export async function uninstallModule(
+	ctx: RequestContext,
+	input: { id: string; deleteData: boolean; confirmId?: string; password: string; totp?: string }
+): Promise<UninstallResult> {
+	const userId = await assertInstaller(ctx);
+	const id = String(input.id ?? '');
+	const r = await uninstallMany(
+		ctx,
+		userId,
+		[id],
+		{ deleteData: input.deleteData, password: input.password, totp: input.totp, bulk: false },
+		() => {
+			if (input.confirmId !== id) {
+				throw errors.validation([
+					{ path: ['confirmId'], message: t('install.manage.confirmId', { id }) }
+				]);
+			}
+		}
+	);
+	return r.results[0]!;
+}
+
+/**
+ * Mehrere Module auf einmal entfernen (Sammelaktion). Beim Löschen der Daten muss `confirm` das Bestätigungswort
+ * sein (`uninstallConfirmWord()`, das deutsche `ENTFERNEN` gilt immer); Feldfehler unter `confirm`.
+ */
+export async function uninstallModules(
+	ctx: RequestContext,
+	input: { ids: string[]; deleteData: boolean; confirm?: string; password: string; totp?: string }
+): Promise<UninstallManyResult> {
+	const userId = await assertInstaller(ctx);
+	const ids = [...new Set((input.ids ?? []).map((id) => String(id)))];
+	if (!ids.length) {
+		throw errors.validation([{ path: ['ids'], message: t('install.manage.noIds') }]);
+	}
+	if (ids.length > UNINSTALL_MAX_IDS) {
+		throw errors.validation([
+			{ path: ['ids'], message: t('install.manage.tooMany', { max: UNINSTALL_MAX_IDS }) }
+		]);
+	}
+	return uninstallMany(
+		ctx,
+		userId,
+		ids,
+		{ deleteData: input.deleteData, password: input.password, totp: input.totp, bulk: true },
+		() => {
+			if (!isUninstallConfirmWord(String(input.confirm ?? ''))) {
+				throw errors.validation([
+					{
+						path: ['confirm'],
+						message: t('install.manage.confirmWordHint', { word: uninstallConfirmWord() })
+					}
+				]);
+			}
+		}
+	);
 }
 
 // --- Wunschzustand gegen laufenden Stand --------------------------------------------------------
