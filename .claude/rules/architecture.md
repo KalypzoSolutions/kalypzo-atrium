@@ -206,6 +206,13 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   `uninstallModules(ctx, { ids, deleteData, confirm, password, totp })` (alle Prüfungen zuerst, Wort `ENTFERNEN`/übersetzt, eine Re-Auth, **ein**
   Supervisor-Plan, Event + Audit `core.module.uninstalled` je Modul mit `bulk`/`count`). Form-Actions `bulk`, `bulkCheckUpdates`, `bulkUninstall`. Tests `module-bulk*.test.ts`.
 
+## Marktplatz und Sammelaktionen (2026-11-25)
+- `core/modules/install/marketplace.ts`: serverseitiger HTTPS-Index (`core.modules.marketplaceUrl`, vorbelegt durch `ATRIUM_MARKETPLACE_URL`),
+  15 min Prozess-Cache, letzte gültige Fassung in `marketplace_cache` (Migration 0014, keine Sicherung), stündlich `core.marketplace-refresh`.
+  Fehler blockieren Atrium und Installation per Link nicht. `/admin/modules/marketplace` verlinkt zur Installation; keine Sicherheitsprüfung.
+- `/admin/modules`: Auswahl für Aktivieren/Deaktivieren in Abhängigkeitsreihenfolge, Updateprüfung und gemeinsames Entfernen mit einer Re-Auth
+  und einem Supervisor-Plan. Details zu `bulkModuleAction` und `uninstallModules` unter „Lebenszyklus der Module“.
+
 ## Mehrsprachigkeit und Neutralität (Kalypzo Atrium Phase N, 2026-11-01)
 - `$lib/i18n` (Client + Server): `t(key, params)`, `tl(locale, …)`, `getLocale()`, `localized(LocalizedText)`, `ensureLocale`; Format `{name}`,
   `{count, plural, =0 {…} one {# …} other {# …}}`, `{x, select, … other {…}}` (`format.ts`). Texte `src/lib/i18n/messages/<de|en>/<bereich>.json`

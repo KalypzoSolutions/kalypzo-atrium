@@ -1,6 +1,11 @@
-# Projektstand (zuletzt aktualisiert: 2026-11-04)
+# Projektstand (zuletzt aktualisiert: 2026-11-25)
 
 ## Fertig
+- **Modul-Marktplatz und Sammelaktionen** (2026-11-25): Katalog mit Offline-Rückfall und Installationslinks; Auswahl zum Aktivieren,
+  Deaktivieren, Prüfen auf Updates und gemeinsamen Entfernen. Details: `architecture.md` → „Marktplatz und Sammelaktionen“.
+  Offen: echter Abruf von `atrium.kalypzo.de` ungeprüft; Screenshots nicht am Demo-Server erstellt und vor der letzten Änderung der
+  Überschriftenhierarchie aufgenommen. Das tatsächliche Entfernen mehrerer Module wurde nicht per E2E ausgeführt (nur der Dialog).
+  Der vollständige Vitest-Lauf hatte sieben Fehler in `module-boundaries.test.ts`, da in der Arbeitskopie echte Fachmodule fehlen.
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
 - **Core-Erweiterungen**: Sidebar mit Gruppen (`group`/`groupIcon`, Administration einklappbar), `core.users.directory`,
   `core.crypto.forModule`, Modul-UI-Routen mit `:param`, Migrations-Runner mit Statement-Splitting, `DATABASE_POOL_MAX`.
