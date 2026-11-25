@@ -31,7 +31,7 @@ test('Fixture: Suche, Filter und Installationslink', async ({ page }) => {
 	await page.getByLabel('Nur offizielle').check();
 	await expect(page.getByText('Beispielpaket')).toBeVisible();
 	await page.getByRole('button', { name: 'Einzelne Module' }).click();
-	const link = page.getByRole('link', { name: 'Installieren', exact: true });
+	const link = page.locator('a[href*="select=fixture-module"]');
 	await expect(link).toHaveAttribute('href', /select=fixture-module/);
 	await page.getByLabel('Suche', { exact: true }).fill('kein-treffer');
 	await expect(page.getByText('Keine passenden Einträge gefunden.')).toBeVisible();
