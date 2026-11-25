@@ -94,6 +94,13 @@
 				warn: true
 			});
 		}
+		if (stats.modules && stats.modules.updates > 0) {
+			list.push({
+				label: t('admin.stats.moduleUpdates'),
+				value: formatNumber(stats.modules.updates),
+				href: '/admin/modules'
+			});
+		}
 		return list;
 	});
 

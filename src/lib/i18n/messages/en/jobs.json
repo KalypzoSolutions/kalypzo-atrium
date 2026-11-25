@@ -2,12 +2,15 @@
 	"core": {
 		"housekeeping": "Enforce retention periods (API log, audit log)",
 		"avatarsReprocess": "Clean up old profile pictures (re-encode, remove metadata)",
-		"notificationsDigest": "Send the daily notification digest (email/push)"
+		"notificationsDigest": "Send the daily notification digest (email/push)",
+		"moduleUpdates": "Check installed modules for updates"
 	},
 	"result": {
 		"housekeeping": "API log: {apiLog} deleted; audit log: {audit} deleted, {ips} IP addresses removed",
 		"avatars": "Profile pictures: {processed} cleaned, {removed} removed, {skipped} skipped",
-		"digest": "Daily digest: {users} people, {email} mails, {push} push, {expired} discarded"
+		"digest": "Daily digest: {users} people, {email} mails, {push} push, {expired} discarded",
+		"moduleUpdates": "Modules checked: {checked}; updates: {updates}; errors: {errors}; notifications: {notified}",
+		"moduleUpdatesOff": "Skipped: installing is turned off on this server"
 	},
 	"legacyMessage": "Error (details removed for privacy reasons)",
 	"notFound": "Job not found",

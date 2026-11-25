@@ -4,7 +4,7 @@
 
 - `Dockerfile`: Multi-Stage (base → deps → build → prod-deps → runtime), `node:24.22.0-bookworm-slim` mit Digest, Chromium (Playwright) für PDF, läuft als Benutzer `app` (UID 10001), Healthcheck auf `/api/v1/health`.
 - `docker-compose.yml`: `db` (PostgreSQL 17, Volume `db-data`, `pg_isready`-Healthcheck), `app`, `website`, optional `nginx` (Profil `proxy`) und `db-backup` (Profil `backup`).
-- `docker-compose.dokploy.yml`: Dokploy-Stack mit MinIO im Stack; `docker-compose.dokploy-external-s3.yml`: derselbe Stack **ohne** MinIO für einen externen S3-Dienst (siehe „Dokploy mit externem S3“).
+- `docker-compose.dokploy.yml`: Dokploy-Stack mit MinIO im Stack; `docker-compose.dokploy-external-s3.yml`: derselbe Stack **ohne** MinIO für einen externen S3-Dienst (siehe „Dokploy mit externem S3“); `docker-compose.dokploy-external.yml`: nur App, **ohne** PostgreSQL und MinIO für zentrale Datenbank + externen S3 (siehe „Dokploy mit externer Datenbank und externem S3“).
 - `docker-compose.dev.yml`: nur PostgreSQL + MinIO für lokale Entwicklung (Ports nur auf `127.0.0.1`).
 - `deploy/nginx/nginx.conf`: nginx-Vorlage (HTTP→HTTPS, TLS, Größengrenzen je Pfad, Proxy-Header), `deploy/backup/`: Sicherungsdienst.
 
@@ -112,12 +112,50 @@ Hinweise:
   in den neuen Bucket, Speicher-Einstellungen in der Oberfläche umstellen, testen, dann Compose-Pfad in Dokploy wechseln und
   deployen. Das Volume `s3-data` erst nach erfolgreicher Prüfung löschen.
 - Browser-Uploads über signierte URLs (`/storage/upload-url`) brauchen CORS am Bucket für den eigenen `ORIGIN` (`PUT`).
+- **Unterpfad im Bucket** (`S3_PREFIX`, Einstellung „Unterpfad im Bucket“ unter Administration → Einstellungen → Speicher): alle
+  Objekte liegen unter z. B. `atrium/prod/…` – für einen gemeinsamen Bucket mehrerer Installationen. Erlaubt sind Abschnitte aus
+  `A–Z a–z 0–9 . _ -`, getrennt durch `/`. In der Datenbank und in Sicherungen (`.atriumbackup`) stehen die Schlüssel **ohne**
+  Unterpfad; der Pfad wird nur bei den Anfragen an S3 davorgesetzt. Ein **Wechsel** verschiebt nichts: vorher die Objekte im Bucket
+  umkopieren (`rclone move src:bucket/alt src:bucket/neu`), sonst sind vorhandene Dateien nicht mehr auffindbar. Bei geteiltem
+  Bucket möglichst je Installation einen Schlüssel, der nur auf den eigenen Pfad zugreifen darf (Bucket-Policy; nicht jeder
+  Anbieter kann das). `db-backup` spiegelt dann nur diesen Pfad (`BACKUP_S3_PREFIX`, Standard `S3_PREFIX`).
+
+## Dokploy mit externer Datenbank und externem S3 (zentralisiert)
+
+`docker-compose.dokploy-external.yml` enthält nur noch `app` (und optional `db-backup`): **kein** `db`, **kein** MinIO. PostgreSQL und
+Objektspeicher werden zentral betrieben und von mehreren Stacks geteilt. Variablen-Vorlage: `.env.dokploy-external.example`.
+
+1. Auf der zentralen PostgreSQL-Instanz (≥ 16, empfohlen 17) je Stack eine eigene Datenbank mit eigenem Benutzer anlegen:
+   `CREATE ROLE atrium_prod LOGIN PASSWORD '…'; CREATE DATABASE atrium_prod OWNER atrium_prod;` – die App muss Besitzerin sein
+   (legt je Modul ein Schema `mod_<id>` an, Trigger in den Core-Migrationen); Erweiterungen sind nicht nötig.
+2. Bucket + Zugangsschlüssel wie unter „Dokploy mit externem S3“.
+3. In Dokploy anlegen, Compose-Pfad `./docker-compose.dokploy-external.yml`. Environment: Pflicht `ORIGIN`, `APP_SECRET`,
+   `DATABASE_URL`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`; `POSTGRES_*` entfällt.
+4. Deploy → Migrationen laufen beim Start; danach Speicher-Verbindung testen.
+
+Hinweise:
+- **Erreichbarkeit**: `app` hängt im `dokploy-network`. Eine von Dokploy verwaltete Datenbank erreicht sie dort über den
+  „Internal Host“ aus Dokploy (eindeutiger Name, nie `db`). Datenbank auf einem anderen Server: Hostname in `DATABASE_URL` und
+  `?sslmode=require`; Port 5432 nur für die App-Server freigeben. Achtung: Der Node-Treiber `pg` behandelt `require` wie
+  `verify-full` (Zertifikat muss gültig sein und zum Hostnamen passen). Selbst signiert: `?sslmode=no-verify` (verschlüsselt, ohne
+  Prüfung) oder libpq-Verhalten mit `?uselibpqcompat=true&sslmode=require`.
+- **Pooler**: direkt oder PgBouncer im **Session**-Modus. Im Transaction-Modus hält die sitzungsgebundene Migrationssperre
+  (`pg_advisory_lock`) nicht zuverlässig – nicht verwenden.
+- **Verbindungen**: `DATABASE_POOL_MAX` (Standard 10) je Stack; die Summe aller Stacks plus Reserve muss unter `max_connections`
+  der Instanz bleiben.
+- **Sicherung**: Die zentrale Instanz sichern (Dokploy-Backups der verwalteten Datenbank, pgBackRest …). Alternativ
+  `COMPOSE_PROFILES=backup` mit `BACKUP_PGHOST/PORT/USER/PASSWORD/DATABASE/SSLMODE` – `pg_dump` im Sicherungs-Image ist Version 17,
+  die Instanz darf nicht neuer sein. Der Bucket wird wie beim S3-Stack mitgespiegelt.
+- **Umzug** von einem Stack mit eigener `db`: Wartungsfenster, App stoppen, `pg_dump --format=custom --no-owner` aus dem alten
+  `db`-Container, `pg_restore --no-owner --role=atrium_prod -d atrium_prod` in die zentrale Datenbank, `APP_SECRET` unverändert
+  übernehmen, Compose-Pfad umstellen, deployen und prüfen. Das Volume `db-data` erst danach löschen.
 
 ## Umgebungsvariablen
 
 | Variable | Beschreibung |
 |---|---|
-| `POSTGRES_DB/USER/PASSWORD` | Datenbank-Container (Passwort Pflicht) |
+| `POSTGRES_DB/USER/PASSWORD` | Datenbank-Container (Passwort Pflicht; entfällt bei `docker-compose.dokploy-external.yml`) |
+| `DATABASE_URL` | Verbindung zur Datenbank; in den Stacks mit eigener `db` automatisch gebildet, bei `docker-compose.dokploy-external.yml` Pflicht (externes PostgreSQL, ggf. `?sslmode=require`) |
 | `APP_SECRET` | Pflicht, ≥ 32 Zeichen, zufällig. **Nicht ändern**, ohne Secrets neu einzugeben (siehe [Sicherheit](security.md)). Mit `NODE_ENV=production` (Image) bricht der Start ab, wenn es der Build-Platzhalter ist oder < 6 verschiedene Zeichen hat |
 | `ORIGIN` | Pflicht, öffentliche URL. Mit `NODE_ENV=production` muss sie gesetzt sein und `https://` verwenden (Ausnahme `localhost`/`127.0.0.1` für Demo/E2E) |
 | `JOBS_DAILY_WINDOW` | optional: Zeitfenster der täglichen Hintergrundjobs (Mails, Zusammenfassungen) als `von-bis` in vollen Stunden Europe/Berlin, Standard `6-20` |
@@ -300,6 +338,7 @@ gemeinsamer Upload-Helfer mit `Content-Length`-Pflicht.
 | `RESTIC_REPOSITORY` | Ziel. Standard `/backups/restic` (Volume `backup-repo` auf **demselben Host**, schützt nur vor Fehlbedienung – Log-Hinweis). Für Offsite z. B. `s3:https://fsn1.your-objectstorage.com/ep-intern-backup`, `b2:bucket:pfad`, `rest:https://…` |
 | `BACKUP_REPO_ACCESS_KEY_ID/SECRET_ACCESS_KEY/REGION` | Zugang zum S3-Ziel (eigener Schlüssel, nur für dieses Bucket; am besten mit Objekt-Sperre/Versionierung beim Anbieter) |
 | `BACKUP_S3_ENDPOINT/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY/REGION/FORCE_PATH_STYLE` | Quelle Objektspeicher (Lesezugriff genügt). `docker-compose.yml`: ohne Angabe nur DB |
+| `BACKUP_S3_PREFIX` | optional: nur diesen Unterpfad des Buckets spiegeln (in den Stacks mit externem S3 Standard = `S3_PREFIX`) |
 | `BACKUP_TIME`, `BACKUP_KEEP_DAILY/WEEKLY/MONTHLY`, `BACKUP_RUN_ON_START` | Zeitplan, Aufbewahrung, Sofortlauf beim Start |
 | `BACKUP_HEARTBEAT_URL` | GET nach jedem Erfolg (z. B. healthchecks.io – meldet auch ausbleibende Läufe) |
 | `BACKUP_NOTIFY_URL` | POST mit Fehlertext bei jedem Fehlschlag (z. B. ntfy-Thema mit Mail-Weiterleitung) |
@@ -532,8 +571,10 @@ Compose (`docker-compose.dokploy*.yml`): Volume `atrium-data:/data/atrium`, `mem
 `stop_grace_period` 45 s. Ausgehend nötig: `api.github.com`, `codeload.github.com` (Quellen) und ggf. `registry.npmjs.org`
 (Module mit eigenen npm-Paketen). Das Image enthält dafür alle Abhängigkeiten und die Quellen (größer als vorher).
 
-**Messwerte:** lokal (Windows, 8 Kerne) dauert ein Neubau mit allen 14 Fachmodulen etwa 40–60 s; im Container mit
-`--cpus 1 --memory 3g` noch nicht gemessen (Phase 0 offen).
+**Messwerte** (2026-11-10, lokal, Windows, 8 Kerne): `vite build` mit allen 14 Fachmodulen **~38 s** (vorher ~65 s), nur Core
+**~17 s** (vorher ~37 s). Den Großteil sparte der eigene Adapter `tools/adapter-atrium.js` (wie `adapter-node`, Server-Bündelung mit
+Rolldown statt Rollup: ~1 s statt ~24 s; Brotli Stufe 9 statt 11). npm-Pakete der Module kommen nur bei geändertem Paket-Satz dazu
+(~13–20 s). Im Container (1 CPU) entsprechend länger; Messung nach dem Umbau steht aus.
 
 Lokal: `node scripts/demo-server.mjs` startet ebenfalls über den Supervisor (Daten in `.data/atrium`, PGlite bleibt
 im Elternprozess offen); `.data/stop` beendet App und Datenbank geordnet.
@@ -578,9 +619,19 @@ Seed (`state.json` → `seed`); bis dahin läuft der mitgelieferte Build. Die Ap
 
 ### Updates, Entfernen, Wiederherstellen
 
-- **Updates**: Administration → Module → „Nach Updates suchen“ vergleicht je Modul aus GitHub den gespeicherten Commit mit dem Kopf
-  des Refs; „Aktualisieren“ öffnet die Installation mit vorbelegter Quelle. Die Vorschau zeigt geänderte Dateien, neue Migrationen und
-  Rechte. Vorher eine Datensicherung erstellen (Migrationen sind nicht rückgängig zu machen).
+- **Updates** (Karte „Updates“ unter Administration → Module, täglicher Job `core.module-updates`, Benachrichtigung
+  „Modul-Updates“ an alle mit `core.modules.install`, nur bei neuem Stand): je Modul ein **Kanal** – *Releases* (höchster
+  Versions-Tag; Modul-Tags `<id>@1.2.3` bzw. `<id>-v1.2.3` vor Repo-Tags `v1.2.3`, Vorabversionen nur, wenn installiert selbst
+  eine ist) oder *Branch*
+  (Kopf des Branches; über einen festen Commit installierte Module folgen dem Standard-Branch). Installiert über einen Tag → Releases,
+  sonst Branch (umschaltbar). Verglichen wird der **Inhalt** des Modulordners (Hash + Version), nicht der Commit: ein Commit an anderer
+  Stelle im Repo ist kein Update. Je Repository und Commit ein Download. Status *Update* · *geändert* (gleiche Version) · *nicht
+  installierbar* (Core-Version, Migrationen …) · *ignoriert* („Diese Version ignorieren“). Änderungsnotizen aus `CHANGELOG.md` im
+  Modul (`## 1.2.3`), sonst die Commits des Modulpfads. „Ausgewählte/Alle aktualisieren“ führt direkt zur Vorschau (Abhängigkeiten, Rechte,
+  Migrationen) → Re-Auth → **ein** Neubau. Vorher eine Datensicherung erstellen (Migrationen sind nicht rückgängig zu machen).
+- **Zurück zur vorigen Version** (nur Supervisor): Karte unter Module zeigt die Unterschiede zur vorigen Generation; nach Re-Auth tauscht
+  der Supervisor die Generationen, startet neu und prüft Health (sonst bleibt die bisherige). Migrationen werden **nicht** zurückgenommen
+  (Hinweis, wenn seitdem welche liefen); der Wunschzustand `module_install` folgt nach dem Neustart.
 - **Entfernen** (nur deaktivierte Module, die kein anderes braucht): Standard **Daten behalten** – Schema, Einstellungen, Rechte und
   Dateien bleiben und sind nach erneuter Installation wieder da. „Daten löschen“ (Bestätigung mit der Modul-ID) löscht Schema,
   Migrationsstand, Zustand, Rechte samt Rollen-/Einzelrechten, Rollen-Verleihungen, Einstellungen, Benachrichtigungs-Einstellungen,

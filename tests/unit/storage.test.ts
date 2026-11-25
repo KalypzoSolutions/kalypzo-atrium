@@ -1,5 +1,6 @@
 import {
 	DeleteObjectCommand,
+	DeleteObjectsCommand,
 	GetObjectCommand,
 	HeadBucketCommand,
 	HeadObjectCommand,
@@ -105,6 +106,7 @@ beforeEach(() => {
 		'core.storage.accessKeyId': 'AK',
 		'core.storage.secretAccessKey': 'SK',
 		'core.storage.forcePathStyle': false,
+		'core.storage.prefix': '',
 		'core.storage.maxFileSizeMb': 1,
 		'core.storage.allowedContentTypes': []
 	});
@@ -326,5 +328,85 @@ describe('removeMany', () => {
 		await expect(
 			storage.removeMany(ctxWith('members.storage.read'), { module: 'members', paths: ['a.txt'] })
 		).rejects.toMatchObject({ code: 'forbidden' });
+	});
+});
+
+describe('Unterpfad im Bucket (core.storage.prefix)', () => {
+	const usePrefix = (p: string) => {
+		settingsStore['core.storage.prefix'] = p;
+		storage.invalidateStorageConfigCache();
+	};
+
+	it('normalisiert den Pfad', () => {
+		expect(storage.normalizeStoragePrefix('')).toBe('');
+		expect(storage.normalizeStoragePrefix(' / ')).toBe('');
+		expect(storage.normalizeStoragePrefix('atrium/prod')).toBe('atrium/prod/');
+		expect(storage.normalizeStoragePrefix('/atrium//prod/')).toBe('atrium/prod/');
+	});
+
+	it('legt Objekte unter dem Pfad ab, die Datenbank kennt nur den Schlüssel ohne Pfad', async () => {
+		usePrefix('/atrium/prod/');
+		const ctx = ctxWith('members.storage.write', 'members.storage.read');
+		await storage.upload(ctx, txt('members', 'a.txt', 'hallo'));
+		const key = [...fakes.rows.values()][0]!.objectKey;
+		expect(key.startsWith('members/')).toBe(true);
+		expect([...fakes.objects.keys()]).toEqual([`atrium/prod/${key}`]);
+
+		const dl = await storage.download(ctx, { module: 'members', path: 'a.txt' });
+		expect(new TextDecoder().decode(dl.buffer)).toBe('hallo');
+		expect((await storage.stat(ctx, { module: 'members', path: 'a.txt' })).size).toBe(5);
+		const url = await storage.createSignedDownloadUrl(ctx, { module: 'members', path: 'a.txt' });
+		expect(url.url).toContain(`https://s3.test/atrium/prod/${key}`);
+
+		await storage.remove(ctxWith('members.storage.delete'), { module: 'members', path: 'a.txt' });
+		expect(fakes.objects.size).toBe(0);
+	});
+
+	it('nutzt den Pfad auch für Multipart, signierte Uploads und Sammel-Löschungen', async () => {
+		usePrefix('p');
+		settingsStore['core.storage.maxFileSizeMb'] = 50;
+		storage.invalidateStorageConfigCache();
+		const putLarge = vi.fn(async (key: string, body: Uint8Array) => {
+			fakes.objects.set(key, { body });
+		});
+		fakes.s3.putLarge = putLarge;
+		await storage.upload(systemCtx, {
+			module: 'core',
+			path: 'big.zip',
+			file: new Uint8Array(9 * 1024 * 1024),
+			contentType: 'application/zip'
+		});
+		expect(putLarge.mock.calls[0]![0]).toMatch(/^p\/core\//);
+
+		const signed = await storage.createSignedUploadUrl(systemCtx, {
+			module: 'members',
+			path: 'x.pdf',
+			contentType: 'application/pdf',
+			size: 4
+		});
+		expect(signed.url).toContain('https://s3.test/p/members/');
+
+		// DeleteObjects: Fehlerschlüssel kommen mit Pfad zurück und werden wieder zugeordnet
+		await storage.upload(systemCtx, txt('members', 'a.txt'));
+		await storage.upload(systemCtx, txt('members', 'b.txt'));
+		const keyA = [...fakes.rows.values()].find((r) => r.path === 'a.txt')!.objectKey;
+		const send = fakes.s3.send.bind(fakes.s3);
+		fakes.s3.send = async (cmd) => {
+			if (cmd instanceof DeleteObjectsCommand) {
+				const keys = (cmd.input.Delete?.Objects ?? []).map((o) => o.Key!);
+				expect(keys.every((k) => k.startsWith('p/'))).toBe(true);
+				for (const k of keys) if (k !== `p/${keyA}`) fakes.objects.delete(k);
+				return { Errors: [{ Key: `p/${keyA}`, Code: 'AccessDenied' }] };
+			}
+			return send(cmd);
+		};
+		const res = await storage.removeMany(systemCtx, {
+			module: 'members',
+			paths: ['a.txt', 'b.txt']
+		});
+		expect(res).toEqual({ removed: 1, missing: 0, failed: 1 });
+		expect(
+			[...fakes.rows.values()].filter((r) => r.moduleId === 'members').map((r) => r.path)
+		).toContain('a.txt');
 	});
 });

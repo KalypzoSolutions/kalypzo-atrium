@@ -31,6 +31,7 @@ import { readModuleArchive, type ArchiveFiles } from './archive';
 import { discoverModules, type DiscoveredRepo } from './discover';
 import { downloadGithubArchive, resolveGithubSource } from './github';
 import { resolvePlan, type Candidate, type CandidateOrigin, type ResolvedPlan } from './resolve';
+import { defaultChannelFor } from './update-rules';
 import {
 	cacheUploadedSource,
 	readSupervisorStatus,
@@ -199,7 +200,7 @@ async function assertSourceAllowed(owner: string | null, repo: string | null): P
 /** Archiv-Cache je Commit, damit Abhängigkeiten aus demselben Repository nicht doppelt geladen werden */
 const archiveCache = new Map<string, { files: ArchiveFiles; at: number }>();
 
-async function githubFiles(owner: string, repo: string, sha: string): Promise<ArchiveFiles> {
+export async function githubFiles(owner: string, repo: string, sha: string): Promise<ArchiveFiles> {
 	const key = `${owner}/${repo}@${sha}`.toLowerCase();
 	const hit = archiveCache.get(key);
 	if (hit && Date.now() - hit.at < SESSION_MS) return hit.files;
@@ -370,6 +371,79 @@ export async function previewInstall(
 		mod: m,
 		origin: originOf(src.base, m.dir)
 	}));
+	return planPreview(userId, selected, repo);
+}
+
+/**
+ * Vorschau für Updates aus dem letzten Prüfstand (`module_update_check`): je Modul der neue Commit seiner Quelle;
+ * Abhängigkeiten aus denselben Archiven, sonst über `source`-Links. Danach wie eine Installation bestätigen.
+ */
+export async function previewUpdates(
+	ctx: RequestContext,
+	input: { ids: string[] }
+): Promise<InstallPreview> {
+	const userId = await assertInstaller(ctx);
+	const ids = [...new Set(input.ids)].filter(Boolean).slice(0, 100);
+	if (!ids.length) {
+		throw errors.validation([{ path: ['ids'], message: t('install.service.selectOne') }]);
+	}
+	const { updateTargets } = await import('./updates');
+	const targets = await updateTargets(ids);
+	const candidates = new Map<string, Candidate>();
+	for (const tg of targets) {
+		await assertSourceAllowed(tg.owner, tg.repo);
+		const files = await githubFiles(tg.owner, tg.repo, tg.sha);
+		const found = discoverModules(files, tg.path).modules.find((m) => m.id === tg.id);
+		if (!found) throw errors.conflict(t('install.manage.notInSource', { id: tg.id }));
+		candidates.set(tg.id, {
+			mod: found,
+			origin: {
+				type: 'github',
+				owner: tg.owner,
+				repo: tg.repo,
+				ref: tg.ref,
+				sha: tg.sha,
+				path: found.dir
+			}
+		});
+		// Weitere Module desselben Stands stehen als Abhängigkeiten bereit (gleicher Kanal-Stand)
+		const root = discoverRoot(files);
+		if (root) {
+			for (const m of root.modules) {
+				if (!candidates.has(m.id)) {
+					candidates.set(m.id, {
+						mod: m,
+						origin: {
+							type: 'github',
+							owner: tg.owner,
+							repo: tg.repo,
+							ref: tg.ref,
+							sha: tg.sha,
+							path: m.dir
+						}
+					});
+				}
+			}
+		}
+	}
+	return planPreview(userId, ids, [...candidates.values()]);
+}
+
+/** Alle Module eines Archivs ab der Wurzel (Katalog oder `modules/*`), `null` wenn keine */
+function discoverRoot(files: ArchiveFiles): DiscoveredRepo | null {
+	try {
+		return discoverModules(files, '');
+	} catch {
+		return null;
+	}
+}
+
+/** Gemeinsamer Teil von Installation und Update: Plan auflösen, analysieren, als Sitzung ablegen */
+async function planPreview(
+	userId: string,
+	selected: string[],
+	repo: Candidate[]
+): Promise<InstallPreview> {
 	const plan = await resolvePlan(selected, repo, async (sourceText, wantedId) => {
 		const { source, pathAfterRef } = parseInstallInput(sourceText);
 		await assertSourceAllowed(source.owner, source.repo);
@@ -493,7 +567,9 @@ export async function confirmInstall(
 					source: sourceJson,
 					commit,
 					contentHash: a.contentHash,
-					installedBy: userId
+					installedBy: userId,
+					// Kanal nur bei der ersten Installation; ein Update behält die Wahl
+					channel: defaultChannelFor(entry.origin.type === 'github' ? entry.origin.ref : null)
 				})
 				.onConflictDoUpdate({
 					target: schema.moduleInstall.id,
@@ -504,7 +580,9 @@ export async function confirmInstall(
 						commit,
 						contentHash: a.contentHash,
 						installedAt: new Date(),
-						installedBy: userId
+						installedBy: userId,
+						// Ein installierter Stand ist nichts mehr, was ignoriert werden müsste
+						ignoredUpdate: null
 					}
 				});
 			await db.insert(schema.moduleInstallEvent).values({

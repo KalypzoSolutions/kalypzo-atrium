@@ -25,5 +25,10 @@
 		"deviceUnsubscribe": "Unregister a device by its endpoint (push turned off in the browser)",
 		"deviceRemove": "Remove a push device",
 		"testPush": "Test notification to your own devices"
+	},
+	"core": {
+		"group": "Administration",
+		"moduleUpdates": "Module updates",
+		"moduleUpdatesDescription": "Notice when new versions of installed modules are available"
 	}
 }

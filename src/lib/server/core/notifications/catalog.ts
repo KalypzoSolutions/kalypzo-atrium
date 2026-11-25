@@ -16,12 +16,28 @@ import { allDefinitions, getDefinition } from '../modules/registry';
 import { enabledModuleIds } from '../modules/state';
 import { hasAny } from '../permissions/service';
 import { loadPrefs, prefKey } from './prefs';
-import { intlLocale, localized } from '$lib/i18n';
+import { intlLocale, localized, t } from '$lib/i18n';
 
 export interface ResolvedType extends ModuleNotificationType {
 	moduleId: string;
 	/** `<modul>.<key>` */
 	fullKey: string;
+}
+
+/**
+ * Benachrichtigungen des Cores selbst (Pseudo-Modul `core`, immer aktiv). Funktion statt Konstante: die Texte
+ * werden beim Gebrauch in der Sprache des Requests übersetzt.
+ */
+export function coreNotificationTypes(): ModuleNotificationType[] {
+	return [
+		{
+			key: 'module-updates',
+			label: t('notifications.core.moduleUpdates'),
+			description: t('notifications.core.moduleUpdatesDescription'),
+			defaultChannel: 'email',
+			permission: 'core.modules.install'
+		}
+	];
 }
 
 /** Typ zu `<modul>.<key>` (unabhängig vom Modulstatus) oder `null` */
@@ -30,8 +46,10 @@ export function findType(fullKey: string): ResolvedType | null {
 	if (dot < 1) return null;
 	const moduleId = fullKey.slice(0, dot);
 	const key = fullKey.slice(dot + 1);
-	const t = getDefinition(moduleId)?.notifications?.types.find((x) => x.key === key);
-	return t ? { ...t, moduleId, fullKey } : null;
+	const types =
+		moduleId === 'core' ? coreNotificationTypes() : getDefinition(moduleId)?.notifications?.types;
+	const found = types?.find((x) => x.key === key);
+	return found ? { ...found, moduleId, fullKey } : null;
 }
 
 export function defaultChannelOf(t: ModuleNotificationType): NotificationChannel {
@@ -72,6 +90,15 @@ async function rowsForUser(
 ): Promise<{ id: string; label: string; rows: Row[] }[]> {
 	const enabled = await enabledModuleIds();
 	const out: { id: string; label: string; rows: Row[] }[] = [];
+	const coreRows: Row[] = coreNotificationTypes()
+		.filter((ct) => visibleStatic(ctx, ct))
+		.map((ct) => ({
+			type: { ...ct, moduleId: 'core', fullKey: `core.${ct.key}` },
+			scope: '',
+			label: ct.label,
+			description: ct.description ?? null,
+			group: null
+		}));
 	for (const def of allDefinitions()) {
 		const n = def.notifications;
 		const moduleId = def.manifest.id;
@@ -109,7 +136,11 @@ async function rowsForUser(
 		}
 		if (rows.length) out.push({ id: moduleId, label: localized(def.manifest.name), rows });
 	}
-	return out.sort((a, b) => a.label.localeCompare(b.label, intlLocale()));
+	out.sort((a, b) => a.label.localeCompare(b.label, intlLocale()));
+	// Core-Einträge (Verwaltung) zuerst
+	if (coreRows.length)
+		out.unshift({ id: 'core', label: t('notifications.core.group'), rows: coreRows });
+	return out;
 }
 
 /** Profilansicht: Gruppen je Modul mit der wirksamen Wahl */
