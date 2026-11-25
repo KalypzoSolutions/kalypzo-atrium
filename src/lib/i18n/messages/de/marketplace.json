@@ -1,0 +1,24 @@
+{
+	"error": {
+		"offline": "Marktplatz-Abruf ist in dieser Umgebung abgeschaltet",
+		"unreachable": "Marktplatz nicht erreichbar",
+		"timeout": "Marktplatz antwortet nicht (Zeitlimit überschritten)",
+		"http": "Marktplatz antwortet mit Fehler {status}",
+		"redirect": "Unerwartete Weiterleitung beim Marktplatz-Abruf",
+		"tooLarge": "Antwort des Marktplatzes ist zu groß",
+		"invalid": "Antwort des Marktplatzes ist ungültig",
+		"incompatible": "Marktplatz-Format wird von dieser Version nicht unterstützt",
+		"notModifiedWithoutCache": "Marktplatz meldet „unverändert“, es liegt aber keine gespeicherte Fassung vor",
+		"urlHttps": "Bitte eine https-Adresse angeben oder das Feld leer lassen"
+	},
+	"job": {
+		"summary": "Modul-Marktplatz aktualisieren",
+		"result": {
+			"ok": "Marktplatz aktualisiert: {count, plural, =0 {keine Quellen} one {# Quelle} other {# Quellen}}",
+			"stale": "Marktplatz nicht aktualisiert, gespeicherte Fassung bleibt: {error}",
+			"unreachable": "Marktplatz nicht abrufbar: {error}",
+			"disabled": "Marktplatz ist abgeschaltet",
+			"incompatible": "Marktplatz-Format nicht unterstützt, gespeicherte Fassung bleibt"
+		}
+	}
+}

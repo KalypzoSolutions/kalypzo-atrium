@@ -1,0 +1,24 @@
+{
+	"error": {
+		"offline": "Marketplace fetching is turned off in this environment",
+		"unreachable": "Marketplace not reachable",
+		"timeout": "Marketplace did not respond (timeout)",
+		"http": "Marketplace responded with error {status}",
+		"redirect": "Unexpected redirect while fetching the marketplace",
+		"tooLarge": "Marketplace response is too large",
+		"invalid": "Marketplace response is invalid",
+		"incompatible": "This version does not support the marketplace format",
+		"notModifiedWithoutCache": "Marketplace reported “not modified”, but no stored copy exists",
+		"urlHttps": "Please enter an https address or leave the field empty"
+	},
+	"job": {
+		"summary": "Refresh module marketplace",
+		"result": {
+			"ok": "Marketplace refreshed: {count, plural, =0 {no sources} one {# source} other {# sources}}",
+			"stale": "Marketplace not refreshed, stored copy kept: {error}",
+			"unreachable": "Marketplace not available: {error}",
+			"disabled": "Marketplace is turned off",
+			"incompatible": "Marketplace format not supported, stored copy kept"
+		}
+	}
+}
