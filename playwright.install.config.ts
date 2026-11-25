@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 // Modul-Installation mit echtem Neubau über den Supervisor (Kalypzo Atrium, Phase 6). Eigener Lauf, weil er zwei
-// Builds braucht (Basis + neue Generation): `npx playwright test -c playwright.install.config.ts`.
+// Builds braucht (Basis + neue Generation): `bun run playwright test -c playwright.install.config.ts`.
 process.env.TZ = 'Europe/Berlin';
 
 export default defineConfig({
@@ -18,7 +18,7 @@ export default defineConfig({
 		locale: 'de-DE'
 	},
 	webServer: {
-		command: 'node scripts/e2e-install-server.mjs',
+		command: 'bun scripts/e2e-install-server.mjs',
 		url: 'http://localhost:4174/api/v1/health',
 		reuseExistingServer: false,
 		timeout: 10 * 60_000

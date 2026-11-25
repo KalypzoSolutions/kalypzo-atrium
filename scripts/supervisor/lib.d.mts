@@ -41,7 +41,6 @@ export interface SupervisorOptions {
 	baseModulesDir?: string;
 	baseBuildDir?: string;
 	healthTimeoutMs?: number;
-	buildHeapMb?: number;
 	log?: (msg: string) => void;
 	/** GitHub-Archiv laden (Tests) */
 	download?: (

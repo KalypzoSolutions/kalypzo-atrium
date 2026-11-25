@@ -33,7 +33,7 @@ const env = {
 	PORT: '4173',
 	HOST: '127.0.0.1'
 };
-const child = spawn(process.execPath, ['build'], { env, stdio: 'inherit' });
+const child = spawn(process.execPath, ['build/index.js'], { env, stdio: 'inherit' });
 const stop = async (code) => {
 	child.kill();
 	await closeDb();

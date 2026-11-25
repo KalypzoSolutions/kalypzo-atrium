@@ -15,7 +15,7 @@
  *   logs/<id>.log                      Build-Protokoll
  *
  * Ohne Generation läuft der mitgelieferte Build (`baseBuildDir`, Module `baseModulesDir`).
- * Ablauf eines Neubaus: Module kopieren + Auftrag einspielen → Modul-Pakete (npm) → `svelte-kit sync` + `vite build`
+ * Ablauf eines Neubaus: Module kopieren + Auftrag einspielen → Modul-Pakete (`bun install`) → `svelte-kit sync` + `vite build`
  * → Probelauf (`ATRIUM_VERIFY_ONLY=1`) → Tausch → Neustart → Health-Prüfung → sonst Rückkehr zur vorigen Generation.
  */
 import { spawn } from 'node:child_process';
@@ -210,7 +210,6 @@ export class Supervisor {
 	 *   baseModulesDir?: string,
 	 *   baseBuildDir?: string,
 	 *   healthTimeoutMs?: number,
-	 *   buildHeapMb?: number,
 	 *   log?: (msg: string) => void
 	 * }} opts
 	 */
@@ -221,7 +220,6 @@ export class Supervisor {
 		this.baseModulesDir = resolve(opts.baseModulesDir ?? join(this.coreRoot, 'modules'));
 		this.baseBuildDir = resolve(opts.baseBuildDir ?? join(this.coreRoot, 'build'));
 		this.healthTimeoutMs = opts.healthTimeoutMs ?? 120_000;
-		this.buildHeapMb = opts.buildHeapMb ?? Number(this.env.ATRIUM_BUILD_HEAP ?? 3072);
 		this.log = opts.log ?? ((m) => console.log(`[supervisor] ${m}`));
 		/** GitHub-Archiv laden (für Tests ersetzbar) */
 		this.download = opts.download ?? downloadZipball;
@@ -542,17 +540,19 @@ export class Supervisor {
 						recursive: true
 					});
 				} else {
+					// Supervisor läuft unter Bun: `process.execPath` ist die Bun-Binärdatei (kein npm nötig)
 					await this.run(
-						process.platform === 'win32' ? 'npm.cmd' : 'npm',
+						process.execPath,
 						[
 							'install',
+							'--production',
 							'--ignore-scripts',
-							'--no-audit',
-							'--no-fund',
-							'--legacy-peer-deps',
-							'--omit=dev'
+							'--linker',
+							'hoisted',
+							'--no-progress',
+							'--no-summary'
 						],
-						{ cwd: modulesDir, write, shell: process.platform === 'win32' }
+						{ cwd: modulesDir, write }
 					);
 					const removed = dedupeModulePackages(modulesDir, this.coreRoot, packages);
 					if (removed.length) write(`vom Core übernommen: ${removed.join(', ')}`);
@@ -569,7 +569,6 @@ export class Supervisor {
 				ATRIUM_KIT_OUT_DIR: join(genDir, '.svelte-kit'),
 				ATRIUM_VITE_CACHE: join(this.dataDir, 'cache', 'vite'),
 				TMPDIR: join(this.dataDir, 'tmp'),
-				NODE_OPTIONS: `--max-old-space-size=${this.buildHeapMb}`,
 				NODE_ENV: 'production'
 			};
 			const kit = join(this.coreRoot, 'node_modules', '@sveltejs', 'kit', 'svelte-kit.js');
@@ -659,10 +658,10 @@ export class Supervisor {
 	}
 
 	/** Befehl ausführen, Ausgabe ins Protokoll; Exit-Code ≠ 0 → Fehler */
-	run(cmd, args, { cwd, env = this.env, write, shell = false }) {
+	run(cmd, args, { cwd, env = this.env, write }) {
 		return new Promise((ok, fail) => {
 			write(`$ ${[cmd, ...args].map((a) => relative(this.coreRoot, a) || a).join(' ')}`);
-			const p = spawn(cmd, args, { cwd, env, shell, stdio: ['ignore', 'pipe', 'pipe'] });
+			const p = spawn(cmd, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
 			p.stdout.on('data', (d) => write(String(d).trimEnd()));
 			p.stderr.on('data', (d) => write(String(d).trimEnd()));
 			p.on('error', fail);

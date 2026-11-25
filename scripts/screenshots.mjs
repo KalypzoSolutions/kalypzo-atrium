@@ -1,7 +1,7 @@
 // Screenshots von Seiten der laufenden Demo-App (visuelle Prüfung während der Entwicklung).
 //
-//   node scripts/screenshots.mjs --out .data/shots /modules/actions /modules/actions/<id>
-//   node scripts/screenshots.mjs --out .data/shots --tab Kalkulation --mobile /modules/actions/<id>
+//   bun scripts/screenshots.mjs --out .data/shots /modules/actions /modules/actions/<id>
+//   bun scripts/screenshots.mjs --out .data/shots --tab Kalkulation --mobile /modules/actions/<id>
 //
 // Optionen: --out <Ordner> (Pflicht) --base <URL> (Standard http://localhost:4300)
 //           --user <E-Mail> --pass <Passwort> (Standard: Demo-Admin)
@@ -10,7 +10,7 @@
 //           --mobile       zusätzlich 390×844 (iPhone-Breite); --full  ganze Seite statt Ausschnitt
 //           --wait <ms>    Wartezeit vor dem Screenshot (Standard 500)
 //           --locale <tag> Browsersprache (Standard de-DE; en-US zeigt die englische Oberfläche, wenn die Systemsprache „automatisch“ ist)
-// Voraussetzung: `node scripts/demo-server.mjs` läuft; Chromium via `npx playwright install chromium`.
+// Voraussetzung: `bun scripts/demo-server.mjs` läuft; Chromium via `bun run playwright install chromium`.
 import { mkdirSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { chromium } from 'playwright';
@@ -32,7 +32,7 @@ const { values, positionals } = parseArgs({
 });
 
 if (!values.out || positionals.length === 0) {
-	console.error('Aufruf: node scripts/screenshots.mjs --out <Ordner> [Optionen] <Pfad> [<Pfad> …]');
+	console.error('Aufruf: bun scripts/screenshots.mjs --out <Ordner> [Optionen] <Pfad> [<Pfad> …]');
 	process.exit(1);
 }
 mkdirSync(values.out, { recursive: true });
