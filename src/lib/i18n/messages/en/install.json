@@ -96,8 +96,6 @@
 		"invalidPlan": "Invalid plan"
 	},
 	"manage": {
-		"fromZip": "Installed from a ZIP file",
-		"goneFromSource": "Module is no longer included in the latest version of the source",
 		"invalidId": "Invalid module ID",
 		"filesNotDeleted": "Files in storage could not be deleted ({error})",
 		"notFound": "Module not found",
@@ -121,6 +119,19 @@
 		"copied": "Files copied",
 		"buildRequested": "Rebuild requested",
 		"removedDataDeleted": "Removed, data deleted",
-		"removedDataKept": "Removed, data kept"
+		"removedDataKept": "Removed, data kept",
+		"rollbackRequested": "Rollback requested"
+	},
+	"updates": {
+		"noReleaseTags": "No version tags found (e.g. “v1.2.3” or “<module>@1.2.3”) – switch the channel to “Branch”?",
+		"goneFromSource": "The module is no longer part of the new state of the source",
+		"fromZip": "Installed from a ZIP file – update with a new ZIP file",
+		"notifyTitle": "{count, plural, one {One module update available} other {# module updates available}}",
+		"notifyBody": "New versions: {list}. Review and install them under Administration → Modules.",
+		"channelNeedsGithub": "The update channel only applies to modules from GitHub",
+		"nothingToIgnore": "There is no new state to ignore",
+		"notChecked": "There is no update for {id} – please check for updates first",
+		"rollbackNeedsSupervisor": "Going back to the previous version requires the supervisor",
+		"noPreviousVersion": "There is no previous version"
 	}
 }

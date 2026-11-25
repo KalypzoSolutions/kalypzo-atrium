@@ -430,7 +430,17 @@
   Details `architecture.md` → „Benutzerverwaltung ausgebaut“. Offen: echter SMTP-Versand der Reset-/Einladungsmails nur mit Test-Transport geprüft;
   Modul-Reiter (`userAdminSections`) nur im Bearbeiten-Dialog, nicht auf der Detailseite; Statistik ohne Modulbeiträge.
 
+- **Schnellerer Neubau + Updates 2.0 (2026-11-10, Core-Migration 0014)**: Phase 1–2 des Plans „Module schneller einbauen“
+  (`~/.claude/plans/polymorphic-strolling-stonebraker.md`). Eigener Adapter mit Rolldown (Neubau mit 14 Modulen ~65 s → ~38 s, nur Core
+  ~37 s → ~17 s). Updates: Kanal je Modul (Releases/Branch), Vergleich über Inhalt, Änderungsnotizen, „Ausgewählte/Alle aktualisieren“ mit
+  einem Neubau, ignorieren, täglicher Job + Benachrichtigung, Kachel auf `/admin`, Rücksprung zur vorigen Generation. Details
+  `architecture.md` → „Lebenszyklus der Module“. Offen: Phase 3–6 (Module einzeln bauen und zur Laufzeit laden); echtes GitHub (Tags,
+  Rate-Limit) und Rücksprung im Container nur mit Ersatz/Unit-Test geprüft; Lokal Node 22 statt 24 → E2E `image-crop.spec.ts` lädt nicht
+  (sharp im Playwright-Lader), `appearance-themes.spec.ts` hat einen mehrdeutigen Selektor (vorbestehend).
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Module schneller einbauen (2026-11-10): Modulpakete werden **auf dem Server** gebaut (kein CI-Zwang im Modul-Repo); **immer Neustart**
+  (auch bei Neuinstallation, kein Hot-Load); Update-Kanal **je Modul wählbar** (Standard Releases/Tags, optional Branch).
 - Benutzerverwaltung (2026-11-04): „Als Person handeln“ **vollständig** (auch Änderungen), nicht nur lesen; Passwort per Reset-Mail, direkt
   setzen **und** Einmal-Link; dazu Sitzungen/2FA, Detailseite, Filter/Sammelaktionen/Einladung und Kennzahlen auf `/admin`.
 - Core-Split (2026-11-01): Core heißt **Kalypzo Atrium** (Repo `kalypzo-atrium`, Präfix `atrium`), neutral + mehrsprachig (de/en) für andere

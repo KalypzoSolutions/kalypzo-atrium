@@ -366,7 +366,18 @@ export class Supervisor {
 	}
 
 	onMessage(m) {
-		if (!m || typeof m !== 'object' || m.type !== 'atrium:build') return;
+		if (!m || typeof m !== 'object') return;
+		if (m.type === 'atrium:rollback') {
+			const planId = String(m.planId ?? '');
+			if (!PLAN_RE.test(planId)) {
+				this.log(`Ungültiger Rücksprung-Auftrag ignoriert: ${planId.slice(0, 80)}`);
+				return;
+			}
+			this.status({ state: 'queued', planId, step: 'Wartet', message: null, finishedAt: null });
+			this.enqueue(() => this.rollback(planId));
+			return;
+		}
+		if (m.type !== 'atrium:build') return;
 		const planId = String(m.planId ?? '');
 		if (
 			!PLAN_RE.test(planId) ||
@@ -622,6 +633,49 @@ export class Supervisor {
 			this.finish(planId, genId, 'failed', message, tail);
 			if (this.state().current !== genId) rmSync(genDir, { recursive: true, force: true });
 		}
+	}
+
+	/**
+	 * Zurück zur vorigen Generation (bzw. zum mitgelieferten Build): Zustand tauschen, neu starten, Health prüfen.
+	 * Startet die vorige nicht, bleibt die bisherige aktiv. Die bisherige wird danach zur „vorigen“ (erneuter Wechsel möglich).
+	 */
+	async rollback(planId) {
+		const prev = this.state();
+		const tail = [];
+		if (!prev.current) {
+			this.finish(planId, null, 'failed', 'Keine vorige Version vorhanden', tail);
+			return;
+		}
+		const target = prev.previous ?? null;
+		const rt = this.runtime(target);
+		if (!existsSync(join(rt.build, 'index.js'))) {
+			this.finish(planId, null, 'failed', `Vorige Version ${rt.id} fehlt`, tail);
+			return;
+		}
+		this.status({
+			state: 'restarting',
+			planId,
+			step: 'Neustart',
+			startedAt: new Date().toISOString()
+		});
+		this.setState({ current: target, previous: prev.current });
+		await this.stopChild();
+		this.startChild(target);
+		if (!(await this.waitHealthy())) {
+			this.setState(prev);
+			await this.stopChild();
+			this.startChild(prev.current);
+			await this.waitHealthy();
+			this.finish(
+				planId,
+				null,
+				'failed',
+				'Die vorige Version startet nicht – bisherige wieder aktiv',
+				tail
+			);
+			return;
+		}
+		this.finish(planId, target ?? 'base', 'done', `Zurück auf ${rt.id}`, tail);
 	}
 
 	finish(planId, genId, status, message, tail) {

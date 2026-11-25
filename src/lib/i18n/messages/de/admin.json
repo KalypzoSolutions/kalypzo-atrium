@@ -188,6 +188,7 @@
 		"jobsFailed": "Fehlgeschlagene Hintergrundjobs",
 		"logins30": "Anmeldungen (30 Tage)",
 		"loginsAria": "Anmeldungen je Tag der letzten 30 Tage, insgesamt {count}",
-		"loginsBar": "{date}: {count, plural, one {# Anmeldung} other {# Anmeldungen}}"
+		"loginsBar": "{date}: {count, plural, one {# Anmeldung} other {# Anmeldungen}}",
+		"moduleUpdates": "Modul-Updates"
 	}
 }

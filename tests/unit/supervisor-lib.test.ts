@@ -1,7 +1,7 @@
 /**
  * Supervisor (Kalypzo Atrium, Phase 6) – reine Teile: Inhaltshash wie in der Vorschau, Lock-Datei, Modul-Pakete.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -13,6 +13,7 @@ import {
 	mergeLock,
 	moduleFolders,
 	modulePackagesFor,
+	Supervisor,
 	type LockEntry
 } from '../../scripts/supervisor/lib.mjs';
 import { filesOf, makeZip } from '../helpers/module-zip';
@@ -142,5 +143,61 @@ describe('coreChanged (Neubau nach Image-Wechsel)', () => {
 		expect(coreChanged({ core: '2.0.0' }, '2.0.0', 'b')).toBe(true);
 		expect(coreChanged({ core: '2.0.0' }, '2.0.0', null)).toBe(false);
 		expect(coreChanged(null, '2.0.0', 'b')).toBe(false);
+	});
+});
+
+describe('Supervisor.rollback (zurück zur vorigen Generation)', () => {
+	function supervisor(healthy: (gen: string | null) => boolean) {
+		const data = join(tmp, `data-${Math.random().toString(36).slice(2)}`);
+		const core = join(tmp, 'core');
+		mkdirSync(join(core, 'build'), { recursive: true });
+		writeFileSync(join(core, 'build', 'index.js'), '');
+		writeFileSync(join(core, 'package.json'), JSON.stringify({ version: '2.0.0' }));
+		for (const g of ['g1', 'g2']) {
+			mkdirSync(join(data, 'gen', g, 'build'), { recursive: true });
+			writeFileSync(join(data, 'gen', g, 'build', 'index.js'), '');
+		}
+		const sup = new Supervisor({ coreRoot: core, dataDir: data, log: () => {} });
+		const started: (string | null)[] = [];
+		let running: string | null = null;
+		Object.assign(sup, {
+			stopChild: async () => {},
+			startChild: (g: string | null) => {
+				running = g;
+				started.push(g);
+			},
+			waitHealthy: async () => healthy(running)
+		});
+		writeFileSync(join(data, 'state.json'), JSON.stringify({ current: 'g2', previous: 'g1' }));
+		const result = (planId: string) =>
+			JSON.parse(readFileSync(join(data, 'results', `${planId}.json`), 'utf8')) as {
+				status: string;
+				generation: string | null;
+			};
+		return { sup, started, result };
+	}
+
+	it('tauscht aktuelle und vorige Generation und meldet „done“', async () => {
+		const { sup, started, result } = supervisor(() => true);
+		await sup.rollback('plan-rollback-1');
+		expect(sup.state()).toMatchObject({ current: 'g1', previous: 'g2' });
+		expect(started).toEqual(['g1']);
+		expect(result('plan-rollback-1')).toMatchObject({ status: 'done', generation: 'g1' });
+	});
+
+	it('startet die vorige nicht, bleibt die bisherige aktiv', async () => {
+		const { sup, started, result } = supervisor((g) => g !== 'g1');
+		await sup.rollback('plan-rollback-2');
+		expect(sup.state()).toMatchObject({ current: 'g2', previous: 'g1' });
+		expect(started).toEqual(['g1', 'g2']);
+		expect(result('plan-rollback-2').status).toBe('failed');
+	});
+
+	it('ohne eigene Generation (mitgelieferter Build) kein Rücksprung', async () => {
+		const { sup, started, result } = supervisor(() => true);
+		sup.setState({ current: null, previous: null });
+		await sup.rollback('plan-rollback-3');
+		expect(started).toEqual([]);
+		expect(result('plan-rollback-3').status).toBe('failed');
 	});
 });

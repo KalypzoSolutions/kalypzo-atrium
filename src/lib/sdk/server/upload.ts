@@ -20,6 +20,7 @@ import { formatNumber } from '$lib/i18n/intl';
  * Datei mit `takeUpload`; schon gelesene Bytes (z. B. aus einem anderen Modul) prüft `checkUploadBytes`.
  */
 import { errors } from '$lib/server/core/errors';
+import { canonicalContentType } from '$lib/sdk/content-types';
 import { assertContentMatches, detectContentType } from './file-response';
 
 export interface UploadRules {
@@ -53,8 +54,6 @@ export interface UploadedFile {
 /** Zuschlag für Multipart-Grenzen und Textfelder bei der Vorprüfung über `content-length` */
 const BODY_OVERHEAD = 1024 * 1024;
 
-const baseType = (t: string | null | undefined) => (t ?? '').split(';')[0]!.trim().toLowerCase();
-
 function formatMb(bytes: number): string {
 	const mb = bytes / (1024 * 1024);
 	return Number.isInteger(mb) ? String(mb) : formatNumber(mb, 1);
@@ -81,7 +80,7 @@ export function checkUploadBytes(
 	if (size > rules.maxBytes) {
 		throw errors.tooLarge(t('sdk.upload.tooLarge', { mb: formatMb(rules.maxBytes) }));
 	}
-	let contentType = baseType(input.contentType);
+	let contentType = canonicalContentType(input.contentType);
 	if (!contentType && rules.detectMissingType) contentType = detectContentType(input.bytes) ?? '';
 	if (rules.allowedTypes && !rules.allowedTypes.includes(contentType)) {
 		throw fieldError(

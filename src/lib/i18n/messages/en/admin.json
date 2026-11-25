@@ -188,6 +188,7 @@
 		"jobsFailed": "Failed background jobs",
 		"logins30": "Sign-ins (30 days)",
 		"loginsAria": "Sign-ins per day over the last 30 days, {count} in total",
-		"loginsBar": "{date}: {count, plural, one {# sign-in} other {# sign-ins}}"
+		"loginsBar": "{date}: {count, plural, one {# sign-in} other {# sign-ins}}",
+		"moduleUpdates": "Module updates"
 	}
 }

@@ -107,7 +107,7 @@ function startsWith(bytes: Uint8Array, sig: number[], offset = 0): boolean {
 
 /**
  * Erkennt den Typ an den ersten Bytes: PNG, JPEG, GIF, WebP, AVIF/HEIC, PDF, ZIP-basierte Office-Dateien
- * (`application/zip`). `null` = unbekannt.
+ * (`application/zip`), Photoshop. `null` = unbekannt.
  */
 export function detectContentType(bytes: Uint8Array): string | null {
 	if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png';
@@ -126,6 +126,8 @@ export function detectContentType(bytes: Uint8Array): string | null {
 	}
 	if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])) return 'application/pdf';
 	if (startsWith(bytes, [0x50, 0x4b, 0x03, 0x04])) return 'application/zip';
+	// Photoshop (PSD/PSB): „8BPS“
+	if (startsWith(bytes, [0x38, 0x42, 0x50, 0x53])) return 'image/vnd.adobe.photoshop';
 	return null;
 }
 
@@ -144,8 +146,14 @@ const ZIP_CONTAINERS = new Set([
 	'application/vnd.oasis.opendocument.presentation',
 	'application/vnd.oasis.opendocument.text-template',
 	'application/vnd.oasis.opendocument.spreadsheet-template',
-	'application/vnd.oasis.opendocument.presentation-template'
+	'application/vnd.oasis.opendocument.presentation-template',
+	// Adobe InDesign-Austausch (IDML) und XD sind ZIP-Pakete
+	'application/vnd.adobe.indesign-idml-package',
+	'application/vnd.adobe.xd'
 ]);
+
+/** Typen, deren Inhalt ein PDF sein darf (Illustrator speichert seit CS PDF-kompatibel, ältere Dateien als PostScript) */
+const PDF_COMPATIBLE = new Set(['application/illustrator', 'application/postscript']);
 
 /**
  * Wirft 422, wenn der Inhalt nicht zum angegebenen Typ passt. Geprüft werden Bilder, PDF und ZIP-basierte
@@ -168,6 +176,8 @@ export function assertContentMatches(
 		if (detected !== 'application/zip') throw fail();
 		return;
 	}
+	// PDF-Inhalt erlaubt; sonst weiter unten wie jeder andere Typ (kein Bild/ZIP, kein HTML/SVG/Skript)
+	if (PDF_COMPATIBLE.has(declared) && detected === 'application/pdf') return;
 	if (detected) throw fail();
 	const head = new TextDecoder('utf-8', { fatal: false })
 		.decode(bytes.slice(0, 512))

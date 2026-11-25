@@ -14,7 +14,8 @@
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import type { UpdateInfo } from '$lib/server/core/modules/install/manage';
+	import UpdatesCard from './UpdatesCard.svelte';
+	import RollbackCard from './RollbackCard.svelte';
 	import AccountFields from '../backup/AccountFields.svelte';
 	import { submitHandler } from '../_shared/form-utils';
 	import { t } from '$lib/i18n';
@@ -25,9 +26,7 @@
 	let busyId = $state<string | null>(null);
 	let errors = $state<Record<string, string>>({});
 
-	// Updates, Entfernen, Wiederherstellen (Kalypzo Atrium)
-	let updates = $state<UpdateInfo[] | null>(null);
-	let checking = $state(false);
+	// Entfernen, Wiederherstellen (Kalypzo Atrium); Updates und Rücksprung in eigenen Karten
 	let removeTarget = $state<{ id: string; name: string; hasCode: boolean } | null>(null);
 	let deleteData = $state(false);
 	let confirmId = $state('');
@@ -118,13 +117,6 @@
 		bulkRemove = true;
 	}
 
-	const UPDATE_STATUS: Record<UpdateInfo['status'], string> = {
-		current: 'admin-modules.updateStatus.current',
-		update: 'admin-modules.updateStatus.update',
-		'no-source': 'admin-modules.updateStatus.noSource',
-		error: 'admin-modules.updateStatus.error'
-	};
-
 	/** Formular mit Feldfehlern, Ergebnis an `onok` */
 	function action(onok: (d: Record<string, unknown>) => void): SubmitFunction {
 		return () => {
@@ -149,16 +141,6 @@
 		};
 	}
 
-	const onCheck: SubmitFunction = () => {
-		checking = true;
-		return async ({ result }) => {
-			checking = false;
-			if (result.type === 'success') updates = (result.data?.updates ?? []) as UpdateInfo[];
-			else if (result.type === 'failure')
-				toast.error(String(result.data?.message ?? t('admin-modules.error')));
-		};
-	};
-
 	function openRemove(id: string, name: string, hasCode: boolean) {
 		removeTarget = { id, name, hasCode };
 		deleteData = !hasCode;
@@ -167,9 +149,6 @@
 		totp = '';
 		fields = {};
 	}
-
-	const installHref = (u: UpdateInfo) =>
-		`/admin/modules/install?url=${encodeURIComponent(u.source ?? '')}&select=${encodeURIComponent(u.id)}`;
 
 	function handler(id: string) {
 		return submitHandler({
@@ -186,64 +165,19 @@
 		<p class="text-sm text-muted-foreground">
 			{t('admin-modules.intro')}
 		</p>
-		{#if data.canInstall}
-			<form method="POST" action="?/checkUpdates" use:enhance={onCheck}>
-				<Button type="submit" variant="outline" disabled={checking}>
-					{checking ? t('admin-modules.checking') : t('admin-modules.checkUpdates')}
-				</Button>
-			</form>
-		{/if}
 	</div>
 
-	{#if updates}
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>{t('admin-modules.updates.title')}</Card.Title>
-				<Card.Description>
-					{t('admin-modules.updates.descriptionBefore')}
-					<a class="text-link" href="/admin/backup">{t('admin-modules.updates.backupLink')}</a>{t(
-						'admin-modules.updates.descriptionAfter'
-					)}
-				</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				{#if !updates.length}
-					<p class="text-sm text-muted-foreground">
-						{t('admin-modules.updates.none')}
-					</p>
-				{:else}
-					<ul class="divide-y rounded-md border text-sm">
-						{#each updates as u (u.id)}
-							<li class="flex flex-wrap items-center gap-3 p-3">
-								<span class="min-w-0 flex-1">
-									<span class="font-medium">{u.name}</span>
-									<code class="ml-1 text-xs text-muted-foreground">{u.id}</code>
-									<span class="block text-xs text-muted-foreground">
-										{u.installedVersion}{u.commit ? ` · ${u.commit.slice(0, 7)}` : ''}
-										{#if u.status === 'update'}
-											→ {u.latestVersion}{u.latestCommit ? ` · ${u.latestCommit.slice(0, 7)}` : ''}
-										{/if}
-										{#if u.message}· {u.message}{/if}
-									</span>
-								</span>
-								<Badge
-									variant={u.status === 'update'
-										? 'info'
-										: u.status === 'error'
-											? 'destructive'
-											: 'secondary'}>{t(UPDATE_STATUS[u.status])}</Badge
-								>
-								{#if u.status === 'update' && u.source}
-									<Button href={installHref(u)} size="sm"
-										>{t('admin-modules.updates.update')}</Button
-									>
-								{/if}
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</Card.Content>
-		</Card.Root>
+	{#if data.canInstall && data.updates.some((u) => u.source)}
+		<UpdatesCard updates={data.updates} />
+	{/if}
+
+	{#if data.canInstall && data.rollback}
+		<RollbackCard
+			rollback={data.rollback}
+			twoFactorEnabled={data.twoFactorEnabled}
+			available={data.installStatus.available}
+			reason={data.installStatus.reason}
+		/>
 	{/if}
 
 	{#if data.drift.length}
@@ -368,9 +302,9 @@
 				>
 			{/if}
 			{#if data.canInstall}
-				<form method="POST" action="?/bulkCheckUpdates" use:enhance={onCheck}>
+				<form method="POST" action="?/bulkCheckUpdates" use:enhance={action(() => {})}>
 					{#each selected as id (id)}<input type="hidden" name="id" value={id} />{/each}
-					<Button size="sm" variant="outline" disabled={checking}
+					<Button size="sm" variant="outline" disabled={working}
 						>{t('admin-modules.checkUpdates')}</Button
 					>
 				</form>

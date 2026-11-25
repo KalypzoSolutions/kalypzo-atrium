@@ -1,6 +1,6 @@
 /**
  * Lebenszyklus installierter Module (Kalypzo Atrium, Phase 7):
- * - `checkUpdates`: je Modul aus GitHub den Kopf des Refs mit dem gespeicherten Commit vergleichen,
+ * - Updates und Rollback: siehe `updates.ts` sowie `rollbackPreview`/`rollbackInstall`,
  * - `uninstallModule` / `uninstallModules`: entfernen (Daten behalten oder vollständig löschen), danach Neubau bzw.
  *   Kopie entfernen (mehrere Module: eine Re-Auth, ein gemeinsamer Neubau),
  * - `installDrift` / `restoreFromDatabase`: Wunschzustand (`module_install`) gegen den laufenden Stand – z. B. nach
@@ -11,7 +11,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { eq, like, or, sql } from 'drizzle-orm';
-import { localized, t } from '$lib/i18n';
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../../audit/service';
 import { systemContext } from '../../auth/context';
@@ -26,11 +26,13 @@ import { invalidateModuleStateCache } from '../state';
 import { moduleSchemaName } from '../types';
 import { contentHash, readModuleArchive, type ArchiveFiles } from './archive';
 import { discoverModules } from './discover';
-import { downloadGithubArchive, resolveGithubSource } from './github';
+import { downloadGithubArchive } from './github';
 import { assertInstaller, installStatus, runtimeModulesDir } from './service';
 import {
 	cachedUpload,
+	generationsForRollback,
 	requestSupervisorBuild,
+	requestSupervisorRollback,
 	supervisorDataDir,
 	type LockEntry
 } from './supervisor-link';
@@ -56,76 +58,8 @@ function githubLabel(s: GithubSourceJson): string {
 
 // --- Updates ------------------------------------------------------------------------------------
 
-export interface UpdateInfo {
-	id: string;
-	name: string;
-	installedVersion: string;
-	commit: string | null;
-	/** `github:owner/repo/pfad#ref` (auch für die Installationsseite) */
-	source: string | null;
-	latestCommit: string | null;
-	latestVersion: string | null;
-	status: 'current' | 'update' | 'no-source' | 'error';
-	message: string | null;
-}
-
-/** `ids`: nur diese Module prüfen (Sammelaktion); ohne Angabe alle installierten */
-export async function checkUpdates(ctx: RequestContext, ids?: string[]): Promise<UpdateInfo[]> {
-	await assertInstaller(ctx);
-	const only = ids ? new Set(ids) : null;
-	const rows = (await getDb().select().from(schema.moduleInstall)).filter(
-		(r) => !only || only.has(r.id)
-	);
-	const out: UpdateInfo[] = [];
-	for (const r of rows.sort((a, b) => a.id.localeCompare(b.id))) {
-		const base: UpdateInfo = {
-			id: r.id,
-			name: localized(getDefinition(r.id)?.manifest.name) || r.id,
-			installedVersion: r.version,
-			commit: r.commit,
-			source: null,
-			latestCommit: null,
-			latestVersion: null,
-			status: 'no-source',
-			message: r.sourceType === 'upload' ? t('install.manage.fromZip') : null
-		};
-		if (r.sourceType !== 'github') {
-			out.push(base);
-			continue;
-		}
-		const src = r.source as GithubSourceJson;
-		base.source = githubLabel(src);
-		try {
-			const resolved = await resolveGithubSource({
-				type: 'github',
-				owner: String(src.owner),
-				repo: String(src.repo),
-				path: String(src.path ?? ''),
-				ref: src.ref ? String(src.ref) : null
-			});
-			base.latestCommit = resolved.sha;
-			if (resolved.sha === r.commit) {
-				out.push({ ...base, status: 'current', latestVersion: r.version });
-				continue;
-			}
-			const files = readModuleArchive(
-				await downloadGithubArchive(resolved.owner, resolved.repo, resolved.sha)
-			);
-			const found = discoverModules(files, String(src.path ?? '')).modules.find(
-				(m) => m.id === r.id
-			);
-			out.push({
-				...base,
-				status: found ? 'update' : 'error',
-				latestVersion: found?.pkg.version ?? null,
-				message: found ? null : t('install.manage.goneFromSource')
-			});
-		} catch (e) {
-			out.push({ ...base, status: 'error', message: e instanceof Error ? e.message : String(e) });
-		}
-	}
-	return out;
-}
+// Prüfung, Kanal, Ignorieren: `./updates.ts` (hier weitergereicht für bestehende Aufrufer)
+export { checkUpdates, type UpdateInfo } from './updates';
 
 // --- Entfernen ----------------------------------------------------------------------------------
 
@@ -614,4 +548,96 @@ export async function syncInstallsFromLock(): Promise<number> {
 		added++;
 	}
 	return added;
+}
+
+// --- Zurück zur vorigen Version -----------------------------------------------------------------
+
+export interface RollbackChange {
+	id: string;
+	/** Version jetzt (`null` = nur in der vorigen Version vorhanden) */
+	from: string | null;
+	/** Version danach (`null` = in der vorigen Version nicht vorhanden → wird entfernt) */
+	to: string | null;
+	/** Seit der vorigen Version angewendete Migrationen bleiben (Schema ist danach neuer als der Code) */
+	migrationsAfter: boolean;
+}
+
+export interface RollbackInfo {
+	target: string;
+	createdAt: string | null;
+	changes: RollbackChange[];
+}
+
+/** Was ein Rücksprung ändern würde; `null`, wenn keiner möglich ist (kein Supervisor, keine vorige Version) */
+export async function rollbackPreview(ctx: RequestContext): Promise<RollbackInfo | null> {
+	await requirePermission(ctx, 'core.modules.view');
+	if (installStatus().mode !== 'supervisor') return null;
+	const gens = generationsForRollback();
+	if (!gens?.previous) return null;
+	const { current, previous } = gens;
+	const ids = [
+		...new Set([...Object.keys(current.modules), ...Object.keys(previous.modules)])
+	].sort();
+	const changes: RollbackChange[] = [];
+	for (const id of ids) {
+		const now = current.modules[id];
+		const before = previous.modules[id];
+		if (now && before && now.contentHash === before.contentHash) continue;
+		const applied = await getDb()
+			.select({ appliedAt: schema.moduleMigration.appliedAt })
+			.from(schema.moduleMigration)
+			.where(eq(schema.moduleMigration.moduleId, id));
+		const since = previous.createdAt ? new Date(previous.createdAt).getTime() : 0;
+		changes.push({
+			id,
+			from: now?.version ?? null,
+			to: before?.version ?? null,
+			migrationsAfter: applied.some((a) => a.appliedAt.getTime() > since)
+		});
+	}
+	return { target: previous.id, createdAt: previous.createdAt, changes };
+}
+
+/** Zur vorigen Generation zurück (nur Supervisor; Re-Auth). Wunschzustand folgt nach dem Neustart. */
+export async function rollbackInstall(
+	ctx: RequestContext,
+	input: { password: string; totp?: string }
+): Promise<{ planId: string; target: string }> {
+	const userId = await assertInstaller(ctx);
+	await verifyReauth(userId, { password: input.password, totp: input.totp }, 'module-install');
+	const status = installStatus();
+	if (status.mode !== 'supervisor' || !status.available) {
+		throw errors.unavailable(status.reason ?? t('install.updates.rollbackNeedsSupervisor'));
+	}
+	const gens = generationsForRollback();
+	if (!gens?.previous) throw errors.conflict(t('install.updates.noPreviousVersion'));
+	const { current, previous } = gens;
+	const planId = crypto.randomUUID().replace(/-/g, '');
+	const db = getDb();
+	const ids = [...new Set([...Object.keys(current.modules), ...Object.keys(previous.modules)])];
+	for (const id of ids) {
+		const now = current.modules[id];
+		const before = previous.modules[id];
+		if (now && before && now.contentHash === before.contentHash) continue;
+		await db.insert(schema.moduleInstallEvent).values({
+			id: crypto.randomUUID(),
+			moduleId: id,
+			action: 'rollback',
+			fromVersion: now?.version ?? null,
+			toVersion: before?.version ?? null,
+			sourceType: before?.sourceType ?? now?.sourceType ?? null,
+			source: before?.source ?? {},
+			commit: before?.commit ?? null,
+			contentHash: before?.contentHash ?? null,
+			actorId: userId,
+			planId,
+			status: 'requested',
+			detail: 'install.detail.rollbackRequested'
+		});
+	}
+	requestSupervisorRollback(planId);
+	await auditFromContext(ctx, 'core.module.rollback_requested', {
+		metadata: { planId, target: previous.id }
+	});
+	return { planId, target: previous.id };
 }

@@ -99,7 +99,11 @@ async function runDaily(): Promise<string[]> {
 
 describe('Hintergrundjobs', () => {
 	it('laufen nur für aktive Module (Core-Jobs immer)', async () => {
-		expect(await runDaily()).toEqual(['core.housekeeping', 'core.notifications-digest']);
+		expect(await runDaily()).toEqual([
+			'core.housekeeping',
+			'core.module-updates',
+			'core.notifications-digest'
+		]);
 		expect(runs).toBe(0);
 		await enableModule(admin, 'jobprov');
 		expect(await runDaily()).toEqual(['jobprov.tick']);
@@ -113,6 +117,7 @@ describe('Hintergrundjobs', () => {
 		expect(await runDaily()).toEqual([
 			'jobprov.tick',
 			'core.housekeeping',
+			'core.module-updates',
 			'core.notifications-digest'
 		]);
 		expect(runs).toBe(2);

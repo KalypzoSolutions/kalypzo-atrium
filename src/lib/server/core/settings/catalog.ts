@@ -59,6 +59,15 @@ const httpsUrlOrEmpty = (max: number) =>
 			},
 			{ error: () => t('marketplace.error.urlHttps') }
 		);
+/** Unterpfad im Bucket: Abschnitte aus `A-Z a-z 0-9 . _ -`, getrennt durch `/`, kein `.`/`..` */
+const storagePrefix = str(200).refine(
+	(v) =>
+		v
+			.split('/')
+			.filter((p) => p !== '')
+			.every((p) => /^[A-Za-z0-9._-]+$/.test(p) && p !== '.' && p !== '..'),
+	{ error: () => t('settings.errors.storagePrefix') }
+);
 const dashboardKey = z.string().max(80).regex(DASHBOARD_KEY_PATTERN);
 
 /** Fußzeile unter E-Mails: neutral leer (Profil-Module einer Organisation geben per `settingDefaults` einen Text vor) */
@@ -321,6 +330,12 @@ export const CORE_SETTINGS: SettingDefinition[] = [
 		key: 'core.storage.forcePathStyle',
 		schema: z.boolean(),
 		default: false,
+		group: 'storage'
+	}),
+	g({
+		key: 'core.storage.prefix',
+		schema: storagePrefix,
+		default: '',
 		group: 'storage'
 	}),
 	g({

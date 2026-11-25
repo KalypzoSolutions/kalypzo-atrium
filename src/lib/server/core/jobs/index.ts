@@ -102,6 +102,23 @@ const CORE_JOBS: ModuleJob[] = [
 		}
 	},
 	{
+		id: 'module-updates',
+		summary: 'jobs.core.moduleUpdates',
+		schedule: 'daily',
+		run: async () => {
+			// Dynamisch: der Installer zieht viel nach sich, der Job-Runner wird früh geladen
+			const updates = await import('../modules/install/updates');
+			if (!updates.updateChecksEnabled()) return t('jobs.result.moduleUpdatesOff');
+			const r = await updates.runUpdateCheck();
+			return t('jobs.result.moduleUpdates', {
+				checked: r.checked,
+				updates: r.updates.length,
+				errors: r.errors,
+				notified: r.notified
+			});
+		}
+	},
+	{
 		id: 'notifications-digest',
 		summary: 'jobs.core.notificationsDigest',
 		schedule: 'daily',

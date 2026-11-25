@@ -14,15 +14,35 @@
 		"current": "up to date",
 		"update": "Update available",
 		"noSource": "no source",
-		"error": "Error"
+		"error": "Error",
+		"changed": "changed (same version)",
+		"incompatible": "cannot be installed",
+		"ignored": "ignored",
+		"unchecked": "not checked"
 	},
 	"updates": {
 		"title": "Updates",
-		"descriptionBefore": "Compares the saved commit with the current state of the source. Before an update, we recommend a",
+		"descriptionBefore": "Compares the content of each module with the newest state of its channel (release tag or branch). Before an update, we recommend a",
 		"backupLink": "backup",
 		"descriptionAfter": ".",
-		"none": "No modules installed from a source – modules from the build are updated with the server.",
-		"update": "Update"
+		"lastChecked": "Last checked: {at}",
+		"neverChecked": "Not checked yet.",
+		"updateSelected": "Update selected ({count})",
+		"updateAll": "Update all ({count})",
+		"listLabel": "Modules from a source",
+		"select": "Select {name} for updating",
+		"newerInstalled": "The installed state is newer than the newest one of the channel.",
+		"channelRelease": "Channel: releases (tags)",
+		"channelBranch": "Channel: branch",
+		"channel": "Update channel for {name}",
+		"ignore": "Ignore this version",
+		"unignore": "Stop ignoring",
+		"onGithub": "View on GitHub",
+		"details": "Changes and effects",
+		"noNotes": "No release notes (no CHANGELOG.md in the module).",
+		"permissionsAdded": "New permissions: {list}",
+		"newMigrations": "New migrations: {list}",
+		"npmNew": "New npm packages: {list}"
 	},
 	"drift": {
 		"title": "Installed modules are missing from the running version",
@@ -80,7 +100,12 @@
 		"buildRequested": "Rebuild requested",
 		"invalidInput": "Invalid input",
 		"saved": "Saved",
-		"unknown": "Unknown"
+		"unknown": "Unknown",
+		"updatesFound": "{count, plural, =0 {No updates found} one {One update found} other {# updates found}}",
+		"channelSaved": "Update channel saved",
+		"updateIgnored": "Version is ignored",
+		"updateUnignored": "Version is no longer ignored",
+		"rollbackRequested": "Rollback requested – the server restarts shortly"
 	},
 	"history": {
 		"title": "Module history",
@@ -201,7 +226,23 @@
 		"allowedSources": "Allowed sources",
 		"allowedSourcesHint": "One owner/repo or owner/* per line. Empty = all GitHub sources and ZIP files; otherwise no ZIP files.",
 		"saving": "Saving …",
-		"save": "Save"
+		"save": "Save",
+		"updatesTitle": "Install updates",
+		"updatesDescription": "From the last check: {list}. The preview shows dependencies, permissions and migrations."
+	},
+	"rollback": {
+		"title": "Back to the previous version",
+		"descriptionAt": "Previous version from {at}. The server restarts for this.",
+		"descriptionBase": "Back to the shipped state without installed modules. The server restarts for this.",
+		"removed": "{version} → removed",
+		"added": "→ {version} (back again)",
+		"noChanges": "Modules unchanged (only the build differs).",
+		"migrationsTitle": "The database stays on the new state",
+		"migrationsText": "Since the previous version, migrations of {list} have run. They are not reverted – the old version has to cope with the newer schema.",
+		"start": "Back to the previous version …",
+		"confirm": "Roll back",
+		"requested": "Rollback requested. You can follow it in the",
+		"toHistory": "history"
 	},
 	"bulk": {
 		"selectAll": "Select all",

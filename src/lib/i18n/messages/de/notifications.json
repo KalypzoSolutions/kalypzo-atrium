@@ -25,5 +25,10 @@
 		"deviceUnsubscribe": "Gerät über seinen Endpoint abmelden (Push im Browser ausgeschaltet)",
 		"deviceRemove": "Push-Gerät entfernen",
 		"testPush": "Test-Benachrichtigung an die eigenen Geräte"
+	},
+	"core": {
+		"group": "Verwaltung",
+		"moduleUpdates": "Modul-Updates",
+		"moduleUpdatesDescription": "Hinweis, wenn für installierte Module neue Versionen bereitstehen"
 	}
 }
