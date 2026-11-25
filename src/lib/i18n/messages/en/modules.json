@@ -53,5 +53,14 @@
 		"invalidPath": "Invalid path",
 		"duplicateIds": "Duplicate module IDs",
 		"root": "(root)"
+	},
+	"bulk": {
+		"failed": "Action failed",
+		"invalidAction": "Unknown bulk action",
+		"noIds": "Please select at least one module",
+		"tooMany": "At most {max} modules at once",
+		"summary": "{ok, plural, =0 {No change} one {# module changed} other {# modules changed}}{skipped, plural, =0 {} one {, # unchanged} other {, # unchanged}}{failed, plural, =0 {} one {, # failed} other {, # failed}}",
+		"uninstallSummary": "{count, plural, one {# module removed} other {# modules removed}}",
+		"uninstallRequested": "{count, plural, one {# module is being removed – rebuild requested} other {# modules are being removed – rebuild requested}}"
 	}
 }

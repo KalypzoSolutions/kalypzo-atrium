@@ -53,5 +53,14 @@
 		"invalidPath": "Ungültiger Pfad",
 		"duplicateIds": "Modul-IDs doppelt",
 		"root": "(Wurzel)"
+	},
+	"bulk": {
+		"failed": "Aktion fehlgeschlagen",
+		"invalidAction": "Unbekannte Sammelaktion",
+		"noIds": "Bitte mindestens ein Modul auswählen",
+		"tooMany": "Höchstens {max} Module auf einmal",
+		"summary": "{ok, plural, =0 {Keine Änderung} one {# Modul geändert} other {# Module geändert}}{skipped, plural, =0 {} one {, # unverändert} other {, # unverändert}}{failed, plural, =0 {} one {, # fehlgeschlagen} other {, # fehlgeschlagen}}",
+		"uninstallSummary": "{count, plural, one {# Modul entfernt} other {# Module entfernt}}",
+		"uninstallRequested": "{count, plural, one {# Modul wird entfernt – Neubau angefordert} other {# Module werden entfernt – Neubau angefordert}}"
 	}
 }
