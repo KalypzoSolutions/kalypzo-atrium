@@ -7,6 +7,7 @@
 //           --user <E-Mail> --pass <Passwort> (Standard: Demo-Admin)
 //           --tab <Name>   klickt nach dem Laden den Tab mit diesem Namen
 //           --click <Text> klickt danach einen Button mit diesem Namen (z. B. ein Menü öffnen)
+//           --dark         dunkles Farbschema simulieren
 //           --mobile       zusätzlich 390×844 (iPhone-Breite); --full  ganze Seite statt Ausschnitt
 //           --wait <ms>    Wartezeit vor dem Screenshot (Standard 500)
 //           --locale <tag> Browsersprache (Standard de-DE; en-US zeigt die englische Oberfläche, wenn die Systemsprache „automatisch“ ist)
@@ -26,6 +27,7 @@ const { values, positionals } = parseArgs({
 		tab: { type: 'string' },
 		click: { type: 'string' },
 		mobile: { type: 'boolean', default: false },
+		dark: { type: 'boolean', default: false },
 		full: { type: 'boolean', default: true },
 		wait: { type: 'string', default: '500' }
 	}
@@ -50,7 +52,8 @@ try {
 	for (const vp of viewports) {
 		const context = await browser.newContext({
 			viewport: { width: vp.width, height: vp.height },
-			locale: values.locale
+			locale: values.locale,
+			colorScheme: values.dark ? 'dark' : 'light'
 		});
 		const page = await context.newPage();
 		await page.goto(`${values.base}/login`);

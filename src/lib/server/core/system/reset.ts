@@ -232,7 +232,8 @@ const CORE_AREAS: CoreAreaDef[] = [
 		id: 'settings',
 		label: 'reset.area.settings.label',
 		description: 'reset.area.settings.description',
-		tables: [{ table: 'setting', where: () => settingsWhere() }]
+		// Marktplatz-Cache (Migration 0014) ist nur eine Kopie der öffentlichen Website und wird mit geleert
+		tables: [{ table: 'setting', where: () => settingsWhere() }, { table: 'marketplace_cache' }]
 	},
 	{
 		id: 'audit',

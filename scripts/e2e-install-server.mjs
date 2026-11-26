@@ -67,7 +67,9 @@ const supervisor = new Supervisor({
 		PORT: '4174',
 		HOST: '127.0.0.1',
 		TZ: 'UTC',
-		ATRIUM_MODULE_INSTALL: 'supervisor'
+		ATRIUM_MODULE_INSTALL: 'supervisor',
+		// Kein Netzaufruf zum Modul-Marktplatz der Website
+		ATRIUM_MARKETPLACE_OFFLINE: '1'
 	}
 });
 const stop = async () => {

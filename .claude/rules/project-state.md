@@ -1,6 +1,11 @@
 # Projektstand (zuletzt aktualisiert: 2026-11-25)
 
 ## Fertig
+- **Modul-Marktplatz und Sammelaktionen** (2026-11-25): Katalog mit Offline-Rückfall und Installationslinks; Auswahl zum Aktivieren,
+  Deaktivieren, Prüfen auf Updates und gemeinsamen Entfernen. Details: `architecture.md` → „Marktplatz und Sammelaktionen“.
+  Offen: echter Abruf von `atrium.kalypzo.de` ungeprüft; Screenshots nicht am Demo-Server erstellt und vor der letzten Änderung der
+  Überschriftenhierarchie aufgenommen. Das tatsächliche Entfernen mehrerer Module wurde nicht per E2E ausgeführt (nur der Dialog).
+  Der vollständige Vitest-Lauf hatte sieben Fehler in `module-boundaries.test.ts`, da in der Arbeitskopie echte Fachmodule fehlen.
 - **Core**: Auth (2FA), RBAC, Modulverwaltung, Einstellungen, REST + OpenAPI, API-Keys, Audit, Storage (S3), PDF, KI.
 - **Core-Erweiterungen**: Sidebar mit Gruppen (`group`/`groupIcon`, Administration einklappbar), `core.users.directory`,
   `core.crypto.forModule`, Modul-UI-Routen mit `:param`, Migrations-Runner mit Statement-Splitting, `DATABASE_POOL_MAX`.
@@ -430,7 +435,7 @@
   adapter-node bleibt, die Ausgabe läuft unter Bun (`bun ./build/index.js` – **nicht** `bun build`, das ist Buns Bundler). Supervisor:
   `process.execPath` = Bun, Modul-Pakete per `bun install --production --ignore-scripts --linker hoisted`, `ATRIUM_BUILD_HEAP` entfällt
   (kein V8-Heap). Image `oven/bun:<ver>-slim`, CI `oven-sh/setup-bun`, Coverage `istanbul` statt v8, Audit `bun audit`, Dependabot `bun`.
-  Werkzeuge nur über `bun run <werkzeug>` (Skripte `vitest`/`playwright`/`eslint`/`prettier`; `bunx` nimmt sonst ein installiertes Node).
+  Werkzeuge nur über `bun run <werkzeug>` (Skripte `playwright`/`eslint`/`prettier`, Tests `bun run test*`; `bunx` nimmt sonst ein installiertes Node).
   Bun-Eigenheiten mit Umweg: multipart-`File.type` kommt aus der Dateiendung (→ `takeUpload` erkennt unbekannte Typen am Inhalt),
   `new Response(formData)` ohne Content-Type und `new Request({ body: formData })` verliert Dateitypen (→ Testhelfer `encodeMultipart`/
   `multipartRequest`, auch über `$testing`). Offen: Module-Repo/Website nutzen weiter npm; Coverage-Schwellen und E2E `appearance-themes`

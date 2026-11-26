@@ -183,6 +183,18 @@ describe('adminTabs', () => {
 		expect(settingsTabs([])).toEqual([]);
 	});
 
+	it('Marktplatz ist für Modulansicht sichtbar', () => {
+		expect(ids(adminTabs('modules', ['core.modules.view']))).toEqual([
+			'modules.marketplace',
+			'modules.history'
+		]);
+		expect(ids(adminTabs('modules', ALL_PERMISSIONS))).toEqual([
+			'modules.marketplace',
+			'modules.install',
+			'modules.history'
+		]);
+	});
+
 	it('Reiter von Rollen und API', () => {
 		expect(ids(adminTabs('roles', ['core.roles.view']))).toEqual(['roles.permissions']);
 		expect(ids(adminTabs('api', ['core.api.view']))).toEqual(['api.docs']);

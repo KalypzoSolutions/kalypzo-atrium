@@ -537,6 +537,27 @@ Compose (`docker-compose.dokploy*.yml`): Volume `atrium-data:/data/atrium`, `mem
 Lokal: `bun scripts/demo-server.mjs` startet ebenfalls über den Supervisor (Daten in `.data/atrium`, PGlite bleibt
 im Elternprozess offen); `.data/stop` beendet App und Datenbank geordnet.
 
+### Marktplatz und Sammelaktionen
+
+Der Reiter Administration → Module → **Marktplatz** (`/admin/modules/marketplace`) zeigt den öffentlichen
+Modulkatalog mit Suche und Filtern. Installationslinks führen zum Installationsassistenten mit vorbelegter Quelle.
+Der Marktplatz ist **keine Sicherheitsprüfung**: Modulcode läuft mit den Rechten des Servers; Quelle und Vorschau
+müssen vor der Installation geprüft werden (siehe `security.md`).
+
+Der Server lädt standardmäßig `https://atrium.kalypzo.de/marketplace/v1/index.json`. Der Prozess-Cache gilt
+15 Minuten; die letzte gültige Fassung liegt zusätzlich in `marketplace_cache` (Migration 0014, nicht in Sicherungen).
+Der Job `core.marketplace-refresh` aktualisiert stündlich, außerdem ist eine manuelle Aktualisierung möglich.
+`core.modules.marketplaceUrl` legt die HTTPS-Adresse fest; eine leere Einstellung schaltet den Abruf ab.
+`ATRIUM_MARKETPLACE_URL` kann die Einstellung vorbelegen, solange sie noch nicht in der Datenbank steht;
+spätere Änderungen in der Oberfläche bleiben beim Neustart erhalten. Ist die Website nicht erreichbar, läuft Atrium
+voll weiter: Eine vorhandene Katalogfassung bleibt verfügbar, und die Installation per Link funktioniert weiterhin.
+
+Unter Administration → Module können bis zu 100 Module ausgewählt werden. Beim Aktivieren kommen Abhängigkeiten
+zuerst, beim Deaktivieren abhängige Module; fehlende harte Abhängigkeiten können beim Aktivieren mit aktiviert werden.
+Fehler werden je Modul gemeldet. Die Updateprüfung lässt sich auf die Auswahl beschränken. Mehrere deaktivierte
+Module können gemeinsam entfernt werden, sofern keine Module außerhalb der Auswahl sie benötigen. Dabei genügen
+eine erneute Anmeldung und im Supervisor-Betrieb ein gemeinsamer Neubau; Daten können behalten oder gelöscht werden.
+
 ### Frisches Deployment mit Modulen (Seed)
 
 Ein neuer Server holt seine Module beim ersten Start selbst, wenn eine **Seed-Liste** vorliegt: Datei

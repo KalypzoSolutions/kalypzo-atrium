@@ -7,11 +7,13 @@ import {
 	listModuleProblems,
 	listModules
 } from '$lib/server/core/modules/service';
+import { bulkModuleAction, BULK_MODULE_MAX_IDS } from '$lib/server/core/modules/bulk';
 import {
 	checkUpdates,
 	installDrift,
 	restoreFromDatabase,
-	uninstallModule
+	uninstallModule,
+	uninstallModules
 } from '$lib/server/core/modules/install/manage';
 import { installStatus, listInstalledSources } from '$lib/server/core/modules/install/service';
 import { isAdministrator } from '$lib/server/core/permissions/service';
@@ -71,6 +73,27 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 const idSchema = z.object({ id: z.string().min(1).max(40) });
+
+/** Mehrfaches Feld `id` (eine Zeile je ausgewähltem Modul) */
+const idsSchema = z.array(z.string().min(1).max(40)).min(1).max(BULK_MODULE_MAX_IDS);
+
+const bulkSchema = z.object({
+	action: z.enum(['enable', 'disable']),
+	ids: idsSchema,
+	withDependencies: z.boolean()
+});
+
+const bulkUninstallSchema = z.object({
+	ids: idsSchema,
+	deleteData: z.boolean(),
+	confirm: z.string().max(50),
+	password: z.string().max(500),
+	totp: z.string().max(20)
+});
+
+/** Checkbox bzw. verstecktes Feld: `on`/`true`/`1` */
+const isChecked = (v: FormDataEntryValue | null) => v === 'on' || v === 'true' || v === '1';
+const idsOf = (form: FormData) => form.getAll('id').map((v) => String(v));
 
 export const actions: Actions = {
 	enable: async ({ request, locals }) => {
@@ -135,6 +158,67 @@ export const actions: Actions = {
 			return { success: true, message: t('admin-modules.server.disabled') };
 		} catch (e) {
 			return toFail(e);
+		}
+	},
+	/** Sammelaktion: mehrere Module aktivieren/deaktivieren (Abhängigkeitsreihenfolge, Fehler je Modul) */
+	bulk: async ({ request, locals }) => {
+		requirePerm(locals, 'core.modules.manage');
+		const form = await request.formData();
+		const parsed = bulkSchema.safeParse({
+			action: form.get('action'),
+			ids: idsOf(form),
+			withDependencies: isChecked(form.get('withDependencies'))
+		});
+		if (!parsed.success) return invalid(parsed.error);
+		try {
+			const { results, addedDependencies } = await bulkModuleAction(locals.ctx, parsed.data);
+			const ok = results.filter((r) => r.ok && !r.skipped).length;
+			const skipped = results.filter((r) => r.skipped).length;
+			const failed = results.filter((r) => !r.ok).length;
+			return {
+				bulk: results,
+				addedDependencies,
+				success: failed === 0,
+				message: t('modules.bulk.summary', { ok, skipped, failed })
+			};
+		} catch (e) {
+			return failWithFields(e);
+		}
+	},
+	/** Nach Updates suchen, nur für die ausgewählten Module */
+	bulkCheckUpdates: async ({ request, locals }) => {
+		requirePerm(locals, 'core.modules.install');
+		const parsed = idsSchema.safeParse(idsOf(await request.formData()));
+		if (!parsed.success) return invalid(parsed.error);
+		try {
+			return { updates: await checkUpdates(locals.ctx, parsed.data) };
+		} catch (e) {
+			return failWithFields(e);
+		}
+	},
+	/** Mehrere Module entfernen (eine Re-Auth, ein gemeinsamer Neubau) */
+	bulkUninstall: async ({ request, locals }) => {
+		requirePerm(locals, 'core.modules.install');
+		const form = await request.formData();
+		const parsed = bulkUninstallSchema.safeParse({
+			ids: idsOf(form),
+			deleteData: isChecked(form.get('deleteData')),
+			confirm: String(form.get('confirm') ?? ''),
+			password: String(form.get('password') ?? ''),
+			totp: String(form.get('totp') ?? '')
+		});
+		if (!parsed.success) return invalid(parsed.error);
+		try {
+			const result = await uninstallModules(locals.ctx, parsed.data);
+			const count = result.ids.length;
+			return {
+				uninstalledMany: result,
+				message: result.planId
+					? t('modules.bulk.uninstallRequested', { count })
+					: t('modules.bulk.uninstallSummary', { count })
+			};
+		} catch (e) {
+			return failWithFields(e);
 		}
 	}
 };

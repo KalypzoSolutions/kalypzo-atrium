@@ -202,5 +202,23 @@
 		"allowedSourcesHint": "Je Zeile owner/repo oder owner/*. Leer = alle GitHub-Quellen und ZIP-Dateien; sonst keine ZIP-Dateien.",
 		"saving": "Speichert …",
 		"save": "Speichern"
+	},
+	"bulk": {
+		"selectAll": "Alle auswählen",
+		"toolbar": "Sammelaktionen",
+		"selected": "{count} ausgewählt",
+		"clear": "Auswahl aufheben",
+		"selectModule": "{name} auswählen",
+		"removeBlocked": "Zum Entfernen müssen alle ausgewählten Module inaktiv sein.",
+		"summary": "{ok} erfolgreich, {failed} fehlgeschlagen",
+		"errors": "Fehler anzeigen ({count})",
+		"dependenciesTitle": "Abhängigkeiten mitaktivieren?",
+		"dependenciesDescription": "Diese inaktiven Abhängigkeiten werden ebenfalls aktiviert: {list}.",
+		"disableTitle": "Module deaktivieren?",
+		"disableDescription": "Andere aktive Module sind betroffen: {list}. Die Deaktivierung kann fehlschlagen, solange diese aktiv sind.",
+		"removeTitle": "Mehrere Module entfernen",
+		"removeDescription": "Die Module werden vom Server entfernt. Ohne „Daten löschen“ bleiben ihre Daten erhalten.",
+		"removeRebuild": "Die Module werden entfernt; der Server wird neu gebaut und gestartet. Ohne „Daten löschen“ bleiben ihre Daten erhalten.",
+		"confirmWord": "Zur Bestätigung {word} eingeben"
 	}
 }
