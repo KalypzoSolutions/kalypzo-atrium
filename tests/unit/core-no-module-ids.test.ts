@@ -6,7 +6,7 @@
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 
 const ROOT = join(__dirname, '..', '..');

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi, setSystemTime } from 'bun:test';
 import {
 	addDays,
 	ageFromBirthDate,
@@ -13,6 +13,7 @@ import {
 afterEach(() => {
 	setTodayForTests(null);
 	vi.useRealTimers();
+	setSystemTime();
 });
 
 describe('todayBerlin (#32)', () => {
@@ -34,7 +35,7 @@ describe('todayBerlin (#32)', () => {
 	});
 	it('ohne Argument: Systemzeit bzw. zentraler Test-Override', () => {
 		vi.useFakeTimers();
-		vi.setSystemTime(new Date('2026-10-20T22:30:00Z'));
+		setSystemTime(new Date('2026-10-20T22:30:00Z'));
 		expect(todayBerlin()).toBe('2026-10-21');
 		setTodayForTests('2026-06-01');
 		expect(todayBerlin()).toBe('2026-06-01');
@@ -93,7 +94,7 @@ describe('ageFromBirthDate', () => {
 	});
 	it('Standard-Stichtag ist heute in Berlin', () => {
 		vi.useFakeTimers();
-		vi.setSystemTime(new Date('2026-06-14T22:30:00Z')); // 15.06. 00:30 MESZ
+		setSystemTime(new Date('2026-06-14T22:30:00Z')); // 15.06. 00:30 MESZ
 		expect(ageFromBirthDate('2013-06-15')).toBe(13);
 	});
 });

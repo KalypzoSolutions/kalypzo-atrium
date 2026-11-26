@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { useTestDatabase } from '../helpers/db';
 import { getDb } from '$lib/server/core/database/client';
 import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';

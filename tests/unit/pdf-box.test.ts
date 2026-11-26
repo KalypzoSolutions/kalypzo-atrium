@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { renderBlocks } from '$lib/server/core/pdf/templates';
 
 const PNG = 'data:image/png;base64,iVBORw0KGgo=';

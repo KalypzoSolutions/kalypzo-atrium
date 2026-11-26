@@ -1,7 +1,7 @@
 /**
  * Modul-Marktplatz: toleranter Parser des Index (Schema 1), Link-Prüfung, Größenlimit, Installationslink.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
 	githubUrl,
 	installLinkFor,

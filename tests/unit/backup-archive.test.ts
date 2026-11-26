@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -95,7 +95,7 @@ beforeAll(async () => {
 	dir = await mkdtemp(join(tmpdir(), 'ep-backup-zip-'));
 });
 afterAll(async () => {
-	await rm(dir, { recursive: true, force: true });
+	if (dir) await rm(dir, { recursive: true, force: true });
 });
 
 const saved = { ...BACKUP_LIMITS };

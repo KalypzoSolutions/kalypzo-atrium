@@ -1,4 +1,4 @@
-// Startpunkt im Container (Kalypzo Atrium, Phase 6): `node scripts/supervisor.mjs` statt `node build`.
+// Startpunkt im Container (Kalypzo Atrium, Phase 6): `bun scripts/supervisor.mjs` statt `bun ./build/index.js`.
 // Datenverzeichnis über ATRIUM_DATA_DIR (Volume, Standard ./.data/atrium), Port über PORT.
 // Beenden: SIGTERM/SIGINT → App geordnet beenden (IPC), dann Supervisor.
 import { dirname, join, resolve } from 'node:path';

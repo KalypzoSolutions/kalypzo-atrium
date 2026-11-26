@@ -30,14 +30,14 @@ Bereichsregeln (`ui-design.md`, `pdf-templates.md` …) laden per `paths:`-Front
 
 | Befehl | Zweck |
 |---|---|
-| `npm run check` | `svelte-kit sync` + `svelte-check` (0 Fehler Pflicht) |
-| `npx eslint .` / `npx prettier --check src tests docs` | Lint / Format (Tabs, Single Quotes, 100 Zeichen) |
-| `npm test` (`npx vitest run`) | Unit + Integration (PGlite, ohne Docker), Core + alle Module |
-| `npm run test:core` / `npm run check:core` | Core allein mit Fixture-Modulen (`tests/fixtures/modules`) – muss grün sein |
-| `npm run build` | Produktions-Build nach `build/` |
-| `npx playwright test` | E2E (baut selbst und startet eigene PGlite-Instanz) |
-| `node scripts/demo-server.mjs` | Demo-App auf http://localhost:4300 (`admin@demo.test` / `Demo-Admin-2026!`) |
-| `node scripts/screenshots.mjs …` | Screenshots für visuelle Prüfung (siehe `rules/workflow.md`) |
+| `bun run check` | `svelte-kit sync` + `svelte-check` (0 Fehler Pflicht) |
+| `bun run eslint .` / `bun run prettier --check src tests docs` | Lint / Format (Tabs, Single Quotes, 100 Zeichen) |
+| `bun run test` (`bun scripts/test.mjs`, `bun test --parallel`) | Unit + Integration (PGlite, ohne Docker); `test:modules` mit allen Modulen |
+| `bun run test:core` / `bun run check:core` | Core allein mit Fixture-Modulen (`tests/fixtures/modules`) – muss grün sein |
+| `bun run build` | Produktions-Build nach `build/` |
+| `bun run playwright test` | E2E (baut selbst und startet eigene PGlite-Instanz) |
+| `bun scripts/demo-server.mjs` | Demo-App auf http://localhost:4300 (`admin@demo.test` / `Demo-Admin-2026!`) |
+| `bun scripts/screenshots.mjs …` | Screenshots für visuelle Prüfung (siehe `rules/workflow.md`) |
 | `code-review-graph status` / `update` / `build` | Code-Graph (SQLite in `.code-review-graph/`, gitignored) anzeigen / inkrementell / komplett neu |
 
 ## Code-Graph (code-review-graph, MCP)

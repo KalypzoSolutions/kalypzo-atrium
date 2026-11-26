@@ -1,10 +1,10 @@
 /**
  * Icon-Bibliothek (`$lib/sdk/icons`): Daten passen zum installierten `@lucide/svelte` (sonst
- * `node scripts/generate-icon-data.mjs` ausführen), deutsche Begriffe/Vorschläge zeigen auf echte Icons, Suche.
+ * `bun scripts/generate-icon-data.mjs` ausführen), deutsche Begriffe/Vorschläge zeigen auf echte Icons, Suche.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
 	ICON_KEYWORDS_DE,
 	ICON_SUGGESTIONS,

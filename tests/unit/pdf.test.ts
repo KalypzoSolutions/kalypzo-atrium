@@ -1,21 +1,19 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'bun:test';
 import { ctxWith, settingsStore, systemCtx } from './_helpers';
 
 vi.mock('$lib/server/core/settings/service', () => ({
 	getSettings: async (keys: string[]) => Object.fromEntries(keys.map((k) => [k, settingsStore[k]])),
 	getSetting: async (k: string) => settingsStore[k]
 }));
-const upload = vi.hoisted(() =>
-	vi.fn(async (_ctx: unknown, input: { module: string; path: string }) => ({
-		id: 'f1',
-		module: input.module,
-		path: input.path,
-		name: 'x.pdf',
-		size: 3,
-		contentType: 'application/pdf',
-		createdAt: new Date().toISOString()
-	}))
-);
+const upload = vi.fn(async (_ctx: unknown, input: { module: string; path: string }) => ({
+	id: 'f1',
+	module: input.module,
+	path: input.path,
+	name: 'x.pdf',
+	size: 3,
+	contentType: 'application/pdf',
+	createdAt: new Date().toISOString()
+}));
 vi.mock('$lib/server/core/storage', () => ({
 	upload,
 	readFileByIdUnchecked: async () => null

@@ -4,7 +4,7 @@
  * Content-Type selbst. Geprüft wird der Helfer und, dass jeder Endpunkt ihn mit den richtigen
  * Optionen aufruft (abgewiesene Requests erreichen keinen Dienst, daher ohne Datenbank).
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { guard } from '../../src/routes/(internal)/admin/backup/http.server';
 import * as exportRoute from '../../src/routes/(internal)/admin/backup/export/+server';
 import * as downloadRoute from '../../src/routes/(internal)/admin/backup/export/[id]/+server';

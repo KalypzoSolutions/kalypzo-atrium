@@ -4,11 +4,20 @@
  * Geprüft per SSR-Render (`svelte/server`), ohne DOM.
  */
 import { render } from 'svelte/server';
-import { describe, expect, it } from 'vitest';
-import Fixture from '../fixtures/FormFieldFixture.svelte';
+import { describe, expect, it } from 'bun:test';
 import { fieldAria, mergeIds } from '../../src/lib/components/ui/field/context';
+import { loadSvelteComponent } from '../helpers/svelte-ssr';
 
-type Props = Parameters<typeof Fixture>[1];
+type Props = {
+	control: 'input' | 'textarea' | 'select' | 'money' | 'stepper' | 'two-inputs';
+	error?: string | null;
+	hint?: string;
+	required?: boolean;
+	ownDescribedby?: string;
+	ownInvalid?: boolean;
+};
+// SSR-Komponente über Bun.build + Svelte-Compiler (kein Vite unter bun test)
+const Fixture = await loadSvelteComponent<Props>('tests/fixtures/FormFieldFixture.svelte');
 
 function html(props: Props): string {
 	return render(Fixture, { props }).body;

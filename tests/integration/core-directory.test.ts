@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { useTestDatabase } from '../helpers/db';
 import { contextForUser, anonymousContext, systemContext } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser, setUserActive } from '$lib/server/core/auth/users';
@@ -72,7 +72,7 @@ describe('core.users.directory', () => {
 
 	it('löst explizite IDs auf, aber nur aktive Benutzer', async () => {
 		const res = await core.users.directory(admin, { ids: [ids.anna!, ids.inaktiv!] });
-		expect(res.map((r) => r.id)).toEqual([ids.anna]);
+		expect<unknown>(res.map((r) => r.id)).toEqual([ids.anna]);
 	});
 
 	it('maskiert Platzhalter der Suche und begrenzt die Trefferzahl', async () => {

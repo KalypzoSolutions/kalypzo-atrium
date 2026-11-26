@@ -1,6 +1,6 @@
 // Erzeugt `src/lib/sdk/icons/lucide-icons.json` aus dem installierten Paket `@lucide/svelte`:
 // alle Icons als kompakte SVG-Knotenliste (Name → [[tag, attrs], …]). Nach einem Update von
-// `@lucide/svelte` erneut ausführen: `node scripts/generate-icon-data.mjs`
+// `@lucide/svelte` erneut ausführen: `bun scripts/generate-icon-data.mjs`
 // (der Unit-Test `tests/unit/icon-data.test.ts` meldet eine veraltete Datei).
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

@@ -188,7 +188,7 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   (`stopJobRunner`), Pool schließen; `runVerifyAndExit` für `ATRIUM_VERIFY_ONLY=1`), `core/modules/install/supervisor-link.ts` (Staging, IPC
   `atrium:build`, `readSupervisorStatus`, `reconcileInstallEvents` in `initCore`: `requested` → `done`/`failed`, erst dann `module_install`).
   Panel fragt `/admin/modules/install/status` alle 2 s ab (Neustart = kurz offline).
-- Tests: `tests/unit/supervisor-lib.test.ts`; echter Neubau `npx playwright test -c playwright.install.config.ts` (`tests/e2e-install/`, Port 4174).
+- Tests: `tests/unit/supervisor-lib.test.ts`; echter Neubau `bun run playwright test -c playwright.install.config.ts` (`tests/e2e-install/`, Port 4174).
 
 ## Lebenszyklus der Module (Kalypzo Atrium Phase 7, 2026-11-01)
 - `core/modules/install/manage.ts`: `checkUpdates` (GitHub-Kopf vs. gespeicherter Commit), `uninstallModule` (nur deaktiviert + kein Modul braucht es;
@@ -225,7 +225,7 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   `%app.lang%`, `%app.name%`. Zod-Meldungen je Sprache (`zod-locale.ts`, Bereich `zod`).
 - **Regeln**: nie `t()` auf Modulebene (Sprache friert beim Import ein) → Schlüssel speichern, beim Gebrauch übersetzen (Getter/Funktion);
   Zod-Meldungen `{ error: () => t(…) }`; Mehrzahl über `plural`; kein `{@html t(…)}`. Wächter `tests/unit/i18n-guard.test.ts` (Scanner
-  `i18n-scan.ts`, Ausnahmen mit Grund in `i18n-allowlist.ts`; Bereich prüfen: `I18N_GUARD_PATHS=src/routes/login npx vitest run …`) und
+  `i18n-scan.ts`, Ausnahmen mit Grund in `i18n-allowlist.ts`; Bereich prüfen: `I18N_GUARD_PATHS=src/routes/login bun scripts/test.mjs ./tests/unit/i18n-guard.test.ts`) und
   `i18n-messages.test.ts` (de = en: Dateien, Schlüssel, Platzhalter; jeder `t('…')`-Schlüssel existiert).
 - Manifest-Texte `name`, `navigation[].label`, `permissionDescriptions` dürfen `LocalizedText` sein (`{ de, en? }`); Core-Rechte, Einstellungen,
   Verwaltungs-Registry und Endpunkt-Texte (`endpointText`) übersetzen beim Lesen. Bestätigungswörter: übersetzt angezeigt, deutsche Wörter gelten immer.

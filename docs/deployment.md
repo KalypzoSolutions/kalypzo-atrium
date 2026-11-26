@@ -13,8 +13,8 @@ App-Port nur auf `127.0.0.1`, Speicher-/CPU-/Prozessgrenzen und Log-Rotation je 
 
 ### Image-Versionen (Issue #74)
 
-Alle Images sind mit **fester Version und Digest** gepinnt (`name:tag@sha256:…`): Node `24.22.0-bookworm-slim` (App und Website, gleiche
-Basis), `postgres:17.11-alpine3.24` (auch Basis von `deploy/backup/Dockerfile`, damit `pg_dump` zur Server-Version passt),
+Alle Images sind mit **fester Version und Digest** gepinnt (`name:tag@sha256:…`): App `oven/bun:1.4.4-slim` (Debian, Version = `.bun-version`; die Website im eigenen
+Repo nutzt weiter Node), `postgres:17.11-alpine3.24` (auch Basis von `deploy/backup/Dockerfile`, damit `pg_dump` zur Server-Version passt),
 `nginx:1.30.6-alpine3.24` (stable), `bitnamilegacy/minio:2025.5.24-debian-12-r5`, `bitnamilegacy/minio-client:2025.7.21-debian-12-r3`.
 Updates: Tag **und** Digest gemeinsam anheben (Dependabot `docker` für `/`, `/website`; für die Compose-Dateien und
 `/deploy/backup` ist das Ökosystem `docker-compose` bzw. ein weiterer `docker`-Eintrag nötig). Beim Postgres-Update `db` und
@@ -202,11 +202,11 @@ offizielles Layout `server /data`, Healthcheck ohne `curl`) – Wechsel braucht 
 
 ## Chromium
 
-Der PDF-Service startet Chromium mit `--no-sandbox` (im Container ohne User-Namespaces üblich). Seiten werden ohne JavaScript gerendert, externe Requests blockiert. Das Image enthält Chromium (~400 MB). Für lokale Läufe: `npx playwright install chromium`.
+Der PDF-Service startet Chromium mit `--no-sandbox` (im Container ohne User-Namespaces üblich). Seiten werden ohne JavaScript gerendert, externe Requests blockiert. Das Image enthält Chromium (~400 MB). Für lokale Läufe: `bun run playwright install chromium`.
 
 ## Bildverarbeitung (sharp)
 
-`core.images` nutzt die native Bibliothek `sharp` (libvips). Sie kommt als **vorgebaute** Optionalpakete `@img/sharp-<plattform>` und `@img/sharp-libvips-<plattform>` und braucht deshalb kein Install-Skript: `npm ci --ignore-scripts` im `bookworm-slim`-Image funktioniert ohne Compiler oder Systempakete. Voraussetzung: `package-lock.json` enthält die Pakete für `linux-x64` (`@img/sharp-linux-x64`, `@img/sharp-libvips-linux-x64`) – bei einem Lockfile, das nur unter Windows/macOS erzeugt wurde, prüfen (`grep sharp-linux-x64 package-lock.json`); für ARM-Server entsprechend `linux-arm64`. `sharp` steht in `dependencies` (wird mit `--omit=dev` installiert). HEIC/HEIF unterstützt der Prebuild nicht.
+`core.images` nutzt die native Bibliothek `sharp` (libvips). Sie kommt als **vorgebaute** Optionalpakete `@img/sharp-<plattform>` und `@img/sharp-libvips-<plattform>` und braucht deshalb kein Install-Skript: `bun install --frozen-lockfile --ignore-scripts` im Debian-slim-Image funktioniert ohne Compiler oder Systempakete. Voraussetzung: `bun.lock` enthält die Pakete für `linux-x64` (`@img/sharp-linux-x64`, `@img/sharp-libvips-linux-x64`) – prüfen mit `grep sharp-linux-x64 bun.lock` (die CI tut das); für ARM-Server entsprechend `linux-arm64`. `sharp` steht in `dependencies` (wird auch mit `--production` installiert). HEIC/HEIF unterstützt der Prebuild nicht.
 
 Härtung (ab sharp 0.35.5, Issue #6): `src/lib/server/core/images/index.ts` sperrt beim Laden **alle** libvips-Loader
 (`sharp.block({ operation: ['VipsForeignLoad'] })`) und gibt nur JPEG, PNG, WebP, GIF (`nsgif`) und HEIF (für AVIF) wieder frei
@@ -214,7 +214,7 @@ Härtung (ab sharp 0.35.5, Issue #6): `src/lib/server/core/images/index.ts` sper
 prozessweit nicht erreichbar. Zusätzlich prüft `sniffImageFormat` die Datei-Signatur (JPEG `FF D8 FF`, PNG, `GIF87a/89a`,
 `RIFF…WEBP`, AVIF = `ftyp` mit Marke `avif`/`avis` ohne HEVC-Marke) **vor** dem ersten sharp-Aufruf; das von libvips erkannte
 Format muss dazu passen. Neue Eingabeformate brauchen beide Stellen. Nach einem sharp-Update im Docker-Image prüfen, dass
-das Linux-Binary lädt: `docker compose run --rm app node -e "console.log(require('sharp').versions)"`.
+das Linux-Binary lädt: `docker compose run --rm app bun -e "console.log(require('sharp').versions)"`.
 
 ## Ressourcen und Logs (Issue #39)
 
@@ -226,7 +226,7 @@ Dienst nicht) – die Standardwerte sind deshalb ≤ 1,0.
 
 | Dienst | `mem_limit` (Variable) | `cpus` | `pids_limit` | Begründung |
 |---|---|---|---|---|
-| `app` | 1536m (`APP_MEM_LIMIT`) | 1.0 (`APP_CPUS`) | 1024 | Node + Chromium (PDF, 300–500 MB je Lauf) + sharp (Bilder bis 50 MP); tmpfs `/tmp` (256 MB) zählt mit; Chromium braucht viele Threads |
+| `app` | 1536m (`APP_MEM_LIMIT`) | 1.0 (`APP_CPUS`) | 1024 | Bun + Chromium (PDF, 300–500 MB je Lauf) + sharp (Bilder bis 50 MP); tmpfs `/tmp` (256 MB) zählt mit; Chromium braucht viele Threads |
 | `db` | 1g (`DB_MEM_LIMIT`) | 1.0 (`DB_CPUS`) | 256 | PostgreSQL mit Standard-`shared_buffers` (128 MB), ≤ 10 Verbindungen; `shm_size 256m` |
 | `storage` (Dokploy) | 512m (`STORAGE_MEM_LIMIT`) | 0.5 (`STORAGE_CPUS`) | 256 | MinIO Single-Node |
 | `website` | 256m (`WEBSITE_MEM_LIMIT`) | 0.5 (`WEBSITE_CPUS`) | 128 | SvelteKit-SSR mit 60-s-Cache |
@@ -241,10 +241,10 @@ Empfehlung **4 GB RAM / 2 vCPU** (Standardwerte): bei größeren Servern `APP_CP
 
 ## Upload-Grenzen (Issue #25)
 
-Kette: **Proxy ≥ Node (`BODY_SIZE_LIMIT`) ≥ fachliche Grenze**. Node (`BODY_SIZE_LIMIT=110M` im `Dockerfile`) gilt global; nginx setzt
+Kette: **Proxy ≥ App (`BODY_SIZE_LIMIT`) ≥ fachliche Grenze**. Die App (adapter-node unter Bun, `BODY_SIZE_LIMIT=110M` im `Dockerfile`) gilt global; nginx setzt
 je Pfad engere Grenzen, damit große Bodies nur dort ankommen, wo sie gebraucht werden.
 
-| Pfad / Fall | nginx `client_max_body_size` | Node | fachliche Grenze (Code) |
+| Pfad / Fall | nginx `client_max_body_size` | App | fachliche Grenze (Code) |
 |---|---|---|---|
 | Seiten und Form-Actions (`/`, z. B. Logo, Profilbild) | 10 MB | 110 MB | Logo/Profilbild 2 MB |
 | `/login`, `/forgot-password`, `/reset-password`, `/api/auth/*` | 64 KB (+ `limit_req`) | 110 MB | – |
@@ -253,12 +253,12 @@ je Pfad engere Grenzen, damit große Bodies nur dort ankommen, wo sie gebraucht 
 | Sicherung hochladen `/admin/backup/import/upload/*` | 9 MB, ungepuffert | 110 MB | 8 MB je Stück (`UPLOAD_CHUNK_BYTES`), Datei ≤ `BACKUP_MAX_BYTES` (4 GB) |
 | Sicherung herunterladen `/admin/backup/export/*` | Antwort ungepuffert, 30 min | – | bis 4 GB |
 
-Dokploy/Traefik setzt keine Body-Grenze: dort gilt nur Node (110 MB) und die fachliche Grenze.
+Dokploy/Traefik setzt keine Body-Grenze: dort gilt nur die App (110 MB) und die fachliche Grenze.
 
 **Bekannte Widersprüche (offen, App-Code):** Aktions-Import erlaubt 200 MB, der Export packt bis 250 MB Belege – über 110 MB scheitert
 der Upload am Node-Limit (Fehler von adapter-node statt deutscher JSON-Meldung); `core.storage.maxFileSizeMb` lässt bis 5000 MB zu,
 wirksam sind höchstens 110 MB. Upload-Handler puffern den Body vor der Größenprüfung, `readBody` liest chunked JSON bis zum
-Node-Limit. Lösung (andere Teams): Aktions-Import/-Export auf ≤ 100 MB abstimmen oder gestückelt hochladen, streamendes `readBody`,
+App-Limit. Lösung (andere Teams): Aktions-Import/-Export auf ≤ 100 MB abstimmen oder gestückelt hochladen, streamendes `readBody`,
 gemeinsamer Upload-Helfer mit `Content-Length`-Pflicht.
 
 ## Healthchecks
@@ -366,19 +366,19 @@ Vorher Backup erstellen. Modulmigrationen aktiver Module werden beim Start ebenf
 ## CI (GitHub Actions)
 
 `.github/workflows/ci.yml` läuft bei jedem Push auf `main`/`staging` und bei jedem Pull Request auf Linux (`ubuntu-latest`,
-Node aus `.nvmrc` = Version des `Dockerfile`, `TZ=UTC` wie im Container):
+Bun aus `.bun-version` = Version des `Dockerfile`, `TZ=UTC` wie im Container):
 
 | Job | Schritte |
 |---|---|
-| `verify` | `npm ci` → Lockfile enthält `@img/sharp-linux-x64` → `npx prettier --check src tests docs` → `npm run check` → `npx eslint .` → `npx vitest run --coverage` (Artefakt `coverage`, lcov) → `npm run build` → `npm audit --omit=dev --audit-level=high` |
-| `website` | in `website/`: `npm ci` → `svelte-check` (bricht ab, wenn es **mehr** als die 5 bekannten Altfehler werden) → `npm run build` → `npm audit --omit=dev --audit-level=high` |
-| `e2e` | `needs: verify`, nur **nightly** (03:15 UTC) und per *Run workflow* (`workflow_dispatch`): `npx playwright install --with-deps chromium` → `npx playwright test` (`CI=true`, eigener Server), Artefakt `playwright-report` (Bericht + `test-results/`) |
+| `verify` | `bun install --frozen-lockfile` → Lockfile enthält `@img/sharp-linux-x64` → `bun run prettier --check src tests docs` → `bun run check` → `bun run eslint .` → `bun run test:coverage` (Artefakt `coverage`, lcov) → `bun run build` → `bun audit --prod --audit-level=high` |
+| `postgres` | `bun install --frozen-lockfile` → Smoke-Suite (`bun scripts/test.mjs …`) gegen PostgreSQL 17 |
+| `e2e` | `needs: verify`, nur **nightly** (03:15 UTC) und per *Run workflow* (`workflow_dispatch`): `bun run playwright install --with-deps chromium` → `bun run playwright test` (`CI=true`, eigener Server), Artefakt `playwright-report` (Bericht + `test-results/`) |
 
-- Coverage: `@vitest/coverage-v8`, Block `test.coverage` in `vite.config.ts` (Reporter `text-summary` + `lcov`, Bereich `src/lib/**/*.ts`).
-  Lokal: `npx vitest run --coverage` → `coverage/lcov-report/index.html`. Schwellen siehe `vite.config.ts` (schrittweise anheben).
-- Updates: `.github/dependabot.yml` (npm Root und `website/`, Docker Root und `website/`, GitHub Actions; wöchentlich, Ziel `staging`,
+- Coverage: `bun test --coverage` (Einstellungen in `bunfig.toml` → `[test]`, Reporter `text` + `lcov`). Bun misst nur von Tests geladene Dateien; die Gesamtschwellen (Zeilen/Funktionen, gewichtet aus `coverage/lcov.info`) prüft `scripts/test.mjs`.
+  Lokal: `bun run test:coverage` → `coverage/lcov.info`. Schwellen siehe `THRESHOLDS` in `scripts/test.mjs` (schrittweise anheben).
+- Updates: `.github/dependabot.yml` (Bun Root, npm `website/`, Docker Root und `website/`, GitHub Actions; wöchentlich, Ziel `staging`,
   Minor/Patch gebündelt).
-- `npm audit` meldet derzeit nur Low/Moderate (Root: `cookie` < 0.7 über `@sveltejs/kit` 2 – erst mit Kit 3 behoben; `esbuild` über
+- `bun audit` (früher `npm audit`) meldete zuletzt nur Low/Moderate (Root: `cookie` < 0.7 über `@sveltejs/kit` 2 – erst mit Kit 3 behoben; `esbuild` über
   `drizzle-kit`, nur Entwicklung). Website: `--omit=dev` ohne Befund, mit Dev-Abhängigkeiten 3 × Low (`cookie`).
 - **Manuell im GitHub-Repository einzurichten** (nicht per Datei möglich): Branch-Protection für `main` und `staging` mit Pflicht-Checks
   `verify` und `website` („Require status checks to pass“, „Require a pull request before merging“), *Dependabot alerts* und
@@ -458,8 +458,8 @@ Ohne Docker (PM2, `website/ecosystem.config.cjs`):
 
 ```bash
 cd website
-npm ci
-npm run build && WEBSITE_API_KEY=epk_… WEBSITE_API_URL=http://127.0.0.1:3000 PORT=3001 node build
+bun install --frozen-lockfile
+bun run build && WEBSITE_API_KEY=epk_… WEBSITE_API_URL=http://127.0.0.1:3000 PORT=3001 bun ./build/index.js
 ```
 
 ## App auf dem Handy und Push-Benachrichtigungen
@@ -504,15 +504,15 @@ ordnet jede Mail dem passenden Postfach zu (Oberfläche: Nachrichten → Postein
 - Benachrichtigungen gehen an die Konto-Adresse; liegt diese selbst auf der Catch-all-Domain, wird die Benachrichtigung beim Abruf
   übersprungen (Kopfzeile `X-EP-Intern`) – keine Schleife, die Person sieht die Mail im Posteingang.
 - Nur **eine** Instanz darf abrufen (Sperre je Prozess; mehrere Instanzen würden über die Job-Sperre trotzdem nur einmal je Minute laufen).
-- Demo: `docker compose -f docker-compose.demo.yml up -d` (GreenMail auf `127.0.0.1:1143`), dann `node scripts/seed-demo-inbox.mjs`.
+- Demo: `docker compose -f docker-compose.demo.yml up -d` (GreenMail auf `127.0.0.1:1143`), dann `bun scripts/seed-demo-inbox.mjs`.
 
 ## Module installieren: Supervisor und Neubau im Container (Kalypzo Atrium)
 
-Das Image startet `node scripts/supervisor.mjs` statt `node build`. Der Supervisor startet die App als Kindprozess
+Das Image startet `bun scripts/supervisor.mjs` statt `bun ./build/index.js`. Der Supervisor startet die App als Kindprozess
 und baut sie neu, wenn unter Administration → Module → Installieren Module eingespielt werden:
 
 1. Module der laufenden Generation kopieren, Auftrag einspielen (Inhalt muss zum Inhaltshash der Vorschau passen),
-   eigene npm-Pakete der Module installieren (`--ignore-scripts`),
+   eigene npm-Pakete der Module mit `bun install --production --ignore-scripts` installieren,
 2. `svelte-kit sync` + `vite build` in eine neue **Generation** (`/data/atrium/gen/<id>`),
 3. **Probelauf** (`ATRIUM_VERIFY_ONLY=1`: Module laden und prüfen, ohne Datenbank),
 4. Tausch und Neustart (App wird per IPC geordnet beendet), **Health-Prüfung** (120 s) – sonst Rückkehr zur vorigen Generation.
@@ -525,8 +525,7 @@ Kommt ein neues Image mit anderer Core-Version, baut der Supervisor die Module d
 |---|---|---|
 | `ATRIUM_MODULE_INSTALL` | `supervisor` | `off` = nur Vorschau, `copy` = Entwicklung (`vite dev`), `supervisor` = Neubau |
 | `ATRIUM_DATA_DIR` | `/data/atrium` | Volume: `gen/`, `state.json`, `status.json`, `staging/`, `results/`, `logs/`, Caches |
-| `ATRIUM_BUILD_HEAP` | `3072` | Heap des Neubaus in MB |
-| `ATRIUM_VITE_CACHE`, `npm_config_cache`, `TMPDIR` | unter `/data/atrium` | Schreibbare Orte, das Dateisystem bleibt `read_only` |
+| `ATRIUM_VITE_CACHE`, `BUN_INSTALL_CACHE_DIR`, `TMPDIR` | unter `/data/atrium` | Schreibbare Orte, das Dateisystem bleibt `read_only` |
 
 Compose (`docker-compose.dokploy*.yml`): Volume `atrium-data:/data/atrium`, `mem_limit` Standard **4g** (Neubau),
 `stop_grace_period` 45 s. Ausgehend nötig: `api.github.com`, `codeload.github.com` (Quellen) und ggf. `registry.npmjs.org`
@@ -535,7 +534,7 @@ Compose (`docker-compose.dokploy*.yml`): Volume `atrium-data:/data/atrium`, `mem
 **Messwerte:** lokal (Windows, 8 Kerne) dauert ein Neubau mit allen 14 Fachmodulen etwa 40–60 s; im Container mit
 `--cpus 1 --memory 3g` noch nicht gemessen (Phase 0 offen).
 
-Lokal: `node scripts/demo-server.mjs` startet ebenfalls über den Supervisor (Daten in `.data/atrium`, PGlite bleibt
+Lokal: `bun scripts/demo-server.mjs` startet ebenfalls über den Supervisor (Daten in `.data/atrium`, PGlite bleibt
 im Elternprozess offen); `.data/stop` beendet App und Datenbank geordnet.
 
 ### Marktplatz und Sammelaktionen

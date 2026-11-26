@@ -2,12 +2,12 @@
 
 ## Definition „fertig“
 Vor jeder Fertigmeldung, in dieser Reihenfolge, alles grün:
-1. `npx prettier --write <geänderte Dateien>`
-2. `npm run check` → 0 Fehler, 0 Warnungen
-3. `npx eslint .`
-4. `npx vitest run` (Unit + Integration)
-5. `npm run build`
-6. bei UI/Core-Änderungen: `npx playwright test` **und** Screenshot-Prüfung (siehe `workflow.md`)
+1. `bun run prettier --write <geänderte Dateien>`
+2. `bun run check` → 0 Fehler, 0 Warnungen
+3. `bun run eslint .`
+4. `bun run test` (Unit + Integration, `bun test`)
+5. `bun run build`
+6. bei UI/Core-Änderungen: `bun run playwright test` **und** Screenshot-Prüfung (siehe `workflow.md`)
 Ehrlich berichten: was **nicht** geprüft wurde (z. B. Upload mit echtem S3, Mobilansicht) ausdrücklich nennen.
 
 ## Wo liegt was (seit 2026-11-01, Kalypzo Atrium Phase 4)
@@ -16,9 +16,9 @@ Ehrlich berichten: was **nicht** geprüft wurde (z. B. Upload mit echtem S3, Mob
   E2E `tests/e2e/fixture-module.spec.ts`. Core-Tests importieren nie `$modules/<fachmodul>` (Fixtures relativ importieren).
 - **Modultests** `modules/<id>/tests/{unit,integration}`, E2E `modules/<id>/e2e`; **modulübergreifende** (Backup mit echten Daten, Suche,
   Datenschutz, Freigaben mit `members`, Endpunkt-/Reset-/Doku-Abgleich aller Module) in `modules/_integration/{tests,e2e,helpers}`.
-  Sie nutzen `$testing` (Vitest) bzw. `$testing/e2e` (Playwright) statt `$lib/server/*`/`tests/helpers/*`.
-- Läufe: `npx vitest run` = Core + alle Module; `npm run test:core` / `npm run check:core` = nur Core mit Fixtures
-  (`ATRIUM_MODULES_DIR=tests/fixtures/modules`, muss grün sein); `npm run test:modules`. Playwright-Projekte `core`, `modules`, `integration`
+  Sie nutzen `$testing` (`bun test`) bzw. `$testing/e2e` (Playwright) statt `$lib/server/*`/`tests/helpers/*`.
+- Läufe: `bun run test:modules` = Core + alle Module (`bun scripts/test.mjs`); `bun run test:core` / `bun run check:core` = nur Core mit Fixtures
+  (`ATRIUM_MODULES_DIR=tests/fixtures/modules`, muss grün sein); `bun run test:modules`. Playwright-Projekte `core`, `modules`, `integration`
   (in dieser Reihenfolge; einige Specs sind reihenfolgeabhängig: Rate-Limits/Daten des gemeinsamen Servers).
 - `tests/unit/*.test.ts` – reine Funktionen (Berechnung, Parser, Schemas, Routen-Matcher).
 - `tests/integration/*.test.ts` – Core/Module gegen PGlite im Speicher (kein Docker), z. B. `core.test.ts`, `members.test.ts`,
@@ -28,6 +28,20 @@ Ehrlich berichten: was **nicht** geprüft wurde (z. B. Upload mit echtem S3, Mob
 - Weitere Helfer: `fake-storage.ts` (`installFakeStorage(admin)`: Fake-S3 für Integrationstests), `s3-mock.ts` (S3-Ersatz für E2E),
   `settle.ts` (wartet auf „fire and forget“-Mails), `migrations.ts` (Upgrade-Tests für Modul-Migrationen), `registration-optin.ts`,
   `backup-flow.ts`/`backup-seed.ts` (Datensicherung).
+
+## Besonderheiten von `bun test` (seit 2026-11-26, vorher Vitest)
+- Start immer über `bun run test*` bzw. `bun scripts/test.mjs [pfade]` (macht `svelte-kit sync` für die Aliase, `--parallel`, `--timeout=30000`).
+  Preload `tests/bun/preload.ts`: virtuelle Module + `$app/*` per `build.module`, `fs-guard.ts`, `hook-timeout.ts` (Hooks 60 s).
+- **Nie** `rmSync`/`rm` auf eine Variable, die leer sein kann: unter Bun löscht `rmSync('', { recursive: true })` das Arbeitsverzeichnis
+  (2026-11-26 passiert, Projektordner geleert). Aufräumen nur `if (dir) …`; das Netz `fs-guard.ts` wirft zusätzlich.
+- `vi.mock` wirkt auch auf schon geladene Module, aber **Teil-Mocks müssen das Original ausbreiten** (Bun prüft benannte Importe beim
+  Verlinken): `const real = { ...(await import('x')) }` vor allen Mocks, dann `vi.mock('x', () => ({ ...real, f: … }))`. Kein `importOriginal`,
+  kein `vi.hoisted` (Wert direkt anlegen), Zeit über `setSystemTime` aus `bun:test`, Warten über `waitFor` (`$testing`).
+- `expect(x).toEqual(y)` ist streng typisiert (`y` muss zum Typ von `x` passen) → bei Teilobjekten `expect<unknown>(x)`. Drizzle-Builder sind nur
+  „thenable“: `await expect(q.execute()).rejects…`. In-Prozess-Requests mit Dateien über `multipartRequest`/`encodeMultipart` (`$testing`).
+- Svelte rendern: `loadSvelteComponent('pfad.svelte')` (`tests/helpers/svelte-ssr.ts`, `Bun.build` + Svelte-Compiler, SSR).
+- Windows: Laufzeit-Plugins (`onLoad`/`onResolve`) greifen nicht auf jedem Laufwerk (Z:) → nur `build.module` nutzen. Nach dem Docker-Start reserviert
+  Hyper-V oft Ports um 54300 → `E2E_PGLITE_PORT=58329` bzw. `E2E_INSTALL_PGLITE_PORT=58331`.
 
 ## Test-Schnittstelle `$testing` (seit 2026-11-01)
 Modultests sollen Core-Interna nur über `$testing` (`tests/sdk/index.ts`, Alias in `svelte.config.js`) erreichen – nie `$lib/server/*` oder
@@ -81,7 +95,7 @@ Backup-Route-Guards in `tests/unit/admin-backup-http.test.ts`; Core-REST-Lücken
 
 ## Keine festen Wartezeiten (#75)
 - „Fire and forget“-Mails: `await settleMails()` (`tests/helpers/settle.ts`, nutzt `mailIdleForTests` aus `core/mail.ts`) statt `setTimeout`.
-- Sonstiges Asynchrones: `vi.waitFor(() => expect(…), { timeout: 2000 })` bzw. Deferred-Promises; in E2E `expect.poll`/`toPass`/Zustände.
+- Sonstiges Asynchrones: `waitFor(() => expect(…), { timeout: 2000 })` (`tests/helpers/wait.ts`, auch `$testing`) bzw. Deferred-Promises; in E2E `expect.poll`/`toPass`/Zustände.
 - Erlaubt nur mit Begründung im Kommentar: Beobachtungsfenster für Negativ-Nachweise ohne Ereignis (E2E `actions-list.spec.ts`
   Effekt-Endlosschleife) und gewollte Verzögerung zum Nachstellen eines Wettlaufs (`treasury-sync-readonly.test.ts`).
 - Offen: `core-jobs-resilience.test.ts` (Heartbeat, 80 ms) – Team Jobs.
@@ -93,9 +107,9 @@ Backup-Route-Guards in `tests/unit/admin-backup-http.test.ts`; Core-REST-Lücken
 Heute durchgängig ersetzt (`fake-storage.ts`, `s3-mock.ts`, `setMailTransportForTests`, `setPdfRendererForTests`). Vorschlag für einen
 Nightly-Lauf mit echten Diensten (Docker, Ports ≠ Demo):
 - Dienste wie `docker-compose.demo.yml`, aber eigene Ports: MinIO (`bitnamilegacy/minio`, :59100), Mailpit (`axllent/mailpit`, SMTP :51025,
-  API :58025), Chromium über `npx playwright install chromium`; per `services:` im CI-Job oder `testcontainers` (npm, startet je Lauf
+  API :58025), Chromium über `bun run playwright install chromium`; per `services:` im CI-Job oder `testcontainers` (npm, startet je Lauf
   Wegwerf-Container und liefert Host/Port).
-- `tests/external/*.test.ts` + `npm run test:external` (eigene Vitest-Konfiguration, nicht im Standardlauf): Storage-Einstellungen auf
+- `tests/external/*.test.ts` + `bun run test:external` (eigener Lauf, nicht im Standardlauf): Storage-Einstellungen auf
   MinIO setzen → Upload/Download/Signed URL/Löschen; MinIO stoppen → kontrolliert **503**; `setSmtp…` auf Mailpit → eine Mail senden und
   über die Mailpit-API (`GET /api/v1/messages`) prüfen, falsches Passwort → Fehler gezählt; ein Briefvorlagen-PDF mit echtem Chromium
   rendern (Seitenzahl, Schrift Carlito eingebettet).

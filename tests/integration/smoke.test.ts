@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';
 
@@ -9,6 +9,7 @@ describe('smoke', () => {
 	it('migrations laufen und audit_log ist unveränderlich', async () => {
 		const db = getDb();
 		await db.insert(schema.auditLog).values({ id: 'a1', action: 'x.y.z', actorType: 'system' });
-		await expect(db.update(schema.auditLog).set({ action: 'changed' })).rejects.toThrow();
+		// `.execute()`: Drizzle-Builder sind nur „thenable“, `expect().rejects` braucht ein echtes Promise
+		await expect(db.update(schema.auditLog).set({ action: 'changed' }).execute()).rejects.toThrow();
 	});
 });

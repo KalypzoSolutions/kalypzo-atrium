@@ -3,7 +3,7 @@
  * Rechte, Quelle lesen, Vorschau mit Abhängigkeiten (gleiches Repository und `source`-Link), erneute Anmeldung,
  * Modus `off`/`copy`, veränderte angewendete Migration, erlaubte Quellen, Verlauf.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -93,7 +93,8 @@ afterAll(async () => {
 	setGithubFetchForTests(null);
 	delete process.env.ATRIUM_MODULE_INSTALL;
 	resetEnvForTests();
-	rmSync(target, { recursive: true, force: true });
+	// nur mit gesetztem Temp-Ordner: rmSync("") löscht unter Bun das Arbeitsverzeichnis
+	if (target) rmSync(target, { recursive: true, force: true });
 	await close();
 });
 

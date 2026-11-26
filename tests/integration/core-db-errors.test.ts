@@ -2,7 +2,7 @@
  * #55 / #56: Unique-Verletzungen hinter der Drizzle-Hülle → 409, Fehler-Logs und `job_run`
  * ohne SQL-Parameterwerte.
  */
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'bun:test';
 import { eq, sql } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';

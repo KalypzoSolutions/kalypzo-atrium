@@ -576,7 +576,7 @@ Neue Audit-Aktionen folgen dem Schema der Rechte: `modul.ressource.aktion`, mehr
 ## 7. Tests
 
 ```ts
-import { beforeAll, it, expect } from 'vitest';
+import { beforeAll, it, expect } from 'bun:test';
 import { useTestDatabase } from '../helpers/db';          // PGlite + Core-Migrationen
 import { registerModule } from '$lib/server/core/modules/registry';
 import { enableModule, syncModules } from '$lib/server/core/modules/service';
@@ -588,12 +588,12 @@ beforeAll(async () => {
 });
 ```
 
-Vorlage: `tests/integration/core.test.ts` (Modulaktivierung, Abhängigkeiten, API-Zugriff mit API-Keys). `tests/setup.ts` setzt die nötigen Umgebungsvariablen.
+Vorlage: `tests/integration/core.test.ts` (Modulaktivierung, Abhängigkeiten, API-Zugriff mit API-Keys). Die nötigen Umgebungsvariablen setzt der Preload `tests/bun/preload.ts` (`bunfig.toml` → `[test]`).
 
 ## Checkliste
 
 - [ ] Manifest valide, Berechtigungen mit Modulpräfix
-- [ ] Nur `$lib/sdk/*`-Importe (`npm run lint`)
+- [ ] Nur `$lib/sdk/*`-Importe (`bun run lint`)
 - [ ] Migrationen idempotent im Modulschema
 - [ ] Jede Operation mit `ctx` und `core.permissions.require`
 - [ ] Tests für Rechte und Modulstatus

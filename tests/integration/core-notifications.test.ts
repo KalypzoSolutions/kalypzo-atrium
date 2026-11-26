@@ -4,7 +4,7 @@
  * Tageszusammenfassung, Push-Geräte (Allowlist, 404/410 entfernt, fremdes Gerät 404), REST nur per Session,
  * Übernahme alter Einstellungen, Konto-Löschung, Audit ohne Endpoints.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getAuth } from '$lib/server/core/auth';

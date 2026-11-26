@@ -3,7 +3,7 @@
  * bleibt sie als „stale“ erhalten, ohne Fassung „unreachable“ – nie ein Wurf. Dazu leere URL, ETag/304, Schema 2,
  * Weiterleitungen, gemeinsamer Abruf und der Core-Job.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { eq, sql } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';

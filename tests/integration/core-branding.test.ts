@@ -2,7 +2,7 @@
  * Logo als Favicon/App-Icon: Upload wird neu kodiert (PNG ≤ 1024 px, ohne EXIF/GPS), Icons entstehen
  * daraus in fester Größe, ohne Logo greifen die neutralen Icons. Rechte: `core.settings.manage`.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import sharp from 'sharp';
 import { useTestDatabase } from '../helpers/db';

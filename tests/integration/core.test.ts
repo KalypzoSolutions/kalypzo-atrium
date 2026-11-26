@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';

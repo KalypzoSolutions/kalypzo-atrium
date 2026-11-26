@@ -1,0 +1,25 @@
+# Bun-Konfiguration (Kalypzo Atrium läuft vollständig unter Bun: Paketmanager, Skripte, Laufzeit)
+
+[install]
+# Flaches node_modules wie bei npm: Supervisor, Dockerfile und Generationen-Junction erwarten feste Pfade
+# (node_modules/@sveltejs/kit/svelte-kit.js, vite/bin/vite.js, playwright/cli.js, node_modules/.vite-temp)
+linker = "hoisted"
+
+[run]
+# Werkzeuge mit `#!/usr/bin/env node` (vite, svelte-check, eslint, vitest …) unter Bun statt Node ausführen
+bun = true
+
+[test]
+# Ersatz für Vite/SvelteKit im Test (Aliase über .svelte-kit/tsconfig.json, virtuelle Module, $app, Lösch-Schutz)
+preload = ["./tests/bun/preload.ts"]
+# wie früher in vite.config.ts: PGlite-Setups mit Migrationen brauchen unter Last länger
+timeout = 30000
+# Playwright-Specs (*.spec.ts) und Build-Ausgaben gehören nicht zu bun test
+pathIgnorePatterns = ["**/e2e/**", "**/e2e-install/**", "build/**", ".svelte-kit/**", "**/node_modules/**", ".data/**"]
+# Coverage (`bun run test:coverage`, CI): misst nur von Tests geladene Dateien – Werte sind nicht mit den
+# früheren Vitest-Zahlen (alle Dateien in src/lib) vergleichbar. Gesamtschwellen prüft scripts/test.mjs
+# (Buns coverageThreshold gilt je Datei).
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = ["tests/**", "tools/**", "**/node_modules/**", ".svelte-kit/**"]
+coverageReporter = ["text", "lcov"]
+coverageDir = "coverage"

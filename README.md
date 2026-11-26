@@ -11,13 +11,14 @@ Supervisor, siehe [Deployment](docs/deployment.md)).
 - Eigene Module entwickeln: [Modulentwicklung](docs/module-development.md); Paketformat `atrium-module.json`, Katalog `atrium-modules.json`.
 - Organisationsspezifisches Aussehen (Briefkopf, Mail-Kopf, Logo, Texte) liefern Profil-Module über Hooks
   (`settingDefaults`, `pdfTemplates`, `mailBranding`, `brandingLogo`).
-- Tests des Core laufen mit Fixture-Modulen (`tests/fixtures/modules`): `npm run test:core`, `npm run check:core`.
+- Tests des Core laufen mit Fixture-Modulen (`tests/fixtures/modules`): `bun run test:core`, `bun run check:core`.
 
 ## Techstack
 
 | Bereich | Technologie |
 |---|---|
-| Framework | SvelteKit 2 mit Svelte 5 (Runes), `adapter-node` |
+| Laufzeit / Paketmanager | [Bun](https://bun.sh) (App, Supervisor, Skripte, Tests; `bun.lock`) |
+| Framework | SvelteKit 2 mit Svelte 5 (Runes), `adapter-node` (Ausgabe läuft unter Bun) |
 | Sprache | TypeScript (strict, `noUncheckedIndexedAccess`) |
 | Styling / UI | Tailwind CSS 4, shadcn-svelte (bits-ui), Lucide |
 | Datenbank | PostgreSQL, Drizzle ORM, Drizzle Kit |
@@ -27,15 +28,15 @@ Supervisor, siehe [Deployment](docs/deployment.md)).
 | KI | Offizielles `openai`-SDK |
 | Storage | S3-kompatibel (`@aws-sdk/client-s3`) |
 | PDF | Playwright/Chromium (HTML → PDF) |
-| Tests | Vitest (Unit/Integration, PGlite), Playwright (E2E) |
+| Tests | `bun test` (Unit/Integration, PGlite), Playwright (E2E) |
 | Deployment | Docker Compose, Nginx |
 
 ## Schnellstart (lokal)
 
-Voraussetzungen: Node.js ≥ 24, Docker.
+Voraussetzungen: [Bun](https://bun.sh) ≥ 1.4.4 (Version in `.bun-version`), Docker.
 
 ```bash
-npm install
+bun install
 docker compose -f docker-compose.dev.yml up -d   # PostgreSQL (5432) + MinIO (9000/9001)
 
 # .env anlegen (siehe .env.example)
@@ -47,12 +48,12 @@ INITIAL_ADMIN_EMAIL=admin@example.org
 INITIAL_ADMIN_PASSWORD=ein-langes-passwort-123
 EOF
 
-npm run dev
+bun run dev
 ```
 
 Beim Start werden Migrationen angewendet, Module registriert/synchronisiert und – falls noch kein Administrator existiert – der Administrator aus `INITIAL_ADMIN_*` angelegt. Anmeldung unter <http://localhost:5173/login>.
 
-Chromium für den PDF-Service lokal installieren: `npx playwright install chromium`.
+Chromium für den PDF-Service lokal installieren: `bun run playwright install chromium`.
 
 ### Umgebungsvariablen
 
@@ -69,16 +70,16 @@ SMTP, S3, OpenAI und PDF-Layout werden **in der Oberfläche** konfiguriert (Eins
 
 | Befehl | Zweck |
 |---|---|
-| `npm run dev` | Entwicklungsserver |
-| `npm run build` / `npm start` | Produktions-Build / Start (`node build`) |
-| `npm run check` | `svelte-kit sync` + `svelte-check` |
-| `npm run lint` / `npm run format` | ESLint + Prettier prüfen / schreiben |
-| `npm test` | Vitest (Unit + Integration) |
-| `npm run test:unit` / `test:integration` | Teilmengen |
-| `npm run test:e2e` | Playwright (startet eine PGlite-Instanz per TCP-Socket, kein Docker nötig; mit `E2E_DATABASE_URL` echte PostgreSQL, siehe `scripts/e2e-server.mjs`) |
-| `npm run db:generate` | Drizzle-Migration aus dem Schema erzeugen |
-| `npm run db:migrate` | Migrationen manuell anwenden |
-| `npm run openapi` | `docs/openapi.json` erzeugen |
+| `bun run dev` | Entwicklungsserver |
+| `bun run build` / `bun run start` | Produktions-Build / Start (`bun ./build/index.js`) |
+| `bun run check` | `svelte-kit sync` + `svelte-check` |
+| `bun run lint` / `bun run format` | ESLint + Prettier prüfen / schreiben |
+| `bun run test` | `bun test` (Unit + Integration) |
+| `bun run test:unit` / `test:integration` | Teilmengen |
+| `bun run test:e2e` | Playwright (startet eine PGlite-Instanz per TCP-Socket, kein Docker nötig; mit `E2E_DATABASE_URL` echte PostgreSQL, siehe `scripts/e2e-server.mjs`) |
+| `bun run db:generate` | Drizzle-Migration aus dem Schema erzeugen |
+| `bun run db:migrate` | Migrationen manuell anwenden |
+| `bun run openapi` | `docs/openapi.json` erzeugen |
 
 ## Projektstruktur
 

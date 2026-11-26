@@ -4,38 +4,69 @@
  * headers → init → Better Auth → guard) mit gestubbtem `RequestEvent`; Core-Dienste sind gemockt.
  */
 import { THEME_PRESETS } from '$lib/appearance/presets';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import type { RequestEvent } from '@sveltejs/kit';
 
-const state = vi.hoisted(() => ({
+const state = {
 	session: null as null | { user: { id: string }; ctx: unknown; sessionId: string },
 	enabled: new Set<string>(['members', 'actions']),
 	prefs: null as null | { accentColor: string; density: string; activeTheme?: unknown },
 	prefsError: false,
 	systemAccent: null as string | null,
 	resolveSession: 0
-}));
+};
+
+// Teil-Mocks: Bun prüft benannte Importe beim Verlinken (fehlende Exporte → SyntaxError, Vitest lieferte
+// `undefined`). Darum die Originale vor allen Mocks holen und in jedem Mock ausbreiten.
+const real: Record<string, Record<string, unknown>> = {
+	'$app/environment': { ...(await import('$app/environment')) },
+	'$lib/server/core/init': { ...(await import('$lib/server/core/init')) },
+	'$lib/server/core/lifecycle': { ...(await import('$lib/server/core/lifecycle')) },
+	'$lib/server/core/jobs': { ...(await import('$lib/server/core/jobs')) },
+	'$lib/server/core/i18n/locale': { ...(await import('$lib/server/core/i18n/locale')) },
+	'$lib/server/core/auth': { ...(await import('$lib/server/core/auth')) },
+	'better-auth/svelte-kit': { ...(await import('better-auth/svelte-kit')) },
+	'$lib/server/core/auth/context': { ...(await import('$lib/server/core/auth/context')) },
+	'$lib/server/core/modules/service': { ...(await import('$lib/server/core/modules/service')) },
+	'$lib/server/core/settings/service': { ...(await import('$lib/server/core/settings/service')) },
+	'$lib/server/core/settings/user-prefs': {
+		...(await import('$lib/server/core/settings/user-prefs'))
+	}
+};
 
 vi.mock('$app/environment', () => ({
+	...real['$app/environment'],
 	building: true,
 	dev: false,
 	browser: false,
 	version: 'test'
 }));
-vi.mock('$lib/server/core/init', () => ({ initCore: async () => {} }));
+vi.mock('$lib/server/core/init', () => ({
+	...real['$lib/server/core/init'],
+	initCore: async () => {}
+}));
 vi.mock('$lib/server/core/lifecycle', () => ({
+	...real['$lib/server/core/lifecycle'],
 	installShutdownHandlers: () => {},
 	runVerifyAndExit: () => {}
 }));
-vi.mock('$lib/server/core/jobs', () => ({ startJobRunner: () => {} }));
+vi.mock('$lib/server/core/jobs', () => ({
+	...real['$lib/server/core/jobs'],
+	startJobRunner: () => {}
+}));
 // Sprache ohne Datenbank: immer Deutsch, ohne AsyncLocalStorage
 vi.mock('$lib/server/core/i18n/locale', () => ({
+	...real['$lib/server/core/i18n/locale'],
 	LOCALE_COOKIE: 'locale',
 	resolveLocale: async () => 'de',
 	withLocale: (_l: string, fn: () => unknown) => fn()
 }));
-vi.mock('$lib/server/core/auth', () => ({ getAuth: () => ({}) }));
+vi.mock('$lib/server/core/auth', () => ({
+	...real['$lib/server/core/auth'],
+	getAuth: () => ({})
+}));
 vi.mock('better-auth/svelte-kit', () => ({
+	...real['better-auth/svelte-kit'],
 	svelteKitHandler: ({
 		event,
 		resolve
@@ -45,6 +76,7 @@ vi.mock('better-auth/svelte-kit', () => ({
 	}) => resolve(event)
 }));
 vi.mock('$lib/server/core/auth/context', () => ({
+	...real['$lib/server/core/auth/context'],
 	anonymousContext: (ip: string | null) => ({ userId: null, ip, permissions: new Set() }),
 	resolveSession: async () => {
 		state.resolveSession++;
@@ -52,13 +84,15 @@ vi.mock('$lib/server/core/auth/context', () => ({
 	}
 }));
 vi.mock('$lib/server/core/modules/service', () => ({
+	...real['$lib/server/core/modules/service'],
 	isModuleEnabled: async (id: string) => state.enabled.has(id)
 }));
 vi.mock('$lib/server/core/settings/service', () => ({
+	...real['$lib/server/core/settings/service'],
 	getSetting: async () => state.systemAccent
 }));
-vi.mock('$lib/server/core/settings/user-prefs', async (importOriginal) => ({
-	...(await importOriginal<typeof import('$lib/server/core/settings/user-prefs')>()),
+vi.mock('$lib/server/core/settings/user-prefs', () => ({
+	...real['$lib/server/core/settings/user-prefs'],
 	loadUserPrefs: async () => {
 		if (state.prefsError) throw new Error('DB weg');
 		return state.prefs;
@@ -196,7 +230,7 @@ describe('guard: Login-Pflicht', () => {
 		login();
 		const r = await run('/dashboard');
 		expect(r.response.status).toBe(200);
-		expect(r.event.locals.user).toEqual({ id: 'u1' });
+		expect<unknown>(r.event.locals.user).toEqual({ id: 'u1' });
 		expect(r.event.locals.sessionId).toBe('s1');
 	});
 });

@@ -3,7 +3,7 @@
  * Better Auth `listSessions` verlangt eine frische Sitzung (`freshAge`, Standard 1 Tag) und wirft sonst
  * „Session is not fresh“ – die Seite liest die Sitzungen deshalb direkt aus der Datenbank.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getAuth } from '$lib/server/core/auth';

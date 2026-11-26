@@ -1,5 +1,5 @@
 // Demo-Start ohne Docker: persistente PGlite-Datenbank (.data/pglite) per TCP-Socket + gebaute App.
-// Voraussetzung: `npm run build`. Start: `node scripts/demo-server.mjs`, Seed: `node scripts/seed-demo.mjs`.
+// Voraussetzung: `bun run build`. Start: `bun scripts/demo-server.mjs`, Seed: `bun scripts/seed-demo.mjs`.
 // Die App läuft unter dem Supervisor (Kalypzo Atrium): Module lassen sich im Panel installieren, der Supervisor baut
 // dann neu (Generationen in .data/atrium) und startet die App neu – PGlite bleibt dabei in diesem Prozess offen.
 import { existsSync, unlinkSync } from 'node:fs';

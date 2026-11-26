@@ -13,9 +13,11 @@ if (!databaseUrl) {
 	const { PGLiteSocketServer } = await import('@electric-sql/pglite-socket');
 	const db = await PGlite.create();
 	fixtureDb = db;
-	const server = new PGLiteSocketServer({ db, port: 54329, host: '127.0.0.1', maxConnections: 10 });
+	// Port änderbar: Windows/Hyper-V reserviert nach dem Docker-Start oft Bereiche um 54300 (EACCES)
+	const port = Number(process.env.E2E_PGLITE_PORT ?? 54329);
+	const server = new PGLiteSocketServer({ db, port, host: '127.0.0.1', maxConnections: 10 });
 	await server.start();
-	databaseUrl = 'postgres://postgres:postgres@127.0.0.1:54329/postgres?sslmode=disable';
+	databaseUrl = `postgres://postgres:postgres@127.0.0.1:${port}/postgres?sslmode=disable`;
 	closeDb = async () => {
 		await server.stop();
 		await db.close();
@@ -38,7 +40,8 @@ const env = {
 	PORT: '4173',
 	HOST: '127.0.0.1'
 };
-const child = spawn(process.execPath, ['build'], { env, stdio: 'inherit' });
+// `build/index.js` statt `build`: unter Bun wäre `bun build` der Bundler
+const child = spawn(process.execPath, ['build/index.js'], { env, stdio: 'inherit' });
 // Nur die lokale E2E-Datenbank erhält eine gespeicherte Registry; externe Abrufe bleiben deaktiviert.
 if (fixtureDb) {
 	const fixture = await readFile(

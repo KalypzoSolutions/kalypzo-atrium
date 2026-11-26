@@ -2,7 +2,7 @@
  * #72 (06-08): `PATCH /users/:id` und die Admin-Aktion ändern Name/E-Mail, Aktiv-Status und Rollen
  * atomar – eine 4xx-Antwort lässt nichts geändert zurück (keine E-Mail, keine widerrufenen Sessions).
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { contextForUser } from '$lib/server/core/auth/context';

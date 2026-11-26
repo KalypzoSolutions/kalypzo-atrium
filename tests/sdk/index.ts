@@ -22,6 +22,8 @@ import { resetAllForTests } from '$lib/server/core/rate-limit';
 
 // --- Datenbank und Testumgebung ---------------------------------------------------------------
 export { useTestDatabase, isRealPostgres, pgTestUrl } from '../helpers/db';
+export { encodeMultipart, multipartRequest } from '../helpers/multipart';
+export { waitFor } from '../helpers/wait';
 export {
 	fakeS3Calls,
 	installFakeStorage,

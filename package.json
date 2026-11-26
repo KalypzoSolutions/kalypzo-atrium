@@ -6,27 +6,34 @@
 	"author": "Philipp Hethey",
 	"type": "module",
 	"engines": {
-		"node": ">=22.12.0"
+		"bun": ">=1.4.4"
 	},
+	"packageManager": "bun@1.4.4",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"start": "node build",
+		"start": "bun ./build/index.js",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"lint": "eslint . && prettier --check .",
 		"format": "prettier --write .",
-		"test": "cross-env ATRIUM_MODULES_DIR=tests/fixtures/modules vitest run",
-		"test:unit": "vitest run tests/unit",
-		"test:integration": "vitest run tests/integration",
-		"test:core": "cross-env ATRIUM_MODULES_DIR=tests/fixtures/modules vitest run",
-		"check:core": "cross-env ATRIUM_MODULES_DIR=tests/fixtures/modules npm run check",
+		"test": "ATRIUM_MODULES_DIR=tests/fixtures/modules bun scripts/test.mjs",
+		"test:unit": "ATRIUM_MODULES_DIR=tests/fixtures/modules bun scripts/test.mjs ./tests/unit",
+		"test:integration": "ATRIUM_MODULES_DIR=tests/fixtures/modules bun scripts/test.mjs ./tests/integration",
+		"test:core": "ATRIUM_MODULES_DIR=tests/fixtures/modules bun scripts/test.mjs",
+		"check:core": "ATRIUM_MODULES_DIR=tests/fixtures/modules bun run check",
 		"test:e2e": "playwright test",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "tsx scripts/migrate.ts",
+		"db:migrate": "bun scripts/migrate.ts",
 		"db:studio": "drizzle-kit studio",
-		"openapi": "cross-env WRITE_OPENAPI=1 vitest run tests/unit/openapi.test.ts"
+		"openapi": "ATRIUM_MODULES_DIR=tests/fixtures/modules WRITE_OPENAPI=1 bun scripts/test.mjs ./tests/unit/openapi.test.ts",
+		"test:coverage": "ATRIUM_MODULES_DIR=tests/fixtures/modules bun scripts/test.mjs --coverage",
+		"test:e2e:install": "playwright test -c playwright.install.config.ts",
+		"playwright": "playwright",
+		"eslint": "eslint",
+		"prettier": "prettier",
+		"test:modules": "bun scripts/test.mjs"
 	},
 	"devDependencies": {
 		"@electric-sql/pglite": "^0.5.8",
@@ -38,6 +45,7 @@
 		"@sveltejs/kit": "^2.70.3",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"@tailwindcss/vite": "^4.3.3",
+		"@types/bun": "^1.4.5",
 		"@types/mailparser": "3.4.6",
 		"@types/node": "^26.6.5",
 		"@types/nodemailer": "^8.0.2",
@@ -46,8 +54,6 @@
 		"@types/sanitize-html": "^2.16.2",
 		"@types/semver": "^7.8.0",
 		"@types/web-push": "3.6.4",
-		"@vitest/coverage-v8": "^5.0.3",
-		"cross-env": "^10.1.0",
 		"drizzle-kit": "^0.31.11",
 		"eslint": "^10.12.0",
 		"eslint-plugin-svelte": "^3.23.1",
@@ -58,11 +64,9 @@
 		"svelte-check": "^4.6.0",
 		"svelte-eslint-parser": "^1.9.0",
 		"tailwindcss": "^4.3.3",
-		"tsx": "^4.23.15",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.71.1",
-		"vite": "^8.3.0",
-		"vitest": "^5.0.3"
+		"vite": "^8.3.0"
 	},
 	"dependencies": {
 		"@asteasolutions/zod-to-openapi": "^9.1.0",
@@ -102,6 +106,6 @@
 		"tailwind-merge": "^3.7.0",
 		"tailwind-variants": "^3.3.1",
 		"web-push": "3.6.7",
-		"zod": "^4.6.5"
+		"zod": "^4.6.6"
 	}
 }

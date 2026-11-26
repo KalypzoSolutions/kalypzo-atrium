@@ -25,3 +25,23 @@ declare module 'virtual:atrium-modules/messages' {
 	const messages: Record<string, Record<string, Record<string, unknown>>>;
 	export default messages;
 }
+
+declare module 'virtual:atrium-core/messages' {
+	/** Deutsche Core-Texte, sofort geladen: `./messages/de/<bereich>.json` → Inhalt */
+	export const eager: Record<string, unknown>;
+	/** Alle Core-Texte als Lazy-Loader: `./messages/<sprache>/<bereich>.json` → Inhalt */
+	export const lazy: Record<string, () => Promise<unknown>>;
+}
+
+declare module 'virtual:atrium-core/pdf-templates' {
+	import type { PdfTemplate } from '$lib/server/core/pdf/templates';
+	/** Default-Exporte aller `src/lib/server/core/pdf/templates/*.ts` */
+	export const templates: PdfTemplate[];
+}
+
+declare module 'virtual:atrium-core/fonts' {
+	/** Carlito Regular als Data-URL (`data:font/ttf;base64,…`) */
+	export const regular: string;
+	/** Carlito Bold als Data-URL */
+	export const bold: string;
+}

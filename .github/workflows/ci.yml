@@ -41,31 +41,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version-file: .nvmrc
-          cache: npm
+          bun-version-file: .bun-version
+
+      - name: Bun-Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
 
       - name: Abhängigkeiten installieren
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Lockfile enthält sharp für linux-x64
-        run: grep -q '"node_modules/@img/sharp-linux-x64"' package-lock.json
+        run: grep -q '"@img/sharp-linux-x64"' bun.lock
 
       - name: Format (prettier)
-        run: npx prettier --check src tests docs tools
+        run: bun run prettier --check src tests docs tools
 
       - name: Typprüfung (svelte-check)
-        # Standard-Heap (~2 GB) reicht für das ganze Projekt nicht mehr (OOM seit 2026-10-26)
-        env:
-          NODE_OPTIONS: --max-old-space-size=6144
-        run: npm run check
+        run: bun run check
 
       - name: Lint (eslint)
-        run: npx eslint .
+        run: bun run eslint .
 
       - name: Unit- und Integrationstests mit Coverage
-        run: npx vitest run --coverage
+        run: bun run test:coverage
 
       - name: Coverage-Bericht hochladen
         if: always()
@@ -77,10 +80,10 @@ jobs:
           retention-days: 14
 
       - name: Build
-        run: npm run build
+        run: bun run build
 
       - name: Audit Laufzeitabhängigkeiten (High/Critical blockieren)
-        run: npm audit --omit=dev --audit-level=high
+        run: bun audit --prod --audit-level=high
 
   postgres:
     # #60: Migrationen, Treiber (`pg`) und Nebenläufigkeit gegen echtes PostgreSQL derselben Version
@@ -108,21 +111,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version-file: .nvmrc
-          cache: npm
+          bun-version-file: .bun-version
+
+      - name: Bun-Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
 
       - name: Abhängigkeiten installieren
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Smoke-Suite gegen PostgreSQL (Core-Migrationen, Module mit Fixtures)
         run: >-
-          npx vitest run
-          tests/integration/smoke.test.ts
-          tests/integration/core.test.ts
-          tests/integration/core-jobs.test.ts
-          tests/integration/module-migration-isolation.test.ts
+          bun scripts/test.mjs
+          ./tests/integration/smoke.test.ts
+          ./tests/integration/core.test.ts
+          ./tests/integration/core-jobs.test.ts
+          ./tests/integration/module-migration-isolation.test.ts
 
   e2e:
     name: e2e (Playwright)
@@ -133,19 +142,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version-file: .nvmrc
-          cache: npm
+          bun-version-file: .bun-version
+
+      - name: Bun-Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
 
       - name: Abhängigkeiten installieren
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Chromium installieren
-        run: npx playwright install --with-deps chromium
+        run: bun run playwright install --with-deps chromium
 
       - name: E2E-Tests
-        run: npx playwright test --reporter=list,html
+        run: bun run playwright test --reporter=list,html
 
       - name: Playwright-Bericht hochladen
         if: always()

@@ -1,5 +1,5 @@
 /** `$lib/sdk/server/html` (Bereinigung von Rich-Text) und `$lib/sdk/slug` */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { richTextImageIds, sanitizeRichText } from '$lib/sdk/server/html';
 import { slugify } from '$lib/sdk/slug';
 

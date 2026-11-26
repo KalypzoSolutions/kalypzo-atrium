@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { selectProfileSections, selectUserAdminSections } from '$lib/sdk/client/profile-sections';
 import type { ProfileSection } from '$lib/sdk/types/module-ui';
 

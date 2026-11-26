@@ -1,5 +1,4 @@
-import carlitoRegular from './assets/fonts/Carlito-Regular.ttf?inline';
-import carlitoBold from './assets/fonts/Carlito-Bold.ttf?inline';
+import { bold as carlitoBold, regular as carlitoRegular } from 'virtual:atrium-core/fonts';
 
 /**
  * Carlito (SIL OFL 1.1, metrisch kompatibel zu Calibri) als eingebettete Data-URLs. Es werden nie

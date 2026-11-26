@@ -1,7 +1,7 @@
 /**
  * Icon-Bibliothek (alle Lucide-Icons) für Browser und Server: Daten werden erst bei Bedarf geladen
  * (`loadIconSet`, eigener Chunk), Suche über englische Namen und deutsche Begriffe.
- * Daten: `lucide-icons.json`, erzeugt mit `node scripts/generate-icon-data.mjs`.
+ * Daten: `lucide-icons.json`, erzeugt mit `bun scripts/generate-icon-data.mjs`.
  */
 import { getLocale } from '$lib/i18n';
 import { ICON_KEYWORDS_DE } from './keywords-de';

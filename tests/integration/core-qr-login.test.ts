@@ -2,7 +2,7 @@
  * Anmeldung per QR-Code: Anfrage → Handy bestätigt → nur der anzeigende Browser (Geheimnis) löst einmalig ein.
  * Die Sitzung legt das Better-Auth-Plugin an (gleiche Hooks wie beim Passwort-Login).
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';

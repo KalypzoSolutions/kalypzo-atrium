@@ -2,7 +2,7 @@
  * Dashboard: gespeicherte Anordnung (`core.user.dashboard`) über Service und `+server.ts`-Handler,
  * Core-Kennzahlen nach Rechten.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';

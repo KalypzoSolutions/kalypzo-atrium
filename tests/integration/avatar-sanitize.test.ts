@@ -2,7 +2,7 @@
  * #19 (Avatar-Teil): Profilbilder werden über `core.images` neu kodiert (WebP ≤ 512 px, ohne EXIF/GPS);
  * der Core-Job `core.avatars-reprocess` bereinigt vorhandene Bilder idempotent.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import sharp from 'sharp';
 import { useTestDatabase } from '../helpers/db';

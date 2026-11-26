@@ -2,7 +2,7 @@
  * #72 (06-15, 06-13) und #25: Router-Details – sichere Request-ID, 405 mit `Allow`, HEAD, statische
  * Segmente vor `:param`, gestreamtes Body-Limit.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { z } from 'zod';
 import { useTestDatabase } from '../helpers/db';
 import { handleApiRequest } from '$lib/server/core/api/router';

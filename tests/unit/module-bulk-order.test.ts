@@ -2,7 +2,7 @@
  * Reihenfolge der Sammelaktionen (`core/modules/bulk.ts`): Abhängigkeiten zuerst aktivieren, abhängige Module zuerst
  * deaktivieren, fehlende Abhängigkeiten transitiv ermitteln.
  */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { ensureLocale, tl } from '$lib/i18n';
 import {
 	missingDependencies,

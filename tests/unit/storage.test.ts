@@ -5,14 +5,14 @@ import {
 	HeadObjectCommand,
 	PutObjectCommand
 } from '@aws-sdk/client-s3';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import { ctxWith, settingsStore, systemCtx } from './_helpers';
 
 vi.mock('$lib/server/core/settings/service', () => ({
 	getSettings: async (keys: string[]) => Object.fromEntries(keys.map((k) => [k, settingsStore[k]])),
 	getSetting: async (k: string) => settingsStore[k]
 }));
-const auditLog = vi.hoisted(() => vi.fn(async () => undefined));
+const auditLog = vi.fn(async () => undefined);
 vi.mock('$lib/server/core/audit/service', () => ({ auditFromContext: auditLog }));
 
 import * as storage from '$lib/server/core/storage';

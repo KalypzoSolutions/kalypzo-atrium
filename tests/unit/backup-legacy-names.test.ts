@@ -2,7 +2,7 @@
  * Datensicherung (Phase N): neue Kennungen `.atriumbackup`/`atrium-backup`, ältere Sicherungen (EP Intern)
  * bleiben einspielbar; Bestätigungswörter je Sprache, das deutsche Wort gilt immer.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
 	BACKUP_FILE_EXT,
 	BACKUP_FORMAT,

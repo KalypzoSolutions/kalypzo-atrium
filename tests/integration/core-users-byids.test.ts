@@ -2,7 +2,7 @@
  * `core.users.byIds` (#70, 04-06): stückelt intern (Verzeichnis liefert max. 30 je Aufruf), gleiche
  * Sichtbarkeit wie `directory`, deaktivierte/unbekannte fehlen; `userLabel` liefert „Unbekannt“.
  */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { core } from '$lib/server/core';

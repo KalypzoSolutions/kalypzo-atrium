@@ -2,7 +2,7 @@
 # sobald „Dependabot security updates“ in den Repository-Einstellungen aktiv ist.
 version: 2
 updates:
-  - package-ecosystem: npm
+  - package-ecosystem: bun
     directory: /
     target-branch: staging
     schedule:
@@ -10,7 +10,7 @@ updates:
       day: monday
     open-pull-requests-limit: 10
     groups:
-      npm-minor-patch:
+      bun-minor-patch:
         update-types: [minor, patch]
 
   - package-ecosystem: npm

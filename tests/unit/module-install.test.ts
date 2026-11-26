@@ -2,7 +2,7 @@
  * Modul-Installation (Kalypzo Atrium, Phase 5) – reine Bausteine: sicheres Entpacken, Eingabe, Auffinden der Module,
  * Auflösen der Abhängigkeiten (ohne installierte Module).
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { zipSync } from 'fflate';
 import { contentHash, readModuleArchive } from '$lib/server/core/modules/install/archive';
 import { discoverModules } from '$lib/server/core/modules/install/discover';

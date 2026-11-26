@@ -1,5 +1,5 @@
 /** Datensicherung: `insertRows` (json_populate_recordset) unter PGlite – Typen, FK-Filter, Konflikte, Eigenbezug. */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { sql } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb } from '$lib/server/core/database/client';

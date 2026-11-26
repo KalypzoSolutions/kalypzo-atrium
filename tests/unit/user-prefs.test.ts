@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { maskEmail } from '$lib/server/core/auth/mask-email';
 import { THEME_PRESETS } from '$lib/appearance/presets';
 import type { UserTheme } from '$lib/appearance/schema';

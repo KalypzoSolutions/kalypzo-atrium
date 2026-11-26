@@ -3,7 +3,7 @@
  * gelöschte Personen, Einbetten, Dashboard-Arten, Suche, Job, Datensicherungs-Hooks und gelöschte Konten – ohne
  * die Fachmodule. Fixtures: `tests/fixtures/modules/fx-*`.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { sql } from 'drizzle-orm';
 import {
 	adminContext,
@@ -163,7 +163,7 @@ describe('Personenquelle (principals)', () => {
 				]
 			})
 		);
-		expect(
+		expect<unknown>(
 			ok<{ id: string }[]>(await apiCall(readerKey, 'GET', '/modules/fx-board/notes'))
 		).toEqual([{ id: noteId, title: 'Zeltlager packen' }]);
 	});

@@ -399,7 +399,7 @@
   **Phase 4 (2026-11-01)**: Tests aufgeteilt – Fixture-Module `tests/fixtures/modules/fx-{people,board,consumer}` (+ `fixture-modules.test.ts`,
   E2E `fixture-module.spec.ts`), 211 Modultests nach `modules/<id>/tests/…` bzw. `modules/_integration/tests/…` (Backup-Helfer nach
   `modules/_integration/helpers/`), E2E nach `modules/<id>/e2e` bzw. `_integration/e2e`, Importe auf `$testing` (`tests/sdk/core.ts` erzeugt,
-  `$testing/e2e`). `npm run test:core` (Core ohne Fachmodule) grün; CI-Schritte „Core ohne Fachmodule“. Offen: Core-Funktionen Backup/Reset/Suche/
+  `$testing/e2e`). `bun run test:core` (Core ohne Fachmodule) grün; CI-Schritte „Core ohne Fachmodule“. Offen: Core-Funktionen Backup/Reset/Suche/
   Datenschutz werden mit echten Daten nur in `_integration` geprüft; `website-*`/`messages-trial`-Tests importieren aus `website/` (eigenes Repo
   geplant); `profile-extra` importiert eine Core-Route relativ.
   **Phase 5 (2026-11-01)**: Installer-Backend und Panel – `/admin/modules/install` (GitHub-Link oder ZIP → Module auswählen → Vorschau mit
@@ -408,7 +408,7 @@
   Offen: ZIP-Upload über die Form-Action braucht `BODY_SIZE_LIMIT` ≥ 50 MB (Dockerfile 55 MB); `module_install` noch nicht in der Datensicherung (Phase 7).
   **Phase 6 (2026-11-01)**: Supervisor (`scripts/supervisor/`), Generationen in `ATRIUM_DATA_DIR`, Neubau → Probelauf → Tausch → Health → Rollback,
   App beendet sich geordnet (IPC/`sveltekit:shutdown`), Panel zeigt den Fortschritt; Demo-Server und Image starten über den Supervisor
-  (`CMD node scripts/supervisor.mjs`, Volume `/data/atrium`, `mem_limit` 4g). Details `architecture.md` → „Supervisor und Neubau“, `docs/deployment.md`.
+  (`CMD bun scripts/supervisor.mjs`, Volume `/data/atrium`, `mem_limit` 4g). Details `architecture.md` → „Supervisor und Neubau“, `docs/deployment.md`.
   Offen: Docker-Probelauf (`read_only`, Speicherlimit) und Messung im Container; Core-Update-Neubau nur grob (läuft mit Basis-Build bis fertig).
   **Phase 7 (2026-11-01)**: Updates suchen, Entfernen (Daten behalten/löschen), Herkunft in der Datensicherung + Installationshinweis beim Import,
   Wunschzustand ↔ laufender Stand mit Wiederherstellung, Seed für frische Deployments. Details `architecture.md` → „Lebenszyklus der Module“,
@@ -430,7 +430,24 @@
   Details `architecture.md` → „Benutzerverwaltung ausgebaut“. Offen: echter SMTP-Versand der Reset-/Einladungsmails nur mit Test-Transport geprüft;
   Modul-Reiter (`userAdminSections`) nur im Bearbeiten-Dialog, nicht auf der Detailseite; Statistik ohne Modulbeiträge.
 
+- **Umstellung auf Bun (2026-11-25, Branch `chore/bun`)**: Bun ist Paketmanager **und** Laufzeit (`bun.lock`, `.bun-version`,
+  `bunfig.toml` mit `linker = "hoisted"` und `[run] bun = true`); `package-lock.json`, `.npmrc`, `.nvmrc`, `tsx`, `cross-env` entfallen.
+  adapter-node bleibt, die Ausgabe läuft unter Bun (`bun ./build/index.js` – **nicht** `bun build`, das ist Buns Bundler). Supervisor:
+  `process.execPath` = Bun, Modul-Pakete per `bun install --production --ignore-scripts --linker hoisted`, `ATRIUM_BUILD_HEAP` entfällt
+  (kein V8-Heap). Image `oven/bun:<ver>-slim`, CI `oven-sh/setup-bun`, Coverage `istanbul` statt v8, Audit `bun audit`, Dependabot `bun`.
+  Werkzeuge nur über `bun run <werkzeug>` (Skripte `playwright`/`eslint`/`prettier`, Tests `bun run test*`; `bunx` nimmt sonst ein installiertes Node).
+  Bun-Eigenheiten mit Umweg: multipart-`File.type` kommt aus der Dateiendung (→ `takeUpload` erkennt unbekannte Typen am Inhalt),
+  `new Response(formData)` ohne Content-Type und `new Request({ body: formData })` verliert Dateitypen (→ Testhelfer `encodeMultipart`/
+  `multipartRequest`, auch über `$testing`). Offen: Module-Repo/Website nutzen weiter npm; Coverage-Schwellen und E2E `appearance-themes`
+  (Locator trifft zwei Knöpfe) waren schon vor der Umstellung rot – beides inzwischen behoben (s. u.).
+  **Danach (2026-11-26)**: Vitest durch **`bun test`** ersetzt (`scripts/test.mjs`, `tests/bun/preload.ts`, 1432 Tests in ~35 s statt ~85 s),
+  `import.meta.glob`/`?inline` im Core durch `virtual:atrium-core/{messages,pdf-templates,fonts}` (`tools/core-virtual.ts`) ersetzt, Coverage-
+  Schwellen neu (gewichtet aus lcov: Zeilen 73 %, Funktionen 75 %), zod 4.6.7, E2E-Theme-Test korrigiert. **Vorfall**: `rmSync('')` hat unter Bun
+  den Projektordner geleert (aus GitHub wiederhergestellt; nicht versionierte Dateien wie `.env`/`.data` ggf. verloren) → `fs-guard.ts`.
+  Offen: Module-Repo muss seine Tests auf `bun:test` umstellen (`vi.hoisted`/`importOriginal`/`vi.setSystemTime`/`vi.waitFor` gibt es nicht).
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Bun (2026-11-25): **vollständig** auf Bun (Paketmanager, Skripte, Laufzeit, Image, CI), **verbindlich** – kein npm-Rückweg.
 - Benutzerverwaltung (2026-11-04): „Als Person handeln“ **vollständig** (auch Änderungen), nicht nur lesen; Passwort per Reset-Mail, direkt
   setzen **und** Einmal-Link; dazu Sitzungen/2FA, Detailseite, Filter/Sammelaktionen/Einladung und Kennzahlen auf `/admin`.
 - Core-Split (2026-11-01): Core heißt **Kalypzo Atrium** (Repo `kalypzo-atrium`, Präfix `atrium`), neutral + mehrsprachig (de/en) für andere

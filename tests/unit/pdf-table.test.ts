@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import type { PdfBlock } from '$lib/sdk/types';
 import { placeRows, renderBlocks } from '$lib/server/core/pdf/templates';
 

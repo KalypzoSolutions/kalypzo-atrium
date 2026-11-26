@@ -1,12 +1,13 @@
 /**
  * Issue #6: Signaturprüfung vor dem ersten Decoder-Aufruf und gesperrte libvips-Loader.
  */
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'bun:test';
 
 // sharp durchreichen, aber jeden Aufruf mitzählen
-vi.mock('sharp', async (importOriginal) => {
-	const actual = (await importOriginal()) as { default: typeof import('sharp') };
-	const real = actual.default;
+// Original vor dem Mocken holen (bun:test kennt kein `importOriginal`)
+const realSharp = (await import('sharp')).default;
+vi.mock('sharp', () => {
+	const real = realSharp;
 	const call = real as unknown as (...args: unknown[]) => unknown;
 	const spy = vi.fn((...args: unknown[]) => call(...args));
 	Object.assign(spy, real);
@@ -15,7 +16,7 @@ vi.mock('sharp', async (importOriginal) => {
 
 const sharp = (await import('sharp')).default;
 /** derselbe (gemockte) Export, als Spy typisiert */
-const sharpSpy = sharp as unknown as Mock;
+const sharpSpy = sharp as unknown as Mock<(...args: unknown[]) => unknown>;
 const { processImage, sniffImageFormat } = await import('../../src/lib/server/core/images');
 const { CoreError } = await import('../../src/lib/server/core/errors');
 

@@ -20,9 +20,9 @@ PostgreSQL mit Drizzle ORM. Schema: `src/lib/server/core/database/schema.ts`; Ve
 - Quelle: `drizzle/*.sql` (erzeugt mit Drizzle Kit, versioniert im Repository).
 - Workflow bei Schemaänderung:
   1. `schema.ts` anpassen
-  2. `npm run db:generate` (optional `-- --name=…`; handgeschriebenes SQL: `npx drizzle-kit generate --custom --name=…`)
+  2. `bun run db:generate` (optional `--name=…`; handgeschriebenes SQL: `bun run db:generate --custom --name=…`)
   3. SQL prüfen und committen
-- **Automatisch beim Start**: `initCore()` ruft `runCoreMigrations` auf. Manuell: `npm run db:migrate` (`scripts/migrate.ts`).
+- **Automatisch beim Start**: `initCore()` ruft `runCoreMigrations` auf. Manuell: `bun run db:migrate` (`scripts/migrate.ts`).
 - **Migrationssperre** (#73): Mit `pg` hält `runCoreMigrations` währenddessen eine Advisory-Sperre (`pg_advisory_lock(MIGRATION_LOCK_KEY)` auf eigener Verbindung, `database/migrate.ts`); Modul-Migrationen nehmen dieselbe Sperre als `pg_advisory_xact_lock` je Transaktion. Überlappende Starts (Rolling-Update, zwei Replikas) warten aufeinander, jede Migration läuft genau einmal. PGlite (Tests/Demo) braucht keine Sitzungssperre. Nebenläufigkeit ist nur mit echtem PostgreSQL prüfbar (PGlite hat eine Sitzung, #60).
 - Tests: `tests/helpers/db.ts` wendet dieselben Migrationen auf PGlite an – oder mit `TEST_DATABASE_URL` auf echtes PostgreSQL (siehe unten).
 
@@ -33,7 +33,7 @@ werden nicht wirklich geprüft, und `int8` kommt als `number` statt als String. 
 
 ```bash
 docker run -d --rm --name ep-pg-test -p 55432:5432 -e POSTGRES_PASSWORD=postgres postgres:17.11-alpine3.24
-TEST_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/postgres npx vitest run tests/integration
+TEST_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/postgres bun scripts/test.mjs ./tests/integration
 docker stop ep-pg-test
 ```
 
@@ -114,6 +114,6 @@ Core-intern: `getDb().transaction(…)` aus `src/lib/server/core/database/client
   akzeptieren neue Sicherungen nur, wenn ihre eigenen Hashes zufällig der LF-Variante entsprechen.
 - Drizzle-Metadaten: `drizzle/meta/NNNN_snapshot.json` muss für **jede** Core-Migration gepflegt werden (auch für
   handgeschriebene). Der letzte Snapshot beschreibt die echte Datenbank (Constraint-/Indexnamen aus dem SQL), `schema.ts`
-  muss dieselben Namen tragen; `npx drizzle-kit generate` meldet dann „No schema changes“. Handgeschriebene Migration:
+  muss dieselben Namen tragen; `bun run db:generate` meldet dann „No schema changes“. Handgeschriebene Migration:
   SQL schreiben, Journal-Eintrag ergänzen, `schema.ts` anpassen und den Snapshot in einer Kopie des Repos per
   `drizzle-kit generate` erzeugen (erzeugte SQL verwerfen, Snapshot als `NNNN_snapshot.json` mit `prevId` = Vorgänger übernehmen).

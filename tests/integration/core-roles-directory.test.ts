@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { useTestDatabase } from '../helpers/db';
 import { contextForUser, anonymousContext, systemContext } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
@@ -66,7 +66,7 @@ describe('core.roles.directory', () => {
 
 	it('löst explizite IDs auf', async () => {
 		const res = await core.roles.directory(admin, { ids: [roles.kasse!, roles.woe!, 'unbekannt'] });
-		expect(res.map((r) => r.id)).toEqual([roles.kasse, roles.woe]);
+		expect<unknown>(res.map((r) => r.id)).toEqual([roles.kasse, roles.woe]);
 	});
 
 	it('kombiniert IDs und Suche', async () => {
@@ -74,7 +74,7 @@ describe('core.roles.directory', () => {
 			ids: [roles.kasse!, roles.woe!],
 			search: 'leitung'
 		});
-		expect(res.map((r) => r.id)).toEqual([roles.woe]);
+		expect<unknown>(res.map((r) => r.id)).toEqual([roles.woe]);
 	});
 
 	it('maskiert Platzhalter und begrenzt die Trefferzahl', async () => {

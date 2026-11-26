@@ -30,10 +30,10 @@ export default defineConfig({
 		locale: 'de-DE'
 	},
 	webServer: {
-		command: 'npm run build && node scripts/e2e-server.mjs',
+		command: 'bun run build && bun scripts/e2e-server.mjs',
 		url: 'http://localhost:4173/api/v1/health',
 		// Kein stilles Wiederverwenden eines hängengebliebenen Servers mit altem Build und altem
-		// DB-Zustand (#75). Bewusst wiederverwenden: E2E_REUSE_SERVER=1 npx playwright test
+		// DB-Zustand (#75). Bewusst wiederverwenden: E2E_REUSE_SERVER=1 bun run playwright test
 		reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
 		env: { TZ: 'UTC' },
 		timeout: 180_000
