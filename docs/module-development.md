@@ -576,7 +576,7 @@ Neue Audit-Aktionen folgen dem Schema der Rechte: `modul.ressource.aktion`, mehr
 ## 7. Tests
 
 ```ts
-import { beforeAll, it, expect } from 'vitest';
+import { beforeAll, it, expect } from 'bun:test';
 import { useTestDatabase } from '../helpers/db';          // PGlite + Core-Migrationen
 import { registerModule } from '$lib/server/core/modules/registry';
 import { enableModule, syncModules } from '$lib/server/core/modules/service';

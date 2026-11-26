@@ -28,7 +28,7 @@ Supervisor, siehe [Deployment](docs/deployment.md)).
 | KI | Offizielles `openai`-SDK |
 | Storage | S3-kompatibel (`@aws-sdk/client-s3`) |
 | PDF | Playwright/Chromium (HTML → PDF) |
-| Tests | Vitest (Unit/Integration, PGlite), Playwright (E2E) |
+| Tests | `bun test` (Unit/Integration, PGlite), Playwright (E2E) |
 | Deployment | Docker Compose, Nginx |
 
 ## Schnellstart (lokal)
@@ -74,7 +74,7 @@ SMTP, S3, OpenAI und PDF-Layout werden **in der Oberfläche** konfiguriert (Eins
 | `bun run build` / `bun run start` | Produktions-Build / Start (`bun ./build/index.js`) |
 | `bun run check` | `svelte-kit sync` + `svelte-check` |
 | `bun run lint` / `bun run format` | ESLint + Prettier prüfen / schreiben |
-| `bun run test` | Vitest (Unit + Integration) |
+| `bun run test` | `bun test` (Unit + Integration) |
 | `bun run test:unit` / `test:integration` | Teilmengen |
 | `bun run test:e2e` | Playwright (startet eine PGlite-Instanz per TCP-Socket, kein Docker nötig; mit `E2E_DATABASE_URL` echte PostgreSQL, siehe `scripts/e2e-server.mjs`) |
 | `bun run db:generate` | Drizzle-Migration aus dem Schema erzeugen |

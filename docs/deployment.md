@@ -370,12 +370,12 @@ Bun aus `.bun-version` = Version des `Dockerfile`, `TZ=UTC` wie im Container):
 
 | Job | Schritte |
 |---|---|
-| `verify` | `bun install --frozen-lockfile` → Lockfile enthält `@img/sharp-linux-x64` → `bun run prettier --check src tests docs` → `bun run check` → `bun run eslint .` → `bun run vitest run --coverage` (Artefakt `coverage`, lcov) → `bun run build` → `bun audit --prod --audit-level=high` |
-| `postgres` | `bun install --frozen-lockfile` → Smoke-Suite (`bun run vitest run …`) gegen PostgreSQL 17 |
+| `verify` | `bun install --frozen-lockfile` → Lockfile enthält `@img/sharp-linux-x64` → `bun run prettier --check src tests docs` → `bun run check` → `bun run eslint .` → `bun run test:coverage` (Artefakt `coverage`, lcov) → `bun run build` → `bun audit --prod --audit-level=high` |
+| `postgres` | `bun install --frozen-lockfile` → Smoke-Suite (`bun scripts/test.mjs …`) gegen PostgreSQL 17 |
 | `e2e` | `needs: verify`, nur **nightly** (03:15 UTC) und per *Run workflow* (`workflow_dispatch`): `bun run playwright install --with-deps chromium` → `bun run playwright test` (`CI=true`, eigener Server), Artefakt `playwright-report` (Bericht + `test-results/`) |
 
-- Coverage: `@vitest/coverage-istanbul` (V8-Coverage gibt es unter Bun/JavaScriptCore nicht), Block `test.coverage` in `vite.config.ts` (Reporter `text-summary` + `lcov`, Bereich `src/lib/**/*.ts`).
-  Lokal: `bun run vitest run --coverage` → `coverage/lcov-report/index.html`. Schwellen siehe `vite.config.ts` (schrittweise anheben).
+- Coverage: `bun test --coverage` (Einstellungen in `bunfig.toml` → `[test]`, Reporter `text` + `lcov`). Bun misst nur von Tests geladene Dateien; die Gesamtschwellen (Zeilen/Funktionen, gewichtet aus `coverage/lcov.info`) prüft `scripts/test.mjs`.
+  Lokal: `bun run test:coverage` → `coverage/lcov.info`. Schwellen siehe `THRESHOLDS` in `scripts/test.mjs` (schrittweise anheben).
 - Updates: `.github/dependabot.yml` (Bun Root, npm `website/`, Docker Root und `website/`, GitHub Actions; wöchentlich, Ziel `staging`,
   Minor/Patch gebündelt).
 - `bun audit` (früher `npm audit`) meldete zuletzt nur Low/Moderate (Root: `cookie` < 0.7 über `@sveltejs/kit` 2 – erst mit Kit 3 behoben; `esbuild` über

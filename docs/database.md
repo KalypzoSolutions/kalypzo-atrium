@@ -33,7 +33,7 @@ werden nicht wirklich geprüft, und `int8` kommt als `number` statt als String. 
 
 ```bash
 docker run -d --rm --name ep-pg-test -p 55432:5432 -e POSTGRES_PASSWORD=postgres postgres:17.11-alpine3.24
-TEST_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/postgres bun run vitest run tests/integration
+TEST_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/postgres bun scripts/test.mjs ./tests/integration
 docker stop ep-pg-test
 ```
 

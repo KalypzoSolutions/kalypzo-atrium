@@ -32,7 +32,7 @@ Bereichsregeln (`ui-design.md`, `pdf-templates.md` …) laden per `paths:`-Front
 |---|---|
 | `bun run check` | `svelte-kit sync` + `svelte-check` (0 Fehler Pflicht) |
 | `bun run eslint .` / `bun run prettier --check src tests docs` | Lint / Format (Tabs, Single Quotes, 100 Zeichen) |
-| `bun run test` (`bun run vitest run`) | Unit + Integration (PGlite, ohne Docker), Core + alle Module |
+| `bun run test` (`bun scripts/test.mjs`, `bun test --parallel`) | Unit + Integration (PGlite, ohne Docker); `test:modules` mit allen Modulen |
 | `bun run test:core` / `bun run check:core` | Core allein mit Fixture-Modulen (`tests/fixtures/modules`) – muss grün sein |
 | `bun run build` | Produktions-Build nach `build/` |
 | `bun run playwright test` | E2E (baut selbst und startet eigene PGlite-Instanz) |

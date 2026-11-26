@@ -91,7 +91,7 @@ defineEndpoint({
   Speicherpfad-Name `safeFileName(name)` (`$lib/sdk/file-names`, auch über `$lib/sdk/server`), Header `contentDisposition`/`secureFileResponse`.
 - **„Heute“ und Datum** (#32): nur `todayBerlin()` aus `$lib/sdk/dates` (Server und Browser, Europe/Berlin), nie `new Date().toISOString().slice(0, 10)`
   oder Lokalzeit; dazu `addDays`, `daysBetween`, `isRealDate`, `formatDateDe`, `formatDateTimeDe`, `ageFromBirthDate`. Tests: `setTodayForTests(d|null)`
-  (einziger Override, gilt für alle Module) bzw. `vi.setSystemTime`. In SQL `${todayBerlin()}::date` statt `CURRENT_DATE` (DB läuft in UTC).
+  (einziger Override, gilt für alle Module) bzw. `setSystemTime` aus `bun:test`. In SQL `${todayBerlin()}::date` statt `CURRENT_DATE` (DB läuft in UTC).
 - **CSV/Geld** (#34): CSV nur über `$lib/sdk/csv` (`csvDocument`, `csvFromRecords`, `csvCell`; BOM, `;`, CRLF, Formelschutz für **alle** Texte mit
   `= + - @ Tab CR`), Beträge als `csvCents(cents)` (Zahl „-1234,50“). Anzeige/PDF/Mail `formatEuro` (`$lib/components/layout/money`, „1.234,50 €“ mit
   geschütztem Leerzeichen), maschinenlesbar `centsPlain`. Kein eigenes `toFixed(2).replace`.

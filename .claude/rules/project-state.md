@@ -434,7 +434,12 @@
   Bun-Eigenheiten mit Umweg: multipart-`File.type` kommt aus der Dateiendung (→ `takeUpload` erkennt unbekannte Typen am Inhalt),
   `new Response(formData)` ohne Content-Type und `new Request({ body: formData })` verliert Dateitypen (→ Testhelfer `encodeMultipart`/
   `multipartRequest`, auch über `$testing`). Offen: Module-Repo/Website nutzen weiter npm; Coverage-Schwellen und E2E `appearance-themes`
-  (Locator trifft zwei Knöpfe) waren schon vor der Umstellung rot.
+  (Locator trifft zwei Knöpfe) waren schon vor der Umstellung rot – beides inzwischen behoben (s. u.).
+  **Danach (2026-11-26)**: Vitest durch **`bun test`** ersetzt (`scripts/test.mjs`, `tests/bun/preload.ts`, 1432 Tests in ~35 s statt ~85 s),
+  `import.meta.glob`/`?inline` im Core durch `virtual:atrium-core/{messages,pdf-templates,fonts}` (`tools/core-virtual.ts`) ersetzt, Coverage-
+  Schwellen neu (gewichtet aus lcov: Zeilen 73 %, Funktionen 75 %), zod 4.6.7, E2E-Theme-Test korrigiert. **Vorfall**: `rmSync('')` hat unter Bun
+  den Projektordner geleert (aus GitHub wiederhergestellt; nicht versionierte Dateien wie `.env`/`.data` ggf. verloren) → `fs-guard.ts`.
+  Offen: Module-Repo muss seine Tests auf `bun:test` umstellen (`vi.hoisted`/`importOriginal`/`vi.setSystemTime`/`vi.waitFor` gibt es nicht).
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Bun (2026-11-25): **vollständig** auf Bun (Paketmanager, Skripte, Laufzeit, Image, CI), **verbindlich** – kein npm-Rückweg.
