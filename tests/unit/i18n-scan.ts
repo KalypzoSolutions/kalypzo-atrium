@@ -9,8 +9,8 @@
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
-import ts from 'typescript';
 import { parse } from 'svelte/compiler';
+import ts from 'typescript';
 
 export interface Finding {
 	file: string;

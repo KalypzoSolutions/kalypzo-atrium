@@ -8,7 +8,7 @@
  * - `virtual:atrium-core/pdf-templates` – Default-Exporte aller `src/lib/server/core/pdf/templates/*.ts`
  * - `virtual:atrium-core/fonts` – Carlito als Data-URLs (`regular`, `bold`), wie früher Vites `?inline`
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CORE_ROOT } from './modules-dir.js';
 

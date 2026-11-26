@@ -1,17 +1,16 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { page } from '$app/state';
-	import { toast } from 'svelte-sonner';
-	import type { ThemeChoiceItem } from '$lib/appearance/schema';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Menu from '@lucide/svelte/icons/menu';
-	import SearchIcon from '@lucide/svelte/icons/search';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
 	import Palette from '@lucide/svelte/icons/palette';
+	import SearchIcon from '@lucide/svelte/icons/search';
 	import Sun from '@lucide/svelte/icons/sun';
 	import UserIcon from '@lucide/svelte/icons/user';
+	import { toast } from 'svelte-sonner';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
+	import type { ThemeChoiceItem } from '$lib/appearance/schema';
 	import { Avatar, AvatarFallback, AvatarImage } from '$lib/components/ui/avatar';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -25,10 +24,11 @@
 		DropdownMenuTrigger
 	} from '$lib/components/ui/dropdown-menu';
 	import { Sheet, SheetContent, SheetHeader, SheetTitle } from '$lib/components/ui/sheet';
-	import { theme, type ThemeChoice } from '$lib/theme.svelte';
+	import { t } from '$lib/i18n';
+	import { type ThemeChoice, theme } from '$lib/theme.svelte';
 	import CommandPalette from './CommandPalette.svelte';
-	import SidebarNav from './SidebarNav.svelte';
 	import type { ModuleNavEntry } from './nav';
+	import SidebarNav from './SidebarNav.svelte';
 
 	let {
 		user,
@@ -133,7 +133,8 @@
 		<span class="hidden flex-1 text-left sm:inline">{t('sidebar.topbar.search')}</span>
 		<kbd
 			class="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-xs sm:inline"
-			aria-hidden="true">{t('sidebar.topbar.searchKey')}</kbd
+			aria-hidden="true"
+			>{t('sidebar.topbar.searchKey')}</kbd
 		>
 	</Button>
 	<CommandPalette {permissions} {navigation} bind:open={paletteOpen} />
@@ -149,7 +150,11 @@
 						current: t(THEME_LABELS[theme.choice])
 					})}
 				>
-					{#if theme.dark}<Moon />{:else}<Sun />{/if}
+					{#if theme.dark}
+						<Moon />
+					{:else}
+						<Sun />
+					{/if}
 				</Button>
 			{/snippet}
 		</DropdownMenuTrigger>
@@ -208,7 +213,9 @@
 					aria-label={t('sidebar.topbar.userMenu')}
 				>
 					<Avatar class="size-7">
-						{#if avatarSrc}<AvatarImage src={avatarSrc} alt="" />{/if}
+						{#if avatarSrc}
+							<AvatarImage src={avatarSrc} alt="" />
+						{/if}
 						<AvatarFallback>{initials}</AvatarFallback>
 					</Avatar>
 					<span class="hidden max-w-40 truncate text-sm sm:inline">{user.name}</span>

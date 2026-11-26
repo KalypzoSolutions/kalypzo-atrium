@@ -21,7 +21,9 @@
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>{m.name}</Card.Title>
-				{#if m.description}<Card.Description>{m.description}</Card.Description>{/if}
+				{#if m.description}
+					<Card.Description>{m.description}</Card.Description>
+				{/if}
 			</Card.Header>
 			<Card.Content>
 				{#if m.ownPage}

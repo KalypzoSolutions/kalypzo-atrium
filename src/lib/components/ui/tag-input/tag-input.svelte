@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { appliesTo, claimFieldContext, mergeIds } from '$lib/components/ui/field/context';
-	import { Badge } from '$lib/components/ui/badge/index.js';
-	import XIcon from '@lucide/svelte/icons/x';
 	import PlusIcon from '@lucide/svelte/icons/plus';
+	import XIcon from '@lucide/svelte/icons/x';
+	import { Badge } from '$lib/components/ui/badge/index.js';
+	import { appliesTo, claimFieldContext, mergeIds } from '$lib/components/ui/field/context';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils.js';
 	import {
+		addTags,
 		DEFAULT_MAX_TAG_LENGTH,
 		DEFAULT_MAX_TAGS,
-		addTags,
 		hasTag,
 		normalizeTag,
 		tagKey

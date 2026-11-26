@@ -1,26 +1,26 @@
 <script lang="ts">
-	import { page } from '$app/state';
-	import { toast } from 'svelte-sonner';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import Settings2 from '@lucide/svelte/icons/settings-2';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import { page } from '$app/state';
+	import { feedFinding, loadDashboardFeed } from '$lib/components/dashboard/feed-data';
 	import { DashboardCard, EmptyState, PageHeader, PageTitle } from '$lib/components/layout';
 	import type { ModuleNavEntry } from '$lib/components/layout/nav';
 	import { Button } from '$lib/components/ui/button';
 	import * as Sheet from '$lib/components/ui/sheet';
 	import { Switch } from '$lib/components/ui/switch';
+	import { intlLocale, t } from '$lib/i18n';
 	import {
 		applyDashboardLayout,
-		toDashboardLayout,
 		type DashboardLayoutPref,
-		type ResolvedDashboardWidget
+		type ResolvedDashboardWidget,
+		toDashboardLayout
 	} from '$lib/sdk/client/dashboard-widgets';
 	import type { DashboardWidgetStatus } from '$lib/sdk/types/module-ui';
-	import { feedFinding, loadDashboardFeed } from '$lib/components/dashboard/feed-data';
-	import { onMount } from 'svelte';
-	import { intlLocale, t } from '$lib/i18n';
 
 	let { data } = $props();
 

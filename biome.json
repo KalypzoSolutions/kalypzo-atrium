@@ -1,0 +1,130 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"includes": [
+			"**",
+			"!**/*.md",
+			"!**/*.yml",
+			"!**/*.yaml",
+			"!**/*.svg",
+			"!.claude",
+			"!drizzle",
+			"!website",
+			"!docs/openapi.json",
+			"!src/app.html",
+			"!src/lib/sdk/icons/lucide-icons.json"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineWidth": 100
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "single",
+			"trailingCommas": "none"
+		}
+	},
+	"json": {
+		"formatter": {
+			"trailingCommas": "none"
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
+	"html": {
+		"experimentalFullSupportEnabled": true,
+		"formatter": {
+			"enabled": true,
+			"indentScriptAndStyle": true,
+			"selfCloseVoidElements": "always",
+			"whitespaceSensitivity": "strict"
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"complexity": {
+				"noCommaOperator": "off",
+				"noImportantStyles": "off",
+				"useMathMinMax": "off"
+			},
+			"correctness": {
+				"noUnusedFunctionParameters": "error",
+				"noUnusedImports": "error",
+				"noUnusedVariables": "error"
+			},
+			"performance": {
+				"useDomNodeTextContent": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "off",
+				"useTemplate": "off"
+			},
+			"suspicious": {
+				"noAssignInExpressions": "off",
+				"noConfusingVoidType": "off",
+				"noExplicitAny": "error"
+			}
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["**/*.svelte"],
+			"linter": {
+				"rules": {
+					"a11y": "off",
+					"correctness": {
+						"usePlaywrightValidDescribeCallback": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"modules/**",
+				"tests/fixtures/modules/**",
+				"!modules/*/tests/**",
+				"!modules/_integration/**",
+				"!tests/fixtures/modules/*/tests/**"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"useImportType": {
+							"level": "error",
+							"options": {
+								"style": "auto"
+							}
+						}
+					}
+				}
+			}
+		}
+	],
+	"plugins": [
+		{
+			"path": "./tools/biome/no-empty-catch.grit",
+			"resolutionKind": "config"
+		}
+	]
+}

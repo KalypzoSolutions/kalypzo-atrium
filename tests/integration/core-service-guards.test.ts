@@ -3,11 +3,11 @@
  * begrenzen auf das eigene Modul – nicht nur der aufrufende Endpunkt.
  */
 import { beforeAll, describe, expect, it } from 'bun:test';
-import { useTestDatabase } from '../helpers/db';
-import { anonymousContext, systemContext } from '$lib/server/core/auth/context';
-import { auditFromContext } from '$lib/server/core/audit/service';
-import { core } from '$lib/server/core';
 import type { RequestContext } from '$lib/sdk/types';
+import { core } from '$lib/server/core';
+import { auditFromContext } from '$lib/server/core/audit/service';
+import { anonymousContext, systemContext } from '$lib/server/core/auth/context';
+import { useTestDatabase } from '../helpers/db';
 
 function userCtx(...permissions: string[]): RequestContext {
 	return {

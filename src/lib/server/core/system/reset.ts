@@ -11,15 +11,21 @@
  * ungeeignet, weil er an Sitzungs-Cookies hängt und Sitzungen verändern kann.
  */
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { eq, sql, type SQL } from 'drizzle-orm';
 import { symmetricDecrypt } from 'better-auth/crypto';
+import { eq, type SQL, sql } from 'drizzle-orm';
+import { localized, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getAuth } from '../auth';
 import { systemContext } from '../auth/context';
 import { verifyUserPassword } from '../auth/profile';
-import { getDb, schema, type DbOrTx } from '../database/client';
+import { writeBackupFile } from '../backup/export';
+import { listBackupScopes } from '../backup/scopes';
+import { removeTemp } from '../backup/tempfiles';
+import { BACKUP_MIN_PASSWORD } from '../backup/types';
+import { type DbOrTx, getDb, schema } from '../database/client';
 import { forModule } from '../database/module-db';
+import { type Row, rowsOf } from '../database/rows';
 import { errors } from '../errors';
 import { pauseJobs, resumeJobs } from '../jobs';
 import { allDefinitions, notifyModuleDataReplaced } from '../modules/registry';
@@ -28,21 +34,15 @@ import { moduleSchemaName, type ResetArea } from '../modules/types';
 import { getUserPermissions, requirePermission } from '../permissions/service';
 import { hit, peek, reset as resetRateLimit } from '../rate-limit';
 import { listDefinitions } from '../settings/service';
-import { listPurgeCandidates, purgeUnchecked, type PurgeInput } from '../storage';
-import { writeBackupFile } from '../backup/export';
-import { listBackupScopes } from '../backup/scopes';
-import { removeTemp } from '../backup/tempfiles';
-import { BACKUP_MIN_PASSWORD } from '../backup/types';
+import { listPurgeCandidates, type PurgeInput, purgeUnchecked } from '../storage';
 import { acquireMaintenanceLock, releaseMaintenanceLock } from './maintenance';
 import {
+	type AreaNode,
 	areasFingerprint,
 	effectiveImplies,
 	moduleDeleteOrder,
-	resolveAreas,
-	type AreaNode
+	resolveAreas
 } from './reset-areas';
-import { rowsOf, type Row } from '../database/rows';
-import { localized, t } from '$lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Öffentliche Typen

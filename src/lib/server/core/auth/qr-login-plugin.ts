@@ -7,9 +7,9 @@ import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthEndpoint } from 'better-auth/api';
 import { setSessionCookie } from 'better-auth/cookies';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { currentClientIp } from './client-ip';
 import { consumeQrLogin } from './qr-login';
-import { t } from '$lib/i18n';
 
 const invalid = () => t('auth.qrLoginInvalid');
 

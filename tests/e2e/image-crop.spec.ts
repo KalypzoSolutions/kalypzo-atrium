@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import sharp from 'sharp';
 
 // Bild-Zuschnitt beim Profilbild: Auswahl öffnet den Zuschnitt, „Übernehmen“ ersetzt die Datei im

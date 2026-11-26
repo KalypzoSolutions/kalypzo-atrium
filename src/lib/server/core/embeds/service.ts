@@ -169,7 +169,9 @@ export async function describeEmbeds(
 		s.provider.describe(ctx, [...wanted.get(`${s.module}:${s.provider.kind}`)!])
 	);
 	const found = new Map<string, Map<string, { title: string; canEdit: boolean; path: string }>>();
-	active.forEach((s, i) => found.set(`${s.module}:${s.provider.kind}`, results[i] ?? empty));
+	active.forEach((s, i) => {
+		found.set(`${s.module}:${s.provider.kind}`, results[i] ?? empty);
+	});
 
 	return items.map((r) => {
 		const key = `${r.module}:${r.kind}`;

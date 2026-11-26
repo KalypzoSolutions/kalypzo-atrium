@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	/**
 	 * Fußzeile mit Datenschutz- und Impressum-Link (Einstellungen `core.legal.privacyUrl` /
 	 * `core.legal.imprintUrl`). Für Login und öffentliche Seiten `/p/*`; `notice` ergänzt einen
@@ -7,6 +6,7 @@
 	 * Ohne Links wird nichts angezeigt.
 	 */
 	import { page } from '$app/state';
+	import { t } from '$lib/i18n';
 
 	let {
 		privacyUrl,

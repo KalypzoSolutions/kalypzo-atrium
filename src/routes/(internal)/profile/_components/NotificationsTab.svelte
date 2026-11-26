@@ -1,13 +1,12 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { page } from '$app/state';
-	import { t } from '$lib/i18n';
-	import { formatDateTime } from '$lib/i18n/intl';
-	import { toast } from 'svelte-sonner';
 	import BellRing from '@lucide/svelte/icons/bell-ring';
 	import Share from '@lucide/svelte/icons/share';
 	import Smartphone from '@lucide/svelte/icons/smartphone';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import { version as appVersion } from '$app/environment';
+	import { page } from '$app/state';
 	import { ErrorState, LoadingState } from '$lib/components/layout';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
@@ -19,24 +18,25 @@
 		CardHeader,
 		CardTitle
 	} from '$lib/components/ui/card';
-	import { SegmentedSlider, type SegmentedOption } from '$lib/components/ui/segmented-slider';
+	import { type SegmentedOption, SegmentedSlider } from '$lib/components/ui/segmented-slider';
+	import { t } from '$lib/i18n';
+	import { formatDateTime } from '$lib/i18n/intl';
 	import { ApiClientError, apiFetch } from '$lib/sdk/client';
 	import {
-		PushPermissionError,
 		currentSubscription,
 		disablePush,
 		enablePush,
 		isStandalone,
+		PushPermissionError,
+		type PushSupport,
 		pushPermission,
-		pushSupport,
-		type PushSupport
+		pushSupport
 	} from '$lib/sdk/client/push';
 	import { serviceWorkerVersion } from '$lib/sdk/client/sw-navigation';
-	import { version as appVersion } from '$app/environment';
 	import {
-		NOTIFICATION_CHANNELS,
-		NOTIFICATION_CHANNEL_LABELS,
 		allowedChannels,
+		NOTIFICATION_CHANNEL_LABELS,
+		NOTIFICATION_CHANNELS,
 		type NotificationChannel,
 		type NotificationDelivery,
 		type NotificationPrefItem,
@@ -303,7 +303,7 @@
 				{/if}
 			{/if}
 
-			{#if data && data.devices.length}
+			{#if data?.devices.length}
 				<div class="space-y-2">
 					<h3 class="text-sm font-medium">{t('profile.notifications.registeredDevices')}</h3>
 					<ul class="divide-y rounded-md border">

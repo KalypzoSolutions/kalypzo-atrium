@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
+	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils';
 
 	let {

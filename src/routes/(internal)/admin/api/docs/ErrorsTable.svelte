@@ -2,8 +2,8 @@
 	import type { ApiErrorInfo } from '$lib/api-docs/types';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Table from '$lib/components/ui/table';
-	import { cn } from '$lib/utils.js';
 	import { t } from '$lib/i18n';
+	import { cn } from '$lib/utils.js';
 
 	let { errors }: { errors: ApiErrorInfo[] } = $props();
 
@@ -19,7 +19,8 @@
 	<div class="space-y-2 text-sm text-muted-foreground">
 		<p>{t('api-docs.errors.formatIntro')}</p>
 		<pre
-			class="overflow-x-auto rounded-md border bg-muted/50 p-3 font-mono text-xs text-foreground">{FORMAT}</pre>
+			class="overflow-x-auto rounded-md border bg-muted/50 p-3 font-mono text-xs text-foreground"
+		>{FORMAT}</pre>
 		<p>
 			{t('api-docs.errors.detailsBefore')}
 			<code class="font-mono text-xs text-foreground">details</code>

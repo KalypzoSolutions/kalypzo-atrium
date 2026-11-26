@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from 'bun:test';
+import { sanitizeMetadata } from '$lib/server/core/audit/service';
+import { AUTH_RATE_LIMITS, limitAuthAction } from '$lib/server/core/auth/auth-limits';
 import {
-	CLIENT_IP_HEADER,
 	applyClientIpHeader,
+	CLIENT_IP_HEADER,
 	clientAddress,
 	currentClientIp,
 	withClientIp
 } from '$lib/server/core/auth/client-ip';
 import { maskEmailInput } from '$lib/server/core/auth/mask-email';
-import { limitAuthAction, AUTH_RATE_LIMITS } from '$lib/server/core/auth/auth-limits';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
-import { sanitizeMetadata } from '$lib/server/core/audit/service';
 
 describe('Client-IP-Helfer (#42)', () => {
 	it('verwirft einen vom Client gesetzten internen Header und setzt die Server-Adresse', () => {

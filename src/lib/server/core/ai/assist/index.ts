@@ -5,6 +5,7 @@
  * wie überall in `core.ai` nur Zähler; das Audit enthält keinen Text.
  */
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import type {
 	AssistAddress,
 	AssistRequest,
@@ -15,7 +16,6 @@ import type {
 import { ASSIST_LIST_TASKS, ASSIST_VARIANT_TASKS } from '$lib/sdk/types/assist';
 import { auditFromContext } from '../../audit/service';
 import { logError } from '../../db-errors';
-import { t } from '$lib/i18n';
 import { errors } from '../../errors';
 import { allDefinitions, getDefinition } from '../../modules/registry';
 import { enabledModuleIds } from '../../modules/state';
@@ -29,7 +29,7 @@ import {
 	generateJson,
 	stream
 } from '../index';
-import { systemPrompt, userPrompt, type AssistStyle } from './prompt';
+import { type AssistStyle, systemPrompt, userPrompt } from './prompt';
 import { createRedactor } from './redact';
 import { clampPlain, normalizeOutput, verifyOutput } from './verify';
 

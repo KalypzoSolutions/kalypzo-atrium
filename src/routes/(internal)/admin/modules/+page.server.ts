@@ -1,13 +1,7 @@
 import type { Actions } from '@sveltejs/kit';
 import { z } from 'zod';
 import { localized, t } from '$lib/i18n';
-import {
-	disableModule,
-	enableModule,
-	listModuleProblems,
-	listModules
-} from '$lib/server/core/modules/service';
-import { bulkModuleAction, BULK_MODULE_MAX_IDS } from '$lib/server/core/modules/bulk';
+import { BULK_MODULE_MAX_IDS, bulkModuleAction } from '$lib/server/core/modules/bulk';
 import {
 	checkUpdates,
 	installDrift,
@@ -16,6 +10,12 @@ import {
 	uninstallModules
 } from '$lib/server/core/modules/install/manage';
 import { installStatus, listInstalledSources } from '$lib/server/core/modules/install/service';
+import {
+	disableModule,
+	enableModule,
+	listModuleProblems,
+	listModules
+} from '$lib/server/core/modules/service';
 import { isAdministrator } from '$lib/server/core/permissions/service';
 import { failWithFields, invalid, requirePerm, toFail } from '../_shared/server-utils';
 import type { PageServerLoad } from './$types';

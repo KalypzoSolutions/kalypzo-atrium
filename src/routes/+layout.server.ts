@@ -1,8 +1,8 @@
+import { choiceItem, PRESET_PREFIX } from '$lib/appearance';
 import { brandingState, logoUrl } from '$lib/server/core/branding';
 import { navigationFor } from '$lib/server/core/modules/service';
 import { navBadgeCounts } from '$lib/server/core/navigation/badges';
 import { getSetting, getSettings } from '$lib/server/core/settings/service';
-import { choiceItem, PRESET_PREFIX } from '$lib/appearance';
 import { effectiveAccent, loadUserPrefs, themeVarsFor } from '$lib/server/core/settings/user-prefs';
 import type { LayoutServerLoad } from './$types';
 

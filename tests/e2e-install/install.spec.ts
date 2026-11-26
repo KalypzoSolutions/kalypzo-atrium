@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { expect, type Page, test } from '@playwright/test';
 import { zipSync } from 'fflate';
 
 // Modul per ZIP im Panel installieren → Supervisor baut neu → Neustart → Modul ist da und lässt sich aktivieren.

@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -101,26 +101,29 @@
  */
 @supports (color: color(from red srgb pow(r, 2) g b / 1)) {
 	:root,
-	[style*='--accent-color'],
+	[style*="--accent-color"],
 	[data-accent-scope] {
 		--primary-foreground: color(
 			from var(--primary) srgb
 				clamp(
 					0.04,
-					(0.18 - (0.2126 * pow(r, 2.2) + 0.7152 * pow(g, 2.2) + 0.0722 * pow(b, 2.2))) * 1000,
+					(0.18 - (0.2126 * pow(r, 2.2) + 0.7152 * pow(g, 2.2) + 0.0722 * pow(b, 2.2))) *
+					1000,
 					0.98
 				)
 				clamp(
 					0.04,
-					(0.18 - (0.2126 * pow(r, 2.2) + 0.7152 * pow(g, 2.2) + 0.0722 * pow(b, 2.2))) * 1000,
+					(0.18 - (0.2126 * pow(r, 2.2) + 0.7152 * pow(g, 2.2) + 0.0722 * pow(b, 2.2))) *
+					1000,
 					0.98
 				)
 				clamp(
 					0.04,
-					(0.18 - (0.2126 * pow(r, 2.2) + 0.7152 * pow(g, 2.2) + 0.0722 * pow(b, 2.2))) * 1000,
+					(0.18 - (0.2126 * pow(r, 2.2) + 0.7152 * pow(g, 2.2) + 0.0722 * pow(b, 2.2))) *
+					1000,
 					0.98
 				) /
-				1
+			1
 		);
 	}
 }
@@ -129,7 +132,7 @@
  * Akzentfarbe: `--accent-color` darf auch auf einem lokalen Wrapper gesetzt werden (z. B. Vorschau im Profil,
  * `style="--accent-color:#16a34a"`); dort werden --primary/--ring neu abgeleitet.
  */
-[style*='--accent-color'],
+[style*="--accent-color"],
 [data-accent-scope] {
 	--primary: var(--accent-color, #2563eb);
 	--ring: var(--accent-color, #2563eb);
@@ -232,7 +235,7 @@
  * als feste Ebene hinter der Seite – `--background` bleibt einfarbig (Fläche für Knöpfe, Tabs, Leisten),
  * Karten, Dialoge und Tabellen bleiben unverändert.
  */
-[data-app-theme='on'] {
+[data-app-theme="on"] {
 	--app-bg: var(--app-bg-light);
 	--app-veil: var(--app-veil-light, 0%);
 	--app-veil-color: color-mix(in oklab, var(--background) var(--app-veil), transparent);
@@ -240,16 +243,16 @@
 	--topbar-surface: color-mix(in oklab, var(--background) 72%, transparent);
 	background-color: var(--background);
 }
-.dark[data-app-theme='on'] {
+.dark[data-app-theme="on"] {
 	--app-bg: var(--app-bg-dark);
 	--app-veil: var(--app-veil-dark, 0%);
 	--sidebar-surface: var(--app-sidebar-dark, var(--sidebar));
 }
-[data-app-theme='on'] body {
+[data-app-theme="on"] body {
 	background: transparent;
 }
-[data-app-theme='on'] body::before {
-	content: '';
+[data-app-theme="on"] body::before {
+	content: "";
 	position: fixed;
 	inset: 0;
 	z-index: -1;
@@ -257,11 +260,11 @@
 	background-image: linear-gradient(var(--app-veil-color), var(--app-veil-color)), var(--app-bg);
 }
 /* Durchscheinende Flächen (Seitenleiste, Kopfzeile) nur mit Theme weichzeichnen */
-[data-app-theme='on'] .app-glass {
+[data-app-theme="on"] .app-glass {
 	backdrop-filter: blur(16px) saturate(1.15);
 }
 /* Eigene Kopie des Hintergrunds für Flächen über einem Overlay (mobile Seitenleiste) */
-[data-app-theme='on'] .app-backdrop {
+[data-app-theme="on"] .app-backdrop {
 	background-color: var(--background);
 	background-image:
 		linear-gradient(var(--sidebar-surface), var(--sidebar-surface)),
@@ -334,40 +337,40 @@
 
 /* Touch-Geräte: Klickziele >= 36 px (Desktop bleibt kompakt) */
 @media (pointer: coarse) {
-	[data-slot='button'] {
+	[data-slot="button"] {
 		min-height: 2.25rem;
 	}
-	[data-slot='button']:where([class*='size-6'], [class*='size-7'], [class*='size-8']) {
+	[data-slot="button"]:where([class*="size-6"], [class*="size-7"], [class*="size-8"]) {
 		min-width: 2.25rem;
 	}
-	[data-slot='input'],
-	[data-slot='select-trigger'],
-	[data-slot='textarea'] {
+	[data-slot="input"],
+	[data-slot="select-trigger"],
+	[data-slot="textarea"] {
 		min-height: 2.25rem;
 	}
-	[data-slot='tabs-trigger'] {
+	[data-slot="tabs-trigger"] {
 		min-height: 2.25rem;
 		padding-inline: 0.625rem;
 	}
-	[data-slot='checkbox'] {
+	[data-slot="checkbox"] {
 		width: 1.25rem;
 		height: 1.25rem;
 	}
-	[data-slot='color-picker'] {
+	[data-slot="color-picker"] {
 		min-height: 2.25rem;
 	}
 	/* Switch bleibt optisch klein, die unsichtbare Klickfläche (::after) wächst auf >= 36 px Höhe */
-	[data-slot='switch'][data-size='default']::after {
+	[data-slot="switch"][data-size="default"]::after {
 		inset-block: -0.65rem;
 	}
-	[data-slot='switch'][data-size='sm']::after {
+	[data-slot="switch"][data-size="sm"]::after {
 		inset-block: -0.85rem;
 	}
 	/* NumberStepper: Rahmen und Knöpfe >= 36 px */
-	[data-slot='number-stepper'] {
+	[data-slot="number-stepper"] {
 		min-height: 2.25rem;
 	}
-	[data-slot='number-stepper-button'] {
+	[data-slot="number-stepper-button"] {
 		width: 2.25rem;
 		height: 2.25rem;
 	}
@@ -381,35 +384,35 @@
 
 /* Dichte "kompakt" (`<html data-density="compact">`): kleinere Tabellenzeilen und Kartenabstände.
    Touch-Mindestgrößen (pointer: coarse) bleiben unberührt. */
-[data-density='compact'] [data-slot='table-cell'] {
+[data-density="compact"] [data-slot="table-cell"] {
 	padding-block: 0.25rem;
 }
-[data-density='compact'] [data-slot='table-head'] {
+[data-density="compact"] [data-slot="table-head"] {
 	height: 2rem;
 }
-[data-density='compact'] [data-slot='card'] {
+[data-density="compact"] [data-slot="card"] {
 	--card-spacing: 0.75rem;
 }
-[data-density='compact'] [data-slot='card'][data-size='sm'] {
+[data-density="compact"] [data-slot="card"][data-size="sm"] {
 	--card-spacing: 0.5rem;
 }
 
 /* DataTable mobile="cards": jede Zeile wird unter 640 px zur Karte */
 @media (max-width: 639px) {
-	[data-mobile='cards'] {
+	[data-mobile="cards"] {
 		overflow-x: visible;
 	}
-	[data-mobile='cards'] [data-slot='table-container'] {
+	[data-mobile="cards"] [data-slot="table-container"] {
 		overflow: visible;
 	}
-	[data-mobile='cards'] table,
-	[data-mobile='cards'] tbody,
-	[data-mobile='cards'] tr,
-	[data-mobile='cards'] td {
+	[data-mobile="cards"] table,
+	[data-mobile="cards"] tbody,
+	[data-mobile="cards"] tr,
+	[data-mobile="cards"] td {
 		display: block;
 		width: 100%;
 	}
-	[data-mobile='cards'] thead {
+	[data-mobile="cards"] thead {
 		position: absolute;
 		width: 1px;
 		height: 1px;
@@ -417,17 +420,17 @@
 		clip-path: inset(50%);
 		white-space: nowrap;
 	}
-	[data-mobile='cards'] tbody tr {
+	[data-mobile="cards"] tbody tr {
 		margin-bottom: 0.5rem;
 		border: 1px solid var(--border);
 		border-radius: var(--radius-lg);
 		background: var(--card);
 		padding: 0.25rem 0.5rem;
 	}
-	[data-mobile='cards'] tbody tr:last-child {
+	[data-mobile="cards"] tbody tr:last-child {
 		margin-bottom: 0;
 	}
-	[data-mobile='cards'] td {
+	[data-mobile="cards"] td {
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
@@ -438,7 +441,7 @@
 		overflow-wrap: anywhere;
 		max-width: none;
 	}
-	[data-mobile='cards'] td[data-label]::before {
+	[data-mobile="cards"] td[data-label]::before {
 		content: attr(data-label);
 		flex: 0 0 38%;
 		max-width: 38%;
@@ -447,11 +450,11 @@
 		font-weight: 500;
 		text-align: left;
 	}
-	[data-mobile='cards'] td:not([data-label]) {
+	[data-mobile="cards"] td:not([data-label]) {
 		justify-content: flex-end;
 	}
 	/* abgeschnittene Zellen (truncate/max-w) dürfen in Karten umbrechen */
-	[data-mobile='cards'] td .truncate {
+	[data-mobile="cards"] td .truncate {
 		white-space: normal;
 		overflow: visible;
 		text-overflow: clip;

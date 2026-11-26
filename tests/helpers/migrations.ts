@@ -4,9 +4,9 @@
  * (`registerModule`); aktiviert werden muss es dafür nicht.
  */
 import type { SQL } from 'drizzle-orm';
+import { core } from '$lib/server/core';
 import { requireDefinition } from '$lib/server/core/modules/registry';
 import { runModuleMigrations } from '$lib/server/core/modules/service';
-import { core } from '$lib/server/core';
 
 type Row = Record<string, unknown>;
 

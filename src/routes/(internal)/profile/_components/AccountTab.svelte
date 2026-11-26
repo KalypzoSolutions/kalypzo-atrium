@@ -1,12 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
-	import { Alert, AlertDescription } from '$lib/components/ui/alert';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Input } from '$lib/components/ui/input';
 	import {
 		ConfirmDialog,
 		EntityAvatar,
@@ -14,6 +8,12 @@
 		FormField,
 		SummaryList
 	} from '$lib/components/layout';
+	import { Alert, AlertDescription } from '$lib/components/ui/alert';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { Input } from '$lib/components/ui/input';
 	import { intlLocale, t } from '$lib/i18n';
 	import { callAction, submitter } from './actions';
 	import type { ProfileData } from './types';
@@ -80,7 +80,8 @@
 							avatarError = null;
 							avatarFile = null;
 							avatarOpen = true;
-						}}>{t('profile.account.changePicture')}</Button
+						}}
+						>{t('profile.account.changePicture')}</Button
 					>
 					{#if data.profile.image}
 						<Button variant="ghost" size="sm" onclick={() => (removeOpen = true)}
@@ -132,7 +133,8 @@
 						onclick={() => {
 							emailError = null;
 							emailOpen = true;
-						}}>{t('profile.account.changeEmail')}</Button
+						}}
+						>{t('profile.account.changeEmail')}</Button
 					>
 				</div>
 			</div>

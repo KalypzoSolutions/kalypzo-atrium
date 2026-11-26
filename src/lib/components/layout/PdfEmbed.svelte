@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
 	import { Button } from '$lib/components/ui/button';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils.js';
 
 	/**
@@ -35,7 +35,10 @@
 </script>
 
 {#if canEmbed}
-	<iframe {title} src={url} class={cn('h-96 w-full rounded-md border bg-white', className)}
+	<iframe
+		{title}
+		src={url}
+		class={cn('h-96 w-full rounded-md border bg-white', className)}
 	></iframe>
 {:else}
 	<div

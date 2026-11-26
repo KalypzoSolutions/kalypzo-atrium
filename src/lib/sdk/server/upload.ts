@@ -166,4 +166,4 @@ export async function readUpload(
 }
 
 // Dateinamen-Bereinigung (rein, auch im Browser nutzbar) – hier für Server-Code weitergereicht
-export { safeFileName, type SafeFileNameOptions } from '$lib/sdk/file-names';
+export { type SafeFileNameOptions, safeFileName } from '$lib/sdk/file-names';

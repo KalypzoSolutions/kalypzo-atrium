@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi, setSystemTime } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, setSystemTime, vi } from 'bun:test';
 import { hit, peek, resetAllForTests } from '../../src/lib/server/core/rate-limit';
 
 // #67 (01a-09): Das globale Aufräumen darf Buckets mit langem Fenster nicht auf das Fenster

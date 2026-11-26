@@ -3,9 +3,9 @@
  * keine Zahlen/Daten erfunden wurden. Reine Funktionen (Unit-Tests: `tests/unit/ai-assist.test.ts`).
  */
 import sanitizeHtml from 'sanitize-html';
-import type { AssistCheck, AssistFormat } from '$lib/sdk/types/assist';
 import { t } from '$lib/i18n';
 import { RICH_TEXT_TAGS, sanitizeRichText } from '$lib/sdk/server/html';
+import type { AssistCheck, AssistFormat } from '$lib/sdk/types/assist';
 
 const PLACEHOLDER_RE = /\{\{\s*[A-Za-zÄÖÜäöüß_][\w-]*\s*\}\}|\{\s*[A-Za-zÄÖÜäöüß_][\w-]*\s*\}/g;
 

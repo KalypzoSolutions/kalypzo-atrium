@@ -1,10 +1,10 @@
-import { t } from '$lib/i18n';
 /**
  * Aussehen von Objekten mit Icon und Farbe (Ordner in `files`, Kategorien in `material`):
  * Vorschlagsfarben und Zod-Bausteine. Client und Server; ob ein Icon existiert, prüft der Server
  * über `loadIconSet()` aus `$lib/sdk/icons`.
  */
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 
 /** Vorschlagsfarben (Schnellwahl neben dem Farbwähler) */
 /** Vorschlagsfarbe; der Name wird beim Lesen übersetzt */

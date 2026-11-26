@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import MonitorSmartphone from '@lucide/svelte/icons/monitor-smartphone';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+	import { enhance } from '$app/forms';
 	import { PageTitle } from '$lib/components/layout';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
@@ -97,7 +97,9 @@
 					}}
 				>
 					<Button type="submit" formaction="?/approve" disabled={busy} class="h-11">
-						{#if busy}<LoaderCircle class="animate-spin" />{/if}
+						{#if busy}
+							<LoaderCircle class="animate-spin" />
+						{/if}
 						{t('login.qrConfirm.approve')}
 					</Button>
 					<Button type="submit" formaction="?/deny" variant="outline" disabled={busy} class="h-11">

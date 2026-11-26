@@ -1,6 +1,10 @@
-import { error, fail, type Actions } from '@sveltejs/kit';
+import { type Actions, error, fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { t } from '$lib/i18n';
+import { BULK_USER_ACTIONS, bulkUserAction } from '$lib/server/core/auth/admin/bulk';
+import { sendInvitation } from '$lib/server/core/auth/admin/password';
+import { canManageUser } from '$lib/server/core/auth/manage-guard';
+import { AVATAR_MAX_BYTES, removeUserAvatar, setUserAvatar } from '$lib/server/core/auth/profile';
 import {
 	createUser,
 	deleteUser,
@@ -11,13 +15,7 @@ import {
 	updateUserFull,
 	verifyUserEmail
 } from '$lib/server/core/auth/users';
-import { BULK_USER_ACTIONS, bulkUserAction } from '$lib/server/core/auth/admin/bulk';
-import { sendInvitation } from '$lib/server/core/auth/admin/password';
-import { parseUserFilter } from './filter';
-import { AVATAR_MAX_BYTES, removeUserAvatar, setUserAvatar } from '$lib/server/core/auth/profile';
-import { canManageUser } from '$lib/server/core/auth/manage-guard';
 import { isCoreError } from '$lib/server/core/errors';
-import { resolvePageSize } from '$lib/server/core/settings/user-prefs';
 import { enabledModuleIds } from '$lib/server/core/modules/state';
 import { listRoles } from '$lib/server/core/permissions/roles';
 import {
@@ -26,7 +24,9 @@ import {
 	isPrivilegedPermission,
 	listPermissions
 } from '$lib/server/core/permissions/service';
+import { resolvePageSize } from '$lib/server/core/settings/user-prefs';
 import type { PageServerLoad } from './$types';
+import { parseUserFilter } from './filter';
 
 const DEFAULT_PAGE_SIZE = 20;
 

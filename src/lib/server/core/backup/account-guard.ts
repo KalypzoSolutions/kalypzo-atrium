@@ -12,10 +12,10 @@
  *     Administrator*innen wiederherstellen (`adminOnlyRestoreScopes()` in `access.ts`).
  */
 import { eq } from 'drizzle-orm';
+import { t } from '$lib/i18n';
 import { getAuth } from '../auth';
 import { getDb, schema } from '../database/client';
 import { ADMIN_ROLE_ID } from '../permissions/catalog';
-import { t } from '$lib/i18n';
 
 const BACKUP_PERMISSION = 'core.system.backup';
 /** Obergrenze gesammelter Zeilen je Tabelle (Speicher) */

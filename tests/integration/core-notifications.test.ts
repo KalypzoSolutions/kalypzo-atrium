@@ -6,26 +6,24 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { createApiKey } from '$lib/server/core/api/keys';
+import { handleApiRequest } from '$lib/server/core/api/router';
+import { listAudit } from '$lib/server/core/audit/service';
 import { getAuth } from '$lib/server/core/auth';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser, deleteUser } from '$lib/server/core/auth/users';
-import { createRole } from '$lib/server/core/permissions/roles';
+import { getDb, schema } from '$lib/server/core/database/client';
+import { type MailTransport, setMailTransportForTests } from '$lib/server/core/mail';
 import { registerModule } from '$lib/server/core/modules/registry';
 import { enableModule, syncModules } from '$lib/server/core/modules/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { handleApiRequest } from '$lib/server/core/api/router';
-import { createApiKey } from '$lib/server/core/api/keys';
-import { getDb, schema } from '$lib/server/core/database/client';
-import { listAudit } from '$lib/server/core/audit/service';
-import { setMailTransportForTests, type MailTransport } from '$lib/server/core/mail';
-import { resetAllForTests } from '$lib/server/core/rate-limit';
-import { setSettings } from '$lib/server/core/settings/service';
+import type { ModuleDefinition } from '$lib/server/core/modules/types';
 import {
 	addDevice,
 	isAllowedPushEndpoint,
-	setPushTransportForTests,
-	rotateVapidKeys
+	rotateVapidKeys,
+	setPushTransportForTests
 } from '$lib/server/core/notifications/push';
 import {
 	getMyPreferences,
@@ -34,8 +32,10 @@ import {
 	sendNotifications,
 	setMyPreference
 } from '$lib/server/core/notifications/service';
-import type { ModuleDefinition } from '$lib/server/core/modules/types';
-import type { RequestContext } from '$lib/sdk/types';
+import { createRole } from '$lib/server/core/permissions/roles';
+import { resetAllForTests } from '$lib/server/core/rate-limit';
+import { setSettings } from '$lib/server/core/settings/service';
+import { useTestDatabase } from '../helpers/db';
 
 const ORIGIN = 'http://localhost:5173';
 const PW = 'notify-password-1234';
@@ -118,7 +118,7 @@ async function call(
 		url,
 		ip: '127.0.0.1'
 	});
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// biome-ignore lint/suspicious/noExplicitAny: beliebige JSON-Antwort im Test
 	return { status: res.status, body: (await res.json()) as any };
 }
 

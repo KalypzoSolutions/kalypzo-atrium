@@ -14,23 +14,24 @@
  * Schritt erzeugt, bevor die Grenzen (`BACKUP_LIMITS`) greifen. Das zentrale Verzeichnis am Ende wird
  * nur überlesen (fflate schreibt kein ZIP64; Offsets > 4 GB wären dort falsch, stören diesen Leser aber nicht).
  */
-import { createInflateRaw, crc32, type InflateRaw } from 'node:zlib';
+
 import { createHash } from 'node:crypto';
-import { Zip, ZipDeflate, type DeflateOptions } from 'fflate';
+import { crc32, createInflateRaw, type InflateRaw } from 'node:zlib';
+import { type DeflateOptions, Zip, ZipDeflate } from 'fflate';
+import { t } from '$lib/i18n';
 import { ByteReader, bufferSource } from './io';
 import {
+	type ArchiveEntry,
+	type ArchiveWriter,
 	BACKUP_LIMITS,
 	BackupFormatError,
+	type ByteSink,
+	type ByteSource,
 	ENTRY_CHECKSUMS,
 	ENTRY_DATA,
 	ENTRY_FILE,
-	ENTRY_META,
-	type ArchiveEntry,
-	type ArchiveWriter,
-	type ByteSink,
-	type ByteSource
+	ENTRY_META
 } from './types';
-import { t } from '$lib/i18n';
 
 const SIG_LOCAL = 0x04034b50;
 const SIG_CENTRAL = 0x02014b50;

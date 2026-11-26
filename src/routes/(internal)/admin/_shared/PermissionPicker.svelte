@@ -1,8 +1,8 @@
 <script lang="ts">
+	import Search from '@lucide/svelte/icons/search';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Input } from '$lib/components/ui/input';
-	import Search from '@lucide/svelte/icons/search';
 	import { t } from '$lib/i18n';
 
 	export interface PickerPermission {
@@ -97,12 +97,14 @@
 					<button
 						type="button"
 						class="text-xs font-normal text-link underline"
-						onclick={() => toggleGroup(items, true)}>{t('admin.permissionPicker.all')}</button
+						onclick={() => toggleGroup(items, true)}
+						>{t('admin.permissionPicker.all')}</button
 					>
 					<button
 						type="button"
 						class="text-xs font-normal text-link underline"
-						onclick={() => toggleGroup(items, false)}>{t('admin.permissionPicker.none')}</button
+						onclick={() => toggleGroup(items, false)}
+						>{t('admin.permissionPicker.none')}</button
 					>
 				{/if}
 			</legend>

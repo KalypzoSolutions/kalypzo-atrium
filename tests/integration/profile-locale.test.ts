@@ -4,22 +4,22 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
+import { t } from '$lib/i18n';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
 import { getDb, schema } from '$lib/server/core/database/client';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { syncModules } from '$lib/server/core/modules/service';
-import { getSetting } from '$lib/server/core/settings/service';
 import {
 	installServerLocale,
 	LOCALE_COOKIE,
 	resolveLocale,
 	withLocale
 } from '$lib/server/core/i18n/locale';
-import { t } from '$lib/i18n';
+import { syncModules } from '$lib/server/core/modules/service';
+import { getSetting } from '$lib/server/core/settings/service';
 import { actions, load } from '../../src/routes/(internal)/profile/+page.server';
 import { actions as loginActions } from '../../src/routes/login/+page.server';
+import { useTestDatabase } from '../helpers/db';
 
 const ORIGIN = 'http://localhost:5173';
 let close: () => Promise<void>;

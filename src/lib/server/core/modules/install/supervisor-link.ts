@@ -8,8 +8,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { and, eq } from 'drizzle-orm';
-import { getDb, schema } from '../../database/client';
 import { t } from '$lib/i18n';
+import { getDb, schema } from '../../database/client';
 import { errors } from '../../errors';
 import type { ArchiveFiles } from './archive';
 
@@ -32,7 +32,13 @@ export interface BuildRequest {
 }
 
 export type SupervisorState =
-	'idle' | 'queued' | 'building' | 'verifying' | 'restarting' | 'done' | 'failed';
+	| 'idle'
+	| 'queued'
+	| 'building'
+	| 'verifying'
+	| 'restarting'
+	| 'done'
+	| 'failed';
 
 export interface SupervisorStatus {
 	state: SupervisorState;

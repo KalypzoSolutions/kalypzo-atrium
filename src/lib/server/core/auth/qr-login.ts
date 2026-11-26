@@ -10,14 +10,14 @@
  */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { and, eq, lt, sql } from 'drizzle-orm';
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { logAudit } from '../audit/service';
 import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { hit } from '../rate-limit';
-import { maskEmail } from './mask-email';
-import { t } from '$lib/i18n';
 import { assertNotImpersonating } from './admin/impersonation';
+import { maskEmail } from './mask-email';
 
 /** Gültigkeit eines angezeigten Codes */
 export const QR_TTL_SEC = 120;

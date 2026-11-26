@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import { t } from '$lib/i18n';
-import { BRAND_ICONS, brandIcon, brandLogo, brandingState } from '$lib/server/core/branding';
+import { BRAND_ICONS, brandIcon, brandingState, brandLogo } from '$lib/server/core/branding';
 import type { RequestHandler } from './$types';
 
 /**

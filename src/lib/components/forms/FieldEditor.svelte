@@ -1,30 +1,30 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { Input } from '$lib/components/ui/input';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import { Switch } from '$lib/components/ui/switch';
-	import { Button } from '$lib/components/ui/button';
-	import SelectField from '$lib/components/ui/select-field/select-field.svelte';
-	import NumberStepper from '$lib/components/layout/NumberStepper.svelte';
-	import AssistRichTextEditor from '$lib/components/layout/writing-assistant/AssistRichTextEditor.svelte';
-	import AssistButton from '$lib/components/layout/writing-assistant/AssistButton.svelte';
-	import type { AssistConfig } from '$lib/components/layout/writing-assistant/assist.svelte';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
+	import NumberStepper from '$lib/components/layout/NumberStepper.svelte';
+	import AssistButton from '$lib/components/layout/writing-assistant/AssistButton.svelte';
+	import AssistRichTextEditor from '$lib/components/layout/writing-assistant/AssistRichTextEditor.svelte';
+	import type { AssistConfig } from '$lib/components/layout/writing-assistant/assist.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import SelectField from '$lib/components/ui/select-field/select-field.svelte';
+	import { Switch } from '$lib/components/ui/switch';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import {
+		type FieldDefinition,
+		type FieldOption,
+		type FieldType,
 		getFieldType,
 		listFieldTypes,
 		plainToRichText,
 		richTextToPlain,
-		slugKey,
-		type FieldDefinition,
-		type FieldOption,
-		type FieldType
+		slugKey
 	} from '$lib/forms';
+	import { t } from '$lib/i18n';
 
 	let {
 		field = $bindable(),
@@ -435,7 +435,8 @@
 								class={iconBtn}
 								aria-label={t('form-builder.editor.optionUp', { n: i + 1 })}
 								disabled={disabled || i === 0}
-								onclick={() => moveOption(i, -1)}><ArrowUp /></Button
+								onclick={() => moveOption(i, -1)}
+								><ArrowUp /></Button
 							>
 							<Button
 								type="button"
@@ -444,7 +445,8 @@
 								class={iconBtn}
 								aria-label={t('form-builder.editor.optionDown', { n: i + 1 })}
 								disabled={disabled || i === field.options.length - 1}
-								onclick={() => moveOption(i, 1)}><ArrowDown /></Button
+								onclick={() => moveOption(i, 1)}
+								><ArrowDown /></Button
 							>
 							<Button
 								type="button"
@@ -453,7 +455,8 @@
 								class={iconBtn}
 								aria-label={t('form-builder.editor.optionRemove', { n: i + 1 })}
 								{disabled}
-								onclick={() => removeOption(i)}><Minus /></Button
+								onclick={() => removeOption(i)}
+								><Minus /></Button
 							>
 						</div>
 					</li>
@@ -465,10 +468,12 @@
 				size="sm"
 				class="gap-1.5"
 				disabled={disabled || field.options.length >= MAX_OPTIONS}
-				onclick={addOption}><Plus />{t('form-builder.editor.addOption')}</Button
+				onclick={addOption}
+				><Plus />{t('form-builder.editor.addOption')}</Button
 			>
 			<details class="rounded-lg border p-3">
-				<summary class="cursor-pointer text-sm font-medium">{t('form-builder.editor.bulk')}</summary
+				<summary class="cursor-pointer text-sm font-medium"
+					>{t('form-builder.editor.bulk')}</summary
 				>
 				<div class="mt-3 space-y-2">
 					<label for="{uid}-bulk" class="text-xs text-muted-foreground"
@@ -480,7 +485,8 @@
 						variant="secondary"
 						size="sm"
 						disabled={disabled || bulk.trim() === ''}
-						onclick={addBulk}>{t('form-builder.editor.bulkApply')}</Button
+						onclick={addBulk}
+						>{t('form-builder.editor.bulkApply')}</Button
 					>
 				</div>
 			</details>
@@ -626,7 +632,11 @@
 			aria-controls="{uid}-adv"
 			onclick={() => (advanced = !advanced)}
 		>
-			{#if advanced}<ChevronDown class="size-4" />{:else}<ChevronRight class="size-4" />{/if}
+			{#if advanced}
+				<ChevronDown class="size-4" />
+			{:else}
+				<ChevronRight class="size-4" />
+			{/if}
 			{t('form-builder.editor.advanced')}
 		</button>
 		{#if advanced}
@@ -646,7 +656,9 @@
 				/>
 				<p id="{uid}-key-help" class="text-xs text-muted-foreground">
 					{t('form-builder.editor.keyHint')}
-					{#if keyReadonly}{t('form-builder.editor.keyLocked')}{/if}
+					{#if keyReadonly}
+						{t('form-builder.editor.keyLocked')}
+					{/if}
 				</p>
 			</div>
 		{/if}

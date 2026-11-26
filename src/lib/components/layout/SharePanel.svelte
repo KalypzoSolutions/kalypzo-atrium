@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { Component } from 'svelte';
 	import ContactRound from '@lucide/svelte/icons/contact-round';
 	import Search from '@lucide/svelte/icons/search';
 	import Shield from '@lucide/svelte/icons/shield';
@@ -8,22 +7,23 @@
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import Users from '@lucide/svelte/icons/users';
 	import UsersRound from '@lucide/svelte/icons/users-round';
+	import type { Component } from 'svelte';
 	import { Avatar, AvatarFallback, AvatarImage } from '$lib/components/ui/avatar';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { contrastTextColor } from '$lib/components/ui/color-picker/color';
 	import { Input } from '$lib/components/ui/input';
 	import { SelectField } from '$lib/components/ui/select-field';
-	import { contrastTextColor } from '$lib/components/ui/color-picker/color';
 	import { t } from '$lib/i18n';
 	import { principalTypeLabel } from '$lib/sdk/types/sharing';
 	import {
-		shareInitials,
-		shareKey,
 		type ShareCandidate,
 		type ShareEntry,
 		type ShareLevel,
 		type ShareOwner,
-		type ShareTargetType
+		type ShareTargetType,
+		shareInitials,
+		shareKey
 	} from './share-types';
 
 	/**

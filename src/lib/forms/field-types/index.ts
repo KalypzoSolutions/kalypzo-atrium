@@ -1,4 +1,4 @@
-import { hasFieldType, registerFieldType, type FieldTypeSpec } from '../registry';
+import { type FieldTypeSpec, hasFieldType, registerFieldType } from '../registry';
 import { booleanFieldType } from './boolean';
 import { consentFieldType } from './consent';
 import { dateFieldType } from './date';

@@ -1,13 +1,13 @@
 <script lang="ts">
+	import CalendarDays from '@lucide/svelte/icons/calendar-days';
 	// Kachel „Diese Woche“: Montag–Sonntag mit Gruppenstunden, Terminen, Fristen und den Arten der
 	// Module (`GET /dashboard/feed`, `kinds`). Jede Art hat ihre eigene Form (Fläche, Rahmen, gestrichelt),
 	// Farbe nur für heute (Akzent) und verstrichene Fristen (rot).
 	// Ab `md` sieben Spalten, darunter eine Liste ab heute.
 	import { onMount } from 'svelte';
-	import CalendarDays from '@lucide/svelte/icons/calendar-days';
-	import { t } from '$lib/i18n';
 	import { DashboardCard } from '$lib/components/layout';
 	import { weekdayLabels } from '$lib/components/layout/month-calendar';
+	import { t } from '$lib/i18n';
 	import { addDays } from '$lib/sdk/dates';
 	import type {
 		DashboardAgendaStyle,
@@ -95,7 +95,9 @@
 			{timeLabel(a, date)}{a.late ? ` · ${t('widgets.week.overdue')}` : ''}
 		</span>
 		<span class="block font-medium break-words hyphens-auto" lang="de">{a.title}</span>
-		{#if a.detail}<span class="block text-muted-foreground">{a.detail}</span>{/if}
+		{#if a.detail}
+			<span class="block text-muted-foreground">{a.detail}</span>
+		{/if}
 		<span class="sr-only">({kindLabel(a.kind)})</span>
 	</a>
 {/snippet}
@@ -122,7 +124,8 @@
 			>
 				{#each kinds as k (k.key)}
 					<li class="flex items-center gap-1.5">
-						<span class={['inline-block h-2.5 w-3.5 rounded-sm border', STYLE_CLASS[k.style]]}
+						<span
+							class={['inline-block h-2.5 w-3.5 rounded-sm border', STYLE_CLASS[k.style]]}
 						></span>
 						{k.label}
 					</li>
@@ -147,9 +150,12 @@
 							class={[
 								'text-sm font-semibold tabular-nums',
 								d.today ? 'text-link' : d.past ? 'text-muted-foreground' : 'text-foreground'
-							]}>{Number(d.date.slice(8))}</span
+							]}
+							>{Number(d.date.slice(8))}</span
 						>
-						{#if d.today}<span class="text-link">{t('widgets.week.today')}</span>{/if}
+						{#if d.today}
+							<span class="text-link">{t('widgets.week.today')}</span>
+						{/if}
 					</p>
 					{#each d.items as a (a.moduleId + a.id)}
 						{@render entry(a, d.date, d.past)}
@@ -167,7 +173,8 @@
 							class={[
 								'block text-sm font-semibold tabular-nums',
 								d.today ? 'text-link' : 'text-foreground'
-							]}>{shortDate(d.date)}</span
+							]}
+							>{shortDate(d.date)}</span
 						>
 					</p>
 					<div class="grid min-w-0 gap-1.5">

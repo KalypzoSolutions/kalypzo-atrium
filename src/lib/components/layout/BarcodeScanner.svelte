@@ -53,12 +53,12 @@
 </script>
 
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { onDestroy, onMount } from 'svelte';
 	import CameraIcon from '@lucide/svelte/icons/camera';
 	import Flashlight from '@lucide/svelte/icons/flashlight';
 	import SwitchCamera from '@lucide/svelte/icons/switch-camera';
+	import { onDestroy, onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { t } from '$lib/i18n';
 
 	let {
 		onscan,
@@ -164,7 +164,7 @@
 
 	function stop() {
 		clearTimeout(timer);
-		stream?.getTracks().forEach((t) => t.stop());
+		for (const t of stream?.getTracks() ?? []) t.stop();
 		stream = null;
 	}
 
@@ -217,7 +217,8 @@
 					variant="secondary"
 					aria-label={torchOn ? t('scanner.torchOff') : t('scanner.torchOn')}
 					aria-pressed={torchOn}
-					onclick={toggleTorch}><Flashlight /></Button
+					onclick={toggleTorch}
+					><Flashlight /></Button
 				>
 			{/if}
 			{#if cameras.length > 1}
@@ -225,7 +226,8 @@
 					size="icon"
 					variant="secondary"
 					aria-label={t('scanner.switchCamera')}
-					onclick={switchCamera}><SwitchCamera /></Button
+					onclick={switchCamera}
+					><SwitchCamera /></Button
 				>
 			{/if}
 		</div>

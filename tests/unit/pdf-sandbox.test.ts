@@ -9,8 +9,8 @@ vi.mock('$lib/server/core/storage', () => ({
 	readFileByIdUnchecked: async () => null
 }));
 
-import { chromiumLaunchAttempts } from '$lib/server/core/pdf';
 import { parseEnv } from '$lib/server/core/env';
+import { chromiumLaunchAttempts } from '$lib/server/core/pdf';
 
 // #67 (01a-13): `--no-sandbox` nur noch per Schalter bzw. als protokollierter Rückfall.
 describe('Chromium-Sandbox des PDF-Renderers', () => {

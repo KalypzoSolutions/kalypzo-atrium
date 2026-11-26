@@ -7,9 +7,10 @@
  * Module: alle installierten (Modulverzeichnis, ohne `tests/`; #71, seit Welle 5 alle Fachmodule). Zusätzlich (#71): Typo-Mindestgröße, Dialoghöhen, Ladetexte, Tabs-Hacks,
  * Kartentitel ohne Größen-Override, du-Ansprache.
  */
+
+import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { describe, expect, it } from 'bun:test';
 import { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 
 const ROOT = resolve(__dirname, '../..');

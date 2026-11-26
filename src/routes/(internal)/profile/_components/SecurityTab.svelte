@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import Copy from '@lucide/svelte/icons/copy';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Smartphone from '@lucide/svelte/icons/smartphone';
-	import Copy from '@lucide/svelte/icons/copy';
 	import { toast } from 'svelte-sonner';
+	import { enhance } from '$app/forms';
+	import { ConfirmDialog, EmptyState, FormField } from '$lib/components/layout';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -18,11 +19,10 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { ConfirmDialog, EmptyState, FormField } from '$lib/components/layout';
 	import { intlLocale, t } from '$lib/i18n';
+	import { describeUserAgent } from '$lib/user-agent';
 	import { callAction, submitter } from './actions';
 	import type { ProfileData } from './types';
-	import { describeUserAgent } from '$lib/user-agent';
 
 	let { data }: { data: ProfileData } = $props();
 
@@ -181,7 +181,8 @@
 					onclick={() => {
 						tfError = null;
 						disableOpen = true;
-					}}>{t('profile.security.disable')}</Button
+					}}
+					>{t('profile.security.disable')}</Button
 				>
 			{:else}
 				<Button
@@ -190,7 +191,8 @@
 						setup = null;
 						saved = false;
 						enableOpen = true;
-					}}>{t('profile.security.enable')}</Button
+					}}
+					>{t('profile.security.enable')}</Button
 				>
 			{/if}
 		</CardContent>
@@ -224,7 +226,9 @@
 									<span class="truncate" title={s.userAgent ?? undefined}>
 										{describeUserAgent(s.userAgent)}
 									</span>
-									{#if s.current}<Badge>{t('profile.security.thisSession')}</Badge>{/if}
+									{#if s.current}
+										<Badge>{t('profile.security.thisSession')}</Badge>
+									{/if}
 								</p>
 								<p class="text-xs text-muted-foreground">
 									{t('profile.security.sessionInfo', {
@@ -351,7 +355,9 @@
 						</Button>
 					</div>
 					<ul class="grid grid-cols-2 gap-1 rounded border bg-muted p-3 font-mono text-xs">
-						{#each setup.backupCodes as c (c)}<li>{c}</li>{/each}
+						{#each setup.backupCodes as c (c)}
+							<li>{c}</li>
+						{/each}
 					</ul>
 					<p class="text-xs text-muted-foreground">
 						{t('profile.security.backupCodesHint')}

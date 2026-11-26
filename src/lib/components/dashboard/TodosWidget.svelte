@@ -1,15 +1,15 @@
 <script lang="ts">
+	import Copy from '@lucide/svelte/icons/copy';
+	import ListChecks from '@lucide/svelte/icons/list-checks';
 	// Kachel „Zu erledigen“: offene Handlungen aller Module (`GET /dashboard/feed`), überfällig zuerst.
 	// Je Zeile genau eine Handlung; nur die dringendste ist ein gefüllter Knopf. Bleibt auch leer
 	// sichtbar („Alles erledigt“), damit die Übersicht ihre Frage immer beantwortet.
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import ListChecks from '@lucide/svelte/icons/list-checks';
-	import Copy from '@lucide/svelte/icons/copy';
 	import { DashboardCard } from '$lib/components/layout';
+	import { Button } from '$lib/components/ui/button';
 	import { t } from '$lib/i18n';
 	import { formatMoney } from '$lib/i18n/intl';
-	import { Button } from '$lib/components/ui/button';
 	import type { DashboardFeed, DashboardFeedTodo } from '$lib/sdk/types/dashboard';
 	import type { DashboardWidgetProps } from '$lib/sdk/types/module-ui';
 	import { dueLabel, loadDashboardFeed } from './feed-data';
@@ -118,9 +118,9 @@
 							<div class="min-w-0 flex-1">
 								<p class="font-medium break-words">{todo.title}</p>
 								<p class="text-xs text-muted-foreground">
-									{todo.detail ?? ''}{todo.detail && due ? ' · ' : ''}{#if due}<span
-											class={todo.severity === 'overdue' ? 'text-destructive' : ''}>{due}</span
-										>{/if}
+									{todo.detail ?? ''}{todo.detail && due ? ' · ' : ''}{#if due}
+										<span class={todo.severity === 'overdue' ? 'text-destructive' : ''}>{due}</span>
+									{/if}
 								</p>
 							</div>
 							{#if todo.amountCents !== undefined}

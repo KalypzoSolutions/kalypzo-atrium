@@ -2,8 +2,6 @@
 	Import-Assistent: 1 Datei hochladen → 2 Passwörter → 3 Vorschau/Optionen → 4 Bestätigen → Lauf → Ergebnis.
 -->
 <script lang="ts">
-	import { onDestroy } from 'svelte';
-	import { t } from '$lib/i18n';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
@@ -12,6 +10,7 @@
 	import LogIn from '@lucide/svelte/icons/log-in';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import Upload from '@lucide/svelte/icons/upload';
+	import { onDestroy } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import type {
 		BackupScopeInfo,
@@ -32,6 +31,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
+	import { t } from '$lib/i18n';
 	import AccountFields from './AccountFields.svelte';
 	import {
 		fmt,
@@ -484,7 +484,9 @@
 					<Alert.Title>{t('admin-backup.import.warnings')}</Alert.Title>
 					<Alert.Description>
 						<ul class="list-disc space-y-1 pl-4">
-							{#each res.warnings as w, i (i)}<li>{w}</li>{/each}
+							{#each res.warnings as w, i (i)}
+								<li>{w}</li>
+							{/each}
 						</ul>
 					</Alert.Description>
 				</Alert.Root>
@@ -567,9 +569,7 @@
 						<FileField id="restore-file" accept={constants.fileExt} bind:file disabled={busy} />
 					</div>
 					{#if file}
-						<p class="text-xs text-muted-foreground">
-							{file.name} – {fmtBytes(file.size)}
-						</p>
+						<p class="text-xs text-muted-foreground"> {file.name} – {fmtBytes(file.size)} </p>
 					{/if}
 					{#if busy && uploadTotal > 0}
 						<div class="space-y-1.5" aria-live="polite">
@@ -913,7 +913,9 @@
 							<Alert.Title>{t('admin-backup.import.warnings')}</Alert.Title>
 							<Alert.Description>
 								<ul class="list-disc space-y-1 pl-4">
-									{#each preview.warnings as w, i (i)}<li>{w}</li>{/each}
+									{#each preview.warnings as w, i (i)}
+										<li>{w}</li>
+									{/each}
 								</ul>
 							</Alert.Description>
 						</Alert.Root>

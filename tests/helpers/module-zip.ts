@@ -4,7 +4,7 @@
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { zipSync, type Zippable } from 'fflate';
+import { type Zippable, zipSync } from 'fflate';
 
 /** Alle Dateien unter `dir` (rekursiv), Pfade relativ zu `dir` mit `/` */
 export function filesOf(dir: string, prefix = ''): Record<string, Uint8Array> {

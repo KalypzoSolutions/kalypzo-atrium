@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 /** Benutzer-Detailseite: Kennzahlen, Einmal-Link, Passwort setzen mit Pflicht, „Als Person handeln“ mit Banner. */
 const ADMIN = { email: 'admin@example.test', password: 'e2e-admin-password-1' };

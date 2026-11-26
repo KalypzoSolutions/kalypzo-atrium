@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import XIcon from '@lucide/svelte/icons/x';
 	// Auswahlmodus einer Touch-Liste: oben „N ausgewählt“ mit Summe und „Alle“, unten feste
 	// Leiste mit den Sammelaktionen (verdeckt die Bereichsleiste). Beenden über ✕.
 	import type { Snippet } from 'svelte';
-	import XIcon from '@lucide/svelte/icons/x';
 	import { Button } from '$lib/components/ui/button';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils.js';
 
 	let {
@@ -46,7 +46,9 @@
 	</button>
 	<div class="flex min-w-0 flex-1 flex-col" aria-live="polite">
 		<strong class="truncate">{t('layout.selection.count', { count })}</strong>
-		{#if summary}<span class="truncate text-xs text-muted-foreground">{summary}</span>{/if}
+		{#if summary}
+			<span class="truncate text-xs text-muted-foreground">{summary}</span>
+		{/if}
 	</div>
 	<Button variant="outline" size="sm" onclick={onall}
 		>{allSelected ? t('layout.selection.none') : t('layout.selection.all')}</Button

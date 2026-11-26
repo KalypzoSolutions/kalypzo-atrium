@@ -1,5 +1,5 @@
-import { t } from '$lib/i18n';
 import QRCode from 'qrcode';
+import { t } from '$lib/i18n';
 import { errors } from './errors';
 
 /** QR-Code als PNG-`data:`-URL. Hohe Fehlerkorrektur, damit gedruckte Codes robust bleiben. */

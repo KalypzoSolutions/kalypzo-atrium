@@ -10,14 +10,14 @@ import {
 	parseUserThemes,
 	resolveTheme,
 	styleString,
-	textContrast,
-	themeFavoritesSchema,
-	themeCssVars,
 	THEME_PRESETS,
 	THEMES_MAX,
+	type ThemeMode,
+	textContrast,
+	themeCssVars,
+	themeFavoritesSchema,
 	userThemeSchema,
-	userThemesSchema,
-	type ThemeMode
+	userThemesSchema
 } from '$lib/appearance';
 import { parseHex, relativeLuminance } from '$lib/components/ui/color-picker/contrast';
 import {

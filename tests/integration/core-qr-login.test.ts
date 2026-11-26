@@ -4,8 +4,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { getAuth } from '$lib/server/core/auth';
 import { contextForUser } from '$lib/server/core/auth/context';
 import {
@@ -16,10 +16,10 @@ import {
 	qrLoginStatus
 } from '$lib/server/core/auth/qr-login';
 import { bootstrapAdmin, createUser, setUserActive } from '$lib/server/core/auth/users';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { getDb, schema } from '$lib/server/core/database/client';
 import { syncModules } from '$lib/server/core/modules/service';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
-import type { RequestContext } from '$lib/sdk/types';
+import { useTestDatabase } from '../helpers/db';
 
 const ORIGIN = 'http://localhost:5173';
 const PW = 'correct-horse-battery';

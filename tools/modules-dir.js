@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Ort der installierten Fachmodule – gemeinsam für Vite, SvelteKit (Alias `$modules`), ESLint und Tests.
+ * Ort der installierten Fachmodule – gemeinsam für Vite, SvelteKit (Alias `$modules`), Modulgrenzen-Prüfer und Tests.
  *
  * `ATRIUM_MODULES_DIR` (absolut oder relativ zum Projekt) überschreibt den Standard `<root>/modules`.
  * Core-Tests zeigen damit z. B. auf `tests/fixtures/modules`, das Module-Repo auf seinen eigenen Ordner.

@@ -1,8 +1,8 @@
-import { t } from '$lib/i18n';
 /**
  * Zod-Eingabe für die Spaltenauswahl der PDF-Listen (gemeinsam für `members` und `actions`).
  */
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { LIST_MAX_COLUMNS } from './types';
 
 /** Auswahl der Listenspalten (Schlüssel prüft der Server gegen den Katalog; ohne Auswahl gilt „Fahrt“) */

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	/**
 	 * Verlaufseditor: einfarbig, linear, radial oder Mesh (Farbflecken). Farbpunkte auf der Leiste ziehen
 	 * (Tastatur: Pfeile verschieben, Umschalt = 10er-Schritte, Entf entfernt), Klick auf die Leiste fügt einen
@@ -9,19 +8,20 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import {
+		type BackgroundKind,
 		cssBackground,
 		RADIAL_POSITIONS,
+		type RadialPosition,
 		SPOTS_MAX,
 		STOPS_MAX,
 		STOPS_MIN,
-		type BackgroundKind,
-		type RadialPosition,
 		type ThemeBackground
 	} from '$lib/appearance';
 	import { Button } from '$lib/components/ui/button';
 	import { ColorPicker } from '$lib/components/ui/color-picker';
 	import { SegmentedSlider } from '$lib/components/ui/segmented-slider';
 	import { Slider } from '$lib/components/ui/slider';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils';
 	import { addSpot, addStop, convertBackground, moveStop, removeStop } from './gradient';
 
@@ -95,7 +95,7 @@
 
 	function posFrom(e: PointerEvent, el: HTMLElement | null): { x: number; y: number } {
 		const r = el?.getBoundingClientRect();
-		if (!r || !r.width || !r.height) return { x: 0, y: 0 };
+		if (!r?.width || !r.height) return { x: 0, y: 0 };
 		return {
 			x: ((e.clientX - r.left) / r.width) * 100,
 			y: ((e.clientY - r.top) / r.height) * 100
@@ -310,7 +310,8 @@
 								setStops(res.stops);
 								selected = res.index;
 							}
-						}}><Plus /> {t('ui.gradient.addStop')}</Button
+						}}
+						><Plus /> {t('ui.gradient.addStop')}</Button
 					>
 					<Button
 						type="button"
@@ -321,7 +322,8 @@
 						onclick={() => {
 							setStops(removeStop(stops, current));
 							selected = Math.max(0, current - 1);
-						}}><Trash2 /></Button
+						}}
+						><Trash2 /></Button
 					>
 				</div>
 			</div>
@@ -396,7 +398,8 @@
 				onclick={() => {
 					setSpots(addSpot(spots));
 					selected = spots.length;
-				}}><Plus /> {t('ui.gradient.addSpot')}</Button
+				}}
+				><Plus /> {t('ui.gradient.addSpot')}</Button
 			>
 			<span class="text-xs text-muted-foreground">
 				{t('ui.gradient.spotsHint', { count: spots.length, max: SPOTS_MAX })}
@@ -438,7 +441,8 @@
 					onclick={() => {
 						setSpots(spots.filter((_, i) => i !== current));
 						selected = Math.max(0, current - 1);
-					}}><Trash2 /></Button
+					}}
+					><Trash2 /></Button
 				>
 			</div>
 		{/if}

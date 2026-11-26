@@ -1,5 +1,5 @@
-import adapter from '@sveltejs/adapter-node';
 import { relative } from 'node:path';
+import adapter from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { CORE_ROOT, modulesDir } from './tools/modules-dir.js';
 

@@ -4,13 +4,14 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import type { RequestContext } from '$lib/sdk/types';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
-import { createRole } from '$lib/server/core/permissions/roles';
+import { getDb, schema } from '$lib/server/core/database/client';
 import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
 import { enableModule, syncModules } from '$lib/server/core/modules/service';
+import type { ModuleDefinition } from '$lib/server/core/modules/types';
+import { createRole } from '$lib/server/core/permissions/roles';
 import {
 	isSafeHref,
 	likePattern,
@@ -18,8 +19,7 @@ import {
 	searchEverything
 } from '$lib/server/core/search/service';
 import { GET as getSearch } from '../../src/routes/(internal)/search/+server';
-import type { ModuleDefinition } from '$lib/server/core/modules/types';
-import type { RequestContext } from '$lib/sdk/types';
+import { useTestDatabase } from '../helpers/db';
 
 let close: () => Promise<void>;
 let admin: RequestContext;
@@ -114,7 +114,7 @@ describe('searchEverything', () => {
 		const r = await searchEverything(admin, 'nora');
 		const core = r.groups.find((g) => g.source === 'core');
 		expect(core?.hits.map((h) => h.title)).toContain('Nora Nutzer_in');
-		expect(core?.hits[0]!.href).toMatch(/^\/admin\/users\/[0-9a-f-]{36}$/);
+		expect(core!.hits[0]!.href).toMatch(/^\/admin\/users\/[0-9a-f-]{36}$/);
 		const roles = await searchEverything(admin, 'leer');
 		expect(roles.groups.find((g) => g.source === 'core')?.hits[0]).toMatchObject({
 			title: 'Leer',

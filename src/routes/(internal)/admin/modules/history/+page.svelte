@@ -91,9 +91,9 @@
 				<Table.Cell>{e.fromVersion ? `${e.fromVersion} → ` : ''}{e.toVersion ?? '–'}</Table.Cell>
 				<Table.Cell class="break-all">
 					<code>{sourceText(e.sourceType, e.source)}</code>
-					{#if e.commit}<span class="block text-xs text-muted-foreground"
-							>{e.commit.slice(0, 10)}</span
-						>{/if}
+					{#if e.commit}
+						<span class="block text-xs text-muted-foreground">{e.commit.slice(0, 10)}</span>
+					{/if}
 				</Table.Cell>
 				<Table.Cell>{e.actor}</Table.Cell>
 				<Table.Cell>

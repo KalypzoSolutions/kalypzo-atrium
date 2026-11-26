@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Label } from '$lib/components/ui/label';
 	import { mergeIds, setFieldContext } from '$lib/components/ui/field/context';
+	import { Label } from '$lib/components/ui/label';
 
 	let {
 		label,
@@ -50,6 +50,10 @@
 		{/if}
 	</Label>
 	{@render children()}
-	{#if hint}<p id={hintId} class="text-xs text-muted-foreground">{hint}</p>{/if}
-	{#if error}<p id={errorId} role="alert" class="text-xs text-destructive">{error}</p>{/if}
+	{#if hint}
+		<p id={hintId} class="text-xs text-muted-foreground">{hint}</p>
+	{/if}
+	{#if error}
+		<p id={errorId} role="alert" class="text-xs text-destructive">{error}</p>
+	{/if}
 </div>

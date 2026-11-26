@@ -13,9 +13,9 @@ import {
 	ensureLocale,
 	isLocale,
 	LOCALES,
+	type Locale,
 	negotiateLocale,
-	setLocaleResolver,
-	type Locale
+	setLocaleResolver
 } from '$lib/i18n';
 import { getDb, schema } from '../database/client';
 

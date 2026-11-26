@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import FileUp from '@lucide/svelte/icons/file-up';
 	import X from '@lucide/svelte/icons/x';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { t } from '$lib/i18n';
 	import ImageCropDialog from './ImageCropDialog.svelte';
 	import { CROP_SOURCE_MAX_BYTES, type ImageCropOptions } from './image-crop';
 	import { openProtectedFile } from './open-file';

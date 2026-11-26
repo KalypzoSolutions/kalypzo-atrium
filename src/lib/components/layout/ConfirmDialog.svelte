@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import {
 		AlertDialog,
 		AlertDialogAction,
@@ -10,6 +9,7 @@
 		AlertDialogHeader,
 		AlertDialogTitle
 	} from '$lib/components/ui/alert-dialog';
+	import { t } from '$lib/i18n';
 
 	let {
 		open = $bindable(false),
@@ -40,7 +40,9 @@
 	<AlertDialogContent>
 		<AlertDialogHeader>
 			<AlertDialogTitle>{title}</AlertDialogTitle>
-			{#if description}<AlertDialogDescription>{description}</AlertDialogDescription>{/if}
+			{#if description}
+				<AlertDialogDescription>{description}</AlertDialogDescription>
+			{/if}
 		</AlertDialogHeader>
 		<AlertDialogFooter>
 			<AlertDialogCancel>{cancelLabel}</AlertDialogCancel>

@@ -31,7 +31,7 @@ Bereichsregeln (`ui-design.md`, `pdf-templates.md` …) laden per `paths:`-Front
 | Befehl | Zweck |
 |---|---|
 | `bun run check` | `svelte-kit sync` + `svelte-check` (0 Fehler Pflicht) |
-| `bun run eslint .` / `bun run prettier --check src tests docs` | Lint / Format (Tabs, Single Quotes, 100 Zeichen) |
+| `bun run lint` / `bun run format` | Biome (Format + Lint inkl. Svelte, Tabs, Single Quotes, 100 Zeichen) + Modulgrenzen (`tools/module-boundaries.ts`) / Biome mit `--write` |
 | `bun run test` (`bun scripts/test.mjs`, `bun test --parallel`) | Unit + Integration (PGlite, ohne Docker); `test:modules` mit allen Modulen |
 | `bun run test:core` / `bun run check:core` | Core allein mit Fixture-Modulen (`tests/fixtures/modules`) – muss grün sein |
 | `bun run build` | Produktions-Build nach `build/` |
@@ -50,7 +50,7 @@ trotzdem lesen – der Graph ersetzt keine Verifikation.
 
 ## Die zehn wichtigsten Regeln
 
-1. **Nie „fertig“ melden ohne Verifikation**: check, eslint, prettier, tests, build; UI per Screenshot ansehen.
+1. **Nie „fertig“ melden ohne Verifikation**: check, lint (Biome + Modulgrenzen), tests, build; UI per Screenshot ansehen.
 2. Module importieren nur `$lib/sdk/*` und `$lib/components/{ui,layout}` – nie `$lib/server/*`.
 3. Berechtigungsschlüssel: `modul.ressource.aktion`, nur `[a-z0-9-]` (**keine Unterstriche**).
 4. Core-Services (`core.users`, `core.audit`, `core.storage`, …) **nie innerhalb** `forModule(...).transaction`.

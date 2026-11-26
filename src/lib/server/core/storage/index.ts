@@ -10,6 +10,7 @@ import {
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { and, eq, inArray, like, sql } from 'drizzle-orm';
+import { t } from '$lib/i18n';
 import { DEFAULT_ALLOWED_CONTENT_TYPES } from '$lib/sdk/content-types';
 import type { RequestContext, StoredFile } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
@@ -19,7 +20,6 @@ import { has } from '../permissions/service';
 import { getSettings } from '../settings/service';
 import { newId } from '../util';
 import { invalidateStorageConfigCache, storageConfigGeneration } from './config-cache';
-import { t } from '$lib/i18n';
 
 export { invalidateStorageConfigCache } from './config-cache';
 
@@ -114,7 +114,7 @@ export function validatePath(path: string): void {
 	if (typeof path !== 'string' || !path.length || path.length > 512) {
 		throw errors.badRequest(t('storage.invalidPath'));
 	}
-	// eslint-disable-next-line no-control-regex
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen werden bewusst entfernt
 	if (/[\u0000-\u001f\u007f\\]/.test(path) || path.startsWith('/') || path.endsWith('/')) {
 		throw errors.badRequest(t('storage.invalidPath'));
 	}
@@ -825,7 +825,7 @@ export async function readFileByIdUnchecked(
 	scope?: { module: string; pathPrefix: string }
 ): Promise<{ buffer: Uint8Array; contentType: string } | null> {
 	const row = await files().findById(fileId);
-	if (!row || row.status !== 'ready') return null;
+	if (row?.status !== 'ready') return null;
 	if (scope && (row.moduleId !== scope.module || !row.path.startsWith(scope.pathPrefix))) {
 		return null;
 	}

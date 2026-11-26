@@ -1,22 +1,22 @@
-import type { PdfResult, RequestContext } from '$lib/sdk/types';
+import { getLocale, t } from '$lib/i18n';
 import {
 	fitLayout,
+	LABEL_LOGO_KEY,
+	type LabelElement,
+	type LabelPdfInput,
 	labelFormatSchema,
 	labelLayoutSchema,
 	labelPageSize,
 	placeLabels,
-	resolveLayout,
-	LABEL_LOGO_KEY,
-	type LabelElement,
-	type LabelPdfInput
+	resolveLayout
 } from '$lib/sdk/labels';
 import { barcodeSvg } from '$lib/sdk/labels/barcode';
 import { logoKey } from '$lib/sdk/labels/layout';
+import type { PdfResult, RequestContext } from '$lib/sdk/types';
 import { errors } from '../errors';
-import { getLocale, t } from '$lib/i18n';
 import { CARLITO_STACK, carlitoFontFaceCss } from './fonts';
-import { escapeHtml } from './templates';
 import { pdfRenderer, sanitizeFileName } from './index';
+import { escapeHtml } from './templates';
 
 /** Höchstens so viele Etiketten je Dokument */
 export const MAX_LABELS = 2000;

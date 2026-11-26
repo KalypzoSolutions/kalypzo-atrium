@@ -1,5 +1,5 @@
 import { getLocale, t } from '$lib/i18n';
-import { brandVersion, brandingState } from '$lib/server/core/branding';
+import { brandingState, brandVersion } from '$lib/server/core/branding';
 import { getSetting } from '$lib/server/core/settings/service';
 import type { RequestHandler } from './$types';
 

@@ -2,10 +2,12 @@ import { fail } from '@sveltejs/kit';
 import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import QRCode from 'qrcode';
 import { z } from 'zod';
+import { resolveTheme, THEME_PRESETS } from '$lib/appearance/presets';
+import { FAVORITES_MAX, THEMES_MAX, userThemeSchema } from '$lib/appearance/schema';
 import { t } from '$lib/i18n';
 import { getAuth } from '$lib/server/core/auth';
 import { clearMustChangePassword } from '$lib/server/core/auth/admin/password';
-import { limitAuthAction, type AuthLimitKind } from '$lib/server/core/auth/auth-limits';
+import { type AuthLimitKind, limitAuthAction } from '$lib/server/core/auth/auth-limits';
 import { clientAddress, withClientIp } from '$lib/server/core/auth/client-ip';
 import {
 	AVATAR_MAX_BYTES,
@@ -15,15 +17,13 @@ import {
 	updateOwnName
 } from '$lib/server/core/auth/profile';
 import { getDb, schema } from '$lib/server/core/database/client';
-import { invalidateUserLocale, userLocale } from '$lib/server/core/i18n/locale';
 import { isCoreError } from '$lib/server/core/errors';
+import { invalidateUserLocale, userLocale } from '$lib/server/core/i18n/locale';
 import { navigationFor } from '$lib/server/core/modules/service';
 import { enabledModuleIds } from '$lib/server/core/modules/state';
 import { roleIdsForUser } from '$lib/server/core/permissions/roles';
 import { setSetting } from '$lib/server/core/settings/service';
 import { loadUserPrefs, resolveStartPage } from '$lib/server/core/settings/user-prefs';
-import { resolveTheme, THEME_PRESETS } from '$lib/appearance/presets';
-import { FAVORITES_MAX, THEMES_MAX, userThemeSchema } from '$lib/appearance/schema';
 import { authErrorMessage } from '../../login/auth-error';
 import { setLocaleCookie } from '../../login/locale-cookie';
 import type { Actions, PageServerLoad } from './$types';

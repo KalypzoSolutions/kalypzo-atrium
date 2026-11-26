@@ -1,7 +1,7 @@
 <script lang="ts">
+	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { toast } from 'svelte-sonner';
 	import { ErrorState, LoadingState, PageHeader, PageTitle } from '$lib/components/layout';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import { t } from '$lib/i18n';

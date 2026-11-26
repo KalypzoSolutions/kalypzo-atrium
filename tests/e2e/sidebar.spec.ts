@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Seitenleiste (Desktop): einklappen zur Symbolleiste, Name als Tooltip, Zustand bleibt nach Reload
 // (Cookie `sidebar`), Klick auf „Administration“ klappt aus und öffnet die Gruppe.

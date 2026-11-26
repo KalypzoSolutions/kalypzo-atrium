@@ -6,10 +6,10 @@
  *   Transaktion mit `SET LOCAL app.audit_retention = 'on'` (Migration 0007).
  * Alles in Stapeln mit je eigener kurzer Transaktion (keine langen Sperren, PGlite-tauglich).
  */
-import { sql, type SQL } from 'drizzle-orm';
+import { type SQL, sql } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
-import { getDb, type DbOrTx } from '../database/client';
+import { type DbOrTx, getDb } from '../database/client';
 import { getSetting } from '../settings/service';
 
 const DAY_MS = 24 * 60 * 60_000;

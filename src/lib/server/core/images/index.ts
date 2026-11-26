@@ -12,8 +12,8 @@
  * UltraHDR usw. nie erreicht werden – auch nicht über andere sharp-Aufrufe im selben Prozess.
  */
 import sharp, { type Metadata, type OutputInfo, type SharpOptions } from 'sharp';
-import { CoreError, errors } from '../errors';
 import { t } from '$lib/i18n';
+import { CoreError, errors } from '../errors';
 
 /**
  * libvips-Loader, die erlaubt bleiben (Klassennamen; gelten inkl. Buffer-/File-/Source-Varianten).

@@ -5,26 +5,26 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
 import { eq, sql } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import { defineModule } from '$lib/sdk/server';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
-import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
-import { enableModule, syncModules } from '$lib/server/core/modules/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { getDb, schema } from '$lib/server/core/database/client';
 import {
-	RETRY_MS,
-	STALE_MS,
 	dailyWindow,
 	dueBefore,
 	listJobs,
+	RETRY_MS,
 	runDueJobs,
 	runJobNow,
+	STALE_MS,
 	setJobClockForTests,
 	setJobHeartbeatForTests
 } from '$lib/server/core/jobs';
-import { defineModule } from '$lib/sdk/server';
-import type { RequestContext } from '$lib/sdk/types';
+import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
+import { enableModule, syncModules } from '$lib/server/core/modules/service';
+import { useTestDatabase } from '../helpers/db';
 
 type Row = Record<string, unknown>;
 

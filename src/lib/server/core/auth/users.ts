@@ -1,8 +1,14 @@
-import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getDb, schema, type Tx } from '../database/client';
+import { forModule } from '../database/module-db';
 import { errors } from '../errors';
+import { withLocale } from '../i18n/locale';
+import { sendMail } from '../mail';
+import { allDefinitions } from '../modules/registry';
+import { isModuleEnabled } from '../modules/service';
 import { ADMIN_ROLE_ID } from '../permissions/catalog';
 import { ensureDefaultRole } from '../permissions/default-roles';
 import {
@@ -12,21 +18,15 @@ import {
 	permissionsOfRole,
 	requirePermission
 } from '../permissions/service';
-import { forModule } from '../database/module-db';
-import { withLocale } from '../i18n/locale';
-import { sendMail } from '../mail';
-import { allDefinitions } from '../modules/registry';
-import { isModuleEnabled } from '../modules/service';
 import { getSetting } from '../settings/service';
 import { newId } from '../util';
-import { getAuth } from './index';
-import { requireUser } from './context';
 import { accountMailLocale } from './account-mail';
+import { unusablePassword } from './admin/password';
+import { requireUser } from './context';
+import { getAuth } from './index';
 import { assertCanManageUser } from './manage-guard';
 import { maskEmail } from './mask-email';
 import { removeAvatarObject } from './profile';
-import { unusablePassword } from './admin/password';
-import { t } from '$lib/i18n';
 
 export interface UserListItem {
 	id: string;

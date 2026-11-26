@@ -2,8 +2,8 @@
 	// Einzeiliges Feld mit Schreibhilfe (Betreff, Titel, Thema): schlägt Varianten vor.
 	// Quelle ist meist ein anderes Feld (z. B. der Nachrichtentext) – `source` liefert ihn.
 	import { Input } from '$lib/components/ui/input';
-	import { cn } from '$lib/utils.js';
 	import type { AssistTask } from '$lib/sdk/types/assist';
+	import { cn } from '$lib/utils.js';
 	import AssistButton from './AssistButton.svelte';
 	import type { AssistConfig } from './assist.svelte';
 

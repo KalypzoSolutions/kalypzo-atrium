@@ -3,8 +3,9 @@
  * (`aria-describedby`, `aria-invalid`, `aria-required`) – ohne Code im Aufrufer.
  * Geprüft per SSR-Render (`svelte/server`), ohne DOM.
  */
-import { render } from 'svelte/server';
+
 import { describe, expect, it } from 'bun:test';
+import { render } from 'svelte/server';
 import { fieldAria, mergeIds } from '../../src/lib/components/ui/field/context';
 import { loadSvelteComponent } from '../helpers/svelte-ssr';
 

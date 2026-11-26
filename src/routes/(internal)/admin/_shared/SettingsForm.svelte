@@ -127,7 +127,8 @@
 							<span
 								class="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
 								style={`--accent-color:${color}`}
-								aria-hidden="true">{t('admin-settings.form.preview')}</span
+								aria-hidden="true"
+								>{t('admin-settings.form.preview')}</span
 							>
 						{/if}
 					</div>
@@ -174,7 +175,9 @@
 		{/if}
 	{/each}
 
-	{#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
+	{#if error}
+		<p class="text-sm text-destructive" role="alert">{error}</p>
+	{/if}
 	{#if canEdit}
 		<Button type="submit" disabled={busy}
 			>{busy ? t('admin-settings.form.saving') : submitLabel}</Button

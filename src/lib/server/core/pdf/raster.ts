@@ -10,8 +10,8 @@
  */
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { errors } from '../errors';
 import { t } from '$lib/i18n';
+import { errors } from '../errors';
 
 export const MAX_PDF_RASTER_BYTES = 50 * 1024 * 1024;
 /** Obergrenze der gerenderten Fläche (Schutz vor riesigen Seitenformaten) */

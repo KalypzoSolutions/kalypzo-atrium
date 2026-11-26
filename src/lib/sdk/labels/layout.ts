@@ -1,9 +1,9 @@
 import { t } from '$lib/i18n';
 import type {
 	LabelElement,
-	LabelImageElement,
 	LabelFormat,
 	LabelFormatPreset,
+	LabelImageElement,
 	LabelLayout,
 	LabelPlacement
 } from './types';

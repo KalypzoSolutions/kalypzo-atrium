@@ -73,7 +73,7 @@ SMTP, S3, OpenAI und PDF-Layout werden **in der Oberfläche** konfiguriert (Eins
 | `bun run dev` | Entwicklungsserver |
 | `bun run build` / `bun run start` | Produktions-Build / Start (`bun ./build/index.js`) |
 | `bun run check` | `svelte-kit sync` + `svelte-check` |
-| `bun run lint` / `bun run format` | ESLint + Prettier prüfen / schreiben |
+| `bun run lint` / `bun run format` | Biome (Format + Lint) und Modulgrenzen prüfen / Biome-Korrekturen schreiben |
 | `bun run test` | `bun test` (Unit + Integration) |
 | `bun run test:unit` / `test:integration` | Teilmengen |
 | `bun run test:e2e` | Playwright (startet eine PGlite-Instanz per TCP-Socket, kein Docker nötig; mit `E2E_DATABASE_URL` echte PostgreSQL, siehe `scripts/e2e-server.mjs`) |

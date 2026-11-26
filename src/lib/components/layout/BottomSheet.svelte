@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import XIcon from '@lucide/svelte/icons/x';
+	import { Dialog as DialogPrimitive } from 'bits-ui';
 	// Blatt von unten (Handy): Griff + Kopf ziehen schließt, Hintergrund tippen schließt,
 	// die Zurück-Geste schließt nur das Blatt (Verlaufseintrag per Shallow Routing).
 	// Für Menüs (`SheetAction`), Filter (`ChoiceChips`) und kurze Formulare/Assistenten.
-	import { untrack, type Snippet } from 'svelte';
-	import { Dialog as DialogPrimitive } from 'bits-ui';
+	import { type Snippet, untrack } from 'svelte';
 	import { pushState } from '$app/navigation';
 	import { page } from '$app/state';
-	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
-	import XIcon from '@lucide/svelte/icons/x';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils.js';
 	import { popSheetEntry, sheetsSettled } from './sheet-history';
 
@@ -182,9 +182,7 @@
 				{@render children()}
 			</div>
 			{#if footer}
-				<div class="safe-bottom shrink-0 border-t bg-popover px-4 pt-3">
-					{@render footer()}
-				</div>
+				<div class="safe-bottom shrink-0 border-t bg-popover px-4 pt-3"> {@render footer()} </div>
 			{/if}
 		</DialogPrimitive.Content>
 	</DialogPrimitive.Portal>

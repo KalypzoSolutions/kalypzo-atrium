@@ -6,6 +6,7 @@
  */
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
+import type { RequestContext } from '$lib/sdk/server';
 import {
 	core,
 	createShareAccess,
@@ -16,13 +17,12 @@ import {
 	moduleDb,
 	principalKeysFor,
 	rowsOf,
-	validatePrincipals,
-	type RequestContext
+	validatePrincipals
 } from '$lib/sdk/server';
-import type { BoardService } from './contract';
-import pkg from './atrium-module.json';
-import colors from './data/colors.json';
 import hint from './assets/hint.txt?raw';
+import pkg from './atrium-module.json';
+import type { BoardService } from './contract';
+import colors from './data/colors.json';
 import m0001 from './migrations/0001_init.sql?raw';
 import m0002 from './migrations/0002_events.sql?raw';
 

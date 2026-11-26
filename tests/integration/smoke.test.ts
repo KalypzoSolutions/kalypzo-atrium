@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
-import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';
+import { useTestDatabase } from '../helpers/db';
 
 describe('smoke', () => {
 	beforeAll(async () => {

@@ -3,8 +3,8 @@
 	import { ConfirmDialog, PageTitle } from '$lib/components/layout';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { submitHandler } from '../../_shared/form-utils';
 	import { t } from '$lib/i18n';
+	import { submitHandler } from '../../_shared/form-utils';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
 	import type { PageData } from './$types';
 

@@ -1,13 +1,4 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { tick } from 'svelte';
-	import { flip } from 'svelte/animate';
-	import { Input } from '$lib/components/ui/input';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
-	import * as Tabs from '$lib/components/ui/tabs';
-	import ConfirmDialog from '$lib/components/layout/ConfirmDialog.svelte';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -16,22 +7,31 @@
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';
 	import Maximize2 from '@lucide/svelte/icons/maximize-2';
 	import Trash from '@lucide/svelte/icons/trash';
-	import FieldEditor from './FieldEditor.svelte';
+	import { tick } from 'svelte';
+	import { flip } from 'svelte/animate';
+	import ConfirmDialog from '$lib/components/layout/ConfirmDialog.svelte';
 	import type { AssistConfig } from '$lib/components/layout/writing-assistant/assist.svelte';
-	import FieldPalette, { fieldTypeIcon } from './FieldPalette.svelte';
-	import FormPreviewDialog from './FormPreviewDialog.svelte';
-	import FormRenderer from './FormRenderer.svelte';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import * as Tabs from '$lib/components/ui/tabs';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import {
 		emptyValues,
-		getFieldType,
-		richTextToPlain,
-		listFieldTypes,
-		slugKey,
 		type FieldDefinition,
 		type FieldType,
 		type FormDefinition,
-		type FormValues
+		type FormValues,
+		getFieldType,
+		listFieldTypes,
+		richTextToPlain,
+		slugKey
 	} from '$lib/forms';
+	import { t } from '$lib/i18n';
+	import FieldEditor from './FieldEditor.svelte';
+	import FieldPalette, { fieldTypeIcon } from './FieldPalette.svelte';
+	import FormPreviewDialog from './FormPreviewDialog.svelte';
+	import FormRenderer from './FormRenderer.svelte';
 
 	let {
 		definition = $bindable(),
@@ -382,9 +382,11 @@
 									aria-controls="{uid}-{f.id}-panel"
 									onclick={() => (expanded[f.id] = !open)}
 								>
-									{#if open}<ChevronDown class="size-4 shrink-0" />{:else}<ChevronRight
-											class="size-4 shrink-0"
-										/>{/if}
+									{#if open}
+										<ChevronDown class="size-4 shrink-0" />
+									{:else}
+										<ChevronRight class="size-4 shrink-0" />
+									{/if}
 									<Icon class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 									<span class="flex min-w-0 flex-1 flex-col">
 										<span
@@ -401,18 +403,18 @@
 									</span>
 								</button>
 								<div class="flex flex-wrap items-center gap-1">
-									{#if f.required}<Badge variant="secondary"
-											>{t('form-builder.builder.badgeRequired')}</Badge
-										>{/if}
-									{#if f.locked}<Badge variant="outline"
-											>{t('form-builder.builder.badgeLocked')}</Badge
-										>{/if}
-									{#if f.hidden}<Badge variant="outline"
-											>{t('form-builder.builder.badgeHidden')}</Badge
-										>{/if}
-									{#if f.health}<Badge variant="outline"
-											>{t('form-builder.builder.badgeHealth')}</Badge
-										>{/if}
+									{#if f.required}
+										<Badge variant="secondary">{t('form-builder.builder.badgeRequired')}</Badge>
+									{/if}
+									{#if f.locked}
+										<Badge variant="outline">{t('form-builder.builder.badgeLocked')}</Badge>
+									{/if}
+									{#if f.hidden}
+										<Badge variant="outline">{t('form-builder.builder.badgeHidden')}</Badge>
+									{/if}
+									{#if f.health}
+										<Badge variant="outline">{t('form-builder.builder.badgeHealth')}</Badge>
+									{/if}
 								</div>
 								<div class="ml-auto flex shrink-0 items-center">
 									<Button
@@ -423,7 +425,8 @@
 										data-move="up"
 										aria-label={t('form-builder.builder.moveUp', { label: f.label })}
 										disabled={disabled || i === 0}
-										onclick={() => move(i, -1)}><ArrowUp /></Button
+										onclick={() => move(i, -1)}
+										><ArrowUp /></Button
 									>
 									<Button
 										type="button"
@@ -433,7 +436,8 @@
 										data-move="down"
 										aria-label={t('form-builder.builder.moveDown', { label: f.label })}
 										disabled={disabled || i === fieldCount - 1}
-										onclick={() => move(i, 1)}><ArrowDown /></Button
+										onclick={() => move(i, 1)}
+										><ArrowDown /></Button
 									>
 									<Button
 										type="button"
@@ -442,7 +446,8 @@
 										class={iconBtn}
 										aria-label={t('form-builder.builder.duplicate', { label: f.label })}
 										disabled={disabled || atLimit}
-										onclick={() => duplicate(i)}><Copy /></Button
+										onclick={() => duplicate(i)}
+										><Copy /></Button
 									>
 									{#if !f.locked}
 										<Button
@@ -452,7 +457,8 @@
 											class="{iconBtn} text-destructive hover:text-destructive"
 											aria-label={t('form-builder.builder.delete', { label: f.label })}
 											{disabled}
-											onclick={() => askDelete(f)}><Trash /></Button
+											onclick={() => askDelete(f)}
+											><Trash /></Button
 										>
 									{/if}
 								</div>

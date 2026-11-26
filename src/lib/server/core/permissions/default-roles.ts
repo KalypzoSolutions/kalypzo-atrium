@@ -11,11 +11,12 @@
  *   Administration entscheidet: Rolle umbenennen/löschen (beim nächsten Start entsteht die Standardrolle) oder
  *   ausdrücklich übernehmen (`adoptDefaultRole`).
  */
-import { t } from '$lib/i18n';
+
 import { and, eq, isNull } from 'drizzle-orm';
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
-import { getDb, schema, type DbOrTx } from '../database/client';
+import { type DbOrTx, getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { allDefinitions } from '../modules/registry';
 import { newId } from '../util';

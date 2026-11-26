@@ -1,21 +1,21 @@
 import { describe, expect, it } from 'bun:test';
+import { ScanBuffer } from '$lib/components/layout/scan-input';
 import {
-	LABEL_FORMAT_PRESETS,
 	fillPlaceholders,
 	fitLayout,
 	formatProblem,
+	LABEL_FORMAT_PRESETS,
+	type LabelFormat,
+	type LabelLayout,
 	labelFormatSchema,
 	labelLayoutSchema,
 	labelPageSize,
 	labelsPerPage,
-	placeLabels,
 	placeholdersIn,
-	resolveLayout,
-	type LabelFormat,
-	type LabelLayout
+	placeLabels,
+	resolveLayout
 } from '$lib/sdk/labels';
 import { barcodeDataUrl, barcodeSvg } from '$lib/sdk/labels/barcode';
-import { ScanBuffer } from '$lib/components/layout/scan-input';
 import { buildLabelsHtml } from '$lib/server/core/pdf/labels';
 
 const sheet: LabelFormat = {

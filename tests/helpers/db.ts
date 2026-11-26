@@ -1,18 +1,18 @@
-import { PGlite } from '@electric-sql/pglite';
-import { drizzle } from 'drizzle-orm/pglite';
-import { migrate } from 'drizzle-orm/pglite/migrator';
-import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
-import pg from 'pg';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { setDb, schema, type Db } from '$lib/server/core/database/client';
+import { PGlite } from '@electric-sql/pglite';
+import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+import { drizzle } from 'drizzle-orm/pglite';
+import { migrate } from 'drizzle-orm/pglite/migrator';
+import pg from 'pg';
+import { resetAuthForTests } from '$lib/server/core/auth';
+import { type Db, schema, setDb } from '$lib/server/core/database/client';
 import { runCoreMigrations } from '$lib/server/core/database/migrate';
 import { resetEnvForTests } from '$lib/server/core/env';
-import { resetAuthForTests } from '$lib/server/core/auth';
-import { resetAllForTests } from '$lib/server/core/rate-limit';
-import { invalidateModuleStateCache } from '$lib/server/core/modules/state';
-import { invalidateStorageConfigCache } from '$lib/server/core/storage/config-cache';
 import { invalidateMailTransportCache } from '$lib/server/core/mail-cache';
+import { invalidateModuleStateCache } from '$lib/server/core/modules/state';
+import { resetAllForTests } from '$lib/server/core/rate-limit';
+import { invalidateStorageConfigCache } from '$lib/server/core/storage/config-cache';
 
 /**
  * Echte PostgreSQL-Instanz für Integrationstests (#60), z. B.

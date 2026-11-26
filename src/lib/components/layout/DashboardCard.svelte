@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import type { Component, Snippet } from 'svelte';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import type { Component, Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
+	import { t } from '$lib/i18n';
 	import ErrorState from './ErrorState.svelte';
 	import LoadingState from './LoadingState.svelte';
 
@@ -55,11 +55,15 @@
 			{/if}
 			<div class="min-w-0">
 				<Card.Title class="truncate">{title}</Card.Title>
-				{#if description}<Card.Description class="text-xs">{description}</Card.Description>{/if}
+				{#if description}
+					<Card.Description class="text-xs">{description}</Card.Description>
+				{/if}
 			</div>
 		</div>
 		<div class="flex shrink-0 items-center gap-1">
-			{#if actions}{@render actions()}{/if}
+			{#if actions}
+				{@render actions()}
+			{/if}
 			{#if href}
 				<Button
 					{href}

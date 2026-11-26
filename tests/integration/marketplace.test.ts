@@ -5,22 +5,22 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { eq, sql } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
-import { syncModules } from '$lib/server/core/modules/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { actions } from '../../src/routes/(internal)/admin/modules/marketplace/+page.server';
+import { getDb, schema } from '$lib/server/core/database/client';
 import { listJobs, runJobNow } from '$lib/server/core/jobs';
-import { setSetting } from '$lib/server/core/settings/service';
 import {
 	getMarketplace,
 	refreshMarketplace,
 	resetMarketplaceCacheForTests,
 	setMarketplaceFetchForTests
 } from '$lib/server/core/modules/install/marketplace';
-import type { RequestContext } from '$lib/sdk/types';
+import { syncModules } from '$lib/server/core/modules/service';
+import { setSetting } from '$lib/server/core/settings/service';
+import { actions } from '../../src/routes/(internal)/admin/modules/marketplace/+page.server';
+import { useTestDatabase } from '../helpers/db';
 
 const URL_DEFAULT = 'https://atrium.kalypzo.de/marketplace/v1/index.json';
 let close: () => Promise<void>;

@@ -24,12 +24,12 @@ modules/<id>/
 └── pages/*.svelte            Seiten + Unterkomponenten
 ```
 
-## Erlaubte Importe (ESLint je Modul, #44/#47)
+## Erlaubte Importe (`tools/module-boundaries.ts` je Modul, #44/#47)
 - Erlaubt: eigene Moduldateien, `$lib/sdk/*`, `$lib/components/{ui,layout,forms}`, `$lib/forms`, `$lib/pdf-lists`, `$lib/utils`. Fremde Module **nur** `import type … from '$modules/<id>/contract'`
-  (Laufzeit über `core.modules.use|useOptional`); andere Fremddateien und relative Pfade `../<anderes-modul>/…` → ESLint-Fehler.
+  (Laufzeit über `core.modules.use|useOptional`); andere Fremddateien und relative Pfade `../<anderes-modul>/…` → Fehler in `bun run lint`.
 - Gemeinsame reine Hilfen in eine dieser Bibliotheken legen (oder als Dienst in den Vertrag), nie aus einem anderen Modul importieren.
 - `no-restricted-syntax`: `core.database.db`, `core.system.*`, `core.modules.enable|disable`, `core.auth.instance`, `forModule('<fremde-id>')` verboten.
-- Offene Ausnahmen: `OPEN_BOUNDARY_EXCEPTIONS` in `eslint.config.js` (mit Grund, beim Beheben löschen). Test: `tests/unit/module-boundaries.test.ts`.
+- Prüfer `tools/module-boundaries.ts` (`bun run lint`, auch mit `ATRIUM_MODULES_DIR`), Test: `tests/unit/module-boundaries.test.ts`.
 - Details: `docs/module-development.md` → „Erlaubte Importe“.
 
 ## Paketbeschreibung `atrium-module.json` (seit 2026-11-01, Kalypzo Atrium Phase 2)

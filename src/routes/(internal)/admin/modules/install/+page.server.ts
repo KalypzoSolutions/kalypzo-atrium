@@ -1,4 +1,4 @@
-import { fail, type Actions } from '@sveltejs/kit';
+import { type Actions, fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { t } from '$lib/i18n';
 import {

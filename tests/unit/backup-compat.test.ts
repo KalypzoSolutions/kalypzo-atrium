@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { checkCompat, type CompatTarget } from '$lib/server/core/backup/compat';
+import { type CompatTarget, checkCompat } from '$lib/server/core/backup/compat';
 import type { BackupMeta, TableInfo } from '$lib/server/core/backup/types';
 
 const cols = (...names: string[]) => names.map((name) => ({ name, type: 'text' }));

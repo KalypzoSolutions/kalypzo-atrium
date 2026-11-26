@@ -4,18 +4,18 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { createApiKey } from '$lib/server/core/api/keys';
+import { handleApiRequest } from '$lib/server/core/api/router';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser, updateUserFull } from '$lib/server/core/auth/users';
-import { createRole } from '$lib/server/core/permissions/roles';
-import { ADMIN_ROLE_ID } from '$lib/server/core/permissions/catalog';
-import { syncModules } from '$lib/server/core/modules/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { handleApiRequest } from '$lib/server/core/api/router';
-import { createApiKey } from '$lib/server/core/api/keys';
 import { getDb, schema } from '$lib/server/core/database/client';
+import { syncModules } from '$lib/server/core/modules/service';
+import { ADMIN_ROLE_ID } from '$lib/server/core/permissions/catalog';
+import { createRole } from '$lib/server/core/permissions/roles';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
-import type { RequestContext } from '$lib/sdk/types';
+import { useTestDatabase } from '../helpers/db';
 
 const PW = 'correct-horse-battery';
 let close: () => Promise<void>;

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import { dueLabel, feedFinding, shortDate } from '../../src/lib/components/dashboard/feed-data';
+import type { DashboardFeedAgendaItem, DashboardFeedTodo } from '../../src/lib/sdk/types/dashboard';
 import {
 	mondayOf,
 	sortAgenda,
 	sortTodos,
 	withoutDuplicateMeetings
 } from '../../src/lib/server/core/dashboard/feed';
-import type { DashboardFeedAgendaItem, DashboardFeedTodo } from '../../src/lib/sdk/types/dashboard';
 
 const todo = (title: string, extra: Partial<DashboardFeedTodo> = {}): DashboardFeedTodo => ({
 	id: title,

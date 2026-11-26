@@ -1,5 +1,5 @@
-import { t } from '$lib/i18n';
 import type { ApiErrorInfo } from '$lib/api-docs/types';
+import { t } from '$lib/i18n';
 import type { RegisteredEndpoint } from '../types';
 
 /** Obergrenze für JSON-Bodies im Router (`MAX_BODY_BYTES` in `router.ts`). */

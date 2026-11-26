@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { intlLocale, t } from '$lib/i18n';
 	import { goto } from '$app/navigation';
+	import { DataTable, PageHeader, PageTitle, Pagination } from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import { DataTable, PageHeader, Pagination, PageTitle } from '$lib/components/layout';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
+	import { intlLocale, t } from '$lib/i18n';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

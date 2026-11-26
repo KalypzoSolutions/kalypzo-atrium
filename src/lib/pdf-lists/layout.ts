@@ -1,10 +1,10 @@
 import { t } from '$lib/i18n';
+import { formatDate } from '$lib/i18n/intl';
 /**
  * PDF-Blöcke für Listen (rein): eine Gitter-Tabelle je Abschnitt, Spaltenbreiten aus `weight`,
  * Kopfzeile wiederholt sich je Seite (Verhalten des Blocktyps `table`).
  */
 import type { PdfBlock } from '$lib/sdk/types';
-import { formatDate } from '$lib/i18n/intl';
 import type { ListColumn, ListRow } from './types';
 
 /** Nutzbare Breite der Vorlage `stamm-briefkopf-quer` in mm (297 − 25 − 25) */

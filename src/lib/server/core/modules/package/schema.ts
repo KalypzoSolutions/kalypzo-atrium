@@ -8,9 +8,10 @@
  *
  * Bewusst ohne `$lib`-Importe: wird auch vom Vite-Plugin und von Werkzeugen außerhalb der App gelesen.
  */
-import { t } from '$lib/i18n';
+
 import semver from 'semver';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 
 export const MODULE_PACKAGE_FILE = 'atrium-module.json';
 export const MODULE_CATALOG_FILE = 'atrium-modules.json';

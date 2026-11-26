@@ -1,12 +1,12 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
-import { waitFor } from '../helpers/wait';
 import { sql } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb } from '$lib/server/core/database/client';
 import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { handleApiRequest } from '$lib/server/core/api/router';
 import { setHealthProbeForTests } from '$lib/server/core/api/health';
+import { handleApiRequest } from '$lib/server/core/api/router';
+import { getDb } from '$lib/server/core/database/client';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
+import { useTestDatabase } from '../helpers/db';
+import { waitFor } from '../helpers/wait';
 
 // Health-Check prüft die Datenbank und schreibt kein api_log; andere Aufrufe protokollieren das Muster.
 

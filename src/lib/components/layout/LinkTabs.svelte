@@ -40,7 +40,9 @@
 							: 'border-transparent text-muted-foreground hover:text-foreground'
 					)}
 				>
-					{#if Icon}<Icon class="size-4 shrink-0" aria-hidden="true" />{/if}
+					{#if Icon}
+						<Icon class="size-4 shrink-0" aria-hidden="true" />
+					{/if}
 					{t.label}
 				</a>
 			</li>

@@ -135,14 +135,16 @@
 						<rect x={i * (bw + 2)} y="0" width={bw + 2} height={H} fill="transparent"
 							><title>{label(d)}</title></rect
 						>
-						{#if h}<rect
+						{#if h}
+							<rect
 								x={i * (bw + 2)}
 								y={H - h}
 								width={bw}
 								height={h}
 								rx="1"
 								class="pointer-events-none fill-primary"
-							/>{/if}
+							/>
+						{/if}
 					{/each}
 				</svg>
 			</a>
@@ -155,11 +157,15 @@
 					: ''}"
 			>
 				<span class="flex items-center gap-1 text-xs text-muted-foreground">
-					{#if tile.warn}<TriangleAlertIcon class="size-3.5 text-warning" aria-hidden="true" />{/if}
+					{#if tile.warn}
+						<TriangleAlertIcon class="size-3.5 text-warning" aria-hidden="true" />
+					{/if}
 					{tile.label}
 				</span>
 				<span class="mt-1 block text-lg font-semibold tabular-nums">{tile.value}</span>
-				{#if tile.sub}<span class="block text-xs text-muted-foreground">{tile.sub}</span>{/if}
+				{#if tile.sub}
+					<span class="block text-xs text-muted-foreground">{tile.sub}</span>
+				{/if}
 			</a>
 		{/each}
 	</div>

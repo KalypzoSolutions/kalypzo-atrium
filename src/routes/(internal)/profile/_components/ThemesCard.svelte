@@ -6,6 +6,7 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import Star from '@lucide/svelte/icons/star';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import { toast } from 'svelte-sonner';
 	import {
 		blankTheme,
 		FAVORITES_MAX,
@@ -14,6 +15,7 @@
 		type ThemeMode,
 		type UserTheme
 	} from '$lib/appearance';
+	import { ConfirmDialog } from '$lib/components/layout';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		Card,
@@ -29,10 +31,8 @@
 		DropdownMenuSeparator,
 		DropdownMenuTrigger
 	} from '$lib/components/ui/dropdown-menu';
-	import { ConfirmDialog } from '$lib/components/layout';
 	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils';
-	import { toast } from 'svelte-sonner';
 	import { callAction } from './actions';
 	import ThemeEditorDialog from './ThemeEditorDialog.svelte';
 	import type { ProfileData } from './types';
@@ -125,9 +125,13 @@
 		>
 			{@render swatch(th?.light ?? PLAIN.light, th?.dark ?? PLAIN.dark, th?.accent ?? '')}
 			<span class="flex min-w-0 items-center gap-1 pr-7 text-sm">
-				{#if active}<Check class="size-4 shrink-0 text-link" aria-hidden="true" />{/if}
+				{#if active}
+					<Check class="size-4 shrink-0 text-link" aria-hidden="true" />
+				{/if}
 				<span class="truncate">{th?.name ?? t('profile.themes.default')}</span>
-				{#if active}<span class="sr-only">{t('profile.themes.activeSr')}</span>{/if}
+				{#if active}
+					<span class="sr-only">{t('profile.themes.activeSr')}</span>
+				{/if}
 			</span>
 		</button>
 		{#if th}

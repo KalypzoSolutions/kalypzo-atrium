@@ -3,9 +3,11 @@
  * und `actions`): Datum/Alter/Feldwert formatieren, Quer-Vorlage wählen, Spalten auswählen und Blöcke bauen.
  * Voreinstellungen: `presets.ts` (Mitglieder-Spaltenkatalog liegt im Modul `members`, `sheet-columns.ts`); Layout (Tabelle, Seitenumbruch): `layout.ts`.
  */
-import { t } from '$lib/i18n';
+
 import type { FieldDefinition, FormValue } from '$lib/forms';
+import { t } from '$lib/i18n';
 import { ageFromBirthDate, formatDateDe, todayBerlin } from '$lib/sdk/dates';
+import type { PdfBlock } from '$lib/sdk/types';
 import { buildSectionedListBlocks, type ListSection } from './layout';
 import {
 	normalizeSelection,
@@ -14,7 +16,6 @@ import {
 	visibleColumns
 } from './select';
 import type { ListCatalog, ListColumn, ListSelection } from './types';
-import type { PdfBlock } from '$lib/sdk/types';
 
 /** Briefkopf quer (A4 quer, 247 mm Textbreite); fehlt die Vorlage, dient `compact` in Querformat */
 export const LIST_TEMPLATE = 'briefkopf-quer';

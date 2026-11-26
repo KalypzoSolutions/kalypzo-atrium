@@ -1,5 +1,7 @@
-import { chromium, type Browser } from 'playwright';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { type Browser, chromium } from 'playwright';
+import { getLocale, intlLocale, t } from '$lib/i18n';
+import { safeFileName } from '$lib/sdk/file-names';
 import type {
 	PdfAttachment,
 	PdfFormat,
@@ -9,27 +11,25 @@ import type {
 	PdfResult,
 	RequestContext
 } from '$lib/sdk/types';
-import { getLocale, intlLocale, t } from '$lib/i18n';
 import { env } from '../env';
 import { errors } from '../errors';
-import { safeFileName } from '$lib/sdk/file-names';
 import { getSettings } from '../settings/service';
 import { readFileByIdUnchecked, upload } from '../storage';
-import {
-	escapeHtml,
-	registerTemplate,
-	renderBlocks,
-	type PdfLayoutData,
-	type PdfTemplate,
-	type PdfTemplateInput
-} from './templates';
 import { loadTemplates } from './load-templates';
 import { activeModuleHook, describeTemplates, listTemplates, resolveTemplate } from './resolve';
 import { sampleContent, sampleRecipient } from './sample';
+import {
+	escapeHtml,
+	type PdfLayoutData,
+	type PdfTemplate,
+	type PdfTemplateInput,
+	registerTemplate,
+	renderBlocks
+} from './templates';
 
-export { registerTemplate, listTemplates, describeTemplates, resolveTemplate, escapeHtml };
-export type { PdfTemplate, PdfLayoutData, PdfTemplateInput };
 export type { EffectiveTemplateDescription } from './resolve';
+export type { PdfLayoutData, PdfTemplate, PdfTemplateInput };
+export { describeTemplates, escapeHtml, listTemplates, registerTemplate, resolveTemplate };
 
 loadTemplates();
 

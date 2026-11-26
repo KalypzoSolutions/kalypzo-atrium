@@ -1,9 +1,27 @@
 <script lang="ts">
+	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import { untrack } from 'svelte';
-	import { METHOD_BADGE_CLASS } from '$lib/api-docs/method-style';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
-	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import {
+		ACCESS_OPTIONS,
+		API_METHODS,
+		catalogStats,
+		filterEntries,
+		filterFromSearchParams,
+		filterToSearchParams,
+		groupEntries,
+		METHOD_OPTIONS,
+		moduleOptions
+	} from '$lib/api-docs/filter';
+	import { METHOD_BADGE_CLASS } from '$lib/api-docs/method-style';
+	import type {
+		ApiAccess,
+		ApiCatalog,
+		ApiCatalogEntry,
+		ApiCatalogFilter,
+		ApiMethod
+	} from '$lib/api-docs/types';
 	import { DataTable, EmptyState, PageTitle } from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -12,24 +30,6 @@
 	import { SelectField } from '$lib/components/ui/select-field';
 	import { Switch } from '$lib/components/ui/switch';
 	import * as Table from '$lib/components/ui/table';
-	import {
-		ACCESS_OPTIONS,
-		API_METHODS,
-		METHOD_OPTIONS,
-		catalogStats,
-		filterEntries,
-		filterFromSearchParams,
-		filterToSearchParams,
-		groupEntries,
-		moduleOptions
-	} from '$lib/api-docs/filter';
-	import type {
-		ApiAccess,
-		ApiCatalog,
-		ApiCatalogEntry,
-		ApiCatalogFilter,
-		ApiMethod
-	} from '$lib/api-docs/types';
 	import { t } from '$lib/i18n';
 	import { formatDateTime } from '$lib/i18n/intl';
 	import EndpointSheet from './EndpointSheet.svelte';
@@ -243,9 +243,9 @@
 				bind:checked={
 					() => onlyAllowed,
 					(v) => {
-						onlyAllowed = v;
-						syncUrl();
-					}
+		onlyAllowed = v;
+		syncUrl();
+	}
 				}
 			/>
 			<Label for="api-docs-allowed" class="whitespace-nowrap"
@@ -257,10 +257,12 @@
 	<p class="text-xs text-muted-foreground" aria-live="polite">
 		{t('api-docs.page.filteredCount', { shown: filtered.length, total: catalog.entries.length })}
 		{#if filterActive}
-			· <button
+			·
+			<button
 				type="button"
 				class="underline underline-offset-2 hover:text-foreground"
-				onclick={resetFilters}>{t('api-docs.page.resetFilters')}</button
+				onclick={resetFilters}
+				>{t('api-docs.page.resetFilters')}</button
 			>
 		{/if}
 	</p>
@@ -304,13 +306,17 @@
 								<span
 									class="inline-flex min-w-14 justify-center rounded-md border px-1.5 py-0.5 font-mono text-xs font-semibold {METHOD_BADGE_CLASS[
 										entry.method
-									]}">{entry.method}</span
+									]}"
+									>{entry.method}</span
 								>
 							</Table.Cell>
 							<Table.Cell class="font-mono text-xs break-all whitespace-normal">
 								{#each pathParts(entry.path) as part, i (i)}
-									{#if part.param}<span class="font-semibold text-link">{part.text}</span
-										>{:else}{part.text}{/if}
+									{#if part.param}
+										<span class="font-semibold text-link">{part.text}</span>
+									{:else}
+										{part.text}
+									{/if}
 								{/each}
 							</Table.Cell>
 							<Table.Cell class="min-w-48 whitespace-normal">{entry.summary}</Table.Cell>

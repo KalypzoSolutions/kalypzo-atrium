@@ -1,11 +1,11 @@
 import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
-import { t } from '$lib/i18n';
+import { resolveTheme } from '$lib/appearance/presets';
 import { activeThemeSchema } from '$lib/appearance/schema';
+import { t } from '$lib/i18n';
 import { isCoreError } from '$lib/server/core/errors';
 import { setSetting } from '$lib/server/core/settings/service';
 import { loadUserPrefs } from '$lib/server/core/settings/user-prefs';
-import { resolveTheme } from '$lib/appearance/presets';
 import type { RequestHandler } from './$types';
 
 const bodySchema = z.union([

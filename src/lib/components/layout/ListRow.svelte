@@ -1,9 +1,9 @@
 <script lang="ts">
+	import Check from '@lucide/svelte/icons/check';
 	// Zeile einer Touch-Liste (Handy/Tablet statt Tabelle): Titel, Unterzeile, Betrag, Status.
 	// Antippen → `onclick` (Aktionsblatt bzw. Details), lange drücken → `onlongpress` (Auswahl).
 	// Im Auswahlmodus (`selecting`) zeigt die Zeile einen runden Haken.
 	import type { Snippet } from 'svelte';
-	import Check from '@lucide/svelte/icons/check';
 	import { cn } from '$lib/utils.js';
 	import { longpress } from './long-press';
 
@@ -78,7 +78,9 @@
 				)}
 				aria-hidden="true"
 			>
-				{#if selected}<Check class="size-4" strokeWidth={3} />{/if}
+				{#if selected}
+					<Check class="size-4" strokeWidth={3} />
+				{/if}
 			</span>
 		{:else}
 			{@render leading?.()}

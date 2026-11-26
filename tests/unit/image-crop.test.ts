@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 import {
-	MAX_CROP_ZOOM,
 	clampOffset,
 	coverScale,
 	cropFill,
 	croppedFileName,
 	frameFor,
+	MAX_CROP_ZOOM,
 	minZoom,
 	outputFor,
 	outputSize,

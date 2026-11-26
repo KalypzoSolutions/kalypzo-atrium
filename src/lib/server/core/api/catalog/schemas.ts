@@ -1,5 +1,5 @@
-import { getLocale } from '$lib/i18n';
 import type { JsonSchema } from '$lib/api-docs/types';
+import { getLocale } from '$lib/i18n';
 import { buildOpenApiDocument } from '../openapi';
 import { allEndpoints } from '../registry';
 

@@ -3,8 +3,6 @@
  * (`settings.<schlüssel>.label`, `admin.entries.<id>.*`). Jeder Eintrag braucht Texte in allen Sprachen.
  */
 import { describe, expect, it } from 'bun:test';
-import { ensureLocale, hasMessage, setLocaleResolver, type Locale } from '$lib/i18n';
-import { CORE_SETTINGS, settingTextKey } from '$lib/server/core/settings/catalog';
 import {
 	ADMIN_ENTRIES,
 	ADMIN_HOME,
@@ -12,6 +10,8 @@ import {
 	searchAdmin
 } from '$lib/components/layout/admin-registry';
 import { ADMIN_GROUP, PRIMARY_NAV } from '$lib/components/layout/nav';
+import { ensureLocale, hasMessage, type Locale, setLocaleResolver } from '$lib/i18n';
+import { CORE_SETTINGS, settingTextKey } from '$lib/server/core/settings/catalog';
 
 let current: Locale = 'de';
 setLocaleResolver(() => current);

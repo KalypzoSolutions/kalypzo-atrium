@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
 	import * as Select from '$lib/components/ui/select';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils';
 
 	export interface SelectFieldOption {

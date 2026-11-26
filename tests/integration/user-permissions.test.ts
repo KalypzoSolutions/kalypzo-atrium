@@ -4,8 +4,9 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { listAudit } from '$lib/server/core/audit/service';
 import { contextForUser } from '$lib/server/core/auth/context';
 import {
 	bootstrapAdmin,
@@ -15,12 +16,11 @@ import {
 	setUserRoles,
 	updateUserFull
 } from '$lib/server/core/auth/users';
+import { getDb, schema } from '$lib/server/core/database/client';
+import { syncModules } from '$lib/server/core/modules/service';
 import { createRole } from '$lib/server/core/permissions/roles';
 import { getUserPermissions } from '$lib/server/core/permissions/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { syncModules } from '$lib/server/core/modules/service';
-import { listAudit } from '$lib/server/core/audit/service';
-import type { RequestContext } from '$lib/sdk/types';
+import { useTestDatabase } from '../helpers/db';
 
 const PW = 'correct-horse-battery';
 

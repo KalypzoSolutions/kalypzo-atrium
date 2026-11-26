@@ -5,14 +5,14 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { getAuth } from '$lib/server/core/auth';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
 import { getDb, schema } from '$lib/server/core/database/client';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { syncModules } from '$lib/server/core/modules/service';
 import { actions, load } from '../../src/routes/(internal)/profile/+page.server';
+import { useTestDatabase } from '../helpers/db';
 
 const ORIGIN = 'http://localhost:5173';
 const PW = 'correct-horse-battery';

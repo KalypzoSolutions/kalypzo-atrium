@@ -1,7 +1,7 @@
 /**
  * Issue #6: Signaturprüfung vor dem ersten Decoder-Aufruf und gesperrte libvips-Loader.
  */
-import { beforeEach, describe, expect, it, vi, type Mock } from 'bun:test';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'bun:test';
 
 // sharp durchreichen, aber jeden Aufruf mitzählen
 // Original vor dem Mocken holen (bun:test kennt kein `importOriginal`)

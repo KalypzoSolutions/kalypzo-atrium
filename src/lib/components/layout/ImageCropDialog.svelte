@@ -1,31 +1,31 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import ZoomIn from '@lucide/svelte/icons/zoom-in';
 	import ZoomOut from '@lucide/svelte/icons/zoom-out';
-	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { ColorPicker } from '$lib/components/ui/color-picker';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Slider } from '$lib/components/ui/slider';
+	import { t } from '$lib/i18n';
 	import { busyLoad, busySave } from './busy';
 	import {
-		DEFAULT_CROP_BACKGROUND,
-		TRANSPARENT_CROP_BACKGROUND,
+		type CropState,
 		cropFill,
-		MAX_CROP_ZOOM,
 		croppedFileName,
+		DEFAULT_CROP_BACKGROUND,
 		displaySize,
 		frameFor,
+		MAX_CROP_ZOOM,
 		minZoom,
 		outputFor,
+		type Point,
 		panBy,
 		placement,
-		zoomAround,
-		type CropState,
-		type Point,
-		type Size
+		type Size,
+		TRANSPARENT_CROP_BACKGROUND,
+		zoomAround
 	} from './image-crop';
 
 	/**
@@ -250,7 +250,7 @@
 			ctx.drawImage(imgEl, rect.dx, rect.dy, rect.dw, rect.dh);
 			let blob = await toBlob(canvas, 'image/webp');
 			// Browser ohne WebP-Encoder (Safari): mit Farbe JPEG, transparent PNG (behält den Alphakanal)
-			if (!blob || blob.type !== 'image/webp') {
+			if (blob?.type !== 'image/webp') {
 				blob = await toBlob(canvas, fill ? 'image/jpeg' : 'image/png');
 			}
 			if (!blob) throw new Error('Bild konnte nicht erzeugt werden');
@@ -378,7 +378,8 @@
 			>
 				<ZoomIn />
 			</Button>
-			<span class="w-12 text-right text-xs text-muted-foreground tabular-nums">{zoomPercent} %</span
+			<span class="w-12 text-right text-xs text-muted-foreground tabular-nums"
+				>{zoomPercent} %</span
 			>
 			<Button
 				type="button"

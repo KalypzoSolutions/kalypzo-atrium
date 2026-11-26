@@ -1,19 +1,20 @@
 <script lang="ts">
+	import Wand from '@lucide/svelte/icons/wand-sparkles';
 	import { untrack } from 'svelte';
 	import { page } from '$app/state';
-	import Wand from '@lucide/svelte/icons/wand-sparkles';
 	import {
 		deriveDark,
 		previewBackground,
 		SIDEBAR_CSS,
+		type SidebarStyle,
+		THEME_NAME_MAX,
 		textContrast,
 		themeCssVars,
-		THEME_NAME_MAX,
-		userThemeSchema,
-		type SidebarStyle,
-		type UserTheme
+		type UserTheme,
+		userThemeSchema
 	} from '$lib/appearance';
 	import { applyThemeVars } from '$lib/appearance/apply';
+	import { FormField } from '$lib/components/layout';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import { ColorPicker } from '$lib/components/ui/color-picker';
@@ -24,7 +25,6 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import { Switch } from '$lib/components/ui/switch';
 	import * as Tabs from '$lib/components/ui/tabs';
-	import { FormField } from '$lib/components/layout';
 	import { t } from '$lib/i18n';
 	import { formatNumber } from '$lib/i18n/intl';
 	import { theme as colorScheme } from '$lib/theme.svelte';
@@ -186,7 +186,8 @@
 					<Tabs.Trigger value="light" class="flex-none"
 						>{t('profile.themeEditor.light')}</Tabs.Trigger
 					>
-					<Tabs.Trigger value="dark" class="flex-none">{t('profile.themeEditor.dark')}</Tabs.Trigger
+					<Tabs.Trigger value="dark" class="flex-none"
+						>{t('profile.themeEditor.dark')}</Tabs.Trigger
 					>
 				</Tabs.List>
 
@@ -297,7 +298,8 @@
 				onclick={() => {
 					open = false;
 					restore();
-				}}>{t('profile.themeEditor.cancel')}</Button
+				}}
+				>{t('profile.themeEditor.cancel')}</Button
 			>
 			<Button type="button" variant="outline" disabled={busy} onclick={() => save(false)}>
 				{t('profile.themeEditor.save')}

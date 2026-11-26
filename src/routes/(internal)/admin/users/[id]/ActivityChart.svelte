@@ -82,16 +82,20 @@
 		</div>
 	{/if}
 	<table class="sr-only">
-		<caption>{t('admin-users.detail.activityTitle')}</caption>
+		<caption
+			>{t('admin-users.detail.activityTitle')}</caption
+		>
 		<thead
 			><tr
-				><th>{t('admin-users.detail.chart.date')}</th><th>{t('admin-users.detail.chart.count')}</th
-				></tr
+				><th>{t('admin-users.detail.chart.date')}</th
+				><th>{t('admin-users.detail.chart.count')}</th></tr
 			></thead
 		>
 		<tbody>
 			{#each active as d (d.day)}
-				<tr><td>{formatDate(new Date(`${d.day}T12:00:00Z`))}</td><td>{d.count}</td></tr>
+				<tr
+					><td>{formatDate(new Date(`${d.day}T12:00:00Z`))}</td><td>{d.count}</td></tr
+				>
 			{/each}
 		</tbody>
 	</table>

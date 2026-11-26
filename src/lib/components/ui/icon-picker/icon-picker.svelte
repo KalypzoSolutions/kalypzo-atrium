@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	// Auswahl eines Icons aus der ganzen Icon-Bibliothek (alle Lucide-Icons): Suche über englische Namen und
 	// deutsche Begriffe, Vorschläge nach Themen, „Alle Icons“ schrittweise. Tastatur: Pfeiltasten im Raster
 	// (ein Tab-Stopp), Enter/Leertaste wählt.
@@ -7,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { t } from '$lib/i18n';
 	import { ICON_SUGGESTIONS, iconLabel, searchIcons } from '$lib/sdk/icons';
 	import { cn } from '$lib/utils';
 	import DynamicIcon from './dynamic-icon.svelte';
@@ -155,7 +155,9 @@
 	{:else if !set}
 		<div class="grid gap-2" role="status">
 			<span class="sr-only">{t('icons.picker.loading')}</span>
-			{#each [0, 1, 2] as i (i)}<Skeleton class="h-10 w-full" />{/each}
+			{#each [0, 1, 2] as i (i)}
+				<Skeleton class="h-10 w-full" />
+			{/each}
 		</div>
 	{:else}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->

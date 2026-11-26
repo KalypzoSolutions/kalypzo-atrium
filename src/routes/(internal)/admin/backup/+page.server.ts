@@ -6,8 +6,8 @@ import {
 } from '$lib/backup/contract';
 import { listScopesForBackup } from '$lib/server/core/backup/export';
 import { requirePerm } from '../_shared/server-utils';
-import { BACKUP_PERMISSION } from './http.server';
 import type { PageServerLoad } from './$types';
+import { BACKUP_PERMISSION } from './http.server';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requirePerm(locals, BACKUP_PERMISSION);

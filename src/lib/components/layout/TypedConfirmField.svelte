@@ -3,16 +3,15 @@
 	`confirmed` wird erst bei exakt passender Eingabe (Groß-/Kleinschreibung, Unicode-normalisiert) true.
 -->
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { t } from '$lib/i18n';
 
 	let {
 		word,
 		value = $bindable(''),
 		// Nur-Ausgabe-Bindung: wird im $effect gesetzt, ESLint erkennt die Bindung nicht
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars, no-useless-assignment
 		confirmed = $bindable(false),
 		id = 'typed-confirm',
 		label,
@@ -47,9 +46,13 @@
 
 <div class="grid gap-1.5">
 	<Label for={id}>
-		{#if label}{label}{:else}{t('layout.typedConfirm.before')}
+		{#if label}
+			{label}
+		{:else}
+			{t('layout.typedConfirm.before')}
 			<span class="font-mono font-semibold">{word}</span>
-			{t('layout.typedConfirm.after')}{/if}
+			{t('layout.typedConfirm.after')}
+		{/if}
 	</Label>
 	<div class="relative">
 		<Input

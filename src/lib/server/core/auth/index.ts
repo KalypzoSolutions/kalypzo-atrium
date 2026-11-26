@@ -3,28 +3,28 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
-import { getRequestEvent } from '$app/server';
 import { and, eq, ne } from 'drizzle-orm';
+import { getRequestEvent } from '$app/server';
+import { t } from '$lib/i18n';
 import { logAudit } from '../audit/service';
 import { getDb, schema } from '../database/client';
 import { env } from '../env';
 import { withLocale } from '../i18n/locale';
 import { sendMail } from '../mail';
-import { maskEmail, maskEmailInput } from './mask-email';
-import { peek, reset, hit } from '../rate-limit';
+import { hit, peek, reset } from '../rate-limit';
 import { getSetting } from '../settings/service';
+import { accountMailLocale } from './account-mail';
 import {
+	betterAuthCustomRules,
 	LOGIN_GLOBAL_MAX_FAILURES,
 	LOGIN_MAX_FAILURES,
 	LOGIN_WINDOW_SEC,
-	betterAuthCustomRules,
 	loginGlobalKey,
 	loginPairKey
 } from './auth-limits';
-import { accountMailLocale } from './account-mail';
 import { CLIENT_IP_HEADER, currentClientIp } from './client-ip';
+import { maskEmail, maskEmailInput } from './mask-email';
 import { qrLoginPlugin } from './qr-login-plugin';
-import { t } from '$lib/i18n';
 
 /** Payload eines Bestätigungs-Tokens (JWT) lesen, ohne Prüfung – nur zur Unterscheidung der Abläufe. */
 function verificationPayload(token: string | null | undefined): {

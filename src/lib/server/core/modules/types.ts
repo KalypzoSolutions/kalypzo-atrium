@@ -1,7 +1,7 @@
 import type { ModuleManifest, ModuleSettingDefinition, RequestContext } from '$lib/sdk/types';
-import type { ApiEndpoint } from '../api/types';
-import type { ModuleNotificationType, NotificationScopeEntry } from '$lib/sdk/types/notifications';
 import type { AssistFormat, AssistTask } from '$lib/sdk/types/assist';
+import type { ModuleNotificationType, NotificationScopeEntry } from '$lib/sdk/types/notifications';
+import type { ApiEndpoint } from '../api/types';
 
 /** Benachrichtigungstypen eines Moduls (siehe `core.notifications`) */
 export interface ModuleNotifications {
@@ -275,9 +275,8 @@ export interface ModuleDefinition {
 	 */
 	package?: unknown;
 	settings?: ModuleSettingDefinition[];
-	/* eslint-disable @typescript-eslint/no-explicit-any */
+	// biome-ignore lint/suspicious/noExplicitAny: Endpunkte mit beliebigen Schemas
 	endpoints?: ApiEndpoint<any, any, any>[];
-	/* eslint-enable @typescript-eslint/no-explicit-any */
 	/** SQL-Migrationen, laufen im PostgreSQL-Schema `mod_<id>` */
 	migrations?: ModuleMigration[];
 	/**

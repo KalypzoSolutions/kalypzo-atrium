@@ -1,11 +1,11 @@
+import { t } from '$lib/i18n';
 import {
 	ADMIN_ENTRIES,
 	ADMIN_HOME,
 	ADMIN_SECTIONS,
-	visibleAdminEntries,
-	type AdminSectionId
+	type AdminSectionId,
+	visibleAdminEntries
 } from './admin-registry';
-import { t } from '$lib/i18n';
 
 export interface NavItem {
 	label: string;
@@ -120,12 +120,14 @@ export function buildAdminNav(
 		label: s.label,
 		items: visible
 			.filter((e) => e.section === s.id)
-			.map((e): AdminNavLink => ({
-				label: e.label,
-				href: e.href,
-				icon: e.icon,
-				...(e.navHint ? { hint: e.navHint } : {})
-			}))
+			.map(
+				(e): AdminNavLink => ({
+					label: e.label,
+					href: e.href,
+					icon: e.icon,
+					...(e.navHint ? { hint: e.navHint } : {})
+				})
+			)
 	})).filter((s) => s.items.length > 0);
 	if (!sections.length) return null;
 	return {

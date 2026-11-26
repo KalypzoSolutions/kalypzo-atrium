@@ -3,15 +3,15 @@ import {
 	buildFormSchema,
 	displayFields,
 	emptyValues,
+	type FormDefinition,
 	formDefinitionSchema,
 	getFieldType,
 	parseRichText,
 	plainToRichText,
+	type RichNode,
 	richTextToPlain,
 	safeHref,
-	visibleFields,
-	type FormDefinition,
-	type RichNode
+	visibleFields
 } from '$lib/forms';
 
 /** Alle Tags im Baum (zum Prüfen der Allowlist) */

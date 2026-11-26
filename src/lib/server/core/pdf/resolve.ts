@@ -4,10 +4,11 @@
  * das Modul aktiv ist (bei mehreren: das erste in Ladereihenfolge); eigene IDs gelten nur bei aktivem Modul.
  * Alte IDs (`stamm-brief` …) werden über `TEMPLATE_ALIASES` aufgelöst.
  */
-import { allDefinitions } from '../modules/registry';
-import type { ModuleDefinition } from '../modules/types';
-import { enabledModuleIds } from '../modules/state';
+
 import { localized } from '$lib/i18n';
+import { allDefinitions } from '../modules/registry';
+import { enabledModuleIds } from '../modules/state';
+import type { ModuleDefinition } from '../modules/types';
 import {
 	canonicalTemplateId,
 	coreTemplates,

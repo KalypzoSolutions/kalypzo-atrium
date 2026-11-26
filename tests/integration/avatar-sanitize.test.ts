@@ -5,21 +5,21 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import sharp from 'sharp';
-import { useTestDatabase } from '../helpers/db';
-import { fakeObjects, installFakeStorage, uninstallFakeStorage } from '../helpers/fake-storage';
-import { getDb, schema } from '$lib/server/core/database/client';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { contextForUser, systemContext } from '$lib/server/core/auth/context';
-import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
 import {
 	readAvatar,
 	reprocessLegacyAvatars,
 	setOwnAvatar,
 	setUserAvatar
 } from '$lib/server/core/auth/profile';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
+import { getDb, schema } from '$lib/server/core/database/client';
 import { syncModules } from '$lib/server/core/modules/service';
 import * as storage from '$lib/server/core/storage';
-import type { RequestContext } from '$lib/sdk/types';
+import { useTestDatabase } from '../helpers/db';
+import { fakeObjects, installFakeStorage, uninstallFakeStorage } from '../helpers/fake-storage';
 
 const PW = 'correct-horse-battery';
 let admin: RequestContext;

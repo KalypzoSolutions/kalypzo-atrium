@@ -1,4 +1,4 @@
-import { tl, t, type Locale } from '$lib/i18n';
+import { type Locale, t, tl } from '$lib/i18n';
 
 /** Berechtigungen des Core. Schema: `modul.ressource.aktion`. Beschreibungen in `permissions.core.<recht>`. */
 const CORE_PERMISSION_KEYS = [

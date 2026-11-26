@@ -1,8 +1,9 @@
 /**
  * Seed für frische Deployments (Kalypzo Atrium, Phase 7): Seed-Liste prüfen, Module aus einem GitHub-Archiv lesen.
  */
-import { join } from 'node:path';
+
 import { describe, expect, it } from 'bun:test';
+import { join } from 'node:path';
 import { zipSync } from 'fflate';
 import { extractSeedModules, parseSeed, readSeed } from '../../scripts/supervisor/seed.mjs';
 import { filesOf, makeZip } from '../helpers/module-zip';

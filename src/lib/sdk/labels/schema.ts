@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { BARCODE_TYPES, LABEL_LOGO_KEY } from './types';
 import { formatProblem } from './layout';
+import { BARCODE_TYPES, LABEL_LOGO_KEY } from './types';
 
 /** Zod-Schemas für Etikett-Formate und -Layouts (Client-Validierung und API) */
 

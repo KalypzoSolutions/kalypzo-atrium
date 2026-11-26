@@ -2,7 +2,7 @@
  * Zeilen- und Wert-Helfer für rohe Abfragen (`tx.execute(sql…)`), gemeinsam für Core und Module
  * (Module nutzen sie über `$lib/sdk/server`). Ersetzt die früher je Datei kopierten `rowsOf`/`iso`/`idList`.
  */
-import { sql, type SQL } from 'drizzle-orm';
+import { type SQL, sql } from 'drizzle-orm';
 import type { DbOrTx } from './client';
 
 /** Eine Ergebniszeile von `tx.execute` (Spaltenname → Wert, Treiber-abhängige Typen) */

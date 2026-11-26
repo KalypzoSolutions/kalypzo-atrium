@@ -1,12 +1,12 @@
 /** Reine Hilfen für den Verlaufseditor (Test `tests/unit/gradient-editor.test.ts`). */
 import {
+	type BackgroundKind,
 	backgroundColors,
+	type GradientStop,
+	type MeshSpot,
 	SPOTS_MAX,
 	STOPS_MAX,
 	STOPS_MIN,
-	type BackgroundKind,
-	type GradientStop,
-	type MeshSpot,
 	type ThemeBackground
 } from '$lib/appearance';
 import { hexToRgb, rgbToHex } from '$lib/components/ui/color-picker/color';

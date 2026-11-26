@@ -1,21 +1,21 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { goto, replaceState } from '$app/navigation';
-	import { page } from '$app/state';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import SearchX from '@lucide/svelte/icons/search-x';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
+	import { onMount } from 'svelte';
+	import { goto, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		ADMIN_SECTIONS,
-		PageHeader,
-		iconFor,
-		searchAdmin,
-		visibleAdminEntries,
 		type AdminEntry,
-		PageTitle
+		iconFor,
+		PageHeader,
+		PageTitle,
+		searchAdmin,
+		visibleAdminEntries
 	} from '$lib/components/layout';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import { Input } from '$lib/components/ui/input';
 	import { t } from '$lib/i18n';
 	import OverviewStats from './OverviewStats.svelte';
 

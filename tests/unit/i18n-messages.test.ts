@@ -2,11 +2,12 @@
  * Texte des Core (Phase N): beide Sprachen haben dieselben Dateien, Schlüssel und Platzhalter, keine leeren
  * Texte; jeder im Code verwendete Schlüssel (`t('bereich.schlüssel')`) existiert.
  */
+
+import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'bun:test';
-import { formatMessage, messageArguments } from '$lib/i18n/format';
 import { ensureLocale, negotiateLocale, tl } from '$lib/i18n';
+import { formatMessage, messageArguments } from '$lib/i18n/format';
 import { coreFiles } from './i18n-scan';
 
 const ROOT = join(__dirname, '..', '..');

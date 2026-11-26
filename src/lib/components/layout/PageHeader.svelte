@@ -8,9 +8,11 @@
 <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
 	<div class="min-w-0">
 		<h1 class="text-title">{title}</h1>
-		{#if description}<p class="mt-1 text-sm text-muted-foreground">{description}</p>{/if}
+		{#if description}
+			<p class="mt-1 text-sm text-muted-foreground">{description}</p>
+		{/if}
 	</div>
-	{#if actions}<div class="flex min-w-0 max-w-full flex-wrap items-center gap-2">
-			{@render actions()}
-		</div>{/if}
+	{#if actions}
+		<div class="flex min-w-0 max-w-full flex-wrap items-center gap-2"> {@render actions()} </div>
+	{/if}
 </div>

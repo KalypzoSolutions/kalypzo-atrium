@@ -353,10 +353,7 @@ export const apiKey = pgTable(
 		prefix: text('prefix').notNull(),
 		/** SHA-256 des vollständigen Schlüssels (Schlüssel hat hohe Entropie) */
 		hash: text('hash').notNull(),
-		scopes: text('scopes')
-			.array()
-			.notNull()
-			.default(sql`'{}'::text[]`),
+		scopes: text('scopes').array().notNull().default(sql`'{}'::text[]`),
 		ownerId: text('owner_id')
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),

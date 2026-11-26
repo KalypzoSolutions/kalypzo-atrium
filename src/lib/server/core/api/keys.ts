@@ -1,14 +1,14 @@
-import { t } from '$lib/i18n';
 import { desc, eq } from 'drizzle-orm';
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
+import { assertNotImpersonating } from '../auth/admin/impersonation';
 import { API_KEY_PREFIX } from '../auth/context';
 import { randomToken, sha256 } from '../crypto';
 import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { assertCanGrant, existingKeys, requirePermission } from '../permissions/service';
 import { newId } from '../util';
-import { assertNotImpersonating } from '../auth/admin/impersonation';
 
 export interface ApiKeyItem {
 	id: string;

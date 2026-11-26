@@ -137,4 +137,5 @@ export type FormValue = string | number | boolean | string[] | null;
 export type FormValues = Record<string, FormValue>;
 
 export type FormValidationResult =
-	{ ok: true; values: FormValues } | { ok: false; errors: Record<string, string> };
+	| { ok: true; values: FormValues }
+	| { ok: false; errors: Record<string, string> };

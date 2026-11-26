@@ -1,8 +1,8 @@
 <script lang="ts">
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
-	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { FormField, PageTitle } from '$lib/components/layout';
 	import LegalLinks from '$lib/components/layout/LegalLinks.svelte';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
@@ -92,7 +92,9 @@
 									/>
 								</FormField>
 								<Button type="submit" disabled={loading}>
-									{#if loading}<LoaderCircle class="animate-spin" />{/if}
+									{#if loading}
+										<LoaderCircle class="animate-spin" />
+									{/if}
 									{t('login.confirm')}
 								</Button>
 							</form>
@@ -129,7 +131,9 @@
 									/>
 								</FormField>
 								<Button type="submit" disabled={loading}>
-									{#if loading}<LoaderCircle class="animate-spin" />{/if}
+									{#if loading}
+										<LoaderCircle class="animate-spin" />
+									{/if}
 									{t('login.submit')}
 								</Button>
 								<a
@@ -175,7 +179,9 @@
 			aria-label={t('login.language')}
 		>
 			{#each LOCALES as code, i (code)}
-				{#if i > 0}<span aria-hidden="true">·</span>{/if}
+				{#if i > 0}
+					<span aria-hidden="true">·</span>
+				{/if}
 				<button
 					type="submit"
 					name="locale"

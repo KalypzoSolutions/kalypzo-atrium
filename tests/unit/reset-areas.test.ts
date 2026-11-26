@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 import {
-	rebuildReason,
+	type AreaNode,
 	areasFingerprint,
 	effectiveImplies,
 	moduleDeleteOrder,
-	resolveAreas,
-	type AreaNode
+	rebuildReason,
+	resolveAreas
 } from '$lib/server/core/system/reset-areas';
 
 const node = (

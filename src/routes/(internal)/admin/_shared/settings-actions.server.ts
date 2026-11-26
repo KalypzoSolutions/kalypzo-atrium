@@ -1,10 +1,10 @@
 import { fail, type RequestEvent } from '@sveltejs/kit';
 import { z } from 'zod';
 import { t } from '$lib/i18n';
-import { sendMail } from '$lib/server/core/mail';
 import { removeLogo, setLogo } from '$lib/server/core/branding';
 import { isCoreError } from '$lib/server/core/errors';
-import { loadFields, saveFields, type FieldDescriptor } from './group-form.server';
+import { sendMail } from '$lib/server/core/mail';
+import { type FieldDescriptor, loadFields, saveFields } from './group-form.server';
 import { requirePerm, toFail } from './server-utils';
 
 /** Gruppen der Core-Einstellungen auf den Reitern Allgemein, Design, E-Mail-Versand und E-Mail-Layout */

@@ -20,6 +20,7 @@ class ThemeState {
 
 	set(choice: ThemeChoice): void {
 		this.choice = choice;
+		// biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API fehlt in Safari/Firefox; das Cookie ist die SSR-Quelle
 		document.cookie = `theme=${choice}; path=/; max-age=31536000; SameSite=Lax`;
 		this.apply();
 		// Optimistisch auch in der Datenbank speichern (`core.user.theme`); ohne Anmeldung/Netz: Cookie genügt

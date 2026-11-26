@@ -4,18 +4,18 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import type { RequestContext } from '$lib/sdk/types';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
-import { createRole } from '$lib/server/core/permissions/roles';
-import { syncModules } from '$lib/server/core/modules/service';
-import { getSetting, setSetting } from '$lib/server/core/settings/service';
+import { getDb, schema } from '$lib/server/core/database/client';
 import { isCoreError } from '$lib/server/core/errors';
-import { PUT as putLayout } from '../../src/routes/(internal)/dashboard/layout/+server';
-import { GET as getCore } from '../../src/routes/(internal)/dashboard/core/+server';
+import { syncModules } from '$lib/server/core/modules/service';
+import { createRole } from '$lib/server/core/permissions/roles';
+import { getSetting, setSetting } from '$lib/server/core/settings/service';
 import { load as loadPage } from '../../src/routes/(internal)/dashboard/+page.server';
-import type { RequestContext } from '$lib/sdk/types';
+import { GET as getCore } from '../../src/routes/(internal)/dashboard/core/+server';
+import { PUT as putLayout } from '../../src/routes/(internal)/dashboard/layout/+server';
+import { useTestDatabase } from '../helpers/db';
 
 const ORIGIN = 'http://localhost:5173';
 const KEY = 'core.user.dashboard';

@@ -1,20 +1,20 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { settleMails } from '../helpers/settle';
-import { getDb, schema } from '$lib/server/core/database/client';
+import type { RequestContext } from '$lib/sdk/types';
+import { listAudit } from '$lib/server/core/audit/service';
 import { getAuth } from '$lib/server/core/auth';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { requestEmailChange } from '$lib/server/core/auth/profile';
 import { bootstrapAdmin, createUser, updateUser } from '$lib/server/core/auth/users';
+import { getDb, schema } from '$lib/server/core/database/client';
 import { setMailTransportForTests } from '$lib/server/core/mail';
 import { registerModule } from '$lib/server/core/modules/registry';
 import { syncModules } from '$lib/server/core/modules/service';
-import { listAudit } from '$lib/server/core/audit/service';
+import { reset, resetAllForTests } from '$lib/server/core/rate-limit';
 import { setSetting } from '$lib/server/core/settings/service';
 import { loadUserPrefs, resolvePageSize } from '$lib/server/core/settings/user-prefs';
-import { reset, resetAllForTests } from '$lib/server/core/rate-limit';
-import type { RequestContext } from '$lib/sdk/types';
+import { useTestDatabase } from '../helpers/db';
+import { settleMails } from '../helpers/settle';
 
 const ORIGIN = 'http://localhost:5173';
 const PW = 'correct-horse-battery';

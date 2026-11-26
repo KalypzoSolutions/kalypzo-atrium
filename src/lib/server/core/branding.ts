@@ -8,15 +8,15 @@
  * einer Organisation, Icons ebenso daraus); sonst liefern die Routen die neutralen Icons aus `static/icons/`.
  */
 import { createHash } from 'node:crypto';
-import { t } from '$lib/i18n';
 import sharp from 'sharp';
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from './audit/service';
 import { matchesImageSignature } from './auth/profile';
 import { errors } from './errors';
 import { processImage } from './images';
-import { requirePermission } from './permissions/service';
 import { activeModuleHook } from './pdf/resolve';
+import { requirePermission } from './permissions/service';
 import { getSetting, setSetting } from './settings/service';
 import { readFileByIdUnchecked, upload } from './storage';
 

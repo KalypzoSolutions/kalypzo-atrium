@@ -7,8 +7,8 @@
 - `modules/<id>/` – Fachmodule (`module.ts`, `ui.ts`, `schemas.ts`, `migrations/*.sql`, Endpoints, `pages/`), **außerhalb von `src/`**.
   Ort über `tools/modules-dir.js` (`ATRIUM_MODULES_DIR`, Standard `modules/`), eingebunden vom Vite-Plugin `tools/vite-plugin-atrium-modules.ts`
   (`virtual:atrium-modules/server` → `core/modules/load.ts`, `virtual:atrium-modules/ui` → `$lib/sdk/client/module-ui-registry.ts` `moduleUiLoader`,
-  Tailwind-`@source`). Import-Alias **`$modules/<id>/…`** (nicht mehr `$lib/modules`); Verträge fremder Module nur `import type` (ESLint
-  `consistent-type-imports`). Plan „Kalypzo Atrium“ (Core/Module getrennt, Installation per Link): `~/.claude/plans/ok-dieses-projekt-soll-wondrous-blum.md`.
+  Tailwind-`@source`). Import-Alias **`$modules/<id>/…`** (nicht mehr `$lib/modules`); Verträge fremder Module nur `import type` (`tools/module-boundaries.ts`,
+  Biome `useImportType`). Plan „Kalypzo Atrium“ (Core/Module getrennt, Installation per Link): `~/.claude/plans/ok-dieses-projekt-soll-wondrous-blum.md`.
 - `src/routes/**` – SvelteKit: `login/…` öffentlich, `(internal)/…` hinter Login, `api/v1/[...path]` zentraler REST-Router.
 - `drizzle/` – Core-Migrationen. Modul-Migrationen liegen im Modul (`migrations/*.sql?raw`).
 - **Core kennt keine Modul-IDs** (Phase 3, 2026-11-01; Wächter `tests/unit/core-no-module-ids.test.ts`): fachliches Wissen über Hooks –
@@ -54,7 +54,7 @@ kein Chromium; ≤ 50 MB, ≤ 4 MP, 10 s, ein Lauf je Prozess, Nicht-PDF 422) �
 ## Datenbank
 - Jedes Modul hat genau ein Schema `mod_<id>` (Bindestrich → Unterstrich). `forModule(id).transaction` setzt
   `SET LOCAL search_path TO "mod_<id>"` – Core-Tabellen sind dort **unqualifiziert** nicht erreichbar (Konvention, kein Sicherheitsmechanismus;
-  `forModule` nur mit eigener `MODULE_ID`, ESLint meldet fremde Literale).
+  `forModule` nur mit eigener `MODULE_ID`, `tools/module-boundaries.ts` meldet fremde Literale).
 - Tabellen in Migrationen **unqualifiziert** anlegen; Fremdschlüssel auf Core-Tabellen gibt es nicht
   (`user_id text` ohne FK; Namen über `core.users.directory` auflösen).
 - Rohe Abfragen: `tx.execute(sql\`…\`)` mit `import { sql } from 'drizzle-orm'`. Grundhelfer **nur** aus `$lib/sdk/server` (`sdk/server/db.ts`,

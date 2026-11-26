@@ -2,7 +2,7 @@
  * Gemeinsamer Ladezustand der Icon-Bibliothek im Browser: einmal laden, alle `DynamicIcon`s/`IconPicker`
  * zeigen danach sofort an. Daten selbst: `$lib/sdk/icons` (eigener Chunk).
  */
-import { loadIconSet, type IconSet } from '$lib/sdk/icons';
+import { type IconSet, loadIconSet } from '$lib/sdk/icons';
 
 let current = $state<IconSet | null>(null);
 let failed = $state(false);

@@ -1,9 +1,9 @@
-import { t } from '$lib/i18n';
 import { json } from '@sveltejs/kit';
 import { count, desc, eq, isNull } from 'drizzle-orm';
+import type { CoreDashboardData } from '$lib/components/dashboard/core-data';
+import { t } from '$lib/i18n';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { listModules } from '$lib/server/core/modules/service';
-import type { CoreDashboardData } from '$lib/components/dashboard/core-data';
 import type { RequestHandler } from './$types';
 
 const NO_STORE = { 'cache-control': 'no-store' };

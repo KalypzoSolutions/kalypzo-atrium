@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Verwaltung unter /admin: Übersicht mit Abschnitten und Suche, Befehlspalette (Strg+K),
 // Weiterleitungen alter URLs, /admin/settings → erster erlaubter Reiter.
@@ -131,7 +131,7 @@ test('alte URL antwortet mit 308 und behält die Query', async ({ page }) => {
 	await login(page);
 	const res = await page.request.get('/audit?action=core.auth.login', { maxRedirects: 0 });
 	expect(res.status()).toBe(308);
-	expect(res.headers()['location']).toBe('/admin/audit?action=core.auth.login');
+	expect(res.headers().location).toBe('/admin/audit?action=core.auth.login');
 });
 
 test('/admin/settings leitet auf den ersten erlaubten Reiter', async ({ page }) => {

@@ -1,6 +1,6 @@
-import { t } from '$lib/i18n';
 import { isAbsolute } from 'node:path';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 
 /** Platzhalter aus dem `Dockerfile` (Build-Stufe) – darf im Betrieb nie als Geheimnis dienen. */
 export const BUILD_PLACEHOLDER_SECRET = 'build-time-placeholder-build-time-placeholder';

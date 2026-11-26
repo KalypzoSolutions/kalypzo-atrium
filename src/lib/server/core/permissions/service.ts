@@ -1,7 +1,7 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import { hasMessage, localized, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
-import { getDb, schema, type DbOrTx } from '../database/client';
+import { type DbOrTx, getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { getDefinition } from '../modules/registry';
 import { enabledModuleIds } from '../modules/state';

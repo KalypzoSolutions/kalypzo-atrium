@@ -3,14 +3,14 @@
  * Schnittstelle, Dateien, KI. Nur Zähler und Zeitpunkte – keine Inhalte.
  */
 import { eq, sql } from 'drizzle-orm';
-import type { RequestContext } from '$lib/sdk/types';
 import { t } from '$lib/i18n';
+import type { RequestContext } from '$lib/sdk/types';
 import { getDb, schema } from '../../database/client';
 import { num, rowsOf, toIsoOrNull } from '../../database/rows';
 import { errors } from '../../errors';
-import { getUserPermissions, requirePermission } from '../../permissions/service';
-import { roleIdsForUser } from '../../permissions/roles';
 import { enabledModuleIds } from '../../modules/state';
+import { roleIdsForUser } from '../../permissions/roles';
+import { getUserPermissions, requirePermission } from '../../permissions/service';
 
 /** Länge der Aktivitätskurve in Tagen */
 export const ACTIVITY_DAYS = 90;

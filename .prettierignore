@@ -1,9 +1,0 @@
-build
-.svelte-kit
-node_modules
-drizzle
-bun.lock
-docs/openapi.json
-*.md
-website
-src/lib/sdk/icons/lucide-icons.json

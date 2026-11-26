@@ -1,7 +1,7 @@
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { errors } from '../errors';
 import { getUserPermissions } from '../permissions/service';
-import { t } from '$lib/i18n';
 
 /**
  * Schutz vor Rechteausweitung bei Kontoänderungen (E-Mail, Status, Profilbild, Rollen, Löschen):

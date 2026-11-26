@@ -8,15 +8,15 @@
  * `errors`, der Rest wird trotzdem geliefert) → Audit `core.privacy.exported` (nur IDs/Zähler).
  */
 import { desc, eq, ilike, inArray, or } from 'drizzle-orm';
+import { localized, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
-import type { DataSubject, SubjectCandidate } from '../modules/types';
 import { allDefinitions } from '../modules/registry';
 import { isModuleEnabled } from '../modules/service';
+import type { DataSubject, SubjectCandidate } from '../modules/types';
 import { directPermissionsOfUser, requirePermission } from '../permissions/service';
-import { localized, t } from '$lib/i18n';
 
 export const PRIVACY_PERMISSION = 'core.privacy.export';
 /** Höchstzahl Audit-Einträge im Export (neueste zuerst) */

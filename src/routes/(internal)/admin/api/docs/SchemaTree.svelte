@@ -1,8 +1,8 @@
 <script lang="ts">
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { Badge } from '$lib/components/ui/badge';
 	import type { JsonSchema } from '$lib/api-docs/types';
+	import { Badge } from '$lib/components/ui/badge';
 	import { t } from '$lib/i18n';
 
 	let { schema, emptyText }: { schema: JsonSchema; emptyText?: string } = $props();
@@ -352,9 +352,7 @@
 			<p class="mt-0.5 text-xs break-words text-muted-foreground">{desc}</p>
 		{/if}
 		{#if hasNested(root)}
-			<div class="mt-1 ml-2 border-l border-border pl-3">
-				{@render children(root, 1, 'r')}
-			</div>
+			<div class="mt-1 ml-2 border-l border-border pl-3"> {@render children(root, 1, 'r')} </div>
 		{/if}
 	{/if}
 </div>

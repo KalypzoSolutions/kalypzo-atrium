@@ -1,4 +1,3 @@
-import { t } from '$lib/i18n';
 /**
  * Theme → CSS (rein, Client + Server). Ausgaben entstehen nur aus validierten `#rrggbb`-Farben, Zahlen
  * und festen Schlüsselwörtern – sie dürfen daher ins `style`-Attribut von `<html>` (`%app.style%`).
@@ -7,9 +6,10 @@ import {
 	contrastRatio,
 	oklchToRgb,
 	parseHex,
-	rgbToOklch,
-	type RgbTuple
+	type RgbTuple,
+	rgbToOklch
 } from '$lib/components/ui/color-picker/contrast';
+import { t } from '$lib/i18n';
 import type {
 	SidebarStyle,
 	ThemeBackground,

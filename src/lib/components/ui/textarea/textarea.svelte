@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { cn, type WithElementRef, type WithoutChildren } from '$lib/utils.js';
 	import type { HTMLTextareaAttributes } from 'svelte/elements';
 	import { fieldAria, getFieldContext } from '$lib/components/ui/field/context';
+	import { cn, type WithElementRef, type WithoutChildren } from '$lib/utils.js';
 
 	let {
 		ref = $bindable(null),
@@ -32,4 +32,5 @@
 	)}
 	bind:value
 	{...restProps}
-	{...aria}></textarea>
+	{...aria}
+></textarea>

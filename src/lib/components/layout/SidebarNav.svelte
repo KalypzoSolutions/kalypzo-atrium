@@ -1,20 +1,20 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { page } from '$app/state';
-	import { cn } from '$lib/utils';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import { page } from '$app/state';
+	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { t } from '$lib/i18n';
+	import { navBadges } from '$lib/sdk/client/nav-badges.svelte';
+	import { cn } from '$lib/utils';
+	import CountBadge from './CountBadge.svelte';
+	import { iconFor } from './icons';
 	import {
 		ADMIN_GROUP,
-		PRIMARY_NAV,
 		buildAdminNav,
 		canSeeNavItem,
 		isActive,
-		type ModuleNavEntry
+		type ModuleNavEntry,
+		PRIMARY_NAV
 	} from './nav';
-	import { iconFor } from './icons';
-	import CountBadge from './CountBadge.svelte';
-	import { navBadges } from '$lib/sdk/client/nav-badges.svelte';
-	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	let {
 		permissions,
@@ -158,7 +158,9 @@
 				<Icon class="size-4 shrink-0" aria-hidden="true" />
 				<span class="sr-only">{item.label}{count ? ` (${count})` : ''}</span>
 				{#if count}
-					<span class="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary" aria-hidden="true"
+					<span
+						class="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary"
+						aria-hidden="true"
 					></span>
 				{/if}
 			</a>

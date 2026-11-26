@@ -5,8 +5,8 @@
  */
 
 import { parseHex, readableOn, relativeLuminance } from '$lib/components/ui/color-picker/contrast';
-import { todayBerlin } from '$lib/sdk/dates';
 import { getLocale, intlLocale, t } from '$lib/i18n';
+import { todayBerlin } from '$lib/sdk/dates';
 
 export interface CalendarItem {
 	id: string;

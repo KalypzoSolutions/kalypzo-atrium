@@ -3,11 +3,11 @@ import { Readable } from 'node:stream';
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { BACKUP_FILE_EXT, BACKUP_MIN_PASSWORD } from '$lib/backup/contract';
-import { isCoreError } from '$lib/server/core/errors';
+import { t } from '$lib/i18n';
 import { safeFileName as cleanFileName } from '$lib/sdk/file-names';
+import { isCoreError } from '$lib/server/core/errors';
 import { exportResetData } from '$lib/server/core/system/reset';
 import type { RequestHandler } from './$types';
-import { t } from '$lib/i18n';
 
 /**
  * Sicherung vor dem Zurücksetzen: POST JSON `{ token, password, totp?, backupPassword }` → verschlüsselte

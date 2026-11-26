@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi, setSystemTime } from 'bun:test';
+import { afterEach, describe, expect, it, setSystemTime, vi } from 'bun:test';
 import {
 	addDays,
 	ageFromBirthDate,

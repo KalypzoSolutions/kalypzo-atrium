@@ -6,13 +6,13 @@
  * Nie gesichert: `session`, `verification`, `push_subscription`, `notification_queue` (gerätegebunden/flüchtig), `user_impersonation` (an Sitzungen gebunden; Verlauf steht im Audit), `marketplace_cache` (Kopie des öffentlichen Marktplatzes, wird neu abgerufen), `permission`, `module_state`, `module_migration`, `drizzle.*`.
  */
 import { sql } from 'drizzle-orm';
-import { getDb, type DbOrTx } from '../database/client';
+import { localized, t } from '$lib/i18n';
+import { type DbOrTx, getDb } from '../database/client';
 import { allDefinitions, getDefinition } from '../modules/registry';
 import { isModuleEnabled } from '../modules/service';
 import { MODULE_ID_PATTERN, moduleSchemaName } from '../modules/types';
 import { IDENTIFIER, loadTableInfo, sortTablesForInsert } from './introspect';
-import { CORE_SCOPE_KEYS, type BackupScopeInfo, type PlannedTable, type TableInfo } from './types';
-import { localized, t } from '$lib/i18n';
+import { type BackupScopeInfo, CORE_SCOPE_KEYS, type PlannedTable, type TableInfo } from './types';
 
 type CoreScopeKey = (typeof CORE_SCOPE_KEYS)[number];
 

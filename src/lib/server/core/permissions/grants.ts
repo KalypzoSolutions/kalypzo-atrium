@@ -5,7 +5,7 @@
  */
 import { and, eq, inArray } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
-import { getDb, schema, type DbOrTx } from '../database/client';
+import { type DbOrTx, getDb, schema } from '../database/client';
 import { enabledModuleIds } from '../modules/state';
 import { assertCanGrant, permissionsOfRole } from './service';
 

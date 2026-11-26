@@ -21,7 +21,7 @@ Browser / externe Dienste
 Schichten:
 
 1. **Core-Services** (`src/lib/server/core`): auth, permissions, modules, settings, api, database, pdf, ai, storage, images, audit, jobs, search, backup, privacy, system (Reset). Liegen unter `$lib/server`, SvelteKit verhindert damit Client-Bundles.
-2. **Modul-SDK** (`src/lib/sdk`): einzige erlaubte Schnittstelle für Module (`server`, `client`, `types`). ESLint (`eslint.config.js`) erlaubt Modulen nur `$lib/sdk/*`, `$lib/components/{ui,layout,forms}`, `$lib/forms`, `$lib/pdf-lists`, `$lib/utils` und fremde Verträge als `import type` (siehe [Modulentwicklung](module-development.md#erlaubte-importe)); `$lib/server/*` und `$lib/core/*` sind verboten. Zusätzlich meldet es direkte Zugriffe auf Core-Interna (`core.database.db|transaction`, `core.system`, `core.modules.enable|disable`, `core.auth.instance`, `forModule` mit fremdem Literal).
+2. **Modul-SDK** (`src/lib/sdk`): einzige erlaubte Schnittstelle für Module (`server`, `client`, `types`). Der Prüfer `tools/module-boundaries.ts` (`bun run lint`) erlaubt Modulen nur `$lib/sdk/*`, `$lib/components/{ui,layout,forms}`, `$lib/forms`, `$lib/pdf-lists`, `$lib/utils` und fremde Verträge als `import type` (siehe [Modulentwicklung](module-development.md#erlaubte-importe)); `$lib/server/*` und `$lib/core/*` sind verboten. Zusätzlich meldet es direkte Zugriffe auf Core-Interna (`core.database.db|transaction`, `core.system`, `core.modules.enable|disable`, `core.auth.instance`, `forModule` mit fremdem Literal).
 3. **Module** (`modules/<id>`): Manifest, Endpunkte, Migrationen, UI.
 4. **Administrationsoberfläche** (`src/routes/(internal)/admin/…`, URLs unter `/admin`): nutzt die Core-Services direkt in `+page.server.ts` (Load/Actions) mit `locals.ctx`.
    Seitenleiste, Übersicht `/admin`, Reiter und Befehlspalette (Strg+K) kommen aus `src/lib/components/layout/admin-registry.ts`; alte URLs
@@ -71,7 +71,7 @@ Beim Start legt `syncModules()` fehlende `module_state`-Zeilen an (deaktiviert),
 | **SvelteKit 2 statt 3** | `better-auth` deklariert `@sveltejs/kit@^2` als Peer; Kit 3 ließ sich nicht konfliktfrei installieren. Svelte 5/Runes unverändert. |
 | **Better Auth, Benutzer nur administrativ** | `disableSignUp: true`; Benutzer entstehen über `createUser`/Bootstrap. Deaktivierung über `user.active`. |
 | **PGlite für Tests** | Integrationstests laufen ohne Docker gegen echtes PostgreSQL-Verhalten (inkl. Trigger). |
-| **Schema pro Modul** | Jedes Modul erhält das PostgreSQL-Schema `mod_<id>`; `forModule(id).transaction` setzt `search_path` darauf. Core-Tabellen und fremde Modulschemas sind nur **unqualifiziert** nicht erreichbar – Konvention, kein Sicherheitsmechanismus (schemaqualifizierte Zugriffe wären möglich). Module sind vertrauenswürdiger Code; `forModule` nur mit eigener ID, per ESLint geprüft. |
+| **Schema pro Modul** | Jedes Modul erhält das PostgreSQL-Schema `mod_<id>`; `forModule(id).transaction` setzt `search_path` darauf. Core-Tabellen und fremde Modulschemas sind nur **unqualifiziert** nicht erreichbar – Konvention, kein Sicherheitsmechanismus (schemaqualifizierte Zugriffe wären möglich). Module sind vertrauenswürdiger Code; `forModule` nur mit eigener ID, geprüft von `tools/module-boundaries.ts`. |
 | **Catch-all-Routing für Modul-UI** | Ein zentraler Router prüft Modulstatus und Rechte und lädt die Seite aus `ui.ts`; Module müssen keine Dateien in `routes/` ablegen. |
 | **Session oder API-Key** | Gleiche Endpunkte für UI und externe Dienste; sensible Endpunkte (`/api-keys`) sind `sessionOnly`. |
 | **Wirksame Rechte = Scopes ∩ Besitzerrechte** | Ein API-Key kann nie mehr als sein Besitzer; Rollenentzug wirkt sofort auf Keys. |
@@ -86,7 +86,7 @@ Module liegen außerhalb von `src/` im Modulverzeichnis (Standard `modules/`, ab
 `tools/modules-dir.js`). Das Vite-Plugin `tools/vite-plugin-atrium-modules.ts` bindet sie beim Build ein (`virtual:atrium-modules/server`
 für die Definitionen, `virtual:atrium-modules/ui` für die Oberflächen, Tailwind-`@source` für die Klassen); Importpfad für Module ist
 der Alias `$modules/<id>/…`. Das SDK (`$lib/sdk/*`) ist der stabile Vertrag. Fremde Module werden nur per `import type … from
-'$modules/<id>/contract'` angesprochen (ESLint `consistent-type-imports`), damit der Build auch ohne das andere Modul gelingt.
+'$modules/<id>/contract'` angesprochen (`tools/module-boundaries.ts`, Biome `useImportType`), damit der Build auch ohne das andere Modul gelingt.
 
 **Geplant (2026-11-01, „Kalypzo Atrium“):** Core und Module in getrennten Repositories; Module werden im Webpanel per GitHub-Link oder
 ZIP installiert, danach baut der Server die App neu. Damit ist Modulcode aus fremden Quellen möglich – er läuft mit **vollen Rechten**

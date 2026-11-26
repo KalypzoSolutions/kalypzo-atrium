@@ -9,7 +9,7 @@
  * Root-Layout im Client). Mehrfacher Import ist unschädlich.
  */
 import { z } from 'zod';
-import { getLocale, t, type Locale } from '$lib/i18n';
+import { getLocale, type Locale, t } from '$lib/i18n';
 
 const zodLocales: Record<Locale, ReturnType<typeof z.locales.de>> = {
 	de: z.locales.de(),

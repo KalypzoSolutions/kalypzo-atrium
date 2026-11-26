@@ -14,6 +14,7 @@
  */
 import { createCipheriv, createDecipheriv, randomBytes, scrypt } from 'node:crypto';
 import { open } from 'node:fs/promises';
+import { t } from '$lib/i18n';
 import { ByteReader, fileSource } from './io';
 import {
 	BACKUP_LIMITS,
@@ -22,7 +23,6 @@ import {
 	type ByteSource,
 	type EnvelopeHeader
 } from './types';
-import { t } from '$lib/i18n';
 
 const MAGIC = [0x45, 0x50, 0x42, 0x4b]; // 'EPBK'
 const VERSION = 1;

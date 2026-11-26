@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { toast } from 'svelte-sonner';
 	import Copy from '@lucide/svelte/icons/copy';
-	import type { ApiCatalogEntry } from '$lib/api-docs/types';
+	import { toast } from 'svelte-sonner';
 	import { exampleFromSchema } from '$lib/api-docs/example';
+	import type { ApiCatalogEntry } from '$lib/api-docs/types';
 	import { Button } from '$lib/components/ui/button';
 	import { t } from '$lib/i18n';
 	import SchemaTree from './SchemaTree.svelte';
@@ -57,7 +57,8 @@
 				</Button>
 			</div>
 			<pre
-				class="max-h-80 overflow-x-auto overflow-y-auto rounded-md border bg-muted/50 p-3 font-mono text-xs">{exampleText}</pre>
+				class="max-h-80 overflow-x-auto overflow-y-auto rounded-md border bg-muted/50 p-3 font-mono text-xs"
+			>{exampleText}</pre>
 		</div>
 	{/if}
 

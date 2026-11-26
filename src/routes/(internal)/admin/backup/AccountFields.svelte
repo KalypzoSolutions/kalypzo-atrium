@@ -1,8 +1,8 @@
 <!-- Konto-Passwort und (bei aktiver 2FA) Authenticator-Code zur Bestätigung -->
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import { FormField } from '$lib/components/layout';
 	import { Input } from '$lib/components/ui/input';
+	import { t } from '$lib/i18n';
 
 	let {
 		idPrefix,
