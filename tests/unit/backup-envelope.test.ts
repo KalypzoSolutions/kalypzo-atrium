@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { randomBytes } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -32,7 +32,7 @@ beforeAll(async () => {
 	dir = await mkdtemp(join(tmpdir(), 'ep-backup-env-'));
 });
 afterAll(async () => {
-	await rm(dir, { recursive: true, force: true });
+	if (dir) await rm(dir, { recursive: true, force: true });
 });
 
 async function seal(data: Uint8Array, writeSizes?: number[]): Promise<string> {
@@ -80,7 +80,7 @@ describe('io', () => {
 			hashingSource(bufferSource(new TextEncoder().encode('abc')), (x) => (r = x))
 		);
 		expect(out).toHaveLength(3);
-		expect(r).toEqual({
+		expect<unknown>(r).toEqual({
 			sha256: 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
 			bytes: 3
 		});

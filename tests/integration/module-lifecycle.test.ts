@@ -2,7 +2,7 @@
  * Lebenszyklus installierter Module (Kalypzo Atrium, Phase 7) mit den Fixture-Modulen: Updates suchen, Entfernen
  * (Daten behalten bzw. löschen, Kopiermodus), Wunschzustand gegen laufenden Stand, Übernahme aus der Lock-Datei.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -93,7 +93,8 @@ afterAll(async () => {
 		delete process.env[k];
 	resetEnvForTests();
 	resetInstallSessionsForTests();
-	rmSync(dir, { recursive: true, force: true });
+	// nur mit gesetztem Temp-Ordner: rmSync("") löscht unter Bun das Arbeitsverzeichnis
+	if (dir) rmSync(dir, { recursive: true, force: true });
 	await close();
 });
 
