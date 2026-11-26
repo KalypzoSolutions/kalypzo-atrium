@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { checkAllModules, checkModuleSource } from '../../tools/module-boundaries';
+import { checkAllModules, checkModuleSource, scriptBlocks } from '../../tools/module-boundaries';
 import { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 
 const MODULES = modulesDir();
@@ -88,6 +88,32 @@ describe('Modulgrenzen (#44)', () => {
 			`${A}/pages/__fixture.svelte`
 		);
 		expect(msgs.map((m) => m.line)).toEqual([2]);
+	});
+
+	it('erkennt Script-Blöcke mit `>` in Attributwerten (generics)', () => {
+		const code = [
+			'<script module lang="ts">',
+			'\texport type Foo<T> = T;',
+			'</script>',
+			'',
+			'<script',
+			'\tlang="ts"',
+			'\tgenerics="T extends Foo<Bar>, U extends \'a>b\'"',
+			'>',
+			"\timport { core } from '$lib/sdk/server';",
+			"\timport { x } from '$lib/server/core';",
+			'\texport const a = core.system;',
+			'</script>',
+			'',
+			'<p>{x}</p>'
+		].join('\n');
+		// Der Block beginnt erst nach dem echten Tag-Ende, nicht am `>` im Attribut
+		expect(scriptBlocks('x.svelte', code)).toEqual([
+			{ code: '\n\texport type Foo<T> = T;\n', lineOffset: 0 },
+			{ code: code.slice(code.indexOf('\n>') + 2, code.lastIndexOf('</script>')), lineOffset: 7 }
+		]);
+		const msgs = lint(code, `${A}/pages/__generic.svelte`);
+		expect(msgs.map((m) => m.line)).toEqual([10, 11]);
 	});
 });
 

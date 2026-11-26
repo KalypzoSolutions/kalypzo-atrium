@@ -153,12 +153,14 @@ function forModuleViolation(node: ts.CallExpression, ownId: string): string | nu
 }
 
 /** TS/JS komplett, bei `.svelte` die `<script>`-Blöcke mit Zeilenversatz */
-function scriptBlocks(file: string, code: string): { code: string; lineOffset: number }[] {
+export function scriptBlocks(file: string, code: string): { code: string; lineOffset: number }[] {
 	if (!file.endsWith('.svelte')) return [{ code, lineOffset: 0 }];
 	const blocks: { code: string; lineOffset: number }[] = [];
-	for (const m of code.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) {
-		const start = (m.index ?? 0) + m[0].indexOf('>') + 1;
-		blocks.push({ code: m[1] ?? '', lineOffset: code.slice(0, start).split('\n').length - 1 });
+	// Attributwerte in Anführungszeichen überspringen: `generics="T extends Foo<Bar>"` enthält ein `>`
+	for (const m of code.matchAll(/<script\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)<\/script>/g)) {
+		const body = m[1] ?? '';
+		const start = (m.index ?? 0) + m[0].length - '</script>'.length - body.length;
+		blocks.push({ code: body, lineOffset: code.slice(0, start).split('\n').length - 1 });
 	}
 	return blocks;
 }
