@@ -201,6 +201,34 @@ function writeJson(file, value) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const CRASH_WINDOW_MS = 60_000;
+const CRASH_LIMIT = 5;
+const RESTART_DELAY_MS = 2000;
+const BUSY_RESTART_MAX_MS = 30_000;
+
+/**
+ * Was tun nach einem Absturz der App? `crashes` = Abstürze im Zeitfenster (inkl. dem aktuellen).
+ * - Bis `CRASH_LIMIT`: nach kurzer Pause neu starten.
+ * - Läuft ein Neubau oder wartet einer (`busy`, etwa nach einem Core-Update), kein Rückfall und kein Beenden:
+ *   Die alte Generation passt oft nicht zum neuen Core (z. B. fehlende Pakete), der Neubau behebt das gleich.
+ *   Neustart mit wachsender Pause, damit das Protokoll nicht vollläuft.
+ * - Sonst Rückfall auf die vorige Generation bzw. die mitgelieferte Version (`current` → `previous`/null);
+ *   stürzt auch die mitgelieferte Version ab, beendet sich der Supervisor (Container-Neustart).
+ * @returns {{ action: 'restart' | 'fallback' | 'exit', delayMs: number, waiting?: boolean }}
+ */
+export function crashDecision({ crashes, current, previous, busy }) {
+	if (crashes <= CRASH_LIMIT) return { action: 'restart', delayMs: RESTART_DELAY_MS };
+	if (busy) {
+		const delayMs = Math.min(
+			BUSY_RESTART_MAX_MS,
+			RESTART_DELAY_MS * 2 ** Math.min(4, crashes - CRASH_LIMIT)
+		);
+		return { action: 'restart', delayMs, waiting: true };
+	}
+	if (current && previous !== undefined) return { action: 'fallback', delayMs: RESTART_DELAY_MS };
+	return { action: 'exit', delayMs: 0 };
+}
+
 export class Supervisor {
 	/**
 	 * @param {{
@@ -235,6 +263,8 @@ export class Supervisor {
 		this.expectedExit = false;
 		this.crashes = [];
 		this.queue = Promise.resolve();
+		/** Laufende + wartende Aufträge (Neubau, Seed): solange > 0 kein Rückfall/Beenden bei Abstürzen */
+		this.pending = 0;
 		this.stopping = false;
 		// tmp/vite-temp: Ziel des Links node_modules/.vite-temp im Image (Dockerfile)
 		for (const d of ['gen', 'staging', 'results', 'logs', 'cache', 'tmp', 'tmp/vite-temp']) {
@@ -312,21 +342,31 @@ export class Supervisor {
 
 	onCrash() {
 		const now = Date.now();
-		this.crashes = [...this.crashes.filter((t) => now - t < 60_000), now];
-		if (this.crashes.length > 5) {
-			const { current, previous } = this.state();
-			if (current && previous !== undefined) {
-				this.log('App stürzt wiederholt ab – zurück zur vorigen Generation');
-				this.setState({ current: previous ?? null, previous: null });
-				this.crashes = [];
-			} else {
-				this.log('App stürzt wiederholt ab – Supervisor beendet sich');
-				process.exit(1);
-			}
+		this.crashes = [...this.crashes.filter((t) => now - t < CRASH_WINDOW_MS), now];
+		const { current, previous } = this.state();
+		const decision = crashDecision({
+			crashes: this.crashes.length,
+			current,
+			previous,
+			busy: this.pending > 0
+		});
+		if (decision.action === 'fallback') {
+			this.log(
+				`App stürzt wiederholt ab – zurück zur ${previous ? `vorigen Generation ${previous}` : 'mitgelieferten Version ohne installierte Module'}`
+			);
+			this.setState({ current: previous ?? null, previous: null });
+			this.crashes = [];
+		} else if (decision.action === 'exit') {
+			this.log('App stürzt auch ohne installierte Module wiederholt ab – Supervisor beendet sich');
+			process.exit(1);
+		} else if (decision.waiting) {
+			this.log(
+				`App stürzt ab, ein Neubau läuft oder wartet – Neustart in ${decision.delayMs / 1000} s (kein Rückfall, bis er fertig ist)`
+			);
 		}
 		setTimeout(() => {
 			if (!this.child && !this.stopping) this.startChild(this.state().current);
-		}, 2000).unref();
+		}, decision.delayMs).unref();
 	}
 
 	/** Kind geordnet beenden (IPC, dann Signal, zuletzt hart) */
@@ -378,7 +418,11 @@ export class Supervisor {
 	}
 
 	enqueue(fn) {
-		this.queue = this.queue.then(fn).catch((e) => this.log(`Fehler: ${e?.message ?? e}`));
+		this.pending++;
+		this.queue = this.queue
+			.then(fn)
+			.catch((e) => this.log(`Fehler: ${e?.message ?? e}`))
+			.finally(() => this.pending--);
 		return this.queue;
 	}
 

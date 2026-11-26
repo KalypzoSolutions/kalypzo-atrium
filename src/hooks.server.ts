@@ -34,7 +34,7 @@ const PUBLIC_PREFIXES = ['/p/', '/branding/'];
 
 if (!building && process.env.ATRIUM_VERIFY_ONLY === '1') {
 	// Probelauf des Supervisors: nur Module prüfen, keine Datenbank, dann beenden (lifecycle.ts)
-	runVerifyAndExit();
+	void runVerifyAndExit();
 } else if (!building) {
 	installShutdownHandlers();
 	// Startsequenz (Migrationen, Registrierung, Synchronisation). Fehler beenden den Start laut.

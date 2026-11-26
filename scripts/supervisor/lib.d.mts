@@ -22,6 +22,12 @@ export declare function modulePackagesFor(
 	modulesDir: string,
 	corePkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> }
 ): Record<string, string>;
+export declare function crashDecision(opts: {
+	crashes: number;
+	current: string | null | undefined;
+	previous: string | null | undefined;
+	busy: boolean;
+}): { action: 'restart' | 'fallback' | 'exit'; delayMs: number; waiting?: boolean };
 export declare function coreChanged(
 	info: { core?: string; coreBuild?: string | null } | null,
 	coreVersion: string,

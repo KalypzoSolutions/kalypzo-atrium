@@ -54,12 +54,12 @@ export function messagesSource(dir: string): string {
 	return `export default ${JSON.stringify(out)};`;
 }
 
+/**
+ * Je Modul ein Lazy-Import (eigener SSR-Chunk): Scheitert der Import eines Moduls – etwa weil ein npm-Paket
+ * fehlt –, markiert der Lader nur dieses Modul als defekt, statt dass der ganze Server-Start abbricht.
+ */
 export function serverSource(dir: string): string {
-	const ids = moduleIds(dir);
-	const imports = ids.map(
-		(id, i) => `import m${i} from ${JSON.stringify(`${dir}/${id}/module.ts`)};`
-	);
-	const entries = ids.map((id, i) => {
+	const entries = moduleIds(dir).map((id) => {
 		const migDir = join(dir, id, 'migrations');
 		const files = existsSync(migDir)
 			? readdirSync(migDir)
@@ -67,9 +67,10 @@ export function serverSource(dir: string): string {
 					.map((f) => f.slice(0, -4))
 					.sort()
 			: [];
-		return `	{ folder: ${JSON.stringify(id)}, definition: m${i}, migrationFiles: ${JSON.stringify(files)} }`;
+		const file = JSON.stringify(`${dir}/${id}/module.ts`);
+		return `	{ folder: ${JSON.stringify(id)}, load: () => import(${file}), migrationFiles: ${JSON.stringify(files)} }`;
 	});
-	return [...imports, `export const entries = [\n${entries.join(',\n')}\n];`].join('\n');
+	return `export const entries = [\n${entries.join(',\n')}\n];`;
 }
 
 /**
