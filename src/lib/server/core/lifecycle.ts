@@ -9,6 +9,7 @@
 import { closeDb } from './database/client';
 import { stopJobRunner } from './jobs';
 import { loadBuiltInModules } from './modules/load';
+import { loadBundleModules } from './modules/bundles';
 import { allDefinitions, brokenModules, excludeUnresolvableModules } from './modules/registry';
 
 const HARD_EXIT_MS = 30_000;
@@ -38,6 +39,7 @@ export const VERIFY_PREFIX = 'ATRIUM_VERIFY ';
 export async function runVerifyAndExit(): Promise<void> {
 	try {
 		await loadBuiltInModules();
+		await loadBundleModules();
 		excludeUnresolvableModules();
 		const report = {
 			modules: allDefinitions().map((d) => ({ id: d.manifest.id, version: d.manifest.version })),

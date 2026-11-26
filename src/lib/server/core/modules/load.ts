@@ -14,12 +14,15 @@ export function conventionProblem(
 	def: ModuleDefinition | undefined,
 	migrationFiles: string[]
 ): string | null {
-	const p = conventionMessage(folder, def, migrationFiles);
+	const p = conventionMessageFor(folder, def, migrationFiles);
 	return p ? t(p.key, p.params) : null;
 }
 
-/** Wie `conventionProblem`, aber als i18n-Schlüssel (Anzeige später in der Sprache des Requests) */
-function conventionMessage(
+/**
+ * Wie `conventionProblem`, aber als i18n-Schlüssel (Anzeige später in der Sprache des Requests); auch für
+ * vorkompilierte Bundles (`migrationFiles` = Migrationsnamen aus `meta.json`)
+ */
+export function conventionMessageFor(
 	folder: string,
 	def: ModuleDefinition | undefined,
 	migrationFiles: string[]
@@ -54,8 +57,8 @@ export function missingPackageName(error: unknown): string | null {
 	return spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]!;
 }
 
-/** Grund für ein Modul, dessen `module.ts` sich nicht importieren ließ */
-function importProblem(error: unknown): { key: string; params: MessageParams } {
+/** Grund für ein Modul, dessen `module.ts` (bzw. Bundle) sich nicht importieren ließ */
+export function importProblem(error: unknown): { key: string; params: MessageParams } {
 	const name = missingPackageName(error);
 	if (name) return { key: 'modules.broken.missingPackage', params: { name } };
 	const message = error instanceof Error ? error.message : String(error);
@@ -84,7 +87,7 @@ export async function loadBuiltInModules(list: readonly ModuleEntry[] = entries)
 			name: definition?.manifest?.name ?? folder,
 			version: definition?.manifest?.version ?? null
 		};
-		const problem = conventionMessage(folder, definition, migrationFiles);
+		const problem = conventionMessageFor(folder, definition, migrationFiles);
 		if (problem || !definition) {
 			markModuleBroken({ ...entry, reason: problem ?? { key: 'modules.convention.noDefinition' } });
 			continue;

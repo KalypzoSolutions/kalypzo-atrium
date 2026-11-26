@@ -23,6 +23,12 @@
 
 <svelte:head>
 	<title>{data.systemName}</title>
+	<!-- CSS vorkompilierter Modul-Bundles schon beim Server-Rendering (kein Aufblitzen); klein und lange gecacht -->
+	{#each data.moduleBundles ?? [] as bundle (bundle.id)}
+		{#each bundle.css as file (file)}
+			<link rel="stylesheet" href={bundle.base + file} />
+		{/each}
+	{/each}
 </svelte:head>
 
 {@render children()}

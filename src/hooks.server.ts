@@ -29,8 +29,11 @@ const PUBLIC_PAGES = [
 	'/login/qr',
 	'/login/qr/claim'
 ];
-/** Öffentliche Modulseiten (`/p/<moduleId>/…`) sowie Logo/Icons (`/branding/…`): keine Session nötig */
-const PUBLIC_PREFIXES = ['/p/', '/branding/'];
+/**
+ * Öffentliche Modulseiten (`/p/<moduleId>/…`), Logo/Icons (`/branding/…`) und die Browser-Dateien vorkompilierter
+ * Modul-Bundles (`/_atrium/modules/…`, wie `/_app/` öffentlich – auch `/p/…`-Seiten brauchen sie): keine Session nötig
+ */
+const PUBLIC_PREFIXES = ['/p/', '/branding/', '/_atrium/modules/'];
 
 if (!building && process.env.ATRIUM_VERIFY_ONLY === '1') {
 	// Probelauf des Supervisors: nur Module prüfen, keine Datenbank, dann beenden (lifecycle.ts)

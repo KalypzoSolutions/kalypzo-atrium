@@ -4,6 +4,7 @@ import { runCoreMigrations } from './database/migrate';
 import { getDb } from './database/client';
 import { env } from './env';
 import { loadBuiltInModules } from './modules/load';
+import { loadBundleModules } from './modules/bundles';
 import { syncModules } from './modules/service';
 import { reconcileInstallEvents } from './modules/install/supervisor-link';
 import { syncInstallsFromLock } from './modules/install/manage';
@@ -27,6 +28,8 @@ export function initCore(opts: { migrate?: boolean } = {}): Promise<void> {
 			apiRegistered = true;
 		}
 		await loadBuiltInModules();
+		// Vorkompilierte Bundles (ATRIUM_DATA_DIR/bundles) nach den eingebauten Modulen
+		await loadBundleModules();
 		await syncModules();
 		if (e.INITIAL_ADMIN_EMAIL && e.INITIAL_ADMIN_PASSWORD) {
 			const created = await bootstrapAdmin(e.INITIAL_ADMIN_EMAIL, e.INITIAL_ADMIN_PASSWORD);

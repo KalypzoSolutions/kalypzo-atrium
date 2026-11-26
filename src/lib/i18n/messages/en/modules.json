@@ -6,7 +6,9 @@
 		"dependencyVersion": "Requires “{dep}” {range}, available is {version}",
 		"cycle": "Circular dependency ({ids})",
 		"missingPackage": "Package “{name}” is missing – update the module (it must list the package under npm in atrium-module.json)",
-		"importFailed": "Module could not be loaded: {error}"
+		"importFailed": "Module could not be loaded: {error}",
+		"bundleMissing": "Compiled module is missing or damaged ({dir})",
+		"bundleOutdated": "Compiled for a different core version – will be recompiled"
 	},
 	"convention": {
 		"noDefinition": "module.ts does not export a module definition",

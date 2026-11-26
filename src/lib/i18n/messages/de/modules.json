@@ -6,7 +6,9 @@
 		"dependencyVersion": "Benötigt „{dep}“ {range}, vorhanden ist {version}",
 		"cycle": "Zyklische Abhängigkeit ({ids})",
 		"missingPackage": "Paket „{name}“ fehlt – Modul aktualisieren (es muss das Paket in atrium-module.json unter npm angeben)",
-		"importFailed": "Modul ließ sich nicht laden: {error}"
+		"importFailed": "Modul ließ sich nicht laden: {error}",
+		"bundleMissing": "Kompiliertes Modul fehlt oder ist beschädigt ({dir})",
+		"bundleOutdated": "Für eine andere Core-Version kompiliert – wird neu kompiliert"
 	},
 	"convention": {
 		"noDefinition": "module.ts exportiert keine Moduldefinition",

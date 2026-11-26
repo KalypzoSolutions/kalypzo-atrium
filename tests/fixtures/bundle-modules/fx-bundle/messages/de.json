@@ -1,0 +1,6 @@
+{
+	"greeting": "Hallo aus dem Bundle",
+	"title": "Bundle-Seite",
+	"add": "Eintrag anlegen",
+	"added": "Eintrag „{name}“ angelegt"
+}
