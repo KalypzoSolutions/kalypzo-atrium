@@ -9,6 +9,7 @@ import { contentHash, readModuleArchive } from '$lib/server/core/modules/install
 import {
 	contentHashOfDir,
 	coreChanged,
+	crashDecision,
 	dedupeModulePackages,
 	mergeLock,
 	moduleFolders,
@@ -142,5 +143,30 @@ describe('coreChanged (Neubau nach Image-Wechsel)', () => {
 		expect(coreChanged({ core: '2.0.0' }, '2.0.0', 'b')).toBe(true);
 		expect(coreChanged({ core: '2.0.0' }, '2.0.0', null)).toBe(false);
 		expect(coreChanged(null, '2.0.0', 'b')).toBe(false);
+	});
+});
+
+describe('crashDecision (Abstürze der App)', () => {
+	const base = { current: 'g2', previous: 'g1', busy: false };
+	it('bis zum Limit einfach neu starten', () => {
+		expect(crashDecision({ ...base, crashes: 1 })).toEqual({ action: 'restart', delayMs: 2000 });
+		expect(crashDecision({ ...base, crashes: 5 }).action).toBe('restart');
+	});
+	it('danach Rückfall auf die vorige bzw. mitgelieferte Version, zuletzt Beenden', () => {
+		expect(crashDecision({ ...base, crashes: 6 }).action).toBe('fallback');
+		expect(crashDecision({ ...base, previous: null, crashes: 6 }).action).toBe('fallback');
+		expect(crashDecision({ current: null, previous: null, busy: false, crashes: 6 }).action).toBe(
+			'exit'
+		);
+	});
+	it('läuft ein Neubau, kein Rückfall und kein Beenden – Neustart mit wachsender Pause (max. 30 s)', () => {
+		const at = (crashes: number) => crashDecision({ ...base, busy: true, crashes });
+		expect(at(6)).toEqual({ action: 'restart', delayMs: 4000, waiting: true });
+		expect(at(7).delayMs).toBe(8000);
+		expect(at(9).delayMs).toBe(30_000);
+		expect(at(50).delayMs).toBe(30_000);
+		expect(crashDecision({ current: null, previous: null, busy: true, crashes: 20 }).action).toBe(
+			'restart'
+		);
 	});
 });

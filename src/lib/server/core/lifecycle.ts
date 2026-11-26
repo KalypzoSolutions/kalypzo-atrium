@@ -35,9 +35,9 @@ export function installShutdownHandlers(): void {
 export const VERIFY_PREFIX = 'ATRIUM_VERIFY ';
 
 /** Probelauf: Module laden und prüfen, Ergebnis ausgeben, beenden */
-export function runVerifyAndExit(): void {
+export async function runVerifyAndExit(): Promise<void> {
 	try {
-		loadBuiltInModules();
+		await loadBuiltInModules();
 		excludeUnresolvableModules();
 		const report = {
 			modules: allDefinitions().map((d) => ({ id: d.manifest.id, version: d.manifest.version })),

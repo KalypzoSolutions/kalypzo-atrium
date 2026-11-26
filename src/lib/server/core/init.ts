@@ -24,7 +24,7 @@ export function initCore(opts: { migrate?: boolean } = {}): Promise<void> {
 			registerCoreApi();
 			apiRegistered = true;
 		}
-		loadBuiltInModules();
+		await loadBuiltInModules();
 		await syncModules();
 		if (e.INITIAL_ADMIN_EMAIL && e.INITIAL_ADMIN_PASSWORD) {
 			const created = await bootstrapAdmin(e.INITIAL_ADMIN_EMAIL, e.INITIAL_ADMIN_PASSWORD);

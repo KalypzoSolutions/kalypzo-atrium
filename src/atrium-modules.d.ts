@@ -5,8 +5,8 @@ declare module 'virtual:atrium-modules/server' {
 	/** Alle installierten Module (Ordner `modules/<folder>`), sortiert nach Ordnername */
 	export const entries: {
 		folder: string;
-		/** Default-Export von `module.ts` */
-		definition: ModuleDefinition;
+		/** Lädt `module.ts` (eigener Chunk); Default-Export ist die Moduldefinition */
+		load: () => Promise<{ default?: ModuleDefinition }>;
 		/** Namen der Dateien `migrations/*.sql` ohne Endung, sortiert */
 		migrationFiles: string[];
 	}[];

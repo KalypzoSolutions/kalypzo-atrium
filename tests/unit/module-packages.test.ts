@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'bun:test';
-import { entries } from 'virtual:atrium-modules/server';
+import { entries as lazyEntries } from 'virtual:atrium-modules/server';
 import { conventionProblem } from '$lib/server/core/modules/load';
 import {
 	MODULE_CATALOG_FILE,
@@ -20,6 +20,10 @@ import { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 import type { ModuleDefinition } from '$lib/server/core/modules/types';
 
 const DIR = modulesDir();
+// module.ts der Module vorab laden (der Lader importiert sie einzeln und lazy)
+const entries = await Promise.all(
+	lazyEntries.map(async (e) => ({ ...e, definition: (await e.load()).default as ModuleDefinition }))
+);
 
 describe('installierte Module erfüllen das Paketformat', () => {
 	it('jeder Modulordner ist im Build', () => {
