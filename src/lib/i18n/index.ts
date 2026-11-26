@@ -8,6 +8,7 @@
  * Sprache: im Browser die beim Laden gesetzte (`setClientLocale`), auf dem Server die des Requests
  * (`setLocaleResolver`, AsyncLocalStorage in `core/i18n/locale.ts`). Fehlt ein Text, gilt Deutsch, sonst der Schlüssel.
  */
+import { eager as coreEager, lazy } from 'virtual:atrium-core/messages';
 import moduleMessages from 'virtual:atrium-modules/messages';
 import { formatMessage, type MessageParams } from './format';
 
@@ -62,14 +63,10 @@ function register(path: string, data: unknown): void {
 }
 
 // Deutsch ist Quelle und Rückfall: immer sofort da. Weitere Sprachen lädt `ensureLocale` nach.
-for (const [path, data] of Object.entries(
-	import.meta.glob('./messages/de/*.json', { eager: true, import: 'default' })
-)) {
+for (const [path, data] of Object.entries(coreEager)) {
 	register(path, data);
 }
 loaded.add('de');
-
-const lazy = import.meta.glob('./messages/*/*.json', { import: 'default' });
 
 for (const [id, byLocale] of Object.entries(moduleMessages)) {
 	for (const [locale, data] of Object.entries(byLocale)) {

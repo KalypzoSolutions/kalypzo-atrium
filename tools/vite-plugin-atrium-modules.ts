@@ -5,6 +5,7 @@
  * - `virtual:atrium-modules/server` – statische Importe aller `module.ts` (nur SSR), Export `entries`
  *   (`folder`, `definition`, `migrationFiles` = Namen der `migrations/*.sql` für die Konventionsprüfung)
  * - `virtual:atrium-modules/ui` – Lazy-Loader aller `ui.ts`, Export `uiLoaders`, `moduleIds`
+ * - `virtual:atrium-core/{messages,pdf-templates,fonts}` – Core-Texte und Briefvorlagen (`tools/core-virtual.ts`)
  * - `virtual:atrium-modules/messages` – Texte der Module (`messages/<sprache>.json`), Export default
  *   `{ <id>: { <sprache>: {…} } }` für `$lib/i18n`
  * - Tailwind: `@source "<modulesDir>"` in `src/app.css`, damit Klassen auch aus einem Ordner außerhalb
@@ -14,6 +15,14 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Plugin, ViteDevServer } from 'vite';
+import {
+	CORE_MESSAGES_ID,
+	FONTS_ID,
+	PDF_TEMPLATES_ID,
+	coreMessagesSource,
+	fontsSource,
+	pdfTemplatesSource
+} from './core-virtual.ts';
 import { CORE_ROOT, moduleIds, modulesDir } from './modules-dir.js';
 
 const SERVER_ID = 'virtual:atrium-modules/server';
@@ -25,7 +34,7 @@ const RESOLVED_MESSAGES = '\0' + MESSAGES_ID;
 const MESSAGE_FILE = /^([a-z]{2})\.json$/;
 
 /** Texte aller Module als JSON-Literal (ungültige Dateien brechen den Build mit klarer Meldung ab). */
-function messagesSource(dir: string): string {
+export function messagesSource(dir: string): string {
 	const out: Record<string, Record<string, unknown>> = {};
 	for (const id of moduleIds(dir)) {
 		const msgDir = join(dir, id, 'messages');
@@ -45,7 +54,7 @@ function messagesSource(dir: string): string {
 	return `export default ${JSON.stringify(out)};`;
 }
 
-function serverSource(dir: string): string {
+export function serverSource(dir: string): string {
 	const ids = moduleIds(dir);
 	const imports = ids.map(
 		(id, i) => `import m${i} from ${JSON.stringify(`${dir}/${id}/module.ts`)};`
@@ -90,7 +99,7 @@ export function modulePackages(dir: string): string[] {
 	return [...out].sort();
 }
 
-function uiSource(dir: string): string {
+export function uiSource(dir: string): string {
 	const ids = moduleIds(dir).filter((id) => existsSync(join(dir, id, 'ui.ts')));
 	const entries = ids.map(
 		(id) => `\t${JSON.stringify(id)}: () => import(${JSON.stringify(`${dir}/${id}/ui.ts`)})`
@@ -130,6 +139,7 @@ export function atriumModules(): Plugin {
 			if (id === SERVER_ID) return RESOLVED_SERVER;
 			if (id === UI_ID) return RESOLVED_UI;
 			if (id === MESSAGES_ID) return RESOLVED_MESSAGES;
+			if (id === CORE_MESSAGES_ID || id === PDF_TEMPLATES_ID || id === FONTS_ID) return '\0' + id;
 		},
 		load(id, opts) {
 			if (id === RESOLVED_SERVER) {
@@ -138,6 +148,9 @@ export function atriumModules(): Plugin {
 			}
 			if (id === RESOLVED_UI) return uiSource(dir);
 			if (id === RESOLVED_MESSAGES) return messagesSource(dir);
+			if (id === '\0' + CORE_MESSAGES_ID) return coreMessagesSource();
+			if (id === '\0' + PDF_TEMPLATES_ID) return pdfTemplatesSource();
+			if (id === '\0' + FONTS_ID) return fontsSource();
 		},
 		transform(code, id) {
 			if (!/[\\/]src[\\/]app\.css(\?|$)/.test(id)) return;
