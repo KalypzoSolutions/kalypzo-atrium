@@ -3,7 +3,7 @@
  * Validierung. Form-Actions laufen ohne Layout-Load, jede Action muss das Recht daher selbst (bzw. über
  * den aufgerufenen Dienst) prüfen.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { contextForUser } from '$lib/server/core/auth/context';

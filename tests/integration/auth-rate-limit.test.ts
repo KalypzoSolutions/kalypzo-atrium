@@ -3,7 +3,7 @@
  * je E-Mail, globale Kontosperre mit Hinweismail, Client-IP nur aus `getClientAddress()` (gefälschte
  * X-Forwarded-For-/interne Header wirkungslos), Login-Audit nur mit maskierten Adressen.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { isActionFailure, isRedirect } from '@sveltejs/kit';
 import { useTestDatabase } from '../helpers/db';
 import { settleMails } from '../helpers/settle';

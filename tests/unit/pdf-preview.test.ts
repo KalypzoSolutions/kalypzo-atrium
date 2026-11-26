@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'bun:test';
 import { ctxWith, settingsStore } from './_helpers';
 
 vi.mock('$lib/server/core/settings/service', () => ({

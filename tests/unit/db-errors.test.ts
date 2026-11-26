@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { DrizzleQueryError } from 'drizzle-orm';
 import { describeError, errorSummary, isUniqueViolation } from '$lib/server/core/db-errors';
 

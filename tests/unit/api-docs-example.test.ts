@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { exampleFromSchema, exampleJson } from '../../src/lib/api-docs/example';
 import type { JsonSchema } from '../../src/lib/api-docs/types';
 

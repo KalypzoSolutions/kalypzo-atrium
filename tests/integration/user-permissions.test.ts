@@ -2,7 +2,7 @@
  * Einzelrechte direkt am Benutzer (`user_permission`): wirksam zusätzlich zu den Rollen, gleiche
  * Schutzregeln gegen Rechteausweitung wie bei Rollen (nur eigene Rechte, admin-gleiche nur Administrator*innen).
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';

@@ -7,7 +7,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { ESLint } from 'eslint';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 
 const ROOT = process.cwd();

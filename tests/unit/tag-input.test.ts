@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { addTag, addTags, hasTag, normalizeTag } from '$lib/components/ui/tag-input/tags';
 
 describe('normalizeTag', () => {

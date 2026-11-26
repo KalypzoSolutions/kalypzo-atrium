@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { principalMatchSql } from '$lib/sdk/server/sharing';
 import { EVERYONE_ID, parsePrincipalKey, principalKey } from '$lib/sdk/types/sharing';

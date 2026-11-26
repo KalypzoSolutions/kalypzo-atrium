@@ -68,7 +68,7 @@ jobs:
         run: bun run eslint .
 
       - name: Unit- und Integrationstests mit Coverage
-        run: bun run vitest run --coverage
+        run: bun run test:coverage
 
       - name: Coverage-Bericht hochladen
         if: always()
@@ -127,11 +127,11 @@ jobs:
 
       - name: Smoke-Suite gegen PostgreSQL (Core-Migrationen, Module mit Fixtures)
         run: >-
-          bun run vitest run
-          tests/integration/smoke.test.ts
-          tests/integration/core.test.ts
-          tests/integration/core-jobs.test.ts
-          tests/integration/module-migration-isolation.test.ts
+          bun scripts/test.mjs
+          ./tests/integration/smoke.test.ts
+          ./tests/integration/core.test.ts
+          ./tests/integration/core-jobs.test.ts
+          ./tests/integration/module-migration-isolation.test.ts
 
   e2e:
     name: e2e (Playwright)

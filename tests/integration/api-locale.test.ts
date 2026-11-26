@@ -2,7 +2,7 @@
  * Phase N: Der API-Router führt Handler in der Sprache des Kontos aus (Besitzer*in des API-Keys bzw. Session),
  * ohne Kontowahl in der Sprache des Requests. Endpunkt-Texte (Zusammenfassungen, Rechte) kommen übersetzt.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { t } from '$lib/i18n';
 import { useTestDatabase } from '../helpers/db';

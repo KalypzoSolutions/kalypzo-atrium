@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, setSystemTime } from 'bun:test';
 import { hit, peek, resetAllForTests } from '../../src/lib/server/core/rate-limit';
 
 // #67 (01a-09): Das globale Aufräumen darf Buckets mit langem Fenster nicht auf das Fenster
@@ -6,11 +6,12 @@ import { hit, peek, resetAllForTests } from '../../src/lib/server/core/rate-limi
 describe('rate-limit', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
-		vi.setSystemTime(new Date('2026-10-21T10:00:00Z'));
+		setSystemTime(new Date('2026-10-21T10:00:00Z'));
 		resetAllForTests();
 	});
 	afterEach(() => {
 		vi.useRealTimers();
+		setSystemTime();
 		resetAllForTests();
 	});
 

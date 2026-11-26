@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { isSafeRelativeHref, safeRedirect, safeRelativePath } from '$lib/server/core/safe-redirect';
 import { safeRedirect as loginRedirect } from '../../src/routes/login/auth-error';
 

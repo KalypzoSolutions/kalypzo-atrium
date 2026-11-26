@@ -2,7 +2,7 @@
  * Phase N: Texte der Core-Einstellungen und der Verwaltungs-Registry werden über Schlüssel übersetzt
  * (`settings.<schlüssel>.label`, `admin.entries.<id>.*`). Jeder Eintrag braucht Texte in allen Sprachen.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { ensureLocale, hasMessage, setLocaleResolver, type Locale } from '$lib/i18n';
 import { CORE_SETTINGS, settingTextKey } from '$lib/server/core/settings/catalog';
 import {

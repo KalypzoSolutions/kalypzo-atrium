@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { BUILD_PLACEHOLDER_SECRET, parseEnv } from '../../src/lib/server/core/env';
 import { resolveBackupTempDir } from '../../src/lib/server/core/backup/tempfiles';
 

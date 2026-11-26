@@ -4,7 +4,7 @@
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { formatMessage, messageArguments } from '$lib/i18n/format';
 import { ensureLocale, negotiateLocale, tl } from '$lib/i18n';
 import { coreFiles } from './i18n-scan';

@@ -1,4 +1,5 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
+import { waitFor } from '../helpers/wait';
 import { sql } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb } from '$lib/server/core/database/client';
@@ -38,7 +39,7 @@ async function apiLogPaths(): Promise<string[]> {
 	const count = async () => (await readApiLogPaths()).filter((p) => p === MARKER_PATTERN).length;
 	const before = await count();
 	await call(MARKER);
-	await vi.waitFor(async () => expect(await count()).toBeGreaterThan(before), {
+	await waitFor(async () => expect(await count()).toBeGreaterThan(before), {
 		timeout: 2000,
 		interval: 10
 	});

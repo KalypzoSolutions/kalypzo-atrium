@@ -4,7 +4,7 @@
  * `/roles/:id`, DELETE `/api-keys/:id` (nur Session), `/jobs`, `/jobs/:key/run`, `/pdf`, `/ai/*`,
  * `/audit-logs`. Die Storage-Endpunkte deckt `storage-api-guard.test.ts` ab.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getAuth } from '$lib/server/core/auth';

@@ -6,7 +6,7 @@
  * - TLS-Regeln aus #15 (`smtpTransportOptions`) bleiben erhalten
  */
 import { createServer, type Server, type Socket } from 'node:net';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
 import { useTestDatabase } from '../helpers/db';

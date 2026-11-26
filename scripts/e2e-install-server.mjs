@@ -40,7 +40,14 @@ for (const args of [
 const { PGlite } = await import('@electric-sql/pglite');
 const { PGLiteSocketServer } = await import('@electric-sql/pglite-socket');
 const db = await PGlite.create();
-const server = new PGLiteSocketServer({ db, port: 54331, host: '127.0.0.1', maxConnections: 10 });
+// Port änderbar: Windows/Hyper-V reserviert nach dem Docker-Start oft Bereiche um 54300 (EACCES)
+const pglitePort = Number(process.env.E2E_INSTALL_PGLITE_PORT ?? 54331);
+const server = new PGLiteSocketServer({
+	db,
+	port: pglitePort,
+	host: '127.0.0.1',
+	maxConnections: 10
+});
 await server.start();
 
 const supervisor = new Supervisor({
@@ -50,7 +57,7 @@ const supervisor = new Supervisor({
 	baseBuildDir: baseBuild,
 	healthTimeoutMs: 180_000,
 	env: {
-		DATABASE_URL: 'postgres://postgres:postgres@127.0.0.1:54331/postgres?sslmode=disable',
+		DATABASE_URL: `postgres://postgres:postgres@127.0.0.1:${pglitePort}/postgres?sslmode=disable`,
 		APP_SECRET: 'e2e-install-secret-e2e-install-secret-1',
 		ORIGIN: 'http://localhost:4174',
 		INITIAL_ADMIN_EMAIL: 'admin@example.test',

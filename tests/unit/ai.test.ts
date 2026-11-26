@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import { z } from 'zod';
 import { ctxWith, settingsStore, systemCtx } from './_helpers';
 
@@ -6,7 +6,7 @@ vi.mock('$lib/server/core/settings/service', () => ({
 	getSettings: async (keys: string[]) => Object.fromEntries(keys.map((k) => [k, settingsStore[k]])),
 	getSetting: async (k: string) => settingsStore[k]
 }));
-const download = vi.hoisted(() => vi.fn());
+const download = vi.fn();
 vi.mock('$lib/server/core/storage', () => ({ download }));
 
 import * as ai from '$lib/server/core/ai';

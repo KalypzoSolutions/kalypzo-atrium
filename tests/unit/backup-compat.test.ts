@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { checkCompat, type CompatTarget } from '$lib/server/core/backup/compat';
 import type { BackupMeta, TableInfo } from '$lib/server/core/backup/types';
 

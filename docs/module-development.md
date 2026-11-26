@@ -588,7 +588,7 @@ beforeAll(async () => {
 });
 ```
 
-Vorlage: `tests/integration/core.test.ts` (Modulaktivierung, Abhängigkeiten, API-Zugriff mit API-Keys). `tests/setup.ts` setzt die nötigen Umgebungsvariablen.
+Vorlage: `tests/integration/core.test.ts` (Modulaktivierung, Abhängigkeiten, API-Zugriff mit API-Keys). Die nötigen Umgebungsvariablen setzt der Preload `tests/bun/preload.ts` (`bunfig.toml` → `[test]`).
 
 ## Checkliste
 

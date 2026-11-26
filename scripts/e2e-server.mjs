@@ -10,9 +10,11 @@ if (!databaseUrl) {
 	const { PGlite } = await import('@electric-sql/pglite');
 	const { PGLiteSocketServer } = await import('@electric-sql/pglite-socket');
 	const db = await PGlite.create();
-	const server = new PGLiteSocketServer({ db, port: 54329, host: '127.0.0.1', maxConnections: 10 });
+	// Port änderbar: Windows/Hyper-V reserviert nach dem Docker-Start oft Bereiche um 54300 (EACCES)
+	const port = Number(process.env.E2E_PGLITE_PORT ?? 54329);
+	const server = new PGLiteSocketServer({ db, port, host: '127.0.0.1', maxConnections: 10 });
 	await server.start();
-	databaseUrl = 'postgres://postgres:postgres@127.0.0.1:54329/postgres?sslmode=disable';
+	databaseUrl = `postgres://postgres:postgres@127.0.0.1:${port}/postgres?sslmode=disable`;
 	closeDb = async () => {
 		await server.stop();
 		await db.close();

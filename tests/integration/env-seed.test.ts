@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { useTestDatabase } from '../helpers/db';
 import { systemContext } from '$lib/server/core/auth/context';
 import { getSetting, setSetting } from '$lib/server/core/settings/service';

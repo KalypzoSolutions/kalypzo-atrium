@@ -2,7 +2,7 @@
  * #67 (01a-12): Core-Dienste, die Modulen über `core` zur Verfügung stehen, prüfen selbst Rechte bzw.
  * begrenzen auf das eigene Modul – nicht nur der aufrufende Endpunkt.
  */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { useTestDatabase } from '../helpers/db';
 import { anonymousContext, systemContext } from '$lib/server/core/auth/context';
 import { auditFromContext } from '$lib/server/core/audit/service';

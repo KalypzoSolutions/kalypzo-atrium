@@ -1,7 +1,7 @@
 /**
  * PDF-Block `richText`: Bereinigung über `sanitizeDocumentHtml` (Allowlist) und Ausgabe in `renderBlocks`.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { sanitizeDocumentHtml } from '$lib/sdk/server/html';
 import { MAX_RICH_TEXT_CHARS, renderBlocks } from '$lib/server/core/pdf/templates';
 

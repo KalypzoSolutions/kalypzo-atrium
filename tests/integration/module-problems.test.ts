@@ -2,7 +2,7 @@
  * Kalypzo Atrium, Phase 2: Nicht lauffähige Module brechen den Start nicht ab, sondern erscheinen als „defekt“;
  * Module mit Zustand in der Datenbank, die nicht mehr installiert sind, als „nicht installiert“.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';

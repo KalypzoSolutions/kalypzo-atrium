@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { z } from 'zod';
 import { deriveErrors } from '$lib/server/core/api/catalog/errors';
 import type { RegisteredEndpoint } from '$lib/server/core/api/types';

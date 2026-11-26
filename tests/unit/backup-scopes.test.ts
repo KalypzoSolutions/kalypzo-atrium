@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { moduleInsertOrder, resolveScopes } from '$lib/server/core/backup/scopes';
 import type { BackupScopeInfo } from '$lib/server/core/backup/types';
 

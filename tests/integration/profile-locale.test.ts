@@ -2,7 +2,7 @@
  * Sprachwahl im Profil (Phase N): `saveSettings` speichert `core.user.locale`, setzt das Cookie `locale`
  * und die nächste Anfrage wird englisch gerendert. „Wie System“ (leer) löscht beides wieder.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { contextForUser } from '$lib/server/core/auth/context';

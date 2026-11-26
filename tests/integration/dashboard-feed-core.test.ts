@@ -3,7 +3,7 @@
  * Modulen mit Recht, bereinigt Einträge (unsichere Links, ungültige Daten, außerhalb der Woche),
  * sortiert, überspringt fehlerhafte Quellen; Route `GET /dashboard/feed` nur mit Anmeldung.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';

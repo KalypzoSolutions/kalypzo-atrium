@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { csvCell, csvCents, csvDocument, csvFromRecords } from '$lib/sdk/csv';
 import { centsPlain, formatEuro } from '$lib/components/layout/money';
 

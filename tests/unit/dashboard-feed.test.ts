@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { dueLabel, feedFinding, shortDate } from '../../src/lib/components/dashboard/feed-data';
 import {
 	mondayOf,

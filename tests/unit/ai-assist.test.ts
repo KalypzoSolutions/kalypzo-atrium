@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { createRedactor } from '$lib/server/core/ai/assist/redact';
 import {
 	clampPlain,

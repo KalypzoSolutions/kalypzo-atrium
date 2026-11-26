@@ -3,7 +3,7 @@
  * vs. aktueller Heartbeat, Zeitfenster für `daily`-Jobs (Europe/Berlin) und Fehlerisolation
  * (Fehler beim Sperren oder Abschließen eines Jobs stoppt die übrigen nicht).
  */
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
 import { eq, sql } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';

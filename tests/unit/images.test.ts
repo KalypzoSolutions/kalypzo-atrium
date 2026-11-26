@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import sharp from 'sharp';
 import { CoreError } from '../../src/lib/server/core/errors';
 import { processImage } from '../../src/lib/server/core/images';
@@ -26,7 +26,7 @@ async function expectCoreError(p: Promise<unknown>, code: string): Promise<CoreE
 		await p;
 	} catch (err) {
 		expect(err).toBeInstanceOf(CoreError);
-		expect((err as CoreError).code).toBe(code);
+		expect<string>((err as CoreError).code).toBe(code);
 		return err as CoreError;
 	}
 	throw new Error('Kein Fehler geworfen');

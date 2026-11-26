@@ -1,5 +1,5 @@
 /** Zähleranzeige (`formatCount`): leer bei 0, Zahl bis 9, danach „9+“ */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { formatCount } from '$lib/components/layout/count';
 
 describe('formatCount', () => {

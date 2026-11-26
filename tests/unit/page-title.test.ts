@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { documentTitle, navLabelFor } from '$lib/components/layout/page-title';
 
 describe('documentTitle (#71)', () => {

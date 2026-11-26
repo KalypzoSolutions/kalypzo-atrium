@@ -2,7 +2,7 @@
  * Benutzerverwaltung (Migration 0013): Passwort-Hilfe durch die Verwaltung, Sitzungen/2FA, Statistik, Filter,
  * Sammelaktionen, Einladung und „Als Person handeln“ (Impersonation) mit Kennzeichnung im Audit.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { useTestDatabase } from '../helpers/db';
 import { settleMails } from '../helpers/settle';

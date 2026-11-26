@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
 	CUSTOM_PRESET_ID,
 	LIST_MAX_COLUMNS,

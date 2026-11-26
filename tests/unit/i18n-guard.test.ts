@@ -3,7 +3,7 @@
  * `t()` aus `$lib/i18n` mit Texten in `src/lib/i18n/messages/{de,en}/*.json`. Einzelne Bereiche prüfen:
  * `I18N_GUARD_PATHS=src/routes/login bun run vitest run tests/unit/i18n-guard.test.ts`.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { I18N_ALLOWLIST } from './i18n-allowlist';
 import { isVisibleText, looksGerman, scanCore, scanSvelte, scanTs } from './i18n-scan';
 
