@@ -113,7 +113,7 @@
 						"useImportType": {
 							"level": "error",
 							"options": {
-								"style": "separatedType"
+								"style": "auto"
 							}
 						}
 					}
@@ -121,5 +121,10 @@
 			}
 		}
 	],
-	"plugins": ["./tools/biome/no-empty-catch.grit"]
+	"plugins": [
+		{
+			"path": "./tools/biome/no-empty-catch.grit",
+			"resolutionKind": "config"
+		}
+	]
 }
