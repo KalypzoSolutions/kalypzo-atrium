@@ -49,7 +49,7 @@ await core.permissions.forUser(userId);                    // Set<string>
 await core.permissions.list();                             // registrierte Berechtigungen
 ```
 
-`instance()` ist Core-intern (ESLint meldet den Zugriff in Modulen). `systemContext` hat **alle** Rechte – Module nutzen ihn nur dokumentiert
+`instance()` ist Core-intern (`bun run lint` meldet den Zugriff in Modulen). `systemContext` hat **alle** Rechte – Module nutzen ihn nur dokumentiert
 für Hintergrundarbeit (Storage, Mail, Einstellungen), nie, um eine fehlende Rechteprüfung zu umgehen.
 
 ## core.users
@@ -76,7 +76,7 @@ Verleihungen wirken nur, solange das Modul aktiv ist; manuelle Rollen (`user_rol
 ## core.crypto
 
 ```ts
-const c = core.crypto.forModule('treasury');   // nur die EIGENE Modul-ID (ESLint)
+const c = core.crypto.forModule('treasury');   // nur die EIGENE Modul-ID (bun run lint)
 const enc = c.encrypt(iban);                    // AES-256-GCM, Schlüssel je Modul aus APP_SECRET abgeleitet
 const plain = c.decrypt(enc);                   // wirft bei fremdem/verändertem Wert
 c.isEncrypted(value);
@@ -94,7 +94,7 @@ const h = c.hash(normalizedIban);               // HMAC-SHA256 (hex) mit Modulsc
 `use(providerId, callerId)` / `useOptional(providerId, callerId)` (siehe „Modul-Dienste“) und `memberDeleted(callerId, { memberIds, reason })` (nur `members`, sonst `forbidden`: löst
 `onMemberDeleted` der anderen aktiven Module aus, nie in einer offenen Transaktion). `enable` prüft Abhängigkeiten, führt Modulmigrationen aus, schreibt
 ein Audit-Event und ruft danach `onEnable`; `disable` scheitert, solange aktive Module abhängen. `enable`/`disable` sind der Verwaltung vorbehalten
-(ESLint meldet sie in Modulen).
+(`bun run lint` meldet sie in Modulen).
 
 ## core.settings
 
@@ -125,7 +125,7 @@ await mdb.transaction(async (tx) => {
 
 Module verwenden ausschließlich `forModule(<eigene id>)`. Der `search_path` macht Core-Tabellen und fremde Modulschemas nur **unqualifiziert**
 unerreichbar – das ist eine Konvention, kein Sicherheitsmechanismus (schemaqualifizierte Namen funktionieren technisch). Module sind vertrauenswürdiger
-Code; ESLint meldet in `modules/**` `core.database.db`, `core.database.transaction` und `forModule` mit fremdem String-Literal.
+Code; `tools/module-boundaries.ts` meldet in `modules/**` `core.database.db`, `core.database.transaction` und `forModule` mit fremdem String-Literal.
 
 ## core.pdf
 
@@ -207,7 +207,7 @@ Vorlagen mit festem Seitenlayout (Briefkopf, Falzmarken, Adressfeld, Fußzeile) 
 2. Bausteine aus `parts/` verwenden oder neu anlegen (Maße in mm).
 3. Datei `templates/<id>.ts` mit `export default` eines `PdfTemplate` (`id`, `label`, `description`, `source`, `page`, `overlay`, `parts`).
 4. Vorschau in der Admin-Ansicht prüfen und gegen das Referenzbild abgleichen (Screenshot, `pdftotext -bbox`).
-5. Test ergänzen und `bun run check`, `bun run eslint .`, `bun run test` ausführen.
+5. Test ergänzen und `bun run check`, `bun run lint`, `bun run test` ausführen.
 
 ## Modul-Dienste (`ModuleDefinition.provides`, `core.modules.use`)
 
@@ -424,6 +424,6 @@ Metadaten werden bereinigt: Schlüssel, die auf `password`, `secret`, `token`, `
 ## core.system (nur Core)
 
 `core.system.reset` (`listAreas`, `preview`, `export`, `execute`, `confirmWord`) steuert den Admin-Reset (`/admin/reset`, Recht `core.system.reset`,
-nur Session-Benutzer*innen). Module rufen es nie auf (ESLint meldet `core.system` in `modules/**`); ihre Beiträge kommen über
+nur Session-Benutzer*innen). Module rufen es nie auf (`bun run lint` meldet `core.system` in `modules/**`); ihre Beiträge kommen über
 `resetAreas`/`resetUsers`. Datensicherung (`core/backup`) und Datenauskunft (`core/privacy`, `/admin/privacy`) sind nicht Teil des `core`-Objekts;
 Module beteiligen sich über `backup.rehash` und `subjectExport` (siehe [Modulentwicklung](module-development.md#weitere-modul-hooks)).

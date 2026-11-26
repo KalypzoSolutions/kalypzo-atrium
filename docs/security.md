@@ -390,7 +390,7 @@ Test `tests/unit/website-security-headers.test.ts`.
 - Audit-Log ist nicht manipulationssicher gegenüber Datenbank-Superusern (Trigger ließe sich entfernen); kein Hash-Chaining.
 - Modul-Schemaisolation ist eine Konvention auf Basis von `search_path`, kein Sicherheitsmechanismus und kein Datenbank-Rollenmodell: Core-Tabellen
   und fremde Modulschemas sind nur **unqualifiziert** unerreichbar, schemaqualifizierte Zugriffe wären möglich. Module sind vertrauenswürdiger Code.
-  ESLint meldet in `modules/**` direkte Zugriffe auf Core-Interna (`core.database.db`, `core.database.transaction`, `core.system`,
+  `tools/module-boundaries.ts` meldet in `modules/**` direkte Zugriffe auf Core-Interna (`core.database.db`, `core.database.transaction`, `core.system`,
   `core.modules.enable|disable`, `core.auth.instance`, `forModule` mit fremdem String-Literal) – nur statisch erkennbare Fälle, Code-Review bleibt nötig.
 - Chromium im Container ohne seccomp-Profil fällt bei `PDF_CHROMIUM_SANDBOX=auto` auf `--no-sandbox` zurück (siehe „PDF-Renderer“).
 - Kein Virenscan für Uploads.

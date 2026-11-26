@@ -446,7 +446,17 @@
   den Projektordner geleert (aus GitHub wiederhergestellt; nicht versionierte Dateien wie `.env`/`.data` ggf. verloren) → `fs-guard.ts`.
   Offen: Module-Repo muss seine Tests auf `bun:test` umstellen (`vi.hoisted`/`importOriginal`/`vi.setSystemTime`/`vi.waitFor` gibt es nicht).
 
+- **Biome statt Prettier und ESLint (2026-11-26, Branch `chore/biomejs`)**: Biome formatiert und lintet alles (TS/JS/JSON/CSS und `.svelte` mit
+  `html.experimentalFullSupportEnabled`, Leerraum `strict`, Importe sortiert); `bun run lint` = `biome check .` + `bun tools/module-boundaries.ts`,
+  `bun run format` = `biome check --write .`, CI `biome ci .`. ESLint-Ersatz: Regeln in `biome.json` (u. a. `noExplicitAny`, unbenutzte Variablen,
+  `useImportType` getrennt in Modulen), GritQL-Plugin `tools/biome/no-empty-catch.grit` (leerer catch ohne Kommentar, #72), Modulgrenzen #44/#47 im
+  eigenen AST-Prüfer `tools/module-boundaries.ts` (hängt von Modul-ID und `ATRIUM_MODULES_DIR` ab, statisch in Biome nicht abbildbar), Svelte-Regeln
+  `{@html}`/`{@debug}`/`$inspect`/`{#each}` ohne Schlüssel in `tests/unit/svelte-guard.test.ts`. Unterdrücken nur per `// biome-ignore <regel>: <Grund>`.
+  Offen: Module-Repo nutzt noch ESLint (`ATRIUM_ESLINT_ROOT` + `eslint.config.js` des Core gibt es nicht mehr) → auf Biome + Prüfer umstellen; übrige
+  eslint-plugin-svelte-Regeln (z. B. `no-unused-props`, `prefer-writable-derived`) entfallen ersatzlos.
+
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
+- Werkzeuge (2026-11-26): Prettier **und** ESLint komplett durch Biome ersetzt (auch Svelte); was Biome nicht kann, übernehmen eigene Prüfer/Tests.
 - Bun (2026-11-25): **vollständig** auf Bun (Paketmanager, Skripte, Laufzeit, Image, CI), **verbindlich** – kein npm-Rückweg.
 - Benutzerverwaltung (2026-11-04): „Als Person handeln“ **vollständig** (auch Änderungen), nicht nur lesen; Passwort per Reset-Mail, direkt
   setzen **und** Einmal-Link; dazu Sitzungen/2FA, Detailseite, Filter/Sammelaktionen/Einladung und Kennzahlen auf `/admin`.

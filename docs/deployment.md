@@ -370,7 +370,7 @@ Bun aus `.bun-version` = Version des `Dockerfile`, `TZ=UTC` wie im Container):
 
 | Job | Schritte |
 |---|---|
-| `verify` | `bun install --frozen-lockfile` → Lockfile enthält `@img/sharp-linux-x64` → `bun run prettier --check src tests docs` → `bun run check` → `bun run eslint .` → `bun run test:coverage` (Artefakt `coverage`, lcov) → `bun run build` → `bun audit --prod --audit-level=high` |
+| `verify` | `bun install --frozen-lockfile` → Lockfile enthält `@img/sharp-linux-x64` → `bun run biome ci .` → `bun run check` → `bun tools/module-boundaries.ts` → `bun run test:coverage` (Artefakt `coverage`, lcov) → `bun run build` → `bun audit --prod --audit-level=high` |
 | `postgres` | `bun install --frozen-lockfile` → Smoke-Suite (`bun scripts/test.mjs …`) gegen PostgreSQL 17 |
 | `e2e` | `needs: verify`, nur **nightly** (03:15 UTC) und per *Run workflow* (`workflow_dispatch`): `bun run playwright install --with-deps chromium` → `bun run playwright test` (`CI=true`, eigener Server), Artefakt `playwright-report` (Bericht + `test-results/`) |
 

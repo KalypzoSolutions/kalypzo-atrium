@@ -1,10 +1,10 @@
 # Modulentwicklung
 
-Module liegen unter `modules/<id>/` und greifen **ausschließlich** über `$lib/sdk/*` auf den Core zu. ESLint (`eslint.config.js`, je Modul ein Block) erzwingt die erlaubte Oberfläche – siehe „Erlaubte Importe“.
+Module liegen unter `modules/<id>/` und greifen **ausschließlich** über `$lib/sdk/*` auf den Core zu. Der Prüfer `tools/module-boundaries.ts` (`bun run lint`, je Modul mit dessen ID) erzwingt die erlaubte Oberfläche – siehe „Erlaubte Importe“.
 
 ## Erlaubte Importe
 
-In `modules/<id>/**` sind nur diese Importe erlaubt (Regel `@typescript-eslint/no-restricted-imports`, Test `tests/unit/module-boundaries.test.ts`):
+In `modules/<id>/**` sind nur diese Importe erlaubt (Prüfer `tools/module-boundaries.ts`, Test `tests/unit/module-boundaries.test.ts`):
 
 | Ziel | Erlaubt | Zweck |
 |---|---|---|
@@ -23,7 +23,7 @@ Zusätzlich meldet `no-restricted-syntax` in `modules/**` direkte Zugriffe auf C
 `core.system.*`, `core.modules.enable|disable`, `core.auth.instance` und `forModule('<andere-id>')` mit einem String-Literal ungleich der eigenen
 Modul-ID (nur statisch erkennbare Zugriffe; Destrukturieren/Aliasse erkennt die Regel nicht – Code-Review bleibt nötig). Das ist eine Leitplanke,
 keine Sandbox: Module sind **vertrauenswürdiger Code** im selben Prozess.
-Offene Ausnahmen stehen mit Begründung in `OPEN_BOUNDARY_EXCEPTIONS` (`eslint.config.js`) und sind dort zu löschen, sobald sie behoben sind.
+Ausnahmen gibt es nicht; ein Verstoß bricht `bun run lint` und den Test ab.
 
 ## Verzeichnislayout
 
@@ -152,7 +152,7 @@ Registrierte Einstellungen sind typisiert (Zod) und mit `core.settings.get/set` 
 
 - Jedes Modul besitzt das Schema `mod_<id>` (Bindestriche → Unterstriche). Es wird beim Aktivieren automatisch angelegt.
 - Migrationen: Liste `{ name, sql }`, in Reihenfolge, einmalig, in einer Transaktion mit `search_path = mod_<id>`. Tabellen daher **unqualifiziert** anlegen. Prüfsummen in `module_migration`; nachträgliche Änderung angewendeter Migrationen wird abgelehnt – neue Datei anlegen.
-- Zugriff im Code: `core.database.forModule('<id>').transaction(async (tx) => …)`. Tabellen anderer Module und des Core sind nur **unqualifiziert** nicht erreichbar: `search_path` ist eine Konvention, kein Sicherheitsmechanismus – schemaqualifizierte Zugriffe (`mod_x.tabelle`, `public.user`) wären technisch möglich und sind verboten. `forModule` nur mit der eigenen `MODULE_ID` (ESLint, siehe „Erlaubte Importe“). Modulübergreifende Zugriffe laufen über definierte Service-Schnittstellen des anderen Moduls (`provides` + `contract.ts`).
+- Zugriff im Code: `core.database.forModule('<id>').transaction(async (tx) => …)`. Tabellen anderer Module und des Core sind nur **unqualifiziert** nicht erreichbar: `search_path` ist eine Konvention, kein Sicherheitsmechanismus – schemaqualifizierte Zugriffe (`mod_x.tabelle`, `public.user`) wären technisch möglich und sind verboten. `forModule` nur mit der eigenen `MODULE_ID` (`bun run lint`, siehe „Erlaubte Importe“). Modulübergreifende Zugriffe laufen über definierte Service-Schnittstellen des anderen Moduls (`provides` + `contract.ts`).
 - Drizzle-Tabellen können mit `pgSchema('mod_members')` definiert werden.
 
 ## 5. API-Endpunkte

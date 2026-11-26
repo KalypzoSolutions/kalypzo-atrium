@@ -56,10 +56,10 @@ Dunkelmodus). Unter Git-Bash Pfad-Argumente mit `MSYS_NO_PATHCONV=1` schützen (
   wirklich in den Dateien stehen. Schon vorgekommen: Patch-Skripte wurden von anderen Agents überschrieben/doppelt
   ausgeführt → doppelte Imports/Deklarationen/Testblöcke; andere Änderungen kamen gar nicht an.
 - Gleichzeitig nur **einer** baut/startet den Demo-Server (gemeinsames `build/`, gemeinsame Ports).
-- Nach Agent-Arbeit `bun run prettier --write` auf geänderte Bereiche, dann prüfen.
+- Nach Agent-Arbeit `bun run biome check --write` auf geänderte Bereiche, dann prüfen.
 
 ## Werkzeug-Fallen (Windows / Git-Bash)
-- Laufzeit ist **Bun**: Skripte mit `bun scripts/…`, Werkzeuge **nur** über `bun run <werkzeug>` (`playwright`, `eslint`, `prettier` sind Skripte in `package.json`, Tests über `bun run test*`) – `bunx` ignoriert `[run] bun = true` und nimmt ein installiertes Node; App-Build mit `bun ./build/index.js` starten (`bun build` ist der Bun-Bundler).
+- Laufzeit ist **Bun**: Skripte mit `bun scripts/…`, Werkzeuge **nur** über `bun run <werkzeug>` (`playwright`, `biome` sind Skripte in `package.json`, Tests über `bun run test*`) – `bunx` ignoriert `[run] bun = true` und nimmt ein installiertes Node; App-Build mit `bun ./build/index.js` starten (`bun build` ist der Bun-Bundler).
 - Mehrere Heredocs in einem Bash-Aufruf mit Anführungszeichen brechen gelegentlich („unexpected EOF“) → Dateien mit dem
   Write-Tool anlegen, Python-/Node-Skripte als Datei ablegen (Scratchpad) und ausführen.
 - ESM-Import absoluter Windows-Pfade nur als `file:///C:/…`.

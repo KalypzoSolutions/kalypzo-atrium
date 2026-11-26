@@ -2,9 +2,9 @@
 
 ## Definition „fertig“
 Vor jeder Fertigmeldung, in dieser Reihenfolge, alles grün:
-1. `bun run prettier --write <geänderte Dateien>`
+1. `bun run biome check --write <geänderte Dateien>` (Format, Lint-Fixes, Importe sortieren)
 2. `bun run check` → 0 Fehler, 0 Warnungen
-3. `bun run eslint .`
+3. `bun run lint` (Biome + Modulgrenzen)
 4. `bun run test` (Unit + Integration, `bun test`)
 5. `bun run build`
 6. bei UI/Core-Änderungen: `bun run playwright test` **und** Screenshot-Prüfung (siehe `workflow.md`)
