@@ -58,14 +58,16 @@ jobs:
       - name: Lockfile enthält sharp für linux-x64
         run: grep -q '"@img/sharp-linux-x64"' bun.lock
 
-      - name: Format (prettier)
-        run: bun run prettier --check src tests docs tools
+      - name: Format und Lint (biome)
+        run: bun run biome ci .
 
       - name: Typprüfung (svelte-check)
         run: bun run check
 
-      - name: Lint (eslint)
-        run: bun run eslint .
+      - name: Modulgrenzen (Fixture-Module)
+        run: bun tools/module-boundaries.ts
+        env:
+          ATRIUM_MODULES_DIR: tests/fixtures/modules
 
       - name: Unit- und Integrationstests mit Coverage
         run: bun run test:coverage

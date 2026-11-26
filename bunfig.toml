@@ -6,7 +6,7 @@
 linker = "hoisted"
 
 [run]
-# Werkzeuge mit `#!/usr/bin/env node` (vite, svelte-check, eslint, vitest …) unter Bun statt Node ausführen
+# Werkzeuge mit `#!/usr/bin/env node` (vite, svelte-check, biome …) unter Bun statt Node ausführen
 bun = true
 
 [test]

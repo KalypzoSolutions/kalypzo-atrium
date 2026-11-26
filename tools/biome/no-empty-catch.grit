@@ -1,0 +1,8 @@
+language js
+
+// Leere catch-Blöcke (wie ESLint `no-empty` mit allowEmptyCatch: false, #72).
+// Ein Kommentar im Block gilt als Begründung und ist erlaubt.
+JsCatchClause() as $catch where {
+	$catch <: r"(?s)^catch\s*(?:[(][^)]*[)])?\s*\{\s*\}$",
+	register_diagnostic(span=$catch, message="Leerer catch-Block verschluckt Fehler (#72) – begründen (Kommentar) oder logBestEffort nutzen.")
+}
