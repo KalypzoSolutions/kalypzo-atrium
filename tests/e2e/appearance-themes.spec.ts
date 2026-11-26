@@ -62,10 +62,10 @@ test('Themes: Vorschlag, eigenes Theme, Schnellwahl und Standard', async ({ page
 	if (SHOTS) await page.screenshot({ path: `${SHOTS}/theme-editor.png`, fullPage: true });
 	await dialog.getByRole('button', { name: 'Speichern und verwenden' }).click();
 	await expect(dialog).toBeHidden();
-	await expect(page.getByRole('button', { name: /^E2E Theme/ })).toHaveAttribute(
-		'aria-pressed',
-		'true'
-	);
+	// Theme-Karte (nicht der Favoriten-Stern „E2E Theme: Favorit entfernen“, der auch mit „E2E Theme“ beginnt)
+	await expect(
+		page.getByRole('button', { name: 'E2E Theme (aktiv)', exact: true })
+	).toHaveAttribute('aria-pressed', 'true');
 
 	// Nach dem Neuladen liefert schon der Server das Theme (kein Aufblitzen)
 	const res = await page.request.get('/dashboard');
@@ -73,14 +73,18 @@ test('Themes: Vorschlag, eigenes Theme, Schnellwahl und Standard', async ({ page
 	expect(html).toContain('data-app-theme="on"');
 	expect(html).toContain('radial-gradient(at center');
 	await page.goto('/dashboard');
-	expect(await backdrop(page)).toContain('radial-gradient');
+	const lightBackdrop = await backdrop(page);
+	expect(lightBackdrop).toContain('radial-gradient');
 	if (SHOTS) await page.screenshot({ path: `${SHOTS}/theme-dashboard.png`, fullPage: true });
 
 	// Dunkelmodus nutzt den dunklen Hintergrund
 	await page.getByRole('button', { name: /Darstellung wählen/ }).click();
 	await page.getByRole('menuitemradio', { name: 'Dunkel' }).click();
 	await expect(page.locator('html')).toHaveClass(/dark/);
-	expect(await backdrop(page)).toContain('radial-gradient');
+	// Jeder Modus hat seinen eigenen Hintergrund: bearbeitet wurde nur Hell (Radial), Dunkel bleibt der
+	// beim Anlegen abgeleitete Verlauf (`blankTheme` → `deriveDark`)
+	await expect.poll(() => backdrop(page)).not.toBe(lightBackdrop);
+	expect(await backdrop(page)).toContain('linear-gradient(135deg');
 	if (SHOTS) await page.screenshot({ path: `${SHOTS}/theme-dashboard-dark.png`, fullPage: true });
 
 	// Schnellwahl in der Kopfzeile: zurück auf Standard
