@@ -2,13 +2,13 @@ import { describe, expect, it } from 'bun:test';
 import {
 	buildFormSchema,
 	emptyValues,
+	type FieldDefinition,
+	type FormDefinition,
 	formDefinitionSchema,
 	getFieldType,
 	slugKey,
 	validateFormValues,
-	visibleFields,
-	type FieldDefinition,
-	type FormDefinition
+	visibleFields
 } from '$lib/forms';
 
 function def(...fields: FieldDefinition[]): FormDefinition {

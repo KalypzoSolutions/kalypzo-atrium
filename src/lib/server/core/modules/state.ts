@@ -1,4 +1,4 @@
-import { getDb, schema, type DbOrTx } from '../database/client';
+import { type DbOrTx, getDb, schema } from '../database/client';
 
 /** Kurzer Cache: Laufzeitaktivierung muss schnell wirken, aber nicht jede Anfrage kostet eine Query. */
 const TTL_MS = 3000;

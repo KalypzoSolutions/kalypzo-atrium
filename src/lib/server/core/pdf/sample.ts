@@ -1,5 +1,5 @@
-import type { PdfBlock } from '$lib/sdk/types';
 import { t } from '$lib/i18n';
+import type { PdfBlock } from '$lib/sdk/types';
 
 /** Beispieladresse für Vorschau und Testdokument (in der Sprache der Anzeige) */
 export function sampleRecipient(): string[] {

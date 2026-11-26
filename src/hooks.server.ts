@@ -1,4 +1,4 @@
-import { redirect, type Handle, type HandleServerError } from '@sveltejs/kit';
+import { type Handle, type HandleServerError, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
@@ -6,18 +6,18 @@ import '$lib/zod-locale';
 import { t } from '$lib/i18n';
 import { legacyAdminRedirect } from '$lib/server/core/admin-redirects';
 import { requestIdFrom } from '$lib/server/core/api/request-id';
-import { anonymousContext, resolveSession } from '$lib/server/core/auth/context';
 import { getAuth } from '$lib/server/core/auth';
 import { activeImpersonation, stopImpersonation } from '$lib/server/core/auth/admin/impersonation';
 import { applyClientIpHeader, clientAddress } from '$lib/server/core/auth/client-ip';
+import { anonymousContext, resolveSession } from '$lib/server/core/auth/context';
+import { brandingState, brandVersion } from '$lib/server/core/branding';
 import { logError } from '$lib/server/core/db-errors';
+import { LOCALE_COOKIE, resolveLocale, withLocale } from '$lib/server/core/i18n/locale';
 import { initCore } from '$lib/server/core/init';
-import { installShutdownHandlers, runVerifyAndExit } from '$lib/server/core/lifecycle';
 import { startJobRunner } from '$lib/server/core/jobs';
-import { brandVersion, brandingState } from '$lib/server/core/branding';
+import { installShutdownHandlers, runVerifyAndExit } from '$lib/server/core/lifecycle';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
 import { getSetting } from '$lib/server/core/settings/service';
-import { LOCALE_COOKIE, resolveLocale, withLocale } from '$lib/server/core/i18n/locale';
 import { applyAppearance, loadUserPrefs } from '$lib/server/core/settings/user-prefs';
 
 const PUBLIC_PAGES = [

@@ -1,9 +1,9 @@
-import { sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'bun:test';
-import { useTestDatabase } from '../helpers/db';
+import { sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/core/database/client';
 import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
 import { runModuleMigrations } from '$lib/server/core/modules/service';
+import { useTestDatabase } from '../helpers/db';
 
 // #73 (07-06, 07-07): Modul-Migrationen laufen nur mit dem Modulschema im search_path und unter
 // einer Advisory-Sperre; danach ist der search_path wieder der Standard.

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Kalypzo Atrium (Phase 4): Oberfläche eines Moduls aus dem Modulverzeichnis – interne Seite, vollflächige Seite,
 // öffentliche Seite und Tailwind-Klasse, die nur im Modul steht. Läuft nur mit dem Fixture-Build

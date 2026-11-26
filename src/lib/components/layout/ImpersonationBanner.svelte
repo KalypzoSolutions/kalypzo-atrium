@@ -1,7 +1,7 @@
 <script lang="ts">
+	import DramaIcon from '@lucide/svelte/icons/drama';
 	import { onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
-	import DramaIcon from '@lucide/svelte/icons/drama';
 	import { Button } from '$lib/components/ui/button';
 	import { t } from '$lib/i18n';
 

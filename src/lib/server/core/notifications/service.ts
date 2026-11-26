@@ -7,12 +7,13 @@
  * E-Mail zurück, wenn Push gewählt, aber nicht möglich ist (ausgeschaltet oder kein Gerät).
  */
 import { and, eq, inArray, lt, or, sql } from 'drizzle-orm';
+import { type Locale, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import {
+	allowedChannels,
 	NOTIFICATION_BODY_MAX,
 	NOTIFICATION_SCOPE_MAX,
 	NOTIFICATION_TITLE_MAX,
-	allowedChannels,
 	type NotificationChannel,
 	type NotificationDelivery,
 	type NotificationPrefsResponse
@@ -34,17 +35,16 @@ import {
 	findType,
 	preferenceGroups
 } from './catalog';
-import { composeMail, composePush, oneLine, type ComposeItem } from './compose';
+import { type ComposeItem, composeMail, composePush, oneLine } from './compose';
 import { insertPrefsIfMissing, loadPrefs, prefKey, storePref } from './prefs';
 import {
 	deliverPush,
 	deviceCounts,
 	listDevices,
+	type PushPayload,
 	pushEnabled,
-	vapidKeys,
-	type PushPayload
+	vapidKeys
 } from './push';
-import { t, type Locale } from '$lib/i18n';
 
 export interface NotificationItem {
 	/** Schlüssel des Typs ohne Modul (deklariert in `ModuleDefinition.notifications`) */

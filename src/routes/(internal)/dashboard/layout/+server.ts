@@ -1,6 +1,6 @@
-import { t } from '$lib/i18n';
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { DASHBOARD_KEY_PATTERN, DASHBOARD_LAYOUT_MAX } from '$lib/sdk/client/dashboard-widgets';
 import { isCoreError } from '$lib/server/core/errors';
 import { setSetting } from '$lib/server/core/settings/service';

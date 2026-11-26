@@ -1,8 +1,8 @@
 import type { Actions } from '@sveltejs/kit';
 import { t } from '$lib/i18n';
+import { rotateVapidKeys, totalDevices, vapidKeys } from '$lib/server/core/notifications/push';
 import { loadFields, saveFields } from '../../_shared/group-form.server';
 import { requirePerm, toFail } from '../../_shared/server-utils';
-import { rotateVapidKeys, totalDevices, vapidKeys } from '$lib/server/core/notifications/push';
 import type { PageServerLoad } from './$types';
 
 // Nur der Schalter ist änderbar; die VAPID-Schlüssel erzeugt das System selbst

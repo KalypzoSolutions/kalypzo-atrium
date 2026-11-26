@@ -1,20 +1,27 @@
 <script lang="ts">
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+	import Smartphone from '@lucide/svelte/icons/smartphone';
 	/**
 	 * „Mit dem Handy anmelden“: zeigt einen QR-Code, den ein angemeldetes Handy bestätigt. Der Code gilt 2 Minuten
 	 * und wird automatisch erneuert, solange die Seite sichtbar ist; nach der Bestätigung meldet sich dieser Browser an.
 	 */
 	import { onDestroy, onMount } from 'svelte';
-	import CircleCheck from '@lucide/svelte/icons/circle-check';
-	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
-	import Smartphone from '@lucide/svelte/icons/smartphone';
 	import { Button } from '$lib/components/ui/button';
 	import { t } from '$lib/i18n';
 
 	let { redirectTo }: { redirectTo: string } = $props();
 
 	type State =
-		'loading' | 'pending' | 'scanned' | 'approved' | 'done' | 'expired' | 'denied' | 'error';
+		| 'loading'
+		| 'pending'
+		| 'scanned'
+		| 'approved'
+		| 'done'
+		| 'expired'
+		| 'denied'
+		| 'error';
 	const POLL_MS = 2000;
 	/** Automatisch erneuern höchstens so oft (danach Knopf), damit offene Tabs nicht endlos Codes anlegen */
 	const MAX_RENEW = 15;

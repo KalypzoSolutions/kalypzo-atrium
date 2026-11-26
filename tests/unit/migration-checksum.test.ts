@@ -1,6 +1,8 @@
+import { describe, expect, it } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'bun:test';
+import { type CompatTarget, checkCompat } from '$lib/server/core/backup/compat';
+import type { BackupMeta } from '$lib/server/core/backup/types';
 import {
 	acceptedMigrationChecksums,
 	canonicalChecksumFor,
@@ -10,8 +12,6 @@ import {
 	normalizeMigrationSql,
 	readCoreMigrationFiles
 } from '$lib/server/core/modules/migration-checksum';
-import { checkCompat, type CompatTarget } from '$lib/server/core/backup/compat';
-import type { BackupMeta } from '$lib/server/core/backup/types';
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const LF = 'CREATE TABLE IF NOT EXISTS "x" (\n\t"id" text PRIMARY KEY\n);\n';

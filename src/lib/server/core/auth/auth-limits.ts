@@ -1,6 +1,6 @@
+import { t } from '$lib/i18n';
 import { env } from '../env';
 import { hit, type RateLimitResult } from '../rate-limit';
-import { t } from '$lib/i18n';
 
 /**
  * Gemeinsame Rate-Limits für alle Authentifizierungswege. Better Auth übernimmt sie als

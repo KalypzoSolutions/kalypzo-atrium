@@ -12,9 +12,9 @@
 </script>
 
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Info from '@lucide/svelte/icons/info';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils';
 
 	let { rows, class: className }: { rows: SummaryRow[]; class?: string } = $props();
@@ -79,9 +79,10 @@
 						row.negative && 'text-warning'
 					)}
 				>
-					{#if row.negative}<span aria-hidden="true">−</span><span class="sr-only"
-							>{t('layout.summary.minus')}
-						</span>{/if}{row.value}
+					{#if row.negative}
+						<span aria-hidden="true">−</span
+						><span class="sr-only">{t('layout.summary.minus')} </span>
+					{/if}{row.value}
 				</dd>
 			</div>
 			{#if hasDetails && open[i]}

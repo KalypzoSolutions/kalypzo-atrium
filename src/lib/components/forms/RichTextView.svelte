@@ -13,13 +13,23 @@
 
 {#snippet render(list: RichNode[])}
 	{#each list as n, i (i)}
-		{#if n.type === 'text'}{n.text}{:else if n.tag === 'br'}<br />{:else if n.tag === 'hr'}<hr
-			/>{:else if n.tag === 'a'}<a
+		{#if n.type === 'text'}
+			{n.text}
+		{:else if n.tag === 'br'}
+			<br />
+		{:else if n.tag === 'hr'}
+			<hr />
+		{:else if n.tag === 'a'}
+			<a
 				href={n.href}
 				target="_blank"
 				rel="noopener noreferrer nofollow"
-				class="text-link underline">{@render render(n.children)}</a
-			>{:else}<svelte:element this={n.tag}>{@render render(n.children)}</svelte:element>{/if}
+				class="text-link underline"
+				>{@render render(n.children)}</a
+			>
+		{:else}
+			<svelte:element this={n.tag}>{@render render(n.children)}</svelte:element>
+		{/if}
 	{/each}
 {/snippet}
 

@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import {
 	DeleteObjectCommand,
 	GetObjectCommand,
@@ -5,7 +6,6 @@ import {
 	HeadObjectCommand,
 	PutObjectCommand
 } from '@aws-sdk/client-s3';
-import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import { ctxWith, settingsStore, systemCtx } from './_helpers';
 
 vi.mock('$lib/server/core/settings/service', () => ({
@@ -15,8 +15,8 @@ vi.mock('$lib/server/core/settings/service', () => ({
 const auditLog = vi.fn(async () => undefined);
 vi.mock('$lib/server/core/audit/service', () => ({ auditFromContext: auditLog }));
 
-import * as storage from '$lib/server/core/storage';
 import type { FileRow, S3Handle } from '$lib/server/core/storage';
+import * as storage from '$lib/server/core/storage';
 
 function createFakes() {
 	const objects = new Map<string, { body: Uint8Array; contentType?: string }>();

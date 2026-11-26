@@ -2,12 +2,13 @@ import { and, eq, sql } from 'drizzle-orm';
 import { localized, t } from '$lib/i18n';
 import type { RequestContext, ResolvedModuleManifest } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
-import { getDb, schema, type DbOrTx } from '../database/client';
+import { type DbOrTx, getDb, schema } from '../database/client';
 import { MIGRATION_LOCK_KEY } from '../database/migrate';
 import { errors } from '../errors';
 import { CORE_PERMISSIONS, corePermissionDescription } from '../permissions/catalog';
 import { ensureDefaultRole } from '../permissions/default-roles';
 import { requirePermission, syncPermissions } from '../permissions/service';
+import { canonicalChecksumFor, migrationChecksum } from './migration-checksum';
 import {
 	allDefinitions,
 	brokenModules,
@@ -16,11 +17,10 @@ import {
 	requireDefinition,
 	resolveManifest
 } from './registry';
-import { enabledModuleIds, invalidateModuleStateCache } from './state';
-import { canonicalChecksumFor, migrationChecksum } from './migration-checksum';
 import { splitSqlStatements } from './split-sql';
-import { validateModuleReferences } from './validate';
+import { enabledModuleIds, invalidateModuleStateCache } from './state';
 import { moduleSchemaName } from './types';
+import { validateModuleReferences } from './validate';
 
 export interface ModuleInfo {
 	/** Texte (Name, Navigation, Rechte) in der Sprache des Requests */

@@ -1,24 +1,24 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import Monitor from '@lucide/svelte/icons/monitor';
+	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+	import Smartphone from '@lucide/svelte/icons/smartphone';
+	import Tablet from '@lucide/svelte/icons/tablet';
+	import X from '@lucide/svelte/icons/x';
 	/**
 	 * Vollbild-Vorschau eines Formulars, wie Ausfüllende es sehen – umschaltbar zwischen Handy-, Tablet- und
 	 * Desktop-Breite. Eingaben werden nur lokal gehalten (Pflichtprüfung per „Testweise absenden“).
 	 */
 	import { untrack } from 'svelte';
-	import * as Dialog from '$lib/components/ui/dialog';
 	import { Button } from '$lib/components/ui/button';
-	import Monitor from '@lucide/svelte/icons/monitor';
-	import Smartphone from '@lucide/svelte/icons/smartphone';
-	import Tablet from '@lucide/svelte/icons/tablet';
-	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
-	import X from '@lucide/svelte/icons/x';
-	import FormRenderer from './FormRenderer.svelte';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import {
 		emptyValues,
-		validateFormValues,
 		type FormDefinition,
-		type FormValues
+		type FormValues,
+		validateFormValues
 	} from '$lib/forms';
+	import { t } from '$lib/i18n';
+	import FormRenderer from './FormRenderer.svelte';
 
 	let {
 		open = $bindable(false),

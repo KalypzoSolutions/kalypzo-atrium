@@ -1,7 +1,10 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { PageTitle, MobileActionBar, ConfirmDialog } from '$lib/components/layout';
+	import type { SubmitFunction } from '@sveltejs/kit';
 	import { untrack } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
+	import { ConfirmDialog, FormField, MobileActionBar, PageTitle } from '$lib/components/layout';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -10,14 +13,10 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { FormField } from '$lib/components/layout';
-	import type { SubmitFunction } from '@sveltejs/kit';
-	import { invalidateAll } from '$app/navigation';
-	import { toast } from 'svelte-sonner';
-	import type { UpdateInfo } from '$lib/server/core/modules/install/manage';
-	import AccountFields from '../backup/AccountFields.svelte';
-	import { submitHandler } from '../_shared/form-utils';
 	import { t } from '$lib/i18n';
+	import type { UpdateInfo } from '$lib/server/core/modules/install/manage';
+	import { submitHandler } from '../_shared/form-utils';
+	import AccountFields from '../backup/AccountFields.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -135,7 +134,8 @@
 				if (result.type === 'success') {
 					const d = (result.data ?? {}) as Record<string, unknown>;
 					const removal = (d.uninstalledMany ?? d.uninstalled) as
-						{ warnings?: string[] } | undefined;
+						| { warnings?: string[] }
+						| undefined;
 					if (removal?.warnings?.length) toast.error(removal.warnings.join(' '));
 					else if (d.message) toast.success(String(d.message));
 					onok(d);
@@ -223,7 +223,9 @@
 										{#if u.status === 'update'}
 											→ {u.latestVersion}{u.latestCommit ? ` · ${u.latestCommit.slice(0, 7)}` : ''}
 										{/if}
-										{#if u.message}· {u.message}{/if}
+										{#if u.message}
+											· {u.message}
+										{/if}
 									</span>
 								</span>
 								<Badge
@@ -231,7 +233,8 @@
 										? 'info'
 										: u.status === 'error'
 											? 'destructive'
-											: 'secondary'}>{t(UPDATE_STATUS[u.status])}</Badge
+											: 'secondary'}
+									>{t(UPDATE_STATUS[u.status])}</Badge
 								>
 								{#if u.status === 'update' && u.source}
 									<Button href={installHref(u)} size="sm"
@@ -304,13 +307,14 @@
 						<Card.Header>
 							<Card.Title level={3} class="flex flex-wrap items-center gap-2">
 								{p.name}
-								{#if p.kind === 'broken'}<Badge variant="destructive"
-										>{t('admin-modules.problems.broken')}</Badge
-									>{:else}<Badge variant="warning">{t('admin-modules.problems.missing')}</Badge
-									>{/if}
-								{#if p.enabled}<Badge variant="outline"
-										>{t('admin-modules.problems.wasActive')}</Badge
-									>{/if}
+								{#if p.kind === 'broken'}
+									<Badge variant="destructive">{t('admin-modules.problems.broken')}</Badge>
+								{:else}
+									<Badge variant="warning">{t('admin-modules.problems.missing')}</Badge>
+								{/if}
+								{#if p.enabled}
+									<Badge variant="outline">{t('admin-modules.problems.wasActive')}</Badge>
+								{/if}
 							</Card.Title>
 						</Card.Header>
 						<Card.Content class="space-y-2 text-sm">
@@ -369,7 +373,9 @@
 			{/if}
 			{#if data.canInstall}
 				<form method="POST" action="?/bulkCheckUpdates" use:enhance={onCheck}>
-					{#each selected as id (id)}<input type="hidden" name="id" value={id} />{/each}
+					{#each selected as id (id)}
+						<input type="hidden" name="id" value={id} />
+					{/each}
 					<Button size="sm" variant="outline" disabled={checking}
 						>{t('admin-modules.checkUpdates')}</Button
 					>
@@ -378,11 +384,12 @@
 					size="sm"
 					variant="outline"
 					disabled={working || activeSelected}
-					onclick={openBulkRemove}>{t('admin-modules.removeEllipsis')}</Button
+					onclick={openBulkRemove}
+					>{t('admin-modules.removeEllipsis')}</Button
 				>
-				{#if activeSelected}<span class="text-xs text-muted-foreground"
-						>{t('admin-modules.bulk.removeBlocked')}</span
-					>{/if}
+				{#if activeSelected}
+					<span class="text-xs text-muted-foreground">{t('admin-modules.bulk.removeBlocked')}</span>
+				{/if}
 			{/if}
 			<Button size="sm" variant="ghost" onclick={() => (selected = [])}
 				>{t('admin-modules.bulk.clear')}</Button
@@ -390,8 +397,12 @@
 		</MobileActionBar>
 		<form method="POST" action="?/bulk" bind:this={bulkForm} use:enhance={bulkSubmit} hidden>
 			<input name="action" value={bulkAction} />
-			{#if withDependencies}<input name="withDependencies" value="on" />{/if}
-			{#each selected as id (id)}<input name="id" value={id} />{/each}
+			{#if withDependencies}
+				<input name="withDependencies" value="on" />
+			{/if}
+			{#each selected as id (id)}
+				<input name="id" value={id} />
+			{/each}
 		</form>
 	{/if}
 	{#if bulkFailures.length}
@@ -400,9 +411,9 @@
 				>{t('admin-modules.bulk.errors', { count: bulkFailures.length })}</summary
 			>
 			<ul class="mt-2 space-y-1">
-				{#each bulkFailures as failure (failure.id)}<li>
-						<strong>{failure.name}</strong>: {failure.message}
-					</li>{/each}
+				{#each bulkFailures as failure (failure.id)}
+					<li> <strong>{failure.name}</strong>: {failure.message} </li>
+				{/each}
 			</ul>
 		</details>
 	{/if}
@@ -412,15 +423,19 @@
 			<Card.Root>
 				<Card.Header>
 					<Card.Title class="flex flex-wrap items-center gap-2">
-						{#if data.canManage || data.canInstall}<Checkbox
+						{#if data.canManage || data.canInstall}
+							<Checkbox
 								checked={selected.includes(m.id)}
 								aria-label={t('admin-modules.bulk.selectModule', { name: m.name })}
 								onCheckedChange={(v) => toggle(m.id, v === true)}
-							/>{/if}
+							/>
+						{/if}
 						{m.name}
-						{#if m.enabled}<Badge>{t('admin-modules.active')}</Badge>{:else}<Badge
-								variant="secondary">{t('admin-modules.inactive')}</Badge
-							>{/if}
+						{#if m.enabled}
+							<Badge>{t('admin-modules.active')}</Badge>
+						{:else}
+							<Badge variant="secondary">{t('admin-modules.inactive')}</Badge>
+						{/if}
 					</Card.Title>
 					<Card.Description>{m.description || t('admin-modules.noDescription')}</Card.Description>
 				</Card.Header>
@@ -447,7 +462,8 @@
 								{data.origins[m.id]!.label}{#if data.origins[m.id]!.commit}
 									<code class="ml-1 text-xs text-muted-foreground"
 										>{data.origins[m.id]!.commit!.slice(0, 7)}</code
-									>{/if}
+									>
+								{/if}
 							{:else}
 								{t('admin-modules.inBuild')}
 							{/if}
@@ -464,7 +480,9 @@
 							{t('admin-modules.requiredByActive', { list: m.dependents.join(', ') })}
 						</p>
 					{/if}
-					{#if errors[m.id]}<p class="text-destructive" role="alert">{errors[m.id]}</p>{/if}
+					{#if errors[m.id]}
+						<p class="text-destructive" role="alert">{errors[m.id]}</p>
+					{/if}
 
 					<div class="flex flex-wrap items-center gap-2">
 						{#if data.canManage}
@@ -502,7 +520,9 @@
 			</Card.Root>
 		{/each}
 	</div>
-	{#if selected.length}<div class="h-48 sm:hidden" aria-hidden="true"></div>{/if}
+	{#if selected.length}
+		<div class="h-48 sm:hidden" aria-hidden="true"></div>
+	{/if}
 </div>
 
 <Dialog.Root open={!!removeTarget} onOpenChange={(o) => !o && (removeTarget = null)}>
@@ -624,10 +644,16 @@
 			class="space-y-4"
 		>
 			<ul class="max-h-32 list-inside list-disc overflow-auto text-sm">
-				{#each selectedModules as m (m.id)}<li>{m.name} <code>{m.id}</code></li>{/each}
+				{#each selectedModules as m (m.id)}
+					<li>{m.name} <code>{m.id}</code></li>
+				{/each}
 			</ul>
-			{#each selected as id (id)}<input type="hidden" name="id" value={id} />{/each}
-			{#if fields.ids}<p class="text-sm text-destructive" role="alert">{fields.ids}</p>{/if}
+			{#each selected as id (id)}
+				<input type="hidden" name="id" value={id} />
+			{/each}
+			{#if fields.ids}
+				<p class="text-sm text-destructive" role="alert">{fields.ids}</p>
+			{/if}
 			<div class="flex items-start gap-2">
 				<Checkbox
 					id="bulk-delete"

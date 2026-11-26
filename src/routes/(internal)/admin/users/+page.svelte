@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { page } from '$app/state';
-	import { onMount } from 'svelte';
 	import DownloadIcon from '@lucide/svelte/icons/download';
-	import { toast } from 'svelte-sonner';
-	import type { SubmitFunction } from '@sveltejs/kit';
 	import MailCheckIcon from '@lucide/svelte/icons/mail-check';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import UserCheckIcon from '@lucide/svelte/icons/user-check';
 	import UserXIcon from '@lucide/svelte/icons/user-x';
+	import type { SubmitFunction } from '@sveltejs/kit';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import { enhance } from '$app/forms';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		busySave,
 		ConfirmDialog,
@@ -22,22 +22,22 @@
 		LoadingState,
 		MobileActionBar,
 		PageHeader,
+		PageTitle,
 		Pagination,
-		SearchInput,
-		PageTitle
+		SearchInput
 	} from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
+	import { MultiSelect } from '$lib/components/ui/multi-select';
+	import { SelectField } from '$lib/components/ui/select-field';
 	import * as Table from '$lib/components/ui/table';
 	import * as Tabs from '$lib/components/ui/tabs';
-	import { SelectField } from '$lib/components/ui/select-field';
-	import { MultiSelect } from '$lib/components/ui/multi-select';
-	import PermissionPicker from '../_shared/PermissionPicker.svelte';
 	import { t } from '$lib/i18n';
 	import { formatDate, formatRelative } from '$lib/i18n/intl';
+	import PermissionPicker from '../_shared/PermissionPicker.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -115,7 +115,7 @@
 			? (data.users.find((x) => x.id === id) ??
 				(data.editExtraUser?.id === id ? data.editExtraUser : null))
 			: null;
-		if (u && u.manageable) openEdit(u);
+		if (u?.manageable) openEdit(u);
 	});
 
 	// --- Filter (URL-Parameter, Seite springt auf 1)
@@ -351,9 +351,9 @@
 				{#if filtered}
 					<div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
 						<span>{t('admin-users.filter.matches', { count: data.total })}</span>
-						{#if data.filter.admins}<Badge variant="outline"
-								>{t('admin-users.filter.adminsOnly')}</Badge
-							>{/if}
+						{#if data.filter.admins}
+							<Badge variant="outline">{t('admin-users.filter.adminsOnly')}</Badge>
+						{/if}
 						<Button
 							size="sm"
 							variant="link"
@@ -366,7 +366,8 @@
 									role: null,
 									admins: null,
 									sort: null
-								})}>{t('admin-users.filter.reset')}</Button
+								})}
+							>{t('admin-users.filter.reset')}</Button
 						>
 					</div>
 				{/if}
@@ -416,22 +417,26 @@
 				<Table.Cell>{u.email}</Table.Cell>
 				<Table.Cell>
 					<div class="flex flex-wrap gap-1">
-						{#each u.roles as r (r.id)}<Badge variant="secondary">{r.name}</Badge>{/each}
+						{#each u.roles as r (r.id)}
+							<Badge variant="secondary">{r.name}</Badge>
+						{/each}
 						{#if u.permissions.length}
 							<Badge variant="outline" title={u.permissions.join(', ')}
 								>{t('admin-users.extraPermissions', { count: u.permissions.length })}</Badge
 							>
 						{/if}
-						{#if !u.roles.length && !u.permissions.length}<span class="text-muted-foreground"
-								>–</span
-							>{/if}
+						{#if !u.roles.length && !u.permissions.length}
+							<span class="text-muted-foreground">–</span>
+						{/if}
 					</div>
 				</Table.Cell>
 				<Table.Cell>
 					<div class="flex flex-wrap gap-1">
-						{#if u.active}<Badge>{t('admin-users.active')}</Badge>{:else}<Badge
-								variant="destructive">{t('admin-users.inactive')}</Badge
-							>{/if}
+						{#if u.active}
+							<Badge>{t('admin-users.active')}</Badge>
+						{:else}
+							<Badge variant="destructive">{t('admin-users.inactive')}</Badge>
+						{/if}
 						{#if !u.emailVerified}
 							<Badge variant="warning" title={t('admin-users.unverifiedHint')}
 								>{t('admin-users.unverified')}</Badge
@@ -458,7 +463,8 @@
 								disabled={locked}
 								aria-label={t('admin-users.edit')}
 								title={locked ? LOCKED_HINT : t('admin-users.edit')}
-								onclick={() => openEdit(u)}><PencilIcon /></Button
+								onclick={() => openEdit(u)}
+								><PencilIcon /></Button
 							>
 							{#if !u.emailVerified}
 								<form method="POST" action="?/verifyEmail" use:enhance={submit()}>
@@ -491,7 +497,11 @@
 												? t('admin-users.deactivate')
 												: t('admin-users.activate')}
 									>
-										{#if u.active}<UserXIcon />{:else}<UserCheckIcon />{/if}
+										{#if u.active}
+											<UserXIcon />
+										{:else}
+											<UserCheckIcon />
+										{/if}
 									</Button>
 								</form>
 							{/if}
@@ -503,7 +513,8 @@
 								disabled={locked}
 								aria-label={t('admin-users.delete')}
 								title={locked ? LOCKED_HINT : t('admin-users.delete')}
-								onclick={() => openDelete(u)}><Trash2Icon /></Button
+								onclick={() => openDelete(u)}
+								><Trash2Icon /></Button
 							>
 						{/if}
 					</div>
@@ -593,10 +604,16 @@
 		</MobileActionBar>
 		<form method="POST" action="?/bulk" bind:this={bulkForm} use:enhance={bulkSubmit} hidden>
 			<input type="hidden" name="action" value={bulkAction} />
-			{#if bulkRole}<input type="hidden" name="roleId" value={bulkRole} />{/if}
-			{#each selected as id (id)}<input type="hidden" name="ids" value={id} />{/each}
+			{#if bulkRole}
+				<input type="hidden" name="roleId" value={bulkRole} />
+			{/if}
+			{#each selected as id (id)}
+				<input type="hidden" name="ids" value={id} />
+			{/each}
 		</form>
-		{#if selected.length}<div class="h-16 sm:hidden" aria-hidden="true"></div>{/if}
+		{#if selected.length}
+			<div class="h-16 sm:hidden" aria-hidden="true"></div>
+		{/if}
 	{/if}
 </div>
 
@@ -604,8 +621,8 @@
 	bind:open={
 		() => !!bulkConfirm,
 		(v) => {
-			if (!v) bulkConfirm = null;
-		}
+		if (!v) bulkConfirm = null;
+	}
 	}
 	title={t('admin-users.bulk.confirmTitle', { action: bulkConfirm?.label ?? '' })}
 	description={t('admin-users.bulk.confirmDescription', { count: selected.length })}
@@ -758,7 +775,9 @@
 			{#each createPermissionKeys as key (key)}
 				<input type="hidden" name="permissionKeys" value={key} />
 			{/each}
-			{#if formError}<p class="text-sm text-destructive" role="alert">{formError}</p>{/if}
+			{#if formError}
+				<p class="text-sm text-destructive" role="alert">{formError}</p>
+			{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (createOpen = false)}
 					>{t('admin-users.cancel')}</Button
@@ -784,11 +803,14 @@
 						</Dialog.Title>
 						<Dialog.Description class="truncate">{editUser.email}</Dialog.Description>
 						<div class="flex flex-wrap gap-1">
-							{#if editUser.active}<Badge variant="success">{t('admin-users.active')}</Badge
-								>{:else}<Badge variant="destructive">{t('admin-users.inactive')}</Badge>{/if}
-							{#if !editUser.emailVerified}<Badge variant="warning"
-									>{t('admin-users.emailUnverified')}</Badge
-								>{/if}
+							{#if editUser.active}
+								<Badge variant="success">{t('admin-users.active')}</Badge>
+							{:else}
+								<Badge variant="destructive">{t('admin-users.inactive')}</Badge>
+							{/if}
+							{#if !editUser.emailVerified}
+								<Badge variant="warning">{t('admin-users.emailUnverified')}</Badge>
+							{/if}
 							<Badge variant="outline"
 								>{editUser.twoFactorEnabled
 									? t('admin-users.twoFactorOn')
@@ -886,7 +908,8 @@
 											size="sm"
 											variant="outline"
 											disabled={busy}
-											onclick={() => (avatarRemoveOpen = true)}>{t('admin-users.remove')}</Button
+											onclick={() => (avatarRemoveOpen = true)}
+											>{t('admin-users.remove')}</Button
 										>
 									{/if}
 								</div>
@@ -954,7 +977,9 @@
 				{/if}
 			</form>
 
-			{#if formError}<p class="text-sm text-destructive" role="alert">{formError}</p>{/if}
+			{#if formError}
+				<p class="text-sm text-destructive" role="alert">{formError}</p>
+			{/if}
 			<Dialog.Footer class="sm:items-center">
 				{#if onModuleTab}
 					<p class="text-center text-xs text-muted-foreground sm:mr-auto sm:text-left">
@@ -1011,7 +1036,9 @@
 		</p>
 		<form method="POST" action="?/delete" use:enhance={submit(() => (deleteOpen = false))}>
 			<input type="hidden" name="id" value={deleteUser?.id ?? ''} />
-			{#if formError}<p class="mb-3 text-sm text-destructive" role="alert">{formError}</p>{/if}
+			{#if formError}
+				<p class="mb-3 text-sm text-destructive" role="alert">{formError}</p>
+			{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (deleteOpen = false)}
 					>{t('admin-users.cancel')}</Button

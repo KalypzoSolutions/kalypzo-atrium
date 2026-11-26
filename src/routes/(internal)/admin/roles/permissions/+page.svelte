@@ -51,10 +51,12 @@
 					<Table.Cell class="whitespace-normal">{p.description ?? '–'}</Table.Cell>
 					<Table.Cell>
 						<div class="flex flex-wrap gap-1">
-							{#each p.roles as r (r)}<Badge variant="secondary">{r}</Badge>{/each}
-							{#if !p.roles.length}<span class="text-muted-foreground"
-									>{t('admin-roles.permissions.none')}</span
-								>{/if}
+							{#each p.roles as r (r)}
+								<Badge variant="secondary">{r}</Badge>
+							{/each}
+							{#if !p.roles.length}
+								<span class="text-muted-foreground">{t('admin-roles.permissions.none')}</span>
+							{/if}
 						</div>
 					</Table.Cell>
 				</Table.Row>

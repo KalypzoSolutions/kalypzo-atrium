@@ -1,9 +1,10 @@
 <script lang="ts">
+	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import type { SubmitFunction } from '@sveltejs/kit';
+	import { onDestroy, onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import type { SubmitFunction } from '@sveltejs/kit';
-	import { toast } from 'svelte-sonner';
-	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import { FileField, FormField, PageTitle } from '$lib/components/layout';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
@@ -13,15 +14,14 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import AccountFields from '../../backup/AccountFields.svelte';
+	import { t } from '$lib/i18n';
 	import type {
 		InstallPreview,
 		InstallResult,
 		SourceInspection
 	} from '$lib/server/core/modules/install/service';
 	import type { SupervisorStatus } from '$lib/server/core/modules/install/supervisor-link';
-	import { onDestroy, onMount } from 'svelte';
-	import { t } from '$lib/i18n';
+	import AccountFields from '../../backup/AccountFields.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -233,7 +233,8 @@
 				<Card.Description>
 					{inspection.catalogName ?? inspection.label}
 					{#if inspection.commit}
-						· {t('admin-modules.install.commit')} <code>{inspection.commit.slice(0, 10)}</code>{/if}
+						· {t('admin-modules.install.commit')} <code>{inspection.commit.slice(0, 10)}</code>
+					{/if}
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -264,9 +265,11 @@
 											>
 										{/if}
 									</Label>
-									{#if m.description}<p class="text-sm text-muted-foreground">
+									{#if m.description}
+										<p class="text-sm text-muted-foreground">
 											{m.description}
-										</p>{/if}
+										</p>
+									{/if}
 									{#if m.dependencies.length}
 										<p class="text-xs text-muted-foreground">
 											{t('admin-modules.install.needs', { list: m.dependencies.join(', ') })}
@@ -281,16 +284,18 @@
 							<Alert.Title>{t('admin-modules.install.unreadable')}</Alert.Title>
 							<Alert.Description>
 								<ul class="list-disc pl-5">
-									{#each inspection.problems as p (p.dir)}<li>
-											<code>{p.dir}</code>: {p.reason}
-										</li>{/each}
+									{#each inspection.problems as p (p.dir)}
+										<li> <code>{p.dir}</code>: {p.reason} </li>
+									{/each}
 								</ul>
 							</Alert.Description>
 						</Alert.Root>
 					{/if}
-					{#if fields.selected}<p class="text-xs text-destructive" role="alert">
+					{#if fields.selected}
+						<p class="text-xs text-destructive" role="alert">
 							{fields.selected}
-						</p>{/if}
+						</p>
+					{/if}
 					<Button type="submit" disabled={busy !== null || !selected.length}>
 						{busy === 'preview'
 							? t('admin-modules.install.checking')
@@ -355,9 +360,11 @@
 							<dd><code>{e.coreRange}</code></dd>
 							<dt class="text-muted-foreground">{t('admin-modules.install.permissions')}</dt>
 							<dd>
-								{#if e.permissionsAdded.length}{t('admin-modules.install.permissionsAdded', {
+								{#if e.permissionsAdded.length}
+									{t('admin-modules.install.permissionsAdded', {
 										list: e.permissionsAdded.join(', ')
-									})}{/if}
+									})}
+								{/if}
 								{#if e.permissionsRemoved.length}
 									<span class="block"
 										>{t('admin-modules.install.permissionsRemoved', {
@@ -365,9 +372,9 @@
 										})}</span
 									>
 								{/if}
-								{#if !e.permissionsAdded.length && !e.permissionsRemoved.length}{t(
-										'admin-modules.install.unchanged'
-									)}{/if}
+								{#if !e.permissionsAdded.length && !e.permissionsRemoved.length}
+									{t('admin-modules.install.unchanged')}
+								{/if}
 							</dd>
 							<dt class="text-muted-foreground">{t('admin-modules.install.migrations')}</dt>
 							<dd>
@@ -386,19 +393,25 @@
 												? t('admin-modules.install.npmNew')
 												: t('admin-modules.install.npmConflict')}
 									</span>
-								{:else}{t('admin-modules.install.npmNone')}{/each}
+								{:else}
+									{t('admin-modules.install.npmNone')}
+								{/each}
 							</dd>
 							<dt class="text-muted-foreground">{t('admin-modules.install.files')}</dt>
 							<dd>{e.fileCount}</dd>
 						</dl>
 						{#if e.blockers.length}
 							<ul class="list-disc pl-5 text-sm text-destructive" role="alert">
-								{#each e.blockers as b (b)}<li>{b}</li>{/each}
+								{#each e.blockers as b (b)}
+									<li>{b}</li>
+								{/each}
 							</ul>
 						{/if}
 						{#if e.warnings.length}
 							<ul class="list-disc pl-5 text-sm text-warning">
-								{#each e.warnings as w (w)}<li>{w}</li>{/each}
+								{#each e.warnings as w (w)}
+									<li>{w}</li>
+								{/each}
 							</ul>
 						{/if}
 					</section>
@@ -436,7 +449,9 @@
 						<Alert.Title>{t('admin-modules.install.blockedTitle')}</Alert.Title>
 						<Alert.Description>
 							<ul class="list-disc pl-5">
-								{#each preview.blockers as b (b)}<li>{b}</li>{/each}
+								{#each preview.blockers as b (b)}
+									<li>{b}</li>
+								{/each}
 							</ul>
 						</Alert.Description>
 					</Alert.Root>
@@ -520,9 +535,8 @@
 					<details open={build.state === 'failed'}>
 						<summary class="cursor-pointer text-sm">{t('admin-modules.install.log')}</summary>
 						<pre
-							class="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">{build.logTail.join(
-								'\n'
-							)}</pre>
+							class="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap"
+						>{build.logTail.join('\n')}</pre>
 					</details>
 				{/if}
 				{#if build.state === 'done'}

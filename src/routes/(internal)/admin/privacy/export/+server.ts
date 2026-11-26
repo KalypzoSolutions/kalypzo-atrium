@@ -3,10 +3,10 @@
  * Recht `core.privacy.export`; Antwort ohne Caching.
  */
 import { error } from '@sveltejs/kit';
+import { t } from '$lib/i18n';
 import { isCoreError } from '$lib/server/core/errors';
 import { exportSubject, PRIVACY_PERMISSION } from '$lib/server/core/privacy/service';
 import type { RequestHandler } from './$types';
-import { t } from '$lib/i18n';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user) throw error(401, t('admin-privacy.server.unauthenticated'));

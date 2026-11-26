@@ -11,12 +11,12 @@ import { core } from '$lib/server/core';
 export {
 	inList,
 	num,
+	type Row,
 	resultRows,
 	rowsOf,
 	str,
 	toIso,
-	toIsoOrNull,
-	type Row
+	toIsoOrNull
 } from '$lib/server/core/database/rows';
 
 /** Datenbank des Moduls (`core.database.forModule(id)`): `transaction` mit `search_path` auf `mod_<id>` */

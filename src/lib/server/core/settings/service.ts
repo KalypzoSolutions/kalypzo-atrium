@@ -5,12 +5,12 @@ import { auditFromContext } from '../audit/service';
 import { decryptSecret, encryptSecret, isEncrypted } from '../crypto';
 import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
+import { invalidateUserLocale, setSystemLocaleCache } from '../i18n/locale';
+import { invalidateMailTransportCache } from '../mail-cache';
 import { allDefinitions } from '../modules/registry';
+import { enabledModuleIds } from '../modules/state';
 import { has } from '../permissions/service';
 import { invalidateStorageConfigCache } from '../storage/config-cache';
-import { invalidateMailTransportCache } from '../mail-cache';
-import { invalidateUserLocale, setSystemLocaleCache } from '../i18n/locale';
-import { enabledModuleIds } from '../modules/state';
 import { CORE_SETTINGS, SECRET_BINDINGS, type SettingDefinition } from './catalog';
 
 /** Höchstzahl Schlüssel je Speichervorgang (`setSettings`, `PUT /api/v1/settings`) */

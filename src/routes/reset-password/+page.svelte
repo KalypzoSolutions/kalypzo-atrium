@@ -1,7 +1,7 @@
 <script lang="ts">
-	import LegalLinks from '$lib/components/layout/LegalLinks.svelte';
 	import { enhance } from '$app/forms';
 	import { FormField, PageTitle } from '$lib/components/layout';
+	import LegalLinks from '$lib/components/layout/LegalLinks.svelte';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import {

@@ -9,8 +9,8 @@ vi.mock('$lib/server/core/settings/service', () => ({
 const download = vi.fn();
 vi.mock('$lib/server/core/storage', () => ({ download }));
 
-import * as ai from '$lib/server/core/ai';
 import type { AiChatParams, AiClient, UsageRow } from '$lib/server/core/ai';
+import * as ai from '$lib/server/core/ai';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
 
 let calls: AiChatParams[];

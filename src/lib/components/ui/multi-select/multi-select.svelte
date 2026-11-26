@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
-	import * as Popover from '$lib/components/ui/popover/index.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
-	import XIcon from '@lucide/svelte/icons/x';
 	import SearchIcon from '@lucide/svelte/icons/search';
+	import XIcon from '@lucide/svelte/icons/x';
+	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
+	import * as Popover from '$lib/components/ui/popover/index.js';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils.js';
 
 	type Option = { value: string; label: string; description?: string };
@@ -220,7 +220,9 @@
 							)}
 							aria-hidden="true"
 						>
-							{#if checked}<CheckIcon class="size-3.5" />{/if}
+							{#if checked}
+								<CheckIcon class="size-3.5" />
+							{/if}
 						</span>
 						<span class="min-w-0 flex-1">
 							<span class="block truncate">{o.label}</span>

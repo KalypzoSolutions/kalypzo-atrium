@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { t } from '$lib/i18n';
-import { matchModuleRoute } from '$lib/sdk/client/routes';
 import { moduleUiLoader } from '$lib/sdk/client/module-ui-registry';
+import { matchModuleRoute } from '$lib/sdk/client/routes';
 import type { PageLoad } from './$types';
 
 /** Modul-Oberflächen aus dem Modulverzeichnis (`moduleUiLoader`); nur `publicRoutes` sind hier erreichbar. */

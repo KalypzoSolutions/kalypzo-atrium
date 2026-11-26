@@ -5,7 +5,7 @@
  * bleiben unverändert. Optionale Abhängigkeiten werden nur empfohlen.
  */
 import { t } from '$lib/i18n';
-import { versionSatisfies, type ModulePackage } from '../package/schema';
+import { type ModulePackage, versionSatisfies } from '../package/schema';
 import { allDefinitions, getDefinition, getModulePackage } from '../registry';
 import type { DiscoveredModule } from './discover';
 

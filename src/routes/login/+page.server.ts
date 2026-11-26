@@ -2,12 +2,12 @@ import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { t } from '$lib/i18n';
 import { getAuth } from '$lib/server/core/auth';
-import { getSettings } from '$lib/server/core/settings/service';
 import { limitAuthAction } from '$lib/server/core/auth/auth-limits';
 import { clientAddress, withClientIp } from '$lib/server/core/auth/client-ip';
+import { getSettings } from '$lib/server/core/settings/service';
+import type { Actions, PageServerLoad } from './$types';
 import { authErrorMessage, safeRedirect } from './auth-error';
 import { setLocaleCookie } from './locale-cookie';
-import type { Actions, PageServerLoad } from './$types';
 
 /** Ohne `redirectTo` geht es auf `/` (leitet auf die persönliche Startseite). */
 function target(url: URL): string {

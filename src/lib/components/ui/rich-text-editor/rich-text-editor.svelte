@@ -1,26 +1,26 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { onMount, type Snippet } from 'svelte';
-	import { Editor } from '@tiptap/core';
-	import StarterKit from '@tiptap/starter-kit';
-	import Image from '@tiptap/extension-image';
-	import ImageIcon from '@lucide/svelte/icons/image';
 	import BoldIcon from '@lucide/svelte/icons/bold';
-	import ItalicIcon from '@lucide/svelte/icons/italic';
-	import UnderlineIcon from '@lucide/svelte/icons/underline';
-	import StrikeIcon from '@lucide/svelte/icons/strikethrough';
 	import Heading2Icon from '@lucide/svelte/icons/heading-2';
 	import Heading3Icon from '@lucide/svelte/icons/heading-3';
+	import ImageIcon from '@lucide/svelte/icons/image';
+	import ItalicIcon from '@lucide/svelte/icons/italic';
+	import LinkIcon from '@lucide/svelte/icons/link';
 	import ListIcon from '@lucide/svelte/icons/list';
 	import ListOrderedIcon from '@lucide/svelte/icons/list-ordered';
-	import QuoteIcon from '@lucide/svelte/icons/quote';
-	import LinkIcon from '@lucide/svelte/icons/link';
-	import UnlinkIcon from '@lucide/svelte/icons/unlink';
 	import MinusIcon from '@lucide/svelte/icons/minus';
-	import UndoIcon from '@lucide/svelte/icons/undo-2';
+	import QuoteIcon from '@lucide/svelte/icons/quote';
 	import RedoIcon from '@lucide/svelte/icons/redo-2';
+	import StrikeIcon from '@lucide/svelte/icons/strikethrough';
+	import UnderlineIcon from '@lucide/svelte/icons/underline';
+	import UndoIcon from '@lucide/svelte/icons/undo-2';
+	import UnlinkIcon from '@lucide/svelte/icons/unlink';
+	import { Editor } from '@tiptap/core';
+	import Image from '@tiptap/extension-image';
+	import StarterKit from '@tiptap/starter-kit';
+	import { onMount, type Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils.js';
 
 	let {
@@ -371,7 +371,9 @@
 		aria-label={t('ui.richText.toolbar')}
 	>
 		{#each groups as group, gi (gi)}
-			{#if gi > 0}<span class="mx-0.5 h-5 w-px bg-border" aria-hidden="true"></span>{/if}
+			{#if gi > 0}
+				<span class="mx-0.5 h-5 w-px bg-border" aria-hidden="true"></span>
+			{/if}
 			{#each group as tool (tool.label)}
 				{@const on = tool.isActive?.() ?? false}
 				<Button

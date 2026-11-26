@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Mobil-Smoke (390×844): kein horizontaler Seiten-Scroll auf den Hauptseiten, DataTable als Karten,
 // Dialoge passen in den Viewport.

@@ -3,8 +3,8 @@
  * Alle Funktionen, die Modultests vom Core brauchen – Modultests importieren sie nur über `$testing`.
  */
 export { core } from '$lib/server/core';
-export { setOpenAiClientFactoryForTests } from '$lib/server/core/ai';
 export type { AiChatParams, AiClient } from '$lib/server/core/ai';
+export { setOpenAiClientFactoryForTests } from '$lib/server/core/ai';
 export { buildApiCatalog } from '$lib/server/core/api/catalog';
 export { registerCoreApi } from '$lib/server/core/api/endpoints';
 export { createApiKey } from '$lib/server/core/api/keys';
@@ -65,12 +65,13 @@ export {
 	keyCheckValue,
 	secretPurposeFor
 } from '$lib/server/core/backup/secrets';
-export {
-	MERGE_CONFIRM_WORD,
-	RESTORE_CONFIRM_WORD,
-	isSecretMarker
-} from '$lib/server/core/backup/types';
 export type { TableInfo } from '$lib/server/core/backup/types';
+export {
+	isSecretMarker,
+	MERGE_CONFIRM_WORD,
+	RESTORE_CONFIRM_WORD
+} from '$lib/server/core/backup/types';
+export { brandIcon, brandingState, brandLogo, logoUrl } from '$lib/server/core/branding';
 export { decryptSecret, encryptSecret, isEncrypted, keyedHash } from '$lib/server/core/crypto';
 export { collectDashboardFeed } from '$lib/server/core/dashboard/feed';
 export {
@@ -84,13 +85,14 @@ export { describeEmbeds, searchEmbeds } from '$lib/server/core/embeds/service';
 export { env, resetEnvForTests } from '$lib/server/core/env';
 export { isCoreError } from '$lib/server/core/errors';
 export { dueBefore, pauseJobs, resumeJobs, runDueJobs, runJobNow } from '$lib/server/core/jobs';
+export type { MailTransport } from '$lib/server/core/mail';
 export {
 	formatSender,
 	sendMail,
 	setMailTransportForTests,
 	smtpTransportOptions
 } from '$lib/server/core/mail';
-export type { MailTransport } from '$lib/server/core/mail';
+export { loadMailLayoutOptions, renderMailLayout } from '$lib/server/core/mail-layout';
 export { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
 export {
 	disableModule,
@@ -113,8 +115,6 @@ export {
 	resolveTemplate,
 	setPdfRendererForTests
 } from '$lib/server/core/pdf';
-export { brandIcon, brandLogo, brandingState, logoUrl } from '$lib/server/core/branding';
-export { loadMailLayoutOptions, renderMailLayout } from '$lib/server/core/mail-layout';
 export { renderPdfPage } from '$lib/server/core/pdf/raster';
 export { renderBlocks } from '$lib/server/core/pdf/templates';
 export { ADMIN_ROLE_ID, PRIVILEGED_PERMISSIONS } from '$lib/server/core/permissions/catalog';
@@ -131,9 +131,9 @@ export { exportSubject, findPrivacySubjects } from '$lib/server/core/privacy/ser
 export { reset, resetAllForTests } from '$lib/server/core/rate-limit';
 export { searchEverything } from '$lib/server/core/search/service';
 export {
-	MAX_SETTINGS_PER_WRITE,
 	getDefinition,
 	getSetting,
+	MAX_SETTINGS_PER_WRITE,
 	setSetting,
 	setSettings
 } from '$lib/server/core/settings/service';
@@ -151,12 +151,12 @@ export {
 	releaseMaintenanceLock
 } from '$lib/server/core/system/maintenance';
 export {
-	RESET_CONFIRM_WORD,
 	backupScopesForResetAreas,
 	executeReset,
 	exportResetData,
 	listResetAreas,
 	previewReset,
+	RESET_CONFIRM_WORD,
 	setResetClockForTests,
 	totpCode,
 	verifyTotp

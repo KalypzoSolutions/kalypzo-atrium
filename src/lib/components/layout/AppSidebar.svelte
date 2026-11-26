@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import PanelLeft from '@lucide/svelte/icons/panel-left';
 	import PanelLeftClose from '@lucide/svelte/icons/panel-left-close';
 	import PanelLeftOpen from '@lucide/svelte/icons/panel-left-open';
+	import { t } from '$lib/i18n';
 	import { cn } from '$lib/utils';
-	import SidebarNav from './SidebarNav.svelte';
 	import type { ModuleNavEntry } from './nav';
+	import SidebarNav from './SidebarNav.svelte';
 
 	let {
 		systemName,
@@ -49,7 +49,9 @@
 			{:else if collapsed}
 				<PanelLeft class="size-5 text-muted-foreground" aria-hidden="true" />
 			{/if}
-			{#if !collapsed}<span class="truncate">{systemName}</span>{/if}
+			{#if !collapsed}
+				<span class="truncate">{systemName}</span>
+			{/if}
 		</a>
 	</div>
 	<div class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">

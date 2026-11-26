@@ -2,7 +2,11 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { t } from '$lib/i18n';
 import { listAudit } from '$lib/server/core/audit/service';
-import { deleteUser, getUser, setUserActive, verifyUserEmail } from '$lib/server/core/auth/users';
+import {
+	IMPERSONATION_MINUTES,
+	impersonationsOf,
+	startImpersonation
+} from '$lib/server/core/auth/admin/impersonation';
 import {
 	createPasswordResetLink,
 	PASSWORD_MAX,
@@ -17,15 +21,11 @@ import {
 	revokeUserSessions
 } from '$lib/server/core/auth/admin/sessions';
 import { explainUserPermissions, userStats } from '$lib/server/core/auth/admin/stats';
-import {
-	IMPERSONATION_MINUTES,
-	impersonationsOf,
-	startImpersonation
-} from '$lib/server/core/auth/admin/impersonation';
 import { canManageUser } from '$lib/server/core/auth/manage-guard';
+import { deleteUser, getUser, setUserActive, verifyUserEmail } from '$lib/server/core/auth/users';
 import { isCoreError } from '$lib/server/core/errors';
-import { getUserPermissions, isAdministrator } from '$lib/server/core/permissions/service';
 import { CORE_PERMISSIONS } from '$lib/server/core/permissions/catalog';
+import { getUserPermissions, isAdministrator } from '$lib/server/core/permissions/service';
 import type { Actions, PageServerLoad } from './$types';
 
 const ACTIVITY_PAGE = 25;

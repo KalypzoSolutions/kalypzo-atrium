@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // API-Übersicht (/admin/api/docs, Reiter unter „API-Keys“): Nav-Eintrag, Katalog, Suche, Sheet mit Tabs, Konsole (GET sendet,
 // schreibende Methoden fragen erst nach), Zugriff ohne `core.api.view` wird verweigert.
@@ -156,7 +156,7 @@ test('ohne core.api.view: kein Nav-Eintrag, Seite verweigert', async ({ page, br
 		// Alte URL leitet dauerhaft um
 		const legacy = await plain.request.get('/api-docs', { maxRedirects: 0 });
 		expect(legacy.status()).toBe(308);
-		expect(legacy.headers()['location']).toBe('/admin/api/docs');
+		expect(legacy.headers().location).toBe('/admin/api/docs');
 
 		await plain.goto('/admin/api/docs');
 		await expect(plain.getByText('403').first()).toBeVisible();

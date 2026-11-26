@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { Input } from '$lib/components/ui/input';
-	import { Textarea } from '$lib/components/ui/textarea';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import SelectField from '$lib/components/ui/select-field/select-field.svelte';
+	import { Input } from '$lib/components/ui/input';
 	import MultiSelect from '$lib/components/ui/multi-select/multi-select.svelte';
-	import { cn } from '$lib/utils';
-	import RichTextView from './RichTextView.svelte';
+	import SelectField from '$lib/components/ui/select-field/select-field.svelte';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import {
 		displayFields,
-		visibleFields,
 		type FieldDefinition,
 		type FormDefinition,
-		type FormValues
+		type FormValues,
+		visibleFields
 	} from '$lib/forms';
+	import { t } from '$lib/i18n';
+	import { cn } from '$lib/utils';
+	import RichTextView from './RichTextView.svelte';
 
 	let {
 		definition,
@@ -122,9 +122,10 @@
 </script>
 
 {#snippet req(f: FieldDefinition)}
-	{#if f.required}<span class="ml-0.5 text-destructive" aria-hidden="true">*</span><span
-			class="sr-only">{t('form-builder.renderer.requiredSr')}</span
-		>{/if}
+	{#if f.required}
+		<span class="ml-0.5 text-destructive" aria-hidden="true">*</span
+		><span class="sr-only">{t('form-builder.renderer.requiredSr')}</span>
+	{/if}
 {/snippet}
 
 {#snippet meta(f: FieldDefinition)}
@@ -202,7 +203,9 @@
 			{:else if f.type === 'multiselect' && f.options.length <= MAX_CHECKBOX_OPTIONS}
 				<fieldset class="space-y-2" aria-describedby={describedBy(f)}>
 					<legend class={labelCls}>{f.label}{@render req(f)}</legend>
-					{#if f.help}<p id={fid(f, 'help')} class={helpCls}>{f.help}</p>{/if}
+					{#if f.help}
+						<p id={fid(f, 'help')} class={helpCls}>{f.help}</p>
+					{/if}
 					<div class="space-y-1">
 						{#each f.options as o, i (o.value)}
 							<div class="flex min-h-9 items-center gap-3">
@@ -217,7 +220,9 @@
 							</div>
 						{/each}
 					</div>
-					{#if err}<p id={fid(f, 'err')} role="alert" class={errCls}>{err}</p>{/if}
+					{#if err}
+						<p id={fid(f, 'err')} role="alert" class={errCls}>{err}</p>
+					{/if}
 				</fieldset>
 			{:else}
 				<label for={fid(f)} class={cn(labelCls, 'block')}>{f.label}{@render req(f)}</label>

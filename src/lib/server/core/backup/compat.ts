@@ -9,8 +9,9 @@
  *   Prüfsumme (zeilenendenunabhängig, siehe `modules/migration-checksum.ts`; das Schema wird beim Wiederherstellen auf genau diesen Stand gebracht). Der Anteil in
  *   `public.file` wird wie eine Core-Tabelle geprüft.
  */
-import { CORE_SCOPE_KEYS, type BackupMeta, type TableInfo } from './types';
+
 import { t } from '$lib/i18n';
+import { type BackupMeta, CORE_SCOPE_KEYS, type TableInfo } from './types';
 
 export interface CompatTarget {
 	/**

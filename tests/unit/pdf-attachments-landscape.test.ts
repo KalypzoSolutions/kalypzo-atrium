@@ -11,9 +11,9 @@ vi.mock('$lib/server/core/storage', () => ({
 	readFileByIdUnchecked: async () => null
 }));
 
-import * as pdf from '$lib/server/core/pdf';
-import type { RenderOptions } from '$lib/server/core/pdf';
 import type { PdfAttachment } from '$lib/sdk/types';
+import type { RenderOptions } from '$lib/server/core/pdf';
+import * as pdf from '$lib/server/core/pdf';
 
 const PNG_1X1 = Uint8Array.from(
 	Buffer.from(

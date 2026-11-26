@@ -4,9 +4,10 @@
  * `'offices:…'`) oder in Modulpfaden (`/modules/actions`). Fachliches Wissen gehört in Modul-Hooks
  * (`backup.adminOnlyRestore`, `principals`, `dashboard.agendaKinds` …). Kommentare zählen nicht.
  */
+
+import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { describe, expect, it } from 'bun:test';
 import { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 
 const ROOT = join(__dirname, '..', '..');

@@ -56,7 +56,7 @@ export interface ApiEndpoint<P = Record<string, string>, Q = Record<string, unkn
  * Endpunkt mit beliebigen Parametern/Query/Body – Typ für Endpunkt-Listen der Module
  * (`export const xEndpoints: AnyApiEndpoint[] = [defineEndpoint({...}), …]`), ohne Doppel-Cast.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: Endpunkte mit beliebigen Schemas
 export type AnyApiEndpoint = ApiEndpoint<any, any, any>;
 
 export interface RegisteredEndpoint extends ApiEndpoint<never, never, never> {

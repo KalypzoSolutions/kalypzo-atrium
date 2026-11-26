@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'bun:test';
-import {
-	PUSH_BODY_MAX,
-	composeMail,
-	composePush,
-	oneLine,
-	type ComposeItem
-} from '$lib/server/core/notifications/compose';
 import { allowedChannels } from '$lib/sdk/types/notifications';
 import { validateDefinition } from '$lib/server/core/modules/registry';
 import type { ModuleDefinition } from '$lib/server/core/modules/types';
+import {
+	type ComposeItem,
+	composeMail,
+	composePush,
+	oneLine,
+	PUSH_BODY_MAX
+} from '$lib/server/core/notifications/compose';
 
 const item = (title: string, extra: Partial<ComposeItem> = {}): ComposeItem => ({
 	title,

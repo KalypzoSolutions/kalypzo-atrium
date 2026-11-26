@@ -1,5 +1,5 @@
-import { t } from '$lib/i18n';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { defineEndpoint } from '../api/registry';
 import { describeEmbeds, EMBED_DESCRIBE_MAX, listEmbedKinds, searchEmbeds } from './service';
 

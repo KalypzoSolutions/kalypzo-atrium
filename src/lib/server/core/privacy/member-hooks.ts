@@ -5,12 +5,13 @@
  * verknüpfte Teilnehmende anonymisieren). Je Modul eine eigene Modul-Transaktion, danach
  * `afterCommit`; Fehler eines Moduls brechen nicht ab.
  */
-import type { MemberDeletedInfo } from '../modules/types';
+
+import { t } from '$lib/i18n';
 import { forModule } from '../database/module-db';
 import { errors } from '../errors';
 import { allDefinitions, principalSource } from '../modules/registry';
 import { isModuleEnabled } from '../modules/service';
-import { t } from '$lib/i18n';
+import type { MemberDeletedInfo } from '../modules/types';
 
 /** Rückgabe = Modul-IDs, deren Aufräumen fehlgeschlagen ist (für das Audit des Aufrufers). */
 export async function notifyMembersDeleted(

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import {
+	type MailLayoutOptions,
 	mailLayoutOptions,
 	renderMailLayout,
-	textToHtml,
-	type MailLayoutOptions
+	textToHtml
 } from '$lib/server/core/mail-layout';
 
 /** 1×1-PNG (gültige Signatur) als Bildmarke/Emblem */

@@ -3,11 +3,11 @@
  * Sichtbarkeit wie `directory`, deaktivierte/unbekannte fehlen; `userLabel` liefert „Unbekannt“.
  */
 import { beforeAll, describe, expect, it } from 'bun:test';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
-import { core } from '$lib/server/core';
 import { userLabel } from '$lib/sdk/server';
 import type { RequestContext } from '$lib/sdk/types';
+import { core } from '$lib/server/core';
+import { getDb, schema } from '$lib/server/core/database/client';
+import { useTestDatabase } from '../helpers/db';
 
 const ids: string[] = [];
 const INACTIVE = 'byids-inaktiv';

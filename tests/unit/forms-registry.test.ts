@@ -2,10 +2,10 @@ import { describe, expect, it } from 'bun:test';
 import { z } from 'zod';
 import {
 	FIELD_TYPES,
+	type FieldTypeSpec,
 	getFieldType,
 	listFieldTypes,
 	registerFieldType,
-	type FieldTypeSpec,
 	type TextField
 } from '$lib/forms';
 

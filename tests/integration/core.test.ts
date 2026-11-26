@@ -1,8 +1,12 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
-import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import { z } from 'zod';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { createApiKey, revokeApiKey } from '$lib/server/core/api/keys';
+import { defineEndpoint } from '$lib/server/core/api/registry';
+import { handleApiRequest } from '$lib/server/core/api/router';
+import { listAudit } from '$lib/server/core/audit/service';
 import { getAuth } from '$lib/server/core/auth';
 import { contextForUser, systemContext } from '$lib/server/core/auth/context';
 import {
@@ -12,9 +16,7 @@ import {
 	setUserActive,
 	setUserRoles
 } from '$lib/server/core/auth/users';
-import { createRole, updateRole } from '$lib/server/core/permissions/roles';
-import { requirePermission } from '$lib/server/core/permissions/service';
-import { ADMIN_ROLE_ID } from '$lib/server/core/permissions/catalog';
+import { getDb, schema } from '$lib/server/core/database/client';
 import { registerModule } from '$lib/server/core/modules/registry';
 import {
 	disableModule,
@@ -22,14 +24,12 @@ import {
 	navigationFor,
 	syncModules
 } from '$lib/server/core/modules/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { handleApiRequest } from '$lib/server/core/api/router';
-import { createApiKey, revokeApiKey } from '$lib/server/core/api/keys';
-import { getPublicSettings, getSetting, setSetting } from '$lib/server/core/settings/service';
-import { listAudit } from '$lib/server/core/audit/service';
-import { defineEndpoint } from '$lib/server/core/api/registry';
+import { ADMIN_ROLE_ID } from '$lib/server/core/permissions/catalog';
+import { createRole, updateRole } from '$lib/server/core/permissions/roles';
+import { requirePermission } from '$lib/server/core/permissions/service';
 import { reset } from '$lib/server/core/rate-limit';
-import type { RequestContext } from '$lib/sdk/types';
+import { getPublicSettings, getSetting, setSetting } from '$lib/server/core/settings/service';
+import { useTestDatabase } from '../helpers/db';
 
 const ADMIN_EMAIL = 'admin@example.test';
 const ADMIN_PW = 'correct-horse-battery';

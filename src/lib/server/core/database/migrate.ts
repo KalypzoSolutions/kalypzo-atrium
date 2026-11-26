@@ -1,5 +1,5 @@
-import { migrate as migratePg } from 'drizzle-orm/node-postgres/migrator';
 import { resolve } from 'node:path';
+import { migrate as migratePg } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
 import { env } from '../env';
 import type { Db } from './client';

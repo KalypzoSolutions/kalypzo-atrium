@@ -10,11 +10,11 @@ import { errors } from '../../errors';
 import {
 	MODULE_CATALOG_FILE,
 	MODULE_PACKAGE_FILE,
+	type ModulePackage,
 	moduleCatalogSchema,
-	parseModulePackage,
-	type ModulePackage
+	parseModulePackage
 } from '../package/schema';
-import { contentHash, type ArchiveFiles } from './archive';
+import { type ArchiveFiles, contentHash } from './archive';
 
 export interface DiscoveredModule {
 	id: string;

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import type { Snippet } from 'svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
+	import { t } from '$lib/i18n';
 	import EmptyState from './EmptyState.svelte';
 	import ErrorState from './ErrorState.svelte';
 	import LoadingState from './LoadingState.svelte';
@@ -94,7 +94,9 @@
 	{#if title}
 		<Card.Header>
 			<Card.Title level={titleLevel}>{title}</Card.Title>
-			{#if description}<Card.Description>{description}</Card.Description>{/if}
+			{#if description}
+				<Card.Description>{description}</Card.Description>
+			{/if}
 		</Card.Header>
 	{/if}
 	<Card.Content class={title ? 'space-y-4' : 'space-y-4 pt-6'}>
@@ -108,7 +110,9 @@
 			<LoadingState label={caption} rows={skeletonRows} rowClass="h-10 w-full" />
 		{:else if empty}
 			<EmptyState title={emptyTitle} description={emptyDescription}>
-				{#if emptyAction}{@render emptyAction()}{/if}
+				{#if emptyAction}
+					{@render emptyAction()}
+				{/if}
 			</EmptyState>
 		{:else}
 			<div
@@ -124,6 +128,8 @@
 			</div>
 		{/if}
 
-		{#if footer}{@render footer()}{/if}
+		{#if footer}
+			{@render footer()}
+		{/if}
 	</Card.Content>
 </Card.Root>

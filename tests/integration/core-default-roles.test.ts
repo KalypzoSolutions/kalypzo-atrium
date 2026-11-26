@@ -2,24 +2,25 @@
  * #67 (01a-07): `defaultRoleGrants` und die Selbstregistrierung ordnen Rollen über die stabile Kennung
  * `role.system_key = 'default:<Name>'` zu – nie über den Anzeigenamen (Rollen-Namens-Squatting).
  */
+
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { beforeAll, describe, expect, it } from 'bun:test';
 import { eq, sql } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import type { RequestContext } from '$lib/sdk/types';
+import { core } from '$lib/server/core';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
-import { createRole, updateRole } from '$lib/server/core/permissions/roles';
+import { getDb, schema } from '$lib/server/core/database/client';
+import { registerModule } from '$lib/server/core/modules/registry';
+import { enableModule, syncModules } from '$lib/server/core/modules/service';
 import {
 	adoptDefaultRole,
 	defaultRoleKey,
 	findDefaultRoleId
 } from '$lib/server/core/permissions/default-roles';
-import { registerModule } from '$lib/server/core/modules/registry';
-import { enableModule, syncModules } from '$lib/server/core/modules/service';
-import { core } from '$lib/server/core';
-import type { RequestContext } from '$lib/sdk/types';
+import { createRole, updateRole } from '$lib/server/core/permissions/roles';
+import { useTestDatabase } from '../helpers/db';
 
 const PW = 'correct-horse-battery';
 let admin: RequestContext;

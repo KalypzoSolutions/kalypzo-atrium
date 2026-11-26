@@ -5,22 +5,22 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { t } from '$lib/i18n';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
-import { contextForUser } from '$lib/server/core/auth/context';
-import { bootstrapAdmin } from '$lib/server/core/auth/users';
-import { createApiKey } from '$lib/server/core/api/keys';
 import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { createApiKey } from '$lib/server/core/api/keys';
 import { registerCoreEndpoints } from '$lib/server/core/api/registry';
 import { handleApiRequest } from '$lib/server/core/api/router';
-import { syncModules } from '$lib/server/core/modules/service';
-import { listPermissions } from '$lib/server/core/permissions/service';
+import { contextForUser } from '$lib/server/core/auth/context';
+import { bootstrapAdmin } from '$lib/server/core/auth/users';
+import { getDb, schema } from '$lib/server/core/database/client';
 import {
 	installServerLocale,
 	invalidateUserLocale,
 	withLocale
 } from '$lib/server/core/i18n/locale';
+import { syncModules } from '$lib/server/core/modules/service';
+import { listPermissions } from '$lib/server/core/permissions/service';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
+import { useTestDatabase } from '../helpers/db';
 
 const ROOT = 'http://localhost:5173/api/v1';
 let close: () => Promise<void>;

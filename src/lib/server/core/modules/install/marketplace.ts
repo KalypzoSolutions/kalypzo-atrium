@@ -122,7 +122,7 @@ const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !
 /** Getrimmter Text ohne Steuerzeichen, `null` wenn leer oder zu lang */
 function text(v: unknown, max: number): string | null {
 	if (typeof v !== 'string') return null;
-	// eslint-disable-next-line no-control-regex
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen werden bewusst entfernt
 	const s = v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
 	return s && s.length <= max ? s : null;
 }
@@ -237,7 +237,8 @@ function parseSource(v: unknown): MarketplaceSource | null {
 }
 
 export type ParseResult =
-	{ ok: true; index: MarketplaceIndex } | { ok: false; reason: 'incompatible' | 'invalid' };
+	| { ok: true; index: MarketplaceIndex }
+	| { ok: false; reason: 'incompatible' | 'invalid' };
 
 /**
  * Index tolerant lesen: `schema` muss `1` sein (andere Zahl → `incompatible`), unbekannte Felder werden ignoriert,

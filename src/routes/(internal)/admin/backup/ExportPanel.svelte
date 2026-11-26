@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import DatabaseBackup from '@lucide/svelte/icons/database-backup';
 	import Download from '@lucide/svelte/icons/download';
@@ -14,6 +13,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { t } from '$lib/i18n';
 	import AccountFields from './AccountFields.svelte';
 	import { fmt, fmtBytes, impliedOf, passwordStrength, postJson } from './client';
 	import ProgressBar from './ProgressBar.svelte';
@@ -169,7 +169,9 @@
 					<Alert.Title>{t('admin-backup.export.warnings')}</Alert.Title>
 					<Alert.Description>
 						<ul class="list-disc space-y-1 pl-4">
-							{#each result.summary.warnings as w, i (i)}<li>{w}</li>{/each}
+							{#each result.summary.warnings as w, i (i)}
+								<li>{w}</li>
+							{/each}
 						</ul>
 					</Alert.Description>
 				</Alert.Root>

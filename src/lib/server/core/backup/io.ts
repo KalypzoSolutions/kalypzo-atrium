@@ -5,8 +5,8 @@
 import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { open } from 'node:fs/promises';
-import { BackupFormatError, type ByteSink, type ByteSource } from './types';
 import { t } from '$lib/i18n';
+import { BackupFormatError, type ByteSink, type ByteSource } from './types';
 
 const DEFAULT_READ_CHUNK = 1024 * 1024;
 

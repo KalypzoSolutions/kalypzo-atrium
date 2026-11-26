@@ -12,16 +12,16 @@ vi.mock('$lib/server/core/storage', () => ({
 	readFileByIdUnchecked: async () => null
 }));
 
-import * as pdf from '$lib/server/core/pdf';
 import type { RenderOptions } from '$lib/server/core/pdf';
+import * as pdf from '$lib/server/core/pdf';
 import { carlitoFontFaceCss } from '$lib/server/core/pdf/fonts';
 import { loadTemplates } from '$lib/server/core/pdf/load-templates';
 import {
-	GEOMETRY,
 	addressField,
-	GEOMETRY_LANDSCAPE,
 	createLetterTemplate,
 	foldMarks,
+	GEOMETRY,
+	GEOMETRY_LANDSCAPE,
 	letterFooter,
 	neutralFooterLines,
 	neutralLetterheadTop

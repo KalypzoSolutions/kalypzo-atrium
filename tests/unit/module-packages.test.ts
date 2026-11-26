@@ -2,22 +2,23 @@
  * Paketformat der Module (Kalypzo Atrium, Phase 2): `atrium-module.json` je Modul, Katalog `atrium-modules.json`,
  * Konventionen (Ordner = ID, Migrationen = Dateien), Quellangaben und Versionsbereiche.
  */
+
+import { describe, expect, it } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'bun:test';
 import { entries } from 'virtual:atrium-modules/server';
+import { manifestFromPackage } from '$lib/sdk/server';
 import { conventionProblem } from '$lib/server/core/modules/load';
 import {
-	MODULE_CATALOG_FILE,
 	formatModuleSource,
+	MODULE_CATALOG_FILE,
 	moduleCatalogSchema,
 	parseModulePackage,
 	parseModuleSource,
 	versionSatisfies
 } from '$lib/server/core/modules/package/schema';
-import { manifestFromPackage } from '$lib/sdk/server';
-import { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 import type { ModuleDefinition } from '$lib/server/core/modules/types';
+import { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 
 const DIR = modulesDir();
 

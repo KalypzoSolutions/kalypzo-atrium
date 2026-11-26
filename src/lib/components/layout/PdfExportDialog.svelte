@@ -1,23 +1,23 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { untrack } from 'svelte';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Switch } from '$lib/components/ui/switch';
+	import { t } from '$lib/i18n';
 	import {
 		CUSTOM_PRESET_ID,
-		LIST_COLUMN_GROUPS,
-		LIST_COLUMN_GROUP_LABELS,
-		NAME_COLUMN_KEY,
 		estimatePages,
+		LIST_COLUMN_GROUP_LABELS,
+		LIST_COLUMN_GROUPS,
+		type ListCatalog,
+		type ListSelection,
+		NAME_COLUMN_KEY,
 		normalizeSelection,
 		presetColumns,
 		selectedColumns,
-		selectionHasSensitive,
-		type ListCatalog,
-		type ListSelection
+		selectionHasSensitive
 	} from '$lib/pdf-lists';
 
 	/**

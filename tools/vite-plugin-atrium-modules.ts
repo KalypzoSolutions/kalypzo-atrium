@@ -12,15 +12,15 @@
  *   des Projekts oder aus einem gitignorierten Ordner erzeugt werden
  * - Dev: neue/entfernte Module lösen ein volles Neuladen aus
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Plugin, ViteDevServer } from 'vite';
 import {
 	CORE_MESSAGES_ID,
-	FONTS_ID,
-	PDF_TEMPLATES_ID,
 	coreMessagesSource,
+	FONTS_ID,
 	fontsSource,
+	PDF_TEMPLATES_ID,
 	pdfTemplatesSource
 } from './core-virtual.ts';
 import { CORE_ROOT, moduleIds, modulesDir } from './modules-dir.js';

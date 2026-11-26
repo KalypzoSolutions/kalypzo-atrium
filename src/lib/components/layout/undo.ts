@@ -1,6 +1,6 @@
-import { t } from '$lib/i18n';
 /** Erfolgs-Toast mit „Rückgängig“ – der Rückweg läuft über einen vorhandenen API-Aufruf (kein lokaler Zustand). */
 import { toast } from 'svelte-sonner';
+import { t } from '$lib/i18n';
 import { ApiClientError } from '$lib/sdk/client';
 
 export interface UndoOptions {

@@ -6,17 +6,17 @@
  */
 import { beforeAll, describe, expect, it } from 'bun:test';
 import { sql } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb } from '$lib/server/core/database/client';
 import {
 	createShareAccess,
 	loadObjectShares,
 	moduleDb,
+	type ObjectAccess,
 	rowsOf,
-	shareLevelOn,
-	type ObjectAccess
+	shareLevelOn
 } from '$lib/sdk/server';
 import type { RequestContext } from '$lib/sdk/types';
+import { getDb } from '$lib/server/core/database/client';
+import { useTestDatabase } from '../helpers/db';
 
 const MOD = 'sharetest';
 const VIEW_ALL = 'sharetest.thing.view-all';

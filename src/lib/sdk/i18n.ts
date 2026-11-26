@@ -9,12 +9,12 @@ export {
 	intlLocale,
 	LOCALE_LABELS,
 	LOCALES,
-	localized,
-	t,
-	tl,
 	type Locale,
 	type LocalizedText,
-	type MessageParams
+	localized,
+	type MessageParams,
+	t,
+	tl
 } from '$lib/i18n';
 export {
 	formatBytes,

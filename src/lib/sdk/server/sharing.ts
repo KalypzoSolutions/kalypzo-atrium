@@ -27,20 +27,20 @@
  *
  * Alle Funktionen hier rufen Core-Dienste auf: nie innerhalb einer offenen Modul-Transaktion.
  */
-import { sql, type SQL } from 'drizzle-orm';
-import { core } from '$lib/server/core';
-import { errors } from '$lib/server/core/errors';
+import { type SQL, sql } from 'drizzle-orm';
 import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import {
 	EVERYONE_ID,
 	PRINCIPAL_TYPES,
-	principalKey,
 	type Principal,
 	type PrincipalInfo,
 	type PrincipalProvider,
-	type PrincipalType
+	type PrincipalType,
+	principalKey
 } from '$lib/sdk/types/sharing';
+import { core } from '$lib/server/core';
+import { errors } from '$lib/server/core/errors';
 
 export type {
 	Principal,
@@ -52,8 +52,8 @@ export type {
 } from '$lib/sdk/types/sharing';
 export {
 	EVERYONE_ID,
-	PRINCIPAL_TYPES,
 	PRINCIPAL_TYPE_LABELS,
+	PRINCIPAL_TYPES,
 	parsePrincipalKey,
 	principalKey
 } from '$lib/sdk/types/sharing';

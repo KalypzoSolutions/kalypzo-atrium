@@ -1,5 +1,5 @@
-import { t } from '$lib/i18n';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { formatDate } from '$lib/i18n/intl';
 import type { FieldTypeSpec } from '../registry';
 import type { DateField } from '../types';

@@ -3,12 +3,12 @@
  * prozessweite Sperre (nur ein Vorgang gleichzeitig) und erneute Anmeldung (Passwort + ggf. TOTP).
  */
 import { eq } from 'drizzle-orm';
+import { t } from '$lib/i18n';
 import { verifyUserPassword } from '../auth/profile';
 import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { hit, peek, reset as resetRateLimit } from '../rate-limit';
 import { verifyTotp } from './reset';
-import { t } from '$lib/i18n';
 
 let running: string | null = null;
 

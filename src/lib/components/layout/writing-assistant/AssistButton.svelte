@@ -1,12 +1,12 @@
 <script lang="ts">
-	// Knopf „Schreibhilfe“ + Blatt. Unsichtbar, solange die Textstelle für die Person nicht freigegeben ist.
-	import { t } from '$lib/i18n';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import { Button } from '$lib/components/ui/button';
-	import { cn } from '$lib/utils.js';
+	// Knopf „Schreibhilfe“ + Blatt. Unsichtbar, solange die Textstelle für die Person nicht freigegeben ist.
+	import { t } from '$lib/i18n';
 	import type { AssistTask } from '$lib/sdk/types/assist';
+	import { cn } from '$lib/utils.js';
+	import { type AssistConfig, assistPurpose } from './assist.svelte';
 	import WritingAssistant from './WritingAssistant.svelte';
-	import { assistPurpose, type AssistConfig } from './assist.svelte';
 
 	let {
 		config,

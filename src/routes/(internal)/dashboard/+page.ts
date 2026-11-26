@@ -1,7 +1,7 @@
 import { CORE_DASHBOARD_WIDGETS } from '$lib/components/dashboard/core-widgets';
 import { selectDashboardWidgets } from '$lib/sdk/client/dashboard-widgets';
-import type { DashboardWidget } from '$lib/sdk/types/module-ui';
 import { moduleUiLoader } from '$lib/sdk/client/module-ui-registry';
+import type { DashboardWidget } from '$lib/sdk/types/module-ui';
 import type { PageLoad } from './$types';
 
 /**

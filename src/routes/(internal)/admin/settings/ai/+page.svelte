@@ -53,12 +53,16 @@
 			<Card.Title>{t('admin-settings.ai.usageTitle', { month })}</Card.Title>
 			<Card.Description>
 				{t('admin-settings.ai.usageDescription')}
-				{#if data.limits.tokens > 0}{t('admin-settings.ai.tokenLimit', {
+				{#if data.limits.tokens > 0}
+					{t('admin-settings.ai.tokenLimit', {
 						limit: nf.format(data.limits.tokens)
-					})}{/if}
-				{#if data.limits.costUsd > 0}{t('admin-settings.ai.costLimit', {
+					})}
+				{/if}
+				{#if data.limits.costUsd > 0}
+					{t('admin-settings.ai.costLimit', {
 						limit: usd.format(data.limits.costUsd)
-					})}{/if}
+					})}
+				{/if}
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="space-y-4">

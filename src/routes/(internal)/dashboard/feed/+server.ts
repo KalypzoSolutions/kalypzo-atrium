@@ -1,5 +1,5 @@
-import { t } from '$lib/i18n';
 import { json } from '@sveltejs/kit';
+import { t } from '$lib/i18n';
 import { collectDashboardFeed } from '$lib/server/core/dashboard/feed';
 import type { RequestHandler } from './$types';
 

@@ -5,24 +5,25 @@
  * - Echter nodemailer-Transport gegen einen stummen SMTP-Server → Abbruch durch `greetingTimeout`
  * - TLS-Regeln aus #15 (`smtpTransportOptions`) bleiben erhalten
  */
-import { createServer, type Server, type Socket } from 'node:net';
+
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'bun:test';
+import { createServer, type Server, type Socket } from 'node:net';
 import { eq } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
-import { useTestDatabase } from '../helpers/db';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
 import { getDb, schema } from '$lib/server/core/database/client';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { syncModules } from '$lib/server/core/modules/service';
-import { setSettings } from '$lib/server/core/settings/service';
 import {
+	SMTP_TIMEOUTS,
 	sendMail,
 	setMailTransportForTests,
-	setSmtpTimeoutsForTests,
-	SMTP_TIMEOUTS
+	setSmtpTimeoutsForTests
 } from '$lib/server/core/mail';
-import type { RequestContext } from '$lib/sdk/types';
+import { syncModules } from '$lib/server/core/modules/service';
+import { setSettings } from '$lib/server/core/settings/service';
+import { useTestDatabase } from '../helpers/db';
 
 let close: () => Promise<void>;
 let admin: RequestContext;

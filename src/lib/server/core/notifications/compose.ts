@@ -3,7 +3,7 @@
  * Sammelbetreff, Hinweis auf die Einstellungen) entsteht in der Sprache der empfangenden Person (`locale`);
  * Titel und Text der Einträge liefern die Module selbst.
  */
-import { getLocale, tl, type Locale } from '$lib/i18n';
+import { getLocale, type Locale, tl } from '$lib/i18n';
 import type { PushPayload } from './push';
 
 export interface ComposeItem {

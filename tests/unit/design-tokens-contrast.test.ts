@@ -3,14 +3,15 @@
  * Der Test liest die Custom Properties aus `:root` und `.dark`, löst `var()` und `color-mix()` auf und
  * rechnet mit derselben Kontrastfunktion wie die Oberfläche (`ui/color-picker/contrast.ts`).
  */
+
+import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'bun:test';
 import {
+	contrastRatio,
 	PRIMARY_FOREGROUND_DARK,
 	PRIMARY_FOREGROUND_LIGHT,
 	PRIMARY_FOREGROUND_THRESHOLD,
-	contrastRatio,
 	parseColor,
 	primaryForeground,
 	type RgbTuple

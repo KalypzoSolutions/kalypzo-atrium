@@ -5,28 +5,28 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { isActionFailure, isRedirect } from '@sveltejs/kit';
-import { useTestDatabase } from '../helpers/db';
-import { settleMails } from '../helpers/settle';
-import { contextForUser } from '$lib/server/core/auth/context';
-import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
+import { eq } from 'drizzle-orm';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { listAudit } from '$lib/server/core/audit/service';
 import {
 	AUTH_RATE_LIMITS,
+	betterAuthCustomRules,
 	LOGIN_GLOBAL_MAX_FAILURES,
-	LOGIN_MAX_FAILURES,
-	betterAuthCustomRules
+	LOGIN_MAX_FAILURES
 } from '$lib/server/core/auth/auth-limits';
 import { CLIENT_IP_HEADER } from '$lib/server/core/auth/client-ip';
-import { listAudit } from '$lib/server/core/audit/service';
+import { contextForUser } from '$lib/server/core/auth/context';
+import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
+import { getDb, schema } from '$lib/server/core/database/client';
 import { setMailTransportForTests } from '$lib/server/core/mail';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { syncModules } from '$lib/server/core/modules/service';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
-import { getDb, schema } from '$lib/server/core/database/client';
-import { eq } from 'drizzle-orm';
-import { actions as loginActions } from '../../src/routes/login/+page.server';
-import { actions as forgotActions } from '../../src/routes/forgot-password/+page.server';
-import { actions as resetActions } from '../../src/routes/reset-password/+page.server';
 import { actions as profileActions } from '../../src/routes/(internal)/profile/+page.server';
+import { actions as forgotActions } from '../../src/routes/forgot-password/+page.server';
+import { actions as loginActions } from '../../src/routes/login/+page.server';
+import { actions as resetActions } from '../../src/routes/reset-password/+page.server';
+import { useTestDatabase } from '../helpers/db';
+import { settleMails } from '../helpers/settle';
 
 const ORIGIN = 'http://localhost:5173';
 const PW = 'correct-horse-battery';

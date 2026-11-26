@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import Search from '@lucide/svelte/icons/search';
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { untrack } from 'svelte';
-	import Search from '@lucide/svelte/icons/search';
 	import { Input } from '$lib/components/ui/input';
+	import { t } from '$lib/i18n';
 
 	let {
 		param = 'search',

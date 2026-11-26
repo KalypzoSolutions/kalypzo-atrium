@@ -1,4 +1,9 @@
 import { describe, expect, it } from 'bun:test';
+import { textOfHtml, wordDiff } from '$lib/components/layout/writing-assistant/diff';
+import { ensureLocale } from '$lib/i18n';
+import { parseSseChunk } from '$lib/sdk/client/assist';
+import type { AssistEvent } from '$lib/sdk/types';
+import { type PromptInput, systemPrompt, userPrompt } from '$lib/server/core/ai/assist/prompt';
 import { createRedactor } from '$lib/server/core/ai/assist/redact';
 import {
 	clampPlain,
@@ -7,11 +12,6 @@ import {
 	placeholdersIn,
 	verifyOutput
 } from '$lib/server/core/ai/assist/verify';
-import { systemPrompt, userPrompt, type PromptInput } from '$lib/server/core/ai/assist/prompt';
-import { ensureLocale } from '$lib/i18n';
-import { textOfHtml, wordDiff } from '$lib/components/layout/writing-assistant/diff';
-import { parseSseChunk } from '$lib/sdk/client/assist';
-import type { AssistEvent } from '$lib/sdk/types';
 
 describe('Schreibhilfe: Maskieren', () => {
 	it('ersetzt E-Mail, Telefon und IBAN und setzt sie wieder ein', () => {

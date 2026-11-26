@@ -7,8 +7,8 @@
  */
 import { randomBytes, randomInt } from 'node:crypto';
 import { and, eq, like } from 'drizzle-orm';
-import type { RequestContext } from '$lib/sdk/types';
 import { t } from '$lib/i18n';
+import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../../audit/service';
 import { getDb, schema } from '../../database/client';
 import { env } from '../../env';
@@ -18,8 +18,8 @@ import { sendMail } from '../../mail';
 import { requirePermission } from '../../permissions/service';
 import { getSetting } from '../../settings/service';
 import { newId } from '../../util';
-import { getAuth } from '../index';
 import { accountMailLocale } from '../account-mail';
+import { getAuth } from '../index';
 import { assertCanManageUser } from '../manage-guard';
 
 /** Gültigkeit eines Links aus der Verwaltung (wie „Passwort vergessen“) */

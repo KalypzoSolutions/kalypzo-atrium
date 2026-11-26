@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import Zap from '@lucide/svelte/icons/zap';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import Zap from '@lucide/svelte/icons/zap';
 	import { DashboardCard, iconFor } from '$lib/components/layout';
 	import type { ModuleNavEntry } from '$lib/components/layout/nav';
+	import { t } from '$lib/i18n';
 	import type { DashboardWidgetProps } from '$lib/sdk/types/module-ui';
 
 	let { onstatus }: DashboardWidgetProps = $props();

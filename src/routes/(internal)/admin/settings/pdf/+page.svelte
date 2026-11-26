@@ -5,9 +5,9 @@
 	import { Label } from '$lib/components/ui/label';
 	import { SelectField } from '$lib/components/ui/select-field';
 	import { t } from '$lib/i18n';
-	import TemplateCard from './TemplateCard.svelte';
 	import SettingsForm from '../../_shared/SettingsForm.svelte';
 	import type { PageData } from './$types';
+	import TemplateCard from './TemplateCard.svelte';
 
 	let { data }: { data: PageData } = $props();
 

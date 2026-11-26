@@ -8,6 +8,10 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { eq, inArray } from 'drizzle-orm';
+import type { RequestContext } from '$lib/sdk/types';
+import { bulkModuleAction } from '$lib/server/core/modules/bulk';
+import { checkUpdates, uninstallModules } from '$lib/server/core/modules/install/manage';
+import { enabledModuleIds, invalidateModuleStateCache } from '$lib/server/core/modules/state';
 import {
 	adminContext,
 	contextForUser,
@@ -24,13 +28,9 @@ import {
 	syncModules,
 	useTestDatabase
 } from '$testing';
-import { bulkModuleAction } from '$lib/server/core/modules/bulk';
-import { checkUpdates, uninstallModules } from '$lib/server/core/modules/install/manage';
-import { enabledModuleIds, invalidateModuleStateCache } from '$lib/server/core/modules/state';
-import type { RequestContext } from '$lib/sdk/types';
 import boardModule from '../fixtures/modules/fx-board/module';
-import peopleModule from '../fixtures/modules/fx-people/module';
 import consumerModule from '../fixtures/modules/fx-consumer/module';
+import peopleModule from '../fixtures/modules/fx-people/module';
 
 const PW = 'correct-horse-battery';
 let close: () => Promise<void>;

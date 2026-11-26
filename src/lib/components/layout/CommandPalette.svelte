@@ -1,21 +1,21 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-	import { SEARCH_MIN_LENGTH, type SearchGroup, type SearchResponse } from '$lib/sdk/types/search';
 	import CornerDownLeft from '@lucide/svelte/icons/corner-down-left';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import SearchIcon from '@lucide/svelte/icons/search';
+	import { goto } from '$app/navigation';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Dialog, DialogContent, DialogTitle } from '$lib/components/ui/dialog';
+	import { t } from '$lib/i18n';
+	import { SEARCH_MIN_LENGTH, type SearchGroup, type SearchResponse } from '$lib/sdk/types/search';
 	import {
 		ADMIN_ENTRIES,
 		ADMIN_SECTIONS,
+		type AdminEntry,
 		searchAdmin,
-		visibleAdminEntries,
-		type AdminEntry
+		visibleAdminEntries
 	} from './admin-registry';
-	import { t } from '$lib/i18n';
 	import { iconFor } from './icons';
-	import { PRIMARY_NAV, hasPermission, type ModuleNavEntry } from './nav';
+	import { hasPermission, type ModuleNavEntry, PRIMARY_NAV } from './nav';
 
 	/** Treffer der Palette: Registry-Form (für `searchAdmin`) plus Gruppen-Badge und Kontext. */
 	interface PaletteItem extends AdminEntry {
@@ -163,7 +163,7 @@
 		}));
 		if (dataQuery && dataQuery === trimmed) {
 			for (const g of dataGroups) {
-				g.hits.forEach((h, i) =>
+				g.hits.forEach((h, i) => {
 					rows.push({
 						id: `data:${g.source}:${h.id}:${i}`,
 						label: h.title,
@@ -172,8 +172,8 @@
 						icon: h.icon ?? g.source,
 						badge: h.type,
 						heading: i === 0 ? g.label : undefined
-					})
-				);
+					});
+				});
 			}
 		}
 		return rows;
@@ -288,7 +288,8 @@
 			{/if}
 			<kbd
 				class="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground sm:inline"
-				aria-hidden="true">Esc</kbd
+				aria-hidden="true"
+				>Esc</kbd
 			>
 		</div>
 

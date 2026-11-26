@@ -1,5 +1,5 @@
-import { writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'bun:test';
+import { writeFileSync } from 'node:fs';
 import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { buildOpenApiDocument } from '$lib/server/core/api/openapi';
 

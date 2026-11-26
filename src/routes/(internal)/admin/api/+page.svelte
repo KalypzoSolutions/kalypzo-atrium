@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { PageTitle } from '$lib/components/layout';
-	import { addDays, todayBerlin } from '$lib/sdk/dates';
-	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
+	import { enhance } from '$app/forms';
+	import { PageTitle } from '$lib/components/layout';
 	import DataTable from '$lib/components/layout/DataTable.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -11,9 +10,10 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
-	import { submitHandler } from '../_shared/form-utils';
 	import { t } from '$lib/i18n';
 	import { formatDateTime } from '$lib/i18n/intl';
+	import { addDays, todayBerlin } from '$lib/sdk/dates';
+	import { submitHandler } from '../_shared/form-utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -94,10 +94,7 @@
 		{#if data.canManage}
 			<Button
 				onclick={() => (
-					(formError = ''),
-					(scopeFilter = ''),
-					(chosenScopes = []),
-					(createOpen = true)
+					(formError = ''), (scopeFilter = ''), (chosenScopes = []), (createOpen = true)
 				)}
 			>
 				{t('admin-api.create')}
@@ -133,7 +130,9 @@
 							>{t('admin-api.scopeCount', { count: k.scopes.length })}</summary
 						>
 						<ul class="mt-1 space-y-0.5 text-xs">
-							{#each k.scopes as s (s)}<li><code>{s}</code></li>{/each}
+							{#each k.scopes as s (s)}
+								<li><code>{s}</code></li>
+							{/each}
 						</ul>
 					</details>
 				</Table.Cell>
@@ -189,7 +188,9 @@
 					bind:value={scopeFilter}
 				/>
 				<div class="max-h-56 space-y-1 overflow-y-auto rounded-lg border p-2">
-					{#each chosenScopes as k (k)}<input type="hidden" name="scopes" value={k} />{/each}
+					{#each chosenScopes as k (k)}
+						<input type="hidden" name="scopes" value={k} />
+					{/each}
 					{#each visibleScopes as s (s.key)}
 						{@const cid = `scope-${s.key.replace(/[^a-z0-9-]/g, '-')}`}
 						<div class="flex items-start gap-2 text-sm">
@@ -215,7 +216,9 @@
 					{/each}
 				</div>
 			</fieldset>
-			{#if formError}<p class="text-sm text-destructive" role="alert">{formError}</p>{/if}
+			{#if formError}
+				<p class="text-sm text-destructive" role="alert">{formError}</p>
+			{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (createOpen = false)}
 					>{t('admin-api.cancel')}</Button
@@ -270,7 +273,9 @@
 		</Dialog.Header>
 		<form method="POST" action="?/revoke" use:enhance={revokeHandler}>
 			<input type="hidden" name="id" value={toRevoke?.id ?? ''} />
-			{#if formError}<p class="mb-3 text-sm text-destructive" role="alert">{formError}</p>{/if}
+			{#if formError}
+				<p class="mb-3 text-sm text-destructive" role="alert">{formError}</p>
+			{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (revokeOpen = false)}
 					>{t('admin-api.cancel')}</Button

@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
-import { useTestDatabase } from '../helpers/db';
 import { systemContext } from '$lib/server/core/auth/context';
-import { getSetting, setSetting } from '$lib/server/core/settings/service';
 import { seedSettingsFromEnv } from '$lib/server/core/settings/env-seed';
+import { getSetting, setSetting } from '$lib/server/core/settings/service';
+import { useTestDatabase } from '../helpers/db';
 
 beforeAll(async () => {
 	await useTestDatabase();

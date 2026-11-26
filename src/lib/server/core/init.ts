@@ -1,14 +1,14 @@
-import { bootstrapAdmin } from './auth/users';
 import { registerCoreApi } from './api/endpoints';
-import { runCoreMigrations } from './database/migrate';
+import { bootstrapAdmin } from './auth/users';
 import { getDb } from './database/client';
+import { runCoreMigrations } from './database/migrate';
 import { env } from './env';
+import { installServerLocale, setSystemLocaleCache } from './i18n/locale';
+import { syncInstallsFromLock } from './modules/install/manage';
+import { reconcileInstallEvents } from './modules/install/supervisor-link';
 import { loadBuiltInModules } from './modules/load';
 import { syncModules } from './modules/service';
-import { reconcileInstallEvents } from './modules/install/supervisor-link';
-import { syncInstallsFromLock } from './modules/install/manage';
 import { seedSettingsFromEnv } from './settings/env-seed';
-import { installServerLocale, setSystemLocaleCache } from './i18n/locale';
 import { getSetting } from './settings/service';
 
 let started: Promise<void> | undefined;

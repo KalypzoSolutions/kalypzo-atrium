@@ -1,25 +1,13 @@
 <script lang="ts">
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Copy from '@lucide/svelte/icons/copy';
+	import Info from '@lucide/svelte/icons/info';
+	import Send from '@lucide/svelte/icons/send';
+	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+	import WifiOff from '@lucide/svelte/icons/wifi-off';
 	import { onDestroy } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { page } from '$app/state';
-	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
-	import Info from '@lucide/svelte/icons/info';
-	import Copy from '@lucide/svelte/icons/copy';
-	import Send from '@lucide/svelte/icons/send';
-	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import WifiOff from '@lucide/svelte/icons/wifi-off';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Alert, AlertDescription } from '$lib/components/ui/alert';
-	import { ConfirmDialog, FormField } from '$lib/components/layout';
-	import type {
-		ApiCatalogEntry,
-		ConsoleRequestInput,
-		ConsoleResult,
-		JsonSchema
-	} from '$lib/api-docs/types';
 	import {
 		buildConsoleRequest,
 		buildCurl,
@@ -28,6 +16,18 @@
 		readConsoleResult
 	} from '$lib/api-docs/console';
 	import { exampleJson } from '$lib/api-docs/example';
+	import type {
+		ApiCatalogEntry,
+		ConsoleRequestInput,
+		ConsoleResult,
+		JsonSchema
+	} from '$lib/api-docs/types';
+	import { ConfirmDialog, FormField } from '$lib/components/layout';
+	import { Alert, AlertDescription } from '$lib/components/ui/alert';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { t } from '$lib/i18n';
 
 	let { entry }: { entry: ApiCatalogEntry } = $props();
@@ -285,7 +285,7 @@
 
 			{#if hasBody}
 				{@const id = `${idBase}-body`}
-				{@const err = fieldErrors['body']}
+				{@const err = fieldErrors.body}
 				<div class="grid gap-1.5">
 					<div class="flex items-center justify-between gap-2">
 						<label for={id} class="text-sm font-medium">{t('api-docs.console.body')}</label>
@@ -310,7 +310,9 @@
 						aria-invalid={err ? 'true' : undefined}
 						aria-describedby={err ? `${id}-error` : undefined}
 					/>
-					{#if err}<p id="{id}-error" role="alert" class="text-xs text-destructive">{err}</p>{/if}
+					{#if err}
+						<p id="{id}-error" role="alert" class="text-xs text-destructive">{err}</p>
+					{/if}
 				</div>
 			{/if}
 
@@ -377,8 +379,8 @@
 				</div>
 				<div class="relative">
 					<pre
-						class="max-h-96 overflow-auto rounded-md bg-muted p-3 pr-10 font-mono text-xs break-words whitespace-pre-wrap">{res.bodyText ||
-							t('api-docs.console.emptyBody')}</pre>
+						class="max-h-96 overflow-auto rounded-md bg-muted p-3 pr-10 font-mono text-xs break-words whitespace-pre-wrap"
+					>{res.bodyText || t('api-docs.console.emptyBody')}</pre>
 					{#if res.bodyText}
 						<Button
 							type="button"
@@ -420,7 +422,8 @@
 				</p>
 				<div class="relative">
 					<pre
-						class="max-h-60 overflow-auto rounded-md bg-muted p-3 pr-10 font-mono text-xs break-all whitespace-pre-wrap">{curl}</pre>
+						class="max-h-60 overflow-auto rounded-md bg-muted p-3 pr-10 font-mono text-xs break-all whitespace-pre-wrap"
+					>{curl}</pre>
 					<Button
 						type="button"
 						variant="ghost"

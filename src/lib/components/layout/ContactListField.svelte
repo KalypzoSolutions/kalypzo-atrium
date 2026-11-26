@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { t } from '$lib/i18n';
 
 	export interface ContactRow {
 		name: string;
@@ -99,7 +99,9 @@
 			{/if}
 		</div>
 	{:else}
-		{#if readonly}<p class="text-sm text-muted-foreground">{emptyText}</p>{/if}
+		{#if readonly}
+			<p class="text-sm text-muted-foreground">{emptyText}</p>
+		{/if}
 	{/each}
 
 	{#if !readonly && items.length < max}

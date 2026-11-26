@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { METHOD_BADGE_CLASS } from '$lib/api-docs/method-style';
 	import Copy from '@lucide/svelte/icons/copy';
 	import { toast } from 'svelte-sonner';
+	import { METHOD_BADGE_CLASS } from '$lib/api-docs/method-style';
+	import type { ApiCatalogEntry, JsonSchema } from '$lib/api-docs/types';
+	import { SummaryList, type SummaryRow } from '$lib/components/layout';
+	import { Button } from '$lib/components/ui/button';
 	import * as Sheet from '$lib/components/ui/sheet';
 	import * as Tabs from '$lib/components/ui/tabs';
-	import { Button } from '$lib/components/ui/button';
-	import { SummaryList, type SummaryRow } from '$lib/components/layout';
-	import { cn } from '$lib/utils';
-	import type { ApiCatalogEntry, JsonSchema } from '$lib/api-docs/types';
 	import { t } from '$lib/i18n';
 	import { formatBytes, formatNumber } from '$lib/i18n/intl';
-	import SchemaTree from './SchemaTree.svelte';
-	import ResponsePanel from './ResponsePanel.svelte';
-	import ErrorsTable from './ErrorsTable.svelte';
+	import { cn } from '$lib/utils';
 	import ApiConsole from './ApiConsole.svelte';
+	import ErrorsTable from './ErrorsTable.svelte';
+	import ResponsePanel from './ResponsePanel.svelte';
+	import SchemaTree from './SchemaTree.svelte';
 
 	let { entry, open = $bindable(false) }: { entry: ApiCatalogEntry | null; open: boolean } =
 		$props();

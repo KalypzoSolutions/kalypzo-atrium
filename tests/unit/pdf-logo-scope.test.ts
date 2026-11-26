@@ -1,5 +1,5 @@
-import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { beforeEach, describe, expect, it, vi } from 'bun:test';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { settingsStore } from './_helpers';
 
 vi.mock('$lib/server/core/settings/service', () => ({
@@ -8,10 +8,10 @@ vi.mock('$lib/server/core/settings/service', () => ({
 }));
 vi.mock('$lib/server/core/audit/service', () => ({ auditFromContext: async () => undefined }));
 
-import * as storage from '$lib/server/core/storage';
-import type { FileRow } from '$lib/server/core/storage';
 import { loadLogo } from '$lib/server/core/pdf';
 import { CORE_SETTINGS } from '$lib/server/core/settings/catalog';
+import type { FileRow } from '$lib/server/core/storage';
+import * as storage from '$lib/server/core/storage';
 
 // #67 (01a-08): `core.design.logoFileId` darf nur Logos aus `core/branding/` in PDFs einbetten.
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);

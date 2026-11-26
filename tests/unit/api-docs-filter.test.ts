@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import {
 	ACCESS_OPTIONS,
-	METHOD_OPTIONS,
 	catalogStats,
 	filterEntries,
 	filterFromSearchParams,
 	filterToSearchParams,
 	groupEntries,
+	METHOD_OPTIONS,
 	moduleOptions
 } from '../../src/lib/api-docs/filter';
 import { sampleCatalog } from '../fixtures/api-catalog';

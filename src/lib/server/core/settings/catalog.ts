@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { hasMessage, t } from '$lib/i18n';
-import type { SettingScope } from '$lib/sdk/types';
 import { activeThemeSchema, themeFavoritesSchema, userThemesSchema } from '$lib/appearance/schema';
+import { hasMessage, t } from '$lib/i18n';
 import { DASHBOARD_KEY_PATTERN, DASHBOARD_LAYOUT_MAX } from '$lib/sdk/client/dashboard-widgets';
+import type { SettingScope } from '$lib/sdk/types';
 
 export interface SettingDefinition {
 	key: string;

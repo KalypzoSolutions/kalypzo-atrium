@@ -1,13 +1,13 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
-import { useTestDatabase } from '../helpers/db';
-import { contextForUser, anonymousContext, systemContext } from '$lib/server/core/auth/context';
-import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
-import { createRole } from '$lib/server/core/permissions/roles';
-import { getDb, schema } from '$lib/server/core/database/client';
 import { eq } from 'drizzle-orm';
-import { core } from '$lib/server/core';
-import { syncModules } from '$lib/server/core/modules/service';
 import type { RequestContext } from '$lib/sdk/types';
+import { core } from '$lib/server/core';
+import { anonymousContext, contextForUser, systemContext } from '$lib/server/core/auth/context';
+import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
+import { getDb, schema } from '$lib/server/core/database/client';
+import { syncModules } from '$lib/server/core/modules/service';
+import { createRole } from '$lib/server/core/permissions/roles';
+import { useTestDatabase } from '../helpers/db';
 
 let admin: RequestContext;
 const roles: Record<string, string> = {};

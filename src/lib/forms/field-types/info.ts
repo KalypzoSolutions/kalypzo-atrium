@@ -1,5 +1,5 @@
-import { t } from '$lib/i18n';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import type { FieldTypeSpec } from '../registry';
 import type { InfoField } from '../types';
 

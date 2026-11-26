@@ -1,4 +1,4 @@
-import { clsx, type ClassValue } from 'clsx';
+import { type ClassValue, clsx } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 
 /**
@@ -14,11 +14,11 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 export type WithElementRef<T, U extends HTMLElement = HTMLElement> = T & { ref?: U | null };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: shadcn-Hilfstyp, beliebige Props
 export type WithoutChildrenOrChild<T> = T extends { children?: any; child?: any }
 	? Omit<T, 'children' | 'child'>
 	: T;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: shadcn-Hilfstyp, beliebige Props
 export type WithoutChildren<T> = T extends { children?: any } ? Omit<T, 'children'> : T;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: shadcn-Hilfstyp, beliebige Props
 export type WithoutChild<T> = T extends { child?: any } ? Omit<T, 'child'> : T;

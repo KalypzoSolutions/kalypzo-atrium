@@ -5,20 +5,20 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { contextForUser } from '$lib/server/core/auth/context';
-import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
-import { createRole, listRoles } from '$lib/server/core/permissions/roles';
-import { registerModule } from '$lib/server/core/modules/registry';
-import { isModuleEnabled, syncModules } from '$lib/server/core/modules/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { getDb, schema } from '$lib/server/core/database/client';
 import { defineModule } from '$lib/sdk/server';
 import type { RequestContext } from '$lib/sdk/types';
-import * as rolesPage from '../../src/routes/(internal)/admin/roles/+page.server';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { contextForUser } from '$lib/server/core/auth/context';
+import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
+import { getDb, schema } from '$lib/server/core/database/client';
+import { registerModule } from '$lib/server/core/modules/registry';
+import { isModuleEnabled, syncModules } from '$lib/server/core/modules/service';
+import { createRole, listRoles } from '$lib/server/core/permissions/roles';
 import * as apiPage from '../../src/routes/(internal)/admin/api/+page.server';
-import * as modulesPage from '../../src/routes/(internal)/admin/modules/+page.server';
 import * as auditPage from '../../src/routes/(internal)/admin/audit/+page.server';
+import * as modulesPage from '../../src/routes/(internal)/admin/modules/+page.server';
+import * as rolesPage from '../../src/routes/(internal)/admin/roles/+page.server';
+import { useTestDatabase } from '../helpers/db';
 
 const ORIGIN = 'http://localhost:5173';
 const PW = 'correct-horse-battery';

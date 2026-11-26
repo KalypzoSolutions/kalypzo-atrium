@@ -1,36 +1,36 @@
-import { t } from '$lib/i18n';
 import { z } from 'zod';
-import { listAudit } from '../audit/service';
+import { t } from '$lib/i18n';
 import * as ai from '../ai';
 import { assistStatus, prepareAssist } from '../ai/assist';
 import { assistRequestSchema } from '../ai/assist/schema';
 import { assistStreamResponse } from '../ai/assist/sse';
-import * as pdf from '../pdf';
-import * as storage from '../storage';
-import { createApiKey, listApiKeys, revokeApiKey } from './keys';
+import { listAudit } from '../audit/service';
+import { sendPasswordReset } from '../auth/admin/password';
+import { listUserSessions, revokeUserSessions } from '../auth/admin/sessions';
+import { userStats } from '../auth/admin/stats';
 import {
 	createUser,
 	deleteUser,
 	getUser,
 	listUsers,
-	updateUserFull,
 	USER_SORTS,
 	USER_STATUS_FILTERS,
+	updateUserFull,
 	verifyUserEmail
 } from '../auth/users';
-import { sendPasswordReset } from '../auth/admin/password';
-import { listUserSessions, revokeUserSessions } from '../auth/admin/sessions';
-import { userStats } from '../auth/admin/stats';
-import { disableModule, enableModule, listModules } from '../modules/service';
+import { embedEndpoints } from '../embeds/endpoints';
 import { listJobs, runJobNow } from '../jobs';
+import { disableModule, enableModule, listModules } from '../modules/service';
+import { navBadgeCounts } from '../navigation/badges';
+import { notificationEndpoints } from '../notifications/endpoints';
+import * as pdf from '../pdf';
 import { adoptDefaultRole } from '../permissions/default-roles';
 import { createRole, deleteRole, listRoles, updateRole } from '../permissions/roles';
 import { listPermissions } from '../permissions/service';
 import { getPublicSettings, MAX_SETTINGS_PER_WRITE, setSettings } from '../settings/service';
-import { navBadgeCounts } from '../navigation/badges';
-import { notificationEndpoints } from '../notifications/endpoints';
-import { embedEndpoints } from '../embeds/endpoints';
+import * as storage from '../storage';
 import { healthCheck } from './health';
+import { createApiKey, listApiKeys, revokeApiKey } from './keys';
 import { buildOpenApiDocument } from './openapi';
 import { defineEndpoint, registerCoreEndpoints } from './registry';
 

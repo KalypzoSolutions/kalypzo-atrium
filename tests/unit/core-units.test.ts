@@ -1,4 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import type { RequestContext } from '$lib/sdk/types';
+import {
+	matchEndpoint,
+	registerCoreEndpoints,
+	resetCoreEndpointsForTests
+} from '$lib/server/core/api/registry';
+import { sanitizeMetadata } from '$lib/server/core/audit/service';
 import {
 	decryptSecret,
 	encryptSecret,
@@ -6,27 +13,20 @@ import {
 	safeEqual,
 	sha256
 } from '$lib/server/core/crypto';
-import { hit, peek, reset, resetAllForTests } from '$lib/server/core/rate-limit';
-import { sanitizeMetadata } from '$lib/server/core/audit/service';
 import {
 	brokenModules,
 	excludeUnresolvableModules,
 	getDefinition,
-	resetBrokenModulesForTests,
 	registerModule,
+	resetBrokenModulesForTests,
 	unregisterModule,
 	validateDefinition
 } from '$lib/server/core/modules/registry';
-import { assertCanGrant, assertPermissionKey, has } from '$lib/server/core/permissions/service';
-import { CORE_PERMISSIONS, PERMISSION_PATTERN } from '$lib/server/core/permissions/catalog';
-import { CORE_SETTINGS } from '$lib/server/core/settings/catalog';
-import {
-	matchEndpoint,
-	registerCoreEndpoints,
-	resetCoreEndpointsForTests
-} from '$lib/server/core/api/registry';
 import type { ModuleDefinition } from '$lib/server/core/modules/types';
-import type { RequestContext } from '$lib/sdk/types';
+import { CORE_PERMISSIONS, PERMISSION_PATTERN } from '$lib/server/core/permissions/catalog';
+import { assertCanGrant, assertPermissionKey, has } from '$lib/server/core/permissions/service';
+import { hit, peek, reset, resetAllForTests } from '$lib/server/core/rate-limit';
+import { CORE_SETTINGS } from '$lib/server/core/settings/catalog';
 
 const ctx = (perms: string[], type: 'user' | 'system' = 'user'): RequestContext => ({
 	actor: { type, id: 'u1', name: 'u1' },

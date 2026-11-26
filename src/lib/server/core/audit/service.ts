@@ -1,9 +1,9 @@
 import { and, desc, eq, gte, ilike, inArray, like, lte, or, sql } from 'drizzle-orm';
+import { t } from '$lib/i18n';
 import type { Actor, RequestContext } from '$lib/sdk/types';
-import { getDb, schema, type DbOrTx } from '../database/client';
+import { type DbOrTx, getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { newId } from '../util';
-import { t } from '$lib/i18n';
 
 const SENSITIVE_KEY = /pass(word)?|secret|token|api[-_]?key|authorization|cookie|credential|hash/i;
 const MAX_STRING = 500;
@@ -176,10 +176,7 @@ export async function listAudit(filter: AuditFilter = {}) {
 			.orderBy(desc(t.createdAt))
 			.limit(limit)
 			.offset(filter.offset ?? 0),
-		db
-			.select({ n: sql<number>`count(*)::int` })
-			.from(t)
-			.where(where)
+		db.select({ n: sql<number>`count(*)::int` }).from(t).where(where)
 	]);
 	return { rows, total: count?.n ?? 0 };
 }

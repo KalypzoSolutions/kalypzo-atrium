@@ -1,10 +1,10 @@
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
-import { beforeAll, describe, expect, it } from 'bun:test';
-import { useTestDatabase } from '../helpers/db';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
 import { runModuleMigrations } from '$lib/server/core/modules/service';
+import { useTestDatabase } from '../helpers/db';
 
 const ID = 'eol-demo';
 const LF = 'CREATE TABLE IF NOT EXISTS items (\n\tid text PRIMARY KEY,\n\tname text\n);\n';

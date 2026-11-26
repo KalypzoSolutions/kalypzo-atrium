@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
-import { getDb, schema } from '../database/client';
 import { sha256 } from '../crypto';
+import { getDb, schema } from '../database/client';
 import { errors } from '../errors';
 import { getUserPermissions } from '../permissions/service';
-import { getAuth } from './index';
 import { activeImpersonation } from './admin/impersonation';
+import { getAuth } from './index';
 
 export interface SessionUser {
 	id: string;
@@ -43,7 +43,7 @@ export async function contextForUser(
 	meta: { ip?: string | null; requestId?: string } = {}
 ): Promise<{ ctx: RequestContext; user: SessionUser } | null> {
 	const [u] = await getDb().select().from(schema.user).where(eq(schema.user.id, userId));
-	if (!u || !u.active) return null;
+	if (!u?.active) return null;
 	const permissions = await getUserPermissions(u.id);
 	return {
 		user: {

@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { PageHeader, PageTitle } from '$lib/components/layout';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import { t } from '$lib/i18n';
+	import type { PageData } from './$types';
 	import ExportPanel from './ExportPanel.svelte';
 	import ImportWizard from './ImportWizard.svelte';
-	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 

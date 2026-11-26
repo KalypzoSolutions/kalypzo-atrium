@@ -24,20 +24,20 @@ import {
 	releaseMaintenanceLock,
 	verifyReauth
 } from '../../system/maintenance';
-import { formatModuleSource, parseModuleSource, type ModuleSource } from '../package/schema';
+import { formatModuleSource, type ModuleSource, parseModuleSource } from '../package/schema';
 import { getDefinition } from '../registry';
 import { analyzeModule, type ModuleAnalysis } from './analyze';
-import { readModuleArchive, type ArchiveFiles } from './archive';
-import { discoverModules, type DiscoveredRepo } from './discover';
+import { type ArchiveFiles, readModuleArchive } from './archive';
+import { type DiscoveredRepo, discoverModules } from './discover';
 import { downloadGithubArchive, resolveGithubSource } from './github';
-import { resolvePlan, type Candidate, type CandidateOrigin, type ResolvedPlan } from './resolve';
+import { type Candidate, type CandidateOrigin, type ResolvedPlan, resolvePlan } from './resolve';
 import {
+	type BuildRequest,
 	cacheUploadedSource,
 	readSupervisorStatus,
-	runtimeModulesDir,
 	requestSupervisorBuild,
-	supervisorAvailable,
-	type BuildRequest
+	runtimeModulesDir,
+	supervisorAvailable
 } from './supervisor-link';
 
 export const INSTALL_PERMISSION = 'core.modules.install';

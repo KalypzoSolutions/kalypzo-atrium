@@ -79,7 +79,11 @@ export interface LabelLineElement extends LabelElementBase {
 }
 
 export type LabelElement =
-	LabelTextElement | LabelBarcodeElement | LabelImageElement | LabelRectElement | LabelLineElement;
+	| LabelTextElement
+	| LabelBarcodeElement
+	| LabelImageElement
+	| LabelRectElement
+	| LabelLineElement;
 
 export type LabelElementType = LabelElement['type'];
 

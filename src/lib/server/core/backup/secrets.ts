@@ -7,6 +7,7 @@
  * - Textspalten in `mod_<x>` mit `enc:v1:` → Zweck `module:<x>` (`core.crypto.forModule`)
  */
 import { symmetricDecrypt, symmetricEncrypt } from 'better-auth/crypto';
+import { t } from '$lib/i18n';
 import { getAuth } from '../auth';
 import { decryptSecret, encryptSecret, isEncrypted, keyedHash } from '../crypto';
 import { allDefinitions } from '../modules/registry';
@@ -20,7 +21,6 @@ import {
 	type SecretPurpose,
 	type TableInfo
 } from './types';
-import { t } from '$lib/i18n';
 
 const TEXT_TYPE = /^(text|character varying(\(\d+\))?|character(\(\d+\))?)$/;
 const isTextType = (type: string) => TEXT_TYPE.test(type);

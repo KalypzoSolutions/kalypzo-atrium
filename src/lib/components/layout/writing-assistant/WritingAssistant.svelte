@@ -1,19 +1,16 @@
 <script lang="ts">
-	// Blatt der KI-Schreibhilfe: Aufgabe wählen, Vorschlag erzeugen (gestreamt), Änderungen ansehen,
-	// übernehmen oder verwerfen. Desktop/Tablet als Seitenblatt rechts, Handy als Blatt von unten.
-	import { t } from '$lib/i18n';
-	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
-	import * as Sheet from '$lib/components/ui/sheet';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Textarea } from '$lib/components/ui/textarea';
 	import { Label } from '$lib/components/ui/label';
-	import BottomSheet from '../BottomSheet.svelte';
-	import { deviceLayout } from '../viewport.svelte';
-	import { cn } from '$lib/utils.js';
+	import * as Sheet from '$lib/components/ui/sheet';
+	import { Textarea } from '$lib/components/ui/textarea';
+	// Blatt der KI-Schreibhilfe: Aufgabe wählen, Vorschlag erzeugen (gestreamt), Änderungen ansehen,
+	// übernehmen oder verwerfen. Desktop/Tablet als Seitenblatt rechts, Handy als Blatt von unten.
+	import { t } from '$lib/i18n';
 	import { ApiClientError } from '$lib/sdk/client';
 	import { requestAssist } from '$lib/sdk/client/assist';
 	import {
@@ -25,7 +22,10 @@
 		type AssistResult,
 		type AssistTask
 	} from '$lib/sdk/types/assist';
-	import { extraValues, type AssistConfig } from './assist.svelte';
+	import { cn } from '$lib/utils.js';
+	import BottomSheet from '../BottomSheet.svelte';
+	import { deviceLayout } from '../viewport.svelte';
+	import { type AssistConfig, extraValues } from './assist.svelte';
 	import { textOfHtml, wordDiff } from './diff';
 
 	let {
@@ -182,7 +182,9 @@
 
 {#snippet body()}
 	<div class="space-y-5 text-sm">
-		{#if !phone}<p class="text-muted-foreground">{info.label}</p>{/if}
+		{#if !phone}
+			<p class="text-muted-foreground">{info.label}</p>
+		{/if}
 		{#if notice}
 			<Alert.Root variant="info">
 				<Alert.Description>{notice}</Alert.Description>
@@ -410,12 +412,8 @@
 				</Sheet.Title>
 				<Sheet.Description class="sr-only">{t('assistant.sheetDescription')}</Sheet.Description>
 			</Sheet.Header>
-			<div class="min-h-0 flex-1 overflow-y-auto p-4">
-				{@render body()}
-			</div>
-			<Sheet.Footer class="border-t">
-				{@render actions()}
-			</Sheet.Footer>
+			<div class="min-h-0 flex-1 overflow-y-auto p-4"> {@render body()} </div>
+			<Sheet.Footer class="border-t"> {@render actions()} </Sheet.Footer>
 		</Sheet.Content>
 	</Sheet.Root>
 {/if}

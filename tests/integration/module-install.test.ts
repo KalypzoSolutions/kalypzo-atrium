@@ -7,11 +7,20 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { RequestContext } from '$lib/sdk/types';
+import { setGithubFetchForTests } from '$lib/server/core/modules/install/github';
+import {
+	confirmInstall,
+	inspectSource,
+	listInstallEvents,
+	previewInstall,
+	resetInstallSessionsForTests
+} from '$lib/server/core/modules/install/service';
 import {
 	adminContext,
+	contextForUser,
 	createRole,
 	createUser,
-	contextForUser,
 	enableModule,
 	getDb,
 	listAudit,
@@ -23,15 +32,6 @@ import {
 	syncModules,
 	useTestDatabase
 } from '$testing';
-import { setGithubFetchForTests } from '$lib/server/core/modules/install/github';
-import {
-	confirmInstall,
-	inspectSource,
-	listInstallEvents,
-	previewInstall,
-	resetInstallSessionsForTests
-} from '$lib/server/core/modules/install/service';
-import type { RequestContext } from '$lib/sdk/types';
 import boardModule from '../fixtures/modules/fx-board/module';
 import { filesOf, makeZip } from '../helpers/module-zip';
 

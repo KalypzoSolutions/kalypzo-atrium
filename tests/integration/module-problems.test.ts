@@ -4,10 +4,9 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
+import { getDb, schema } from '$lib/server/core/database/client';
 import {
 	getDefinition,
 	registerModule,
@@ -22,6 +21,7 @@ import {
 	syncModules
 } from '$lib/server/core/modules/service';
 import type { ModuleDefinition } from '$lib/server/core/modules/types';
+import { useTestDatabase } from '../helpers/db';
 
 let close: () => Promise<void>;
 

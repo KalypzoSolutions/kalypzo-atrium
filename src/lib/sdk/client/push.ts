@@ -5,8 +5,8 @@
  * nur nach einem Tippen der Person – `enablePush` daher immer direkt aus einem Klick aufrufen.
  */
 import { t } from '$lib/i18n';
-import { apiFetch } from './index';
 import type { PushDevice } from '$lib/sdk/types/notifications';
+import { apiFetch } from './index';
 
 export type PushSupport =
 	/** alles da */

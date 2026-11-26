@@ -3,13 +3,21 @@
  * Sammelaktionen, Einladung und „Als Person handeln“ (Impersonation) mit Kennzeichnung im Audit.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { waitFor } from '../helpers/wait';
 import { and, eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { settleMails } from '../helpers/settle';
-import { contextForUser, resolveSession } from '$lib/server/core/auth/context';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { createApiKey } from '$lib/server/core/api/keys';
+import { handleApiRequest } from '$lib/server/core/api/router';
+import { listAudit, logAudit } from '$lib/server/core/audit/service';
 import { getAuth } from '$lib/server/core/auth';
-import { bootstrapAdmin, createUser, listUserIds, listUsers } from '$lib/server/core/auth/users';
+import { bulkUserAction, exportUsersCsv } from '$lib/server/core/auth/admin/bulk';
+import {
+	activeImpersonation,
+	assertNotImpersonating,
+	invalidateImpersonationCache,
+	startImpersonation,
+	stopImpersonation
+} from '$lib/server/core/auth/admin/impersonation';
 import {
 	createPasswordResetLink,
 	generatePassword,
@@ -23,24 +31,16 @@ import {
 	revokeUserSessions
 } from '$lib/server/core/auth/admin/sessions';
 import { explainUserPermissions, userStats } from '$lib/server/core/auth/admin/stats';
-import { bulkUserAction, exportUsersCsv } from '$lib/server/core/auth/admin/bulk';
-import {
-	activeImpersonation,
-	assertNotImpersonating,
-	invalidateImpersonationCache,
-	startImpersonation,
-	stopImpersonation
-} from '$lib/server/core/auth/admin/impersonation';
-import { createApiKey } from '$lib/server/core/api/keys';
-import { createRole } from '$lib/server/core/permissions/roles';
-import { syncModules } from '$lib/server/core/modules/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { handleApiRequest } from '$lib/server/core/api/router';
-import { listAudit, logAudit } from '$lib/server/core/audit/service';
+import { contextForUser, resolveSession } from '$lib/server/core/auth/context';
+import { bootstrapAdmin, createUser, listUserIds, listUsers } from '$lib/server/core/auth/users';
 import { getDb, schema } from '$lib/server/core/database/client';
 import { setMailTransportForTests } from '$lib/server/core/mail';
+import { syncModules } from '$lib/server/core/modules/service';
+import { createRole } from '$lib/server/core/permissions/roles';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
-import type { RequestContext } from '$lib/sdk/types';
+import { useTestDatabase } from '../helpers/db';
+import { settleMails } from '../helpers/settle';
+import { waitFor } from '../helpers/wait';
 
 const PW = 'correct-horse-battery';
 let close: () => Promise<void>;

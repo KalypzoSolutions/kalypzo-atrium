@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { PageTitle } from '$lib/components/layout';
 	import { enhance } from '$app/forms';
+	import { PageTitle } from '$lib/components/layout';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import { Checkbox } from '$lib/components/ui/checkbox';
 	import * as Card from '$lib/components/ui/card';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { submitHandler } from '../_shared/form-utils';
 	import { t } from '$lib/i18n';
+	import { submitHandler } from '../_shared/form-utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -89,7 +89,9 @@
 				{t('admin-roles.description')}
 			</p>
 		</div>
-		{#if data.can.create}<Button onclick={openCreate}>{t('admin-roles.create')}</Button>{/if}
+		{#if data.can.create}
+			<Button onclick={openCreate}>{t('admin-roles.create')}</Button>
+		{/if}
 	</div>
 
 	<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -98,7 +100,9 @@
 				<Card.Header>
 					<Card.Title class="flex items-center gap-2">
 						{r.name}
-						{#if r.isSystem}<Badge variant="secondary">{t('admin-roles.system')}</Badge>{/if}
+						{#if r.isSystem}
+							<Badge variant="secondary">{t('admin-roles.system')}</Badge>
+						{/if}
 						{#if !r.isSystem && r.permissions.some((p) => privilegedSet.has(p))}
 							<Badge variant="destructive">{t('admin-roles.privileged')}</Badge>
 						{/if}
@@ -163,7 +167,9 @@
 			class="space-y-4"
 			use:enhance={handler(() => (formOpen = false))}
 		>
-			{#if editing}<input type="hidden" name="id" value={editing.id} />{/if}
+			{#if editing}
+				<input type="hidden" name="id" value={editing.id} />
+			{/if}
 			<div class="space-y-2">
 				<Label for="r-name">{t('admin-roles.name')}</Label>
 				<Input
@@ -196,12 +202,14 @@
 								<button
 									type="button"
 									class="text-xs font-normal text-link underline"
-									onclick={() => toggleGroup(items, true)}>{t('admin-roles.all')}</button
+									onclick={() => toggleGroup(items, true)}
+									>{t('admin-roles.all')}</button
 								>
 								<button
 									type="button"
 									class="text-xs font-normal text-link underline"
-									onclick={() => toggleGroup(items, false)}>{t('admin-roles.none')}</button
+									onclick={() => toggleGroup(items, false)}
+									>{t('admin-roles.none')}</button
 								>
 							{/if}
 						</legend>
@@ -222,7 +230,8 @@
 									<label for={cid}>
 										<code class="text-xs">{p.key}</code>
 										{#if p.privileged}
-											<Badge variant="destructive" class="ml-1">{t('admin-roles.privileged')}</Badge
+											<Badge variant="destructive" class="ml-1"
+												>{t('admin-roles.privileged')}</Badge
 											>
 										{/if}
 										{#if p.description}
@@ -237,9 +246,13 @@
 					</fieldset>
 				{/each}
 			</div>
-			{#each selected as key (key)}<input type="hidden" name="permissions" value={key} />{/each}
+			{#each selected as key (key)}
+				<input type="hidden" name="permissions" value={key} />
+			{/each}
 
-			{#if formError}<p class="text-sm text-destructive" role="alert">{formError}</p>{/if}
+			{#if formError}
+				<p class="text-sm text-destructive" role="alert">{formError}</p>
+			{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (formOpen = false)}>
 					{locked ? t('admin-roles.close') : t('admin-roles.cancel')}
@@ -267,7 +280,9 @@
 		</Dialog.Header>
 		<form method="POST" action="?/delete" use:enhance={handler(() => (deleteOpen = false))}>
 			<input type="hidden" name="id" value={toDelete?.id ?? ''} />
-			{#if formError}<p class="mb-3 text-sm text-destructive" role="alert">{formError}</p>{/if}
+			{#if formError}
+				<p class="mb-3 text-sm text-destructive" role="alert">{formError}</p>
+			{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (deleteOpen = false)}
 					>{t('admin-roles.cancel')}</Button

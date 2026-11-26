@@ -2,13 +2,13 @@ import { describe, expect, it } from 'bun:test';
 import {
 	ADMIN_ENTRIES,
 	ADMIN_SECTIONS,
+	type AdminEntry,
 	adminTabs,
 	canSeeAdminEntry,
 	moduleAdminEntries,
 	normalizeSearch,
 	searchAdmin,
-	visibleAdminEntries,
-	type AdminEntry
+	visibleAdminEntries
 } from '$lib/components/layout/admin-registry';
 import type { ModuleNavEntry } from '$lib/components/layout/nav';
 

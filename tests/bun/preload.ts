@@ -15,14 +15,14 @@
 // Zuerst: Schutz vor rekursivem Löschen von Arbeitsverzeichnis/Projekt (siehe fs-guard.ts)
 import './fs-guard';
 import './hook-timeout';
-import { plugin } from 'bun';
 import { join } from 'node:path';
+import { plugin } from 'bun';
 import {
 	CORE_MESSAGES_ID,
-	FONTS_ID,
-	PDF_TEMPLATES_ID,
 	coreMessagesSource,
+	FONTS_ID,
 	fontsSource,
+	PDF_TEMPLATES_ID,
 	pdfTemplatesSource
 } from '../../tools/core-virtual.ts';
 import { CORE_ROOT, modulesDir } from '../../tools/modules-dir.js';

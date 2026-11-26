@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
-import { getDefinition, getPublicSettings, setSettings } from '$lib/server/core/settings/service';
-import { isCoreError } from '$lib/server/core/errors';
 import { LOCALE_LABELS, t } from '$lib/i18n';
+import { isCoreError } from '$lib/server/core/errors';
+import { getDefinition, getPublicSettings, setSettings } from '$lib/server/core/settings/service';
 
 export type FieldKind = 'text' | 'number' | 'boolean' | 'list' | 'json' | 'select' | 'color';
 
@@ -119,7 +119,7 @@ export async function saveFields(
 
 	for (const key of new Set(keys)) {
 		if (!allowed(key)) return fail(403, { message: t('admin-settings.form.notAllowed', { key }) });
-		let def;
+		let def: ReturnType<typeof getDefinition>;
 		try {
 			def = getDefinition(key);
 		} catch {

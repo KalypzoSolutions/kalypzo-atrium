@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import ImageIcon from '@lucide/svelte/icons/image';
+	import { enhance } from '$app/forms';
 	import { ConfirmDialog, FileField, PageTitle } from '$lib/components/layout';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
@@ -84,7 +84,11 @@
 		</div>
 		{#if data.logoUrl}
 			<div class="flex flex-wrap items-end gap-4">
-				{#each [{ src: '/branding/favicon-32.png', label: 'Favicon', cls: 'size-8' }, { src: '/branding/apple-touch-icon.png', label: 'iPhone', cls: 'size-14 rounded-xl' }, { src: '/branding/maskable-512.png', label: 'Android', cls: 'size-14 rounded-full' }] as icon (icon.label)}
+				{#each [
+					{ src: '/branding/favicon-32.png', label: 'Favicon', cls: 'size-8' },
+					{ src: '/branding/apple-touch-icon.png', label: 'iPhone', cls: 'size-14 rounded-xl' },
+					{ src: '/branding/maskable-512.png', label: 'Android', cls: 'size-14 rounded-full' }
+				] as icon (icon.label)}
 					<figure class="flex flex-col items-center gap-1">
 						<img
 							src="{icon.src}?v={data.logoUrl.split('v=')[1]}"

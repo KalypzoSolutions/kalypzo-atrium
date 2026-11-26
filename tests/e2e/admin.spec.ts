@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 const ADMIN = { email: 'admin@example.test', password: 'e2e-admin-password-1' };
 const run = Date.now().toString(36);

@@ -1,5 +1,6 @@
-import { fail, type Actions } from '@sveltejs/kit';
+import { type Actions, fail } from '@sveltejs/kit';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { isCoreError } from '$lib/server/core/errors';
 import {
 	executeReset,
@@ -10,7 +11,6 @@ import {
 } from '$lib/server/core/system/reset';
 import { invalid, requirePerm } from '../_shared/server-utils';
 import type { PageServerLoad } from './$types';
-import { t } from '$lib/i18n';
 
 const PERMISSION = 'core.system.reset';
 

@@ -4,10 +4,10 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { z } from 'zod';
-import { useTestDatabase } from '../helpers/db';
-import { handleApiRequest } from '$lib/server/core/api/router';
 import { registerCoreEndpoints, resetCoreEndpointsForTests } from '$lib/server/core/api/registry';
+import { handleApiRequest } from '$lib/server/core/api/router';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
+import { useTestDatabase } from '../helpers/db';
 
 let close: () => Promise<void>;
 const ROOT = 'http://localhost:5173/api/v1';

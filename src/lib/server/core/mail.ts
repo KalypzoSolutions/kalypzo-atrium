@@ -2,7 +2,7 @@ import nodemailer, { type Transporter } from 'nodemailer';
 import { t as translate } from '$lib/i18n';
 import { errors } from './errors';
 import { invalidateMailTransportCache, mailTransportGeneration } from './mail-cache';
-import { loadMailLayoutOptions, renderMailLayout, type MailAttachment } from './mail-layout';
+import { loadMailLayoutOptions, type MailAttachment, renderMailLayout } from './mail-layout';
 import { getSettings } from './settings/service';
 
 export interface MailMessage {
@@ -96,7 +96,8 @@ const SMTP_KEYS = [
  */
 const SETTINGS_TTL_MS = 10_000;
 let settingsCache:
-	{ at: number; generation: number; promise: Promise<Record<string, unknown>> } | undefined;
+	| { at: number; generation: number; promise: Promise<Record<string, unknown>> }
+	| undefined;
 let transportCache: { key: string; t: Transporter } | undefined;
 
 async function smtpSettings(): Promise<Record<string, unknown>> {
@@ -254,7 +255,7 @@ export function formatSender(address: string, name?: string): string {
 	}
 	const clean = (name ?? '')
 		// Steuerzeichen (Zeilenumbrüche!) und Anführungszeichen/Klammern entfernen
-		// eslint-disable-next-line no-control-regex
+		// biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen werden bewusst entfernt
 		.replace(/[\u0000-\u001f\u007f"<>\x5c]+/g, ' ')
 		.replace(/\s+/g, ' ')
 		.trim()

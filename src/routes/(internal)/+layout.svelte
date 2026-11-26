@@ -15,6 +15,7 @@
 	function toggleSidebar(collapsed: boolean) {
 		sidebarCollapsed = collapsed;
 		const secure = location.protocol === 'https:' ? '; secure' : '';
+		// biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API fehlt in Safari/Firefox; das Cookie ist die SSR-Quelle
 		document.cookie = `sidebar=${collapsed ? 'collapsed' : 'open'}; path=/; max-age=31536000; samesite=lax${secure}`;
 	}
 
@@ -75,9 +76,7 @@
 			</main>
 		{:else}
 			<main id="main" tabindex="-1" class="flex-1 p-4 outline-none sm:p-6 lg:p-8">
-				<div class="mx-auto max-w-6xl">
-					{@render children()}
-				</div>
+				<div class="mx-auto max-w-6xl"> {@render children()} </div>
 			</main>
 		{/if}
 	</div>

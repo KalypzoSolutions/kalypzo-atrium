@@ -5,17 +5,17 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import type { RequestContext } from '$lib/sdk/types';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
-import { createRole } from '$lib/server/core/permissions/roles';
+import { collectDashboardFeed } from '$lib/server/core/dashboard/feed';
+import { getDb, schema } from '$lib/server/core/database/client';
 import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
 import { disableModule, enableModule, syncModules } from '$lib/server/core/modules/service';
-import { collectDashboardFeed } from '$lib/server/core/dashboard/feed';
-import { GET as getFeed } from '../../src/routes/(internal)/dashboard/feed/+server';
 import type { ModuleDefinition } from '$lib/server/core/modules/types';
-import type { RequestContext } from '$lib/sdk/types';
+import { createRole } from '$lib/server/core/permissions/roles';
+import { GET as getFeed } from '../../src/routes/(internal)/dashboard/feed/+server';
+import { useTestDatabase } from '../helpers/db';
 
 let close: () => Promise<void>;
 let admin: RequestContext;

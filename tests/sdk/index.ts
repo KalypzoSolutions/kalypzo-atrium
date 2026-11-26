@@ -14,26 +14,26 @@
  */
 import { eq } from 'drizzle-orm';
 import type { RequestContext } from '$lib/sdk/types';
+import { handleApiRequest } from '$lib/server/core/api/router';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
 import { getDb, schema } from '$lib/server/core/database/client';
-import { handleApiRequest } from '$lib/server/core/api/router';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
 
 // --- Datenbank und Testumgebung ---------------------------------------------------------------
-export { useTestDatabase, isRealPostgres, pgTestUrl } from '../helpers/db';
-export { encodeMultipart, multipartRequest } from '../helpers/multipart';
-export { waitFor } from '../helpers/wait';
+export { isRealPostgres, pgTestUrl, useTestDatabase } from '../helpers/db';
 export {
+	fakeFileRows,
+	fakeObjects,
 	fakeS3Calls,
 	installFakeStorage,
-	uninstallFakeStorage,
-	fakeObjects,
-	fakeFileRows
+	uninstallFakeStorage
 } from '../helpers/fake-storage';
-export { settleMails } from '../helpers/settle';
-export { moduleSql, migrateModuleTo, migrateModuleRest } from '../helpers/migrations';
+export { migrateModuleRest, migrateModuleTo, moduleSql } from '../helpers/migrations';
+export { encodeMultipart, multipartRequest } from '../helpers/multipart';
 export { confirmIfNeeded, optInToken } from '../helpers/registration-optin';
+export { settleMails } from '../helpers/settle';
+export { waitFor } from '../helpers/wait';
 
 export * from './core';
 
@@ -42,7 +42,7 @@ export * from './core';
 // --- Konten, Rollen, API --------------------------------------------------------------------------
 
 // --- Core-Dienste mit Test-Schaltern ----------------------------------------------------------
-export { modulesDir, moduleIds } from '../../tools/modules-dir.js';
+export { moduleIds, modulesDir } from '../../tools/modules-dir.js';
 
 // --- Bequeme Helfer ---------------------------------------------------------------------------
 

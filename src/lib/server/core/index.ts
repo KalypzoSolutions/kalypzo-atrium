@@ -15,22 +15,37 @@ import {
 	resolveSession,
 	systemContext
 } from './auth/context';
+import { readAvatar } from './auth/profile';
 import { registerUserWithRole, searchUserDirectory, usersByIds } from './auth/users';
 import { decryptSecret, encryptSecret, isEncrypted, keyedHash } from './crypto';
 import { forModule } from './database/module-db';
-import { findDefaultRoleId } from './permissions/default-roles';
+import { describeEmbeds, listEmbedKinds, searchEmbeds } from './embeds/service';
+import { env } from './env';
+import { errors } from './errors';
+import { processImage } from './images';
+import { MESSAGE_ID_RE, previewMailHtml, sendMail } from './mail';
 import { allDefinitions, principalSource, resolveManifest } from './modules/registry';
-import { notifyMembersDeleted } from './privacy/member-hooks';
 import {
 	assertModuleEnabled,
 	disableModule,
-	useModuleService,
-	useOptionalModuleService,
 	enableModule,
 	isModuleEnabled,
 	listModules,
-	navigationFor
+	navigationFor,
+	useModuleService,
+	useOptionalModuleService
 } from './modules/service';
+import { migratePreferences, sendNotifications } from './notifications/service';
+import * as pdf from './pdf';
+import { generateLabels } from './pdf/labels';
+import { renderPdfPage } from './pdf/raster';
+import { findDefaultRoleId } from './permissions/default-roles';
+import {
+	assertCanGrantRoles,
+	listModuleRoleGrants,
+	replaceModuleRoleGrants
+} from './permissions/grants';
+import { roleDirectory, roleIdsForUser, userIdsForRoles } from './permissions/roles';
 import {
 	assertCanGrant,
 	getUserPermissions,
@@ -41,37 +56,22 @@ import {
 	requirePermission,
 	usersWithPermission
 } from './permissions/service';
-import { roleDirectory, roleIdsForUser, userIdsForRoles } from './permissions/roles';
-import {
-	assertCanGrantRoles,
-	listModuleRoleGrants,
-	replaceModuleRoleGrants
-} from './permissions/grants';
-import { readAvatar } from './auth/profile';
-import * as pdf from './pdf';
-import { renderPdfPage } from './pdf/raster';
-import { generateLabels } from './pdf/labels';
-import { MESSAGE_ID_RE, previewMailHtml, sendMail } from './mail';
-import { errors } from './errors';
-import { env } from './env';
+import { notifyMembersDeleted } from './privacy/member-hooks';
 import { qrDataUrl } from './qr';
-import { migratePreferences, sendNotifications } from './notifications/service';
-import { describeEmbeds, listEmbedKinds, searchEmbeds } from './embeds/service';
 import {
-	listPublicSettingsFor,
 	getSetting,
 	getSettings,
+	listPublicSettingsFor,
 	setSetting,
 	setSettings
 } from './settings/service';
 import * as storage from './storage';
-import { processImage } from './images';
 import {
-	RESET_CONFIRM_WORD,
 	executeReset,
 	exportResetData,
 	listResetAreas,
-	previewReset
+	previewReset,
+	RESET_CONFIRM_WORD
 } from './system/reset';
 
 const EMAIL_RE = /^[^\s@,;<>()"]+@[^\s@,;<>()"]+\.[^\s@,;<>()"]+$/;
@@ -244,7 +244,7 @@ async function sendModuleMessage(msg: {
 	if (unsubscribe) headers['List-Unsubscribe'] = `<mailto:${unsubscribe}>`;
 	if (inReplyTo) headers['In-Reply-To'] = inReplyTo;
 	const refs = (references ?? []).slice(-MAX_REFERENCES);
-	if (refs.length) headers['References'] = refs.join(' ');
+	if (refs.length) headers.References = refs.join(' ');
 	const messageId = await sendMail({
 		...rest,
 		files,

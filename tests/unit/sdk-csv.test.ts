@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { csvCell, csvCents, csvDocument, csvFromRecords } from '$lib/sdk/csv';
 import { centsPlain, formatEuro } from '$lib/components/layout/money';
+import { csvCell, csvCents, csvDocument, csvFromRecords } from '$lib/sdk/csv';
 
 describe('csvCell – Formelschutz-Matrix (#34)', () => {
 	it('echte Zahlen und Beträge bleiben Zahlen (auch negativ)', () => {

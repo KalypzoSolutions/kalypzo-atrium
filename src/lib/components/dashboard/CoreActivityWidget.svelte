@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { intlLocale, t } from '$lib/i18n';
-	import { onMount } from 'svelte';
 	import ScrollText from '@lucide/svelte/icons/scroll-text';
+	import { onMount } from 'svelte';
 	import { DashboardCard } from '$lib/components/layout';
+	import { intlLocale, t } from '$lib/i18n';
 	import type { DashboardWidgetProps } from '$lib/sdk/types/module-ui';
-	import { loadCoreDashboard, type CoreActivityEntry } from './core-data';
+	import { type CoreActivityEntry, loadCoreDashboard } from './core-data';
 
 	let { onstatus }: DashboardWidgetProps = $props();
 

@@ -4,11 +4,11 @@
 -->
 <script lang="ts">
 	import Lock from '@lucide/svelte/icons/lock';
-	import { t } from '$lib/i18n';
 	import type { BackupScopeInfo } from '$lib/backup/contract';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Label } from '$lib/components/ui/label';
+	import { t } from '$lib/i18n';
 	import { impliedOf } from './client';
 
 	let {
@@ -96,9 +96,9 @@
 							<div class="min-w-0 flex-1 space-y-1">
 								<Label for={cid(s.key)} class="flex flex-wrap items-center gap-2 font-medium">
 									{s.label}
-									{#if !s.enabled}<Badge variant="outline"
-											>{t('admin-backup.scopes.inactive')}</Badge
-										>{/if}
+									{#if !s.enabled}
+										<Badge variant="outline">{t('admin-backup.scopes.inactive')}</Badge>
+									{/if}
 									{#if imp}
 										<Badge variant="secondary"
 											><Lock aria-hidden="true" />{t('admin-backup.scopes.automatic')}</Badge

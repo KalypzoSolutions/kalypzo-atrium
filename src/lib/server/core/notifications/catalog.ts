@@ -1,11 +1,13 @@
 /**
  * Benachrichtigungstypen aus den Moduldefinitionen und die Profilansicht je Person.
  */
+
+import { intlLocale, localized } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import {
-	NOTIFICATION_SCOPE_MAX,
 	allowedChannels,
 	type ModuleNotificationType,
+	NOTIFICATION_SCOPE_MAX,
 	type NotificationChannel,
 	type NotificationDelivery,
 	type NotificationPrefGroup,
@@ -16,7 +18,6 @@ import { allDefinitions, getDefinition } from '../modules/registry';
 import { enabledModuleIds } from '../modules/state';
 import { hasAny } from '../permissions/service';
 import { loadPrefs, prefKey } from './prefs';
-import { intlLocale, localized } from '$lib/i18n';
 
 export interface ResolvedType extends ModuleNotificationType {
 	moduleId: string;

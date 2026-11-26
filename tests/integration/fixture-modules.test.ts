@@ -6,6 +6,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { sql } from 'drizzle-orm';
 import {
+	core,
+	describePrincipals,
+	principalKeysFor,
+	rowsOf,
+	searchPrincipals,
+	validatePrincipals
+} from '$lib/sdk/server';
+import type { RequestContext } from '$lib/sdk/types';
+import {
 	adminContext,
 	adminOnlyRestoreScopes,
 	apiCall,
@@ -26,18 +35,9 @@ import {
 	syncModules,
 	useTestDatabase
 } from '$testing';
-import {
-	core,
-	describePrincipals,
-	principalKeysFor,
-	rowsOf,
-	searchPrincipals,
-	validatePrincipals
-} from '$lib/sdk/server';
-import type { RequestContext } from '$lib/sdk/types';
 import boardModule, { ASSETS } from '../fixtures/modules/fx-board/module';
-import peopleModule from '../fixtures/modules/fx-people/module';
 import consumerModule from '../fixtures/modules/fx-consumer/module';
+import peopleModule from '../fixtures/modules/fx-people/module';
 
 const ADMIN = 'fixture-admin@example.test';
 const PW = 'correct-horse-battery';

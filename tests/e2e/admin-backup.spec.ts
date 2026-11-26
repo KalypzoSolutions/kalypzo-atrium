@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { expect, type Page, test } from '@playwright/test';
 
 // Datensicherung unter /admin/backup: erreichbar über Befehlspalette und Seitenleiste, Export mit Passwort
 // (Download abfangen), danach eine Rolle anlegen, Import-Assistent mit der Datei (Wiederherstellen, Bereich Rollen)

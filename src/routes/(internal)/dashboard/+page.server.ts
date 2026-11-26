@@ -1,6 +1,6 @@
+import type { DashboardLayoutPref } from '$lib/sdk/client/dashboard-widgets';
 import { enabledModuleIds } from '$lib/server/core/modules/state';
 import { getDefinition, getSetting } from '$lib/server/core/settings/service';
-import type { DashboardLayoutPref } from '$lib/sdk/client/dashboard-widgets';
 import type { PageServerLoad } from './$types';
 
 /**

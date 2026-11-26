@@ -1,8 +1,8 @@
 <script lang="ts">
+	import { LoadingState } from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { LoadingState } from '$lib/components/layout';
 	import { t } from '$lib/i18n';
 	import { formatNumber } from '$lib/i18n/intl';
 
@@ -76,8 +76,12 @@
 	<Card.Header>
 		<Card.Title class="flex flex-wrap items-center gap-2">
 			{info.label}
-			{#if info.letterhead}<Badge variant="secondary">{t('admin-pdf.card.letter')}</Badge>{/if}
-			{#if landscape}<Badge variant="outline">{t('admin-pdf.card.landscape')}</Badge>{/if}
+			{#if info.letterhead}
+				<Badge variant="secondary">{t('admin-pdf.card.letter')}</Badge>
+			{/if}
+			{#if landscape}
+				<Badge variant="outline">{t('admin-pdf.card.landscape')}</Badge>
+			{/if}
 			{#if info.origin.type === 'module'}
 				<Badge variant="outline">
 					{info.replacesCore
@@ -95,7 +99,9 @@
 		</Card.Description>
 	</Card.Header>
 	<Card.Content class="space-y-4">
-		{#if info.description}<p class="text-sm">{info.description}</p>{/if}
+		{#if info.description}
+			<p class="text-sm">{info.description}</p>
+		{/if}
 
 		<div
 			class={[
@@ -148,18 +154,21 @@
 							<div class="min-w-0 space-y-0.5">
 								<div class="flex flex-wrap items-center gap-2">
 									<span class="font-medium">{part.label}</span>
-									{#if part.optional}<Badge variant="outline">{t('admin-pdf.card.optional')}</Badge
-										>{/if}
+									{#if part.optional}
+										<Badge variant="outline">{t('admin-pdf.card.optional')}</Badge>
+									{/if}
 								</div>
 								<p class="text-xs text-muted-foreground tabular-nums">
 									{t('admin-pdf.card.position', {
 										x: num(part.x),
 										y: num(part.y)
 									})}{#if part.width != null && part.height != null}
-										· {t('admin-pdf.card.size', {
+										·
+										{t('admin-pdf.card.size', {
 											width: num(part.width),
 											height: num(part.height)
-										})}{/if}
+										})}
+									{/if}
 								</p>
 								{#if part.description}
 									<p class="text-xs text-muted-foreground">{part.description}</p>

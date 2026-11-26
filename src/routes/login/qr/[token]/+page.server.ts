@@ -10,7 +10,7 @@ import type { Actions, PageServerLoad } from './$types';
  */
 export const load: PageServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user) throw redirect(303, `/login?redirectTo=${encodeURIComponent(url.pathname)}`);
-	let info;
+	let info: Awaited<ReturnType<typeof inspectQrLogin>>;
 	try {
 		info = await inspectQrLogin(locals.ctx, params.token);
 	} catch (e) {

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import * as Popover from '$lib/components/ui/popover/index.js';
-	import { cn } from '$lib/utils.js';
-	import { hexToHsv, hsvToHex, normalizeHex, type Hsv } from './color.js';
 	import { appliesTo, claimFieldContext } from '$lib/components/ui/field/context';
+	import * as Popover from '$lib/components/ui/popover/index.js';
+	import { t } from '$lib/i18n';
+	import { cn } from '$lib/utils.js';
+	import { type Hsv, hexToHsv, hsvToHex, normalizeHex } from './color.js';
 
 	const SV_GRADIENT =
 		'linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)';

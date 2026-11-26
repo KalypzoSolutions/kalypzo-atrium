@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import {
 	NOTIFICATION_CHANNELS,
 	NOTIFICATION_DELIVERIES,
@@ -9,7 +10,6 @@ import { defineEndpoint } from '../api/registry';
 import { errors } from '../errors';
 import { addDevice, listDevices, pushEnabled, removeDevice, vapidKeys } from './push';
 import { getMyPreferences, sendTestPush, setMyPreference } from './service';
-import { t } from '$lib/i18n';
 
 const base64url = (max: number) =>
 	z

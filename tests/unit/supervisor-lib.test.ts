@@ -1,19 +1,20 @@
 /**
  * Supervisor (Kalypzo Atrium, Phase 6) – reine Teile: Inhaltshash wie in der Vorschau, Lock-Datei, Modul-Pakete.
  */
+
+import { afterAll, describe, expect, it } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, describe, expect, it } from 'bun:test';
 import { contentHash, readModuleArchive } from '$lib/server/core/modules/install/archive';
 import {
 	contentHashOfDir,
 	coreChanged,
 	dedupeModulePackages,
+	type LockEntry,
 	mergeLock,
 	moduleFolders,
-	modulePackagesFor,
-	type LockEntry
+	modulePackagesFor
 } from '../../scripts/supervisor/lib.mjs';
 import { filesOf, makeZip } from '../helpers/module-zip';
 

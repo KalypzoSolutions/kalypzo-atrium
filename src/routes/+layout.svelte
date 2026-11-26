@@ -2,10 +2,10 @@
 	import '../app.css';
 	import '$lib/zod-locale';
 	import { onMount } from 'svelte';
-	import { Toaster } from '$lib/components/ui/sonner';
 	import { applyThemeVars } from '$lib/appearance/apply';
-	import { theme } from '$lib/theme.svelte';
+	import { Toaster } from '$lib/components/ui/sonner';
 	import { initServiceWorkerNavigation } from '$lib/sdk/client/sw-navigation';
+	import { theme } from '$lib/theme.svelte';
 
 	let { data, children } = $props();
 

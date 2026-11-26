@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
 	import { page } from '$app/state';
-	import type { ModulePageProps } from '$lib/sdk/types/module-ui';
-	import LegalLinks from '$lib/components/layout/LegalLinks.svelte';
 	import { PageTitle } from '$lib/components/layout';
+	import LegalLinks from '$lib/components/layout/LegalLinks.svelte';
+	import type { ModulePageProps } from '$lib/sdk/types/module-ui';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

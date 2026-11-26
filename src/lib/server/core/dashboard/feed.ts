@@ -8,10 +8,10 @@ import { intlLocale, localized } from '$lib/i18n';
 import { addDays, isRealDate, todayBerlin } from '$lib/sdk/dates';
 import type { RequestContext } from '$lib/sdk/types';
 import {
+	CORE_AGENDA_KINDS,
 	DASHBOARD_AGENDA_LIMIT,
 	DASHBOARD_TODO_LIMIT,
 	DASHBOARD_TODO_LIMIT_PER_SOURCE,
-	CORE_AGENDA_KINDS,
 	type DashboardAgendaKindInfo,
 	type DashboardFeed,
 	type DashboardFeedAgendaItem,
@@ -222,7 +222,10 @@ async function runAll<T>(
 	}
 	const items: T[] = [];
 	const failed: string[] = [];
-	results.forEach((r, i) => (r.ok ? items.push(...r.items) : failed.push(jobs[i]!.id)));
+	results.forEach((r, i) => {
+		if (r.ok) items.push(...r.items);
+		else failed.push(jobs[i]!.id);
+	});
 	return { items, failed };
 }
 

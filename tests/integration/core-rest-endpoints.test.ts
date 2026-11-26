@@ -6,21 +6,21 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
+import type { RequestContext } from '$lib/sdk/types';
+import { setOpenAiClientFactoryForTests } from '$lib/server/core/ai';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { createApiKey } from '$lib/server/core/api/keys';
+import { handleApiRequest } from '$lib/server/core/api/router';
 import { getAuth } from '$lib/server/core/auth';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin, createUser } from '$lib/server/core/auth/users';
-import { createRole } from '$lib/server/core/permissions/roles';
-import { syncModules } from '$lib/server/core/modules/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { handleApiRequest } from '$lib/server/core/api/router';
-import { createApiKey } from '$lib/server/core/api/keys';
 import { getDb, schema } from '$lib/server/core/database/client';
+import { syncModules } from '$lib/server/core/modules/service';
 import { setPdfRendererForTests } from '$lib/server/core/pdf';
-import { setOpenAiClientFactoryForTests } from '$lib/server/core/ai';
-import { setSettings } from '$lib/server/core/settings/service';
+import { createRole } from '$lib/server/core/permissions/roles';
 import { resetAllForTests } from '$lib/server/core/rate-limit';
-import type { RequestContext } from '$lib/sdk/types';
+import { setSettings } from '$lib/server/core/settings/service';
+import { useTestDatabase } from '../helpers/db';
 
 const ORIGIN = 'http://localhost:5173';
 const PW = 'correct-horse-battery';
@@ -32,7 +32,7 @@ const ids: Record<string, string> = {};
 
 interface Res {
 	status: number;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// biome-ignore lint/suspicious/noExplicitAny: beliebige JSON-Antwort im Test
 	body: any;
 	headers: Headers;
 }
@@ -237,7 +237,7 @@ describe('KI', () => {
 		await setSettings(admin, { 'core.ai.apiKey': 'sk-test', 'core.ai.defaultModel': 'gpt-test' });
 		setOpenAiClientFactoryForTests(() => ({
 			complete: async () => ({ text: 'Antwort', inputTokens: 3, outputTokens: 2 }),
-			// eslint-disable-next-line require-yield
+			// biome-ignore lint/correctness/useYield: leerer Stream im Test
 			stream: async function* () {
 				return;
 			}

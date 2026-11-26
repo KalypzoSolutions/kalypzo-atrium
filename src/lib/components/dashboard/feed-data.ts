@@ -1,5 +1,5 @@
-import { daysBetween } from '$lib/sdk/dates';
 import { intlLocale, t } from '$lib/i18n';
+import { daysBetween } from '$lib/sdk/dates';
 import type { DashboardFeed, DashboardFeedTodo } from '$lib/sdk/types/dashboard';
 
 /** Wie lange ein laufender/fertiger Abruf geteilt wird (Seite + Kacheln → ein Request) */

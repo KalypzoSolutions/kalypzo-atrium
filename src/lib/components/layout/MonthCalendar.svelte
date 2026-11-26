@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Repeat from '@lucide/svelte/icons/repeat';
 	import { Button } from '$lib/components/ui/button';
 	import * as Popover from '$lib/components/ui/popover';
+	import { t } from '$lib/i18n';
 	import {
-		MAX_LANES,
 		buildAgenda,
 		buildMonthGrid,
+		type CalendarItem,
 		calendarItemKey,
 		contrastTextColor,
 		describeItem,
@@ -23,11 +23,11 @@
 		itemsOnDay,
 		layoutWeek,
 		localToday,
+		MAX_LANES,
 		monthOf,
 		shiftMonth,
-		weekdayLabels,
-		type CalendarItem,
-		type WeekSegment
+		type WeekSegment,
+		weekdayLabels
 	} from './month-calendar';
 
 	interface Props {
@@ -104,7 +104,8 @@
 		<h2 class="text-section" aria-live="polite">{label}</h2>
 		<div class="flex items-center gap-1">
 			{#if loading}
-				<span class="text-muted-foreground mr-2 text-xs" role="status">{t('calendar.loading')}</span
+				<span class="text-muted-foreground mr-2 text-xs" role="status"
+					>{t('calendar.loading')}</span
 				>
 			{/if}
 			<Button variant="outline" size="sm" onclick={goToday} aria-label={t('calendar.today')}
@@ -168,7 +169,9 @@
 							>
 								{Number(date.slice(8, 10))}
 							</span>
-							{#if isToday}<span class="sr-only">{t('calendar.today')}</span>{/if}
+							{#if isToday}
+								<span class="sr-only">{t('calendar.today')}</span>
+							{/if}
 							{#if onday}
 								<button
 									type="button"
@@ -180,7 +183,9 @@
 								</button>
 							{/if}
 						</div>
-						{#each week.segments.filter((s) => s.startCol === col) as seg (calendarItemKey(seg.item))}
+						{#each week.segments.filter((s) => s.startCol === col) as seg (calendarItemKey(
+							seg.item
+						))}
 							{@const time = seg.continuesBefore ? '' : formatItemTime(seg.item)}
 							<button
 								type="button"
@@ -195,11 +200,12 @@
 								title={describeItem(seg.item)}
 								onclick={() => select(seg.item)}
 							>
-								{#if time}<span class="shrink-0 tabular-nums opacity-80">{time}</span>{/if}
-								{#if seg.item.recurring}<Repeat
-										class="size-3 shrink-0 opacity-80"
-										aria-hidden="true"
-									/>{/if}
+								{#if time}
+									<span class="shrink-0 tabular-nums opacity-80">{time}</span>
+								{/if}
+								{#if seg.item.recurring}
+									<Repeat class="size-3 shrink-0 opacity-80" aria-hidden="true" />
+								{/if}
 								<span class="truncate font-medium">{seg.item.title}</span>
 							</button>
 						{/each}
@@ -236,10 +242,12 @@
 															>{formatItemTime(item)}</span
 														>
 													{/if}
-													{#if item.recurring}<Repeat
+													{#if item.recurring}
+														<Repeat
 															class="text-muted-foreground size-3 shrink-0"
 															aria-hidden="true"
-														/>{/if}
+														/>
+													{/if}
 													<span class="truncate">{item.title}</span>
 												</button>
 											</li>
@@ -315,10 +323,12 @@
 										></span>
 										<span class="min-w-0 flex-1">
 											<span class="flex min-w-0 items-center gap-1.5 font-medium">
-												{#if item.recurring}<Repeat
+												{#if item.recurring}
+													<Repeat
 														class="text-muted-foreground size-3.5 shrink-0"
 														aria-hidden="true"
-													/>{/if}
+													/>
+												{/if}
 												<span class="truncate">{item.title}</span>
 											</span>
 											{#if formatItemTime(item) || rangeText(item)}

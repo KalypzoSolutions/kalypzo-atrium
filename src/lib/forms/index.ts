@@ -1,27 +1,28 @@
 import './field-types';
-export * from './types';
+
 export {
-	registerFieldType,
+	type FieldTypeSpec,
 	getFieldType,
-	listFieldTypes,
 	hasFieldType,
-	type FieldTypeSpec
+	listFieldTypes,
+	registerFieldType
 } from './registry';
 export {
-	buildFormSchema,
-	validateFormValues,
-	formDefinitionSchema,
-	visibleFields,
-	displayFields,
-	fieldHasValue,
-	emptyValues,
-	slugKey
-} from './schema';
-export {
 	parseRichText,
-	richTextToPlain,
 	plainToRichText,
-	safeHref,
 	type RichNode,
-	type RichTag
+	type RichTag,
+	richTextToPlain,
+	safeHref
 } from './rich-text';
+export {
+	buildFormSchema,
+	displayFields,
+	emptyValues,
+	fieldHasValue,
+	formDefinitionSchema,
+	slugKey,
+	validateFormValues,
+	visibleFields
+} from './schema';
+export * from './types';

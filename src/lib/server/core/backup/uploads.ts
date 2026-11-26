@@ -5,6 +5,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { open, writeFile } from 'node:fs/promises';
+import { intlLocale, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { CoreError, errors } from '../errors';
 import { requireBackupUser } from './access';
@@ -13,12 +14,11 @@ import {
 	BACKUP_FILE_EXT,
 	BACKUP_LIMITS,
 	UPLOAD_CHUNK_BYTES,
-	uploadCreateInput,
 	type UploadCreated,
 	type UploadCreateInput,
-	type UploadProgress
+	type UploadProgress,
+	uploadCreateInput
 } from './types';
-import { intlLocale, t } from '$lib/i18n';
 
 /** Toleranz über der Chunkgröße (Client rundet evtl. anders) */
 const CHUNK_TOLERANCE = 64 * 1024;

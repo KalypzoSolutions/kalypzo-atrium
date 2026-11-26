@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
 	import { page } from '$app/state';
-	import { PageTitle, navLabelFor } from '$lib/components/layout';
+	import { navLabelFor, PageTitle } from '$lib/components/layout';
 	import type { ModulePageProps } from '$lib/sdk/types/module-ui';
 	import type { PageData } from './$types';
 

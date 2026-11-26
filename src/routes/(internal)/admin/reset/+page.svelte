@@ -1,13 +1,11 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import Download from '@lucide/svelte/icons/download';
+	import Lock from '@lucide/svelte/icons/lock';
+	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+	import { toast } from 'svelte-sonner';
 	import { deserialize } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
-	import Download from '@lucide/svelte/icons/download';
-	import CircleCheck from '@lucide/svelte/icons/circle-check';
-	import Lock from '@lucide/svelte/icons/lock';
-	import { toast } from 'svelte-sonner';
-	import { formatNumber, formatTime } from '$lib/i18n/intl';
 	import { ConfirmDialog, PageHeader, PageTitle } from '$lib/components/layout';
 	import TypedConfirmField from '$lib/components/layout/TypedConfirmField.svelte';
 	import * as Alert from '$lib/components/ui/alert';
@@ -18,6 +16,8 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
+	import { t } from '$lib/i18n';
+	import { formatNumber, formatTime } from '$lib/i18n/intl';
 	import type { PageData } from './$types';
 
 	type Area = PageData['areas'][number];
@@ -125,7 +125,8 @@
 	const byteSum = $derived(preview ? preview.files.reduce((s, f) => s + f.bytes, 0) : 0);
 
 	type ActionOutcome =
-		{ ok: true; data: Record<string, unknown> } | { ok: false; status: number; message: string };
+		| { ok: true; data: Record<string, unknown> }
+		| { ok: false; status: number; message: string };
 
 	async function callAction(name: string, body: FormData): Promise<ActionOutcome> {
 		const res = await fetch(`?/${name}`, {
@@ -334,7 +335,9 @@
 						<Alert.Title>{t('admin-reset.warnings')}</Alert.Title>
 						<Alert.Description>
 							<ul class="list-disc space-y-1 pl-4">
-								{#each result.warnings as w, i (i)}<li>{w}</li>{/each}
+								{#each result.warnings as w, i (i)}
+									<li>{w}</li>
+								{/each}
 							</ul>
 						</Alert.Description>
 					</Alert.Root>

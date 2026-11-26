@@ -1,16 +1,16 @@
-import { t } from '$lib/i18n';
 import { and, asc, count, eq, ilike, inArray } from 'drizzle-orm';
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { requireUser } from '../auth/context';
 import { getDb, schema } from '../database/client';
 import { isUniqueViolation } from '../db-errors';
 import { errors } from '../errors';
+import { enabledModuleIds } from '../modules/state';
 import { newId } from '../util';
 import { ADMIN_ROLE_ID } from './catalog';
 import { assertRoleNameAllowed } from './default-roles';
 import { moduleGrantRoleIds } from './grants';
-import { enabledModuleIds } from '../modules/state';
 import { assertCanGrant, existingKeys, permissionsOfRole, requirePermission } from './service';
 
 const ROLE_DIRECTORY_MAX = 30;

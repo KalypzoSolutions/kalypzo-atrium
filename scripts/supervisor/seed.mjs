@@ -33,7 +33,7 @@ export function readSeed(coreRoot, env = process.env) {
 }
 
 export function parseSeed(json) {
-	if (!json || json.schema !== 1 || !Array.isArray(json.sources)) {
+	if (json?.schema !== 1 || !Array.isArray(json.sources)) {
 		throw new Error('Seed: erwartet { "schema": 1, "sources": [...] }');
 	}
 	const sources = json.sources.map((s, i) => {

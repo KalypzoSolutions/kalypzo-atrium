@@ -1,7 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import type { z } from 'zod';
-import { isCoreError } from '$lib/server/core/errors';
 import { t } from '$lib/i18n';
+import { isCoreError } from '$lib/server/core/errors';
 
 /** 403, wenn dem Benutzer die Berechtigung fehlt (zusätzlich zur Prüfung in den Services). */
 export function requirePerm(locals: App.Locals, key: string): void {

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
 	import Inbox from '@lucide/svelte/icons/inbox';
+	import type { Snippet } from 'svelte';
 
 	let {
 		title,
@@ -14,6 +14,10 @@
 >
 	<Inbox class="size-8 text-muted-foreground" aria-hidden="true" />
 	<p class="font-medium">{title}</p>
-	{#if description}<p class="max-w-md text-sm text-muted-foreground">{description}</p>{/if}
-	{#if children}<div class="mt-2">{@render children()}</div>{/if}
+	{#if description}
+		<p class="max-w-md text-sm text-muted-foreground">{description}</p>
+	{/if}
+	{#if children}
+		<div class="mt-2">{@render children()}</div>
+	{/if}
 </div>

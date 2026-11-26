@@ -6,9 +6,11 @@
  */
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import webpush from 'web-push';
+import { t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { PUSH_DEVICES_MAX, type PushDevice } from '$lib/sdk/types/notifications';
 import { auditFromContext } from '../audit/service';
+import { assertNotImpersonating } from '../auth/admin/impersonation';
 import { systemContext } from '../auth/context';
 import { getDb, schema } from '../database/client';
 import { logError } from '../db-errors';
@@ -16,8 +18,6 @@ import { env } from '../env';
 import { errors } from '../errors';
 import { getSettings, setSettings } from '../settings/service';
 import { newId } from '../util';
-import { t } from '$lib/i18n';
-import { assertNotImpersonating } from '../auth/admin/impersonation';
 
 /** Hosts der Push-Dienste (Chrome/Android: FCM, Firefox: Mozilla, Safari/iOS: Apple, Edge: Windows) */
 const PUSH_HOSTS = [
@@ -117,7 +117,7 @@ export interface SubscriptionInput {
 function cleanLabel(label: string | undefined): string {
 	return (
 		(label ?? '')
-			// eslint-disable-next-line no-control-regex
+			// biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen werden bewusst entfernt
 			.replace(/[\u0000-\u001f\u007f]+/g, ' ')
 			.replace(/\s+/g, ' ')
 			.trim()
@@ -230,9 +230,7 @@ export async function deviceCounts(userIds: string[]): Promise<Map<string, numbe
 }
 
 export async function totalDevices(): Promise<number> {
-	const [row] = await getDb()
-		.select({ n: sql<number>`count(*)` })
-		.from(schema.pushSubscription);
+	const [row] = await getDb().select({ n: sql<number>`count(*)` }).from(schema.pushSubscription);
 	return Number(row?.n ?? 0);
 }
 

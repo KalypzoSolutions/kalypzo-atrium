@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import { goto } from '$app/navigation';
 	import FileDown from '@lucide/svelte/icons/file-down';
+	import { goto } from '$app/navigation';
+	import { DataTable, PageHeader } from '$lib/components/layout';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
-	import { DataTable, PageHeader } from '$lib/components/layout';
+	import { t } from '$lib/i18n';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -64,13 +64,19 @@
 			<Table.Row>
 				<Table.Cell>
 					<div class="font-medium">{c.label}</div>
-					{#if c.detail}<div class="text-xs text-muted-foreground">{c.detail}</div>{/if}
+					{#if c.detail}
+						<div class="text-xs text-muted-foreground">{c.detail}</div>
+					{/if}
 				</Table.Cell>
 				<Table.Cell><Badge variant="outline">{c.sourceName}</Badge></Table.Cell>
 				<Table.Cell class="text-right">
 					<form method="POST" action="/admin/privacy/export" class="inline">
-						{#if c.userId}<input type="hidden" name="userId" value={c.userId} />{/if}
-						{#if c.memberId}<input type="hidden" name="memberId" value={c.memberId} />{/if}
+						{#if c.userId}
+							<input type="hidden" name="userId" value={c.userId} />
+						{/if}
+						{#if c.memberId}
+							<input type="hidden" name="memberId" value={c.memberId} />
+						{/if}
 						<Button type="submit" size="sm" variant="outline">
 							<FileDown />
 							{t('admin-privacy.exportButton')}

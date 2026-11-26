@@ -6,7 +6,7 @@ import { describe, expect, it } from 'bun:test';
 import { zipSync } from 'fflate';
 import { contentHash, readModuleArchive } from '$lib/server/core/modules/install/archive';
 import { discoverModules } from '$lib/server/core/modules/install/discover';
-import { resolvePlan, type Candidate } from '$lib/server/core/modules/install/resolve';
+import { type Candidate, resolvePlan } from '$lib/server/core/modules/install/resolve';
 import { parseInstallInput } from '$lib/server/core/modules/install/service';
 import { makeSymlinkZip, makeZip } from '../helpers/module-zip';
 

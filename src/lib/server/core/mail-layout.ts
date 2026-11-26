@@ -1,6 +1,6 @@
 import { getLocale, t } from '$lib/i18n';
-import { escapeHtml } from './pdf/templates';
 import { activeModuleHook } from './pdf/resolve';
+import { escapeHtml } from './pdf/templates';
 import { DEFAULT_MAIL_FOOTER } from './settings/catalog';
 import { getSettings } from './settings/service';
 

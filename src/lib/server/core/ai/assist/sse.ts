@@ -1,8 +1,9 @@
 /** SSE-Antwort für `POST /ai/assist`: `delta`-Ereignisse während der Erzeugung, dann `done` oder `error`. */
+
+import { t } from '$lib/i18n';
 import type { AssistEvent, AssistResult } from '$lib/sdk/types';
 import { logError } from '../../db-errors';
 import { isCoreError } from '../../errors';
-import { t } from '$lib/i18n';
 
 export function assistStreamResponse(
 	run: (onDelta: (text: string) => void, signal: AbortSignal) => Promise<AssistResult>,

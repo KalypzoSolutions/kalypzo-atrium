@@ -16,22 +16,23 @@
  * - `daily`-Jobs starten nur im Zeitfenster `JOBS_DAILY_WINDOW` (volle Stunden in Europe/Berlin,
  *   Standard `6-20` = 06:00 bis vor 20:00) und höchstens einmal je Kalendertag.
  */
-import { hasMessage, t } from '$lib/i18n';
+
 import { sql } from 'drizzle-orm';
+import { hasMessage, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
-import { systemContext } from '../auth/context';
 import { auditFromContext } from '../audit/service';
+import { systemContext } from '../auth/context';
+import { reprocessLegacyAvatars } from '../auth/profile';
 import { getDb } from '../database/client';
 import { errorSummary, logError } from '../db-errors';
 import { errors } from '../errors';
+import { refreshMarketplace } from '../modules/install/marketplace';
 import { allDefinitions } from '../modules/registry';
 import { isModuleEnabled } from '../modules/service';
-import { requirePermission } from '../permissions/service';
 import type { ModuleJob } from '../modules/types';
-import { runHousekeeping } from './housekeeping';
-import { reprocessLegacyAvatars } from '../auth/profile';
 import { runNotificationDigest } from '../notifications/service';
-import { refreshMarketplace } from '../modules/install/marketplace';
+import { requirePermission } from '../permissions/service';
+import { runHousekeeping } from './housekeeping';
 
 type Row = Record<string, unknown>;
 

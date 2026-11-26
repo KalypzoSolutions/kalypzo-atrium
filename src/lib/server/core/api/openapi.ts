@@ -1,10 +1,10 @@
-import { t } from '$lib/i18n';
 import {
 	extendZodWithOpenApi,
-	OpenApiGeneratorV31,
-	OpenAPIRegistry
+	OpenAPIRegistry,
+	OpenApiGeneratorV31
 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import { allEndpoints } from './registry';
 import { endpointText, translateDocumentTexts } from './text';
 

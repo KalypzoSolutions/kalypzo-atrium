@@ -1,5 +1,5 @@
 import { entries } from 'virtual:atrium-modules/server';
-import { t, type MessageParams } from '$lib/i18n';
+import { type MessageParams, t } from '$lib/i18n';
 import { getDefinition, markModuleBroken, registerModule } from './registry';
 import type { ModuleDefinition } from './types';
 

@@ -1,9 +1,8 @@
 import { allDefinitions } from '../modules/registry';
 import type { ApiEndpoint, RegisteredEndpoint } from './types';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// biome-ignore lint/suspicious/noExplicitAny: Endpunkte mit beliebigen Schemas
 type AnyEndpoint = ApiEndpoint<any, any, any>;
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /** Typisierte Helfer-Funktion zur Definition eines Endpunkts (Inferenz für Handler-Argumente). */
 export function defineEndpoint<

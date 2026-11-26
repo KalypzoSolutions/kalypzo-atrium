@@ -1,5 +1,5 @@
-import { t } from '$lib/i18n';
 import { toast } from 'svelte-sonner';
+import { t } from '$lib/i18n';
 
 /** Fehlermeldung zu einer fehlgeschlagenen Datei-Antwort (Texte wie in der Mitglieder-Ansicht). */
 async function fileErrorMessage(res: Response): Promise<string> {

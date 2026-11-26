@@ -1,10 +1,10 @@
 import { createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
 import { BACKUP_FILE_EXT } from '$lib/backup/contract';
+import { t } from '$lib/i18n';
 import { takeBackupDownload } from '$lib/server/core/backup/export';
 import { failure, guard, problem, safeFileName } from '../../http.server';
 import type { RequestHandler } from './$types';
-import { t } from '$lib/i18n';
 
 /** Einmaliger Download der erstellten Sicherung (`/admin/backup/export/<downloadId>`). */
 export const GET: RequestHandler = async ({ request, locals, url, params }) => {

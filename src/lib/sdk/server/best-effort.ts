@@ -12,8 +12,9 @@
  * `requestId`, Aktor-Typ und Objekt-ID – nie Personendaten. `label` ist ein fester Schlüssel
  * (`modul.vorgang`), keine Nutzereingaben.
  */
-import { logError } from '$lib/server/core/db-errors';
+
 import type { RequestContext } from '$lib/sdk/types';
+import { logError } from '$lib/server/core/db-errors';
 
 export interface BestEffortInfo {
 	/** Kontext des Aufrufs (für `requestId` und Aktor-Typ im Log) */

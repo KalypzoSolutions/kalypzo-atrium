@@ -3,9 +3,10 @@
  * Theme-/Akzent-Ersetzung in `app.html`. Getestet wird der exportierte `handle` (Sequenz
  * headers → init → Better Auth → guard) mit gestubbtem `RequestEvent`; Core-Dienste sind gemockt.
  */
-import { THEME_PRESETS } from '$lib/appearance/presets';
+
 import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import type { RequestEvent } from '@sveltejs/kit';
+import { THEME_PRESETS } from '$lib/appearance/presets';
 
 const state = {
 	session: null as null | { user: { id: string }; ctx: unknown; sessionId: string },
@@ -147,7 +148,7 @@ async function run(path: string, o: Opts = {}) {
 	const response = await with_request_store(store, () =>
 		handle({
 			event,
-			resolve: async (e, opts) => {
+			resolve: async (_e, opts) => {
 				resolved = true;
 				const html = opts?.transformPageChunk
 					? ((await opts.transformPageChunk({ html: o.html ?? TEMPLATE, done: true })) ?? '')

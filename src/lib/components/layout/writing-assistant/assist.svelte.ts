@@ -2,8 +2,9 @@
  * Konfiguration einer Textstelle für die Schreibhilfe und reaktiver Zugriff auf ihren Status.
  * Der Knopf erscheint nur, wenn der Server die Textstelle für die Person freigibt.
  */
-import type { AssistContextRef, AssistPurposeInfo, AssistStatus } from '$lib/sdk/types';
+
 import { assistStatus } from '$lib/sdk/client/assist';
+import type { AssistContextRef, AssistPurposeInfo, AssistStatus } from '$lib/sdk/types';
 
 export interface AssistConfig {
 	/** Modul, dem die Textstelle gehört (Recht `<modul>.ai.use`) */
@@ -45,6 +46,6 @@ export function extraValues(config: AssistConfig): Record<string, string> | unde
 	const raw = config.extra?.();
 	if (!raw) return undefined;
 	const out: Record<string, string> = {};
-	for (const [k, v] of Object.entries(raw)) if (v && v.trim()) out[k] = v.trim();
+	for (const [k, v] of Object.entries(raw)) if (v?.trim()) out[k] = v.trim();
 	return Object.keys(out).length ? out : undefined;
 }

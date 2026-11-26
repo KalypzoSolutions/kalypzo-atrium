@@ -1,7 +1,6 @@
 <script module lang="ts">
-	import type { Component } from 'svelte';
-	import AlignLeft from '@lucide/svelte/icons/text-align-start';
 	import Calendar from '@lucide/svelte/icons/calendar';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Hash from '@lucide/svelte/icons/hash';
 	import Heading from '@lucide/svelte/icons/heading';
 	import Info from '@lucide/svelte/icons/info';
@@ -11,11 +10,12 @@
 	import Phone from '@lucide/svelte/icons/phone';
 	import ShieldCheck from '@lucide/svelte/icons/shield-check';
 	import SquareCheck from '@lucide/svelte/icons/square-check';
+	import AlignLeft from '@lucide/svelte/icons/text-align-start';
 	import TextCursorInput from '@lucide/svelte/icons/text-cursor-input';
-	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import type { Component } from 'svelte';
 	import { iconFor } from '$lib/components/layout/icons';
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// biome-ignore lint/suspicious/noExplicitAny: Komponententyp ohne festgelegte Props
 	type Icon = Component<any>;
 
 	const TYPE_ICONS: Record<string, Icon> = {
@@ -40,11 +40,11 @@
 </script>
 
 <script lang="ts">
-	import { t } from '$lib/i18n';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { Button } from '$lib/components/ui/button';
 	import Plus from '@lucide/svelte/icons/plus';
+	import { Button } from '$lib/components/ui/button';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import type { FieldType, FieldTypeSpec } from '$lib/forms';
+	import { t } from '$lib/i18n';
 
 	let {
 		types,
@@ -81,7 +81,9 @@
 	>
 		{#each groups as g, gi (g.label)}
 			{#if g.items.length}
-				{#if gi > 0 && groups[0]!.items.length}<DropdownMenu.Separator />{/if}
+				{#if gi > 0 && groups[0]!.items.length}
+					<DropdownMenu.Separator />
+				{/if}
 				<DropdownMenu.Group>
 					<DropdownMenu.GroupHeading class="text-xs font-medium text-muted-foreground">
 						{g.label}

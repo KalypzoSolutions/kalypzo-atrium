@@ -1,11 +1,11 @@
 /** Datensicherung: `insertRows` (json_populate_recordset) unter PGlite – Typen, FK-Filter, Konflikte, Eigenbezug. */
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { sql } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb } from '$lib/server/core/database/client';
 import { insertRows } from '$lib/server/core/backup/insert';
 import { loadTableInfo, sortRowsSelfRef } from '$lib/server/core/backup/introspect';
 import type { TableInfo } from '$lib/server/core/backup/types';
+import { getDb } from '$lib/server/core/database/client';
+import { useTestDatabase } from '../helpers/db';
 
 let close: () => Promise<void>;
 let tables: Map<string, TableInfo>;

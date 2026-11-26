@@ -4,8 +4,8 @@
  */
 import { sql } from 'drizzle-orm';
 import type { DbOrTx } from '../database/client';
-import type { ColumnInfo, ForeignKeyInfo, TableInfo } from './types';
 import { rowsOf } from '../database/rows';
+import type { ColumnInfo, ForeignKeyInfo, TableInfo } from './types';
 
 /** Erlaubte SQL-Bezeichner (Schemas, Tabellen, Spalten) */
 export const IDENTIFIER = /^[a-z_][a-z0-9_]*$/;

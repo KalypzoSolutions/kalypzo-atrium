@@ -1,9 +1,10 @@
 /** Zugriff auf die Datensicherung: Recht `core.system.backup`, nur angemeldete Benutzer (keine API-Keys). */
+
+import { localized, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { errors } from '../errors';
-import { requirePermission } from '../permissions/service';
 import { allDefinitions } from '../modules/registry';
-import { localized, t } from '$lib/i18n';
+import { requirePermission } from '../permissions/service';
 
 export async function requireBackupUser(ctx: RequestContext): Promise<string> {
 	await requirePermission(ctx, 'core.system.backup');

@@ -2,16 +2,16 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { eq, sql } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
-import { syncModules } from '$lib/server/core/modules/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
+import { getDb, schema } from '$lib/server/core/database/client';
 import { listJobs, runJobNow, setJobClockForTests } from '$lib/server/core/jobs';
 import { HOUSEKEEPING_BATCH } from '$lib/server/core/jobs/housekeeping';
+import { syncModules } from '$lib/server/core/modules/service';
 import { setSetting } from '$lib/server/core/settings/service';
-import type { RequestContext } from '$lib/sdk/types';
+import { useTestDatabase } from '../helpers/db';
 
 // Core-Job `core.housekeeping`: Aufbewahrungsfristen für api_log und audit_log (Migration 0007).
 

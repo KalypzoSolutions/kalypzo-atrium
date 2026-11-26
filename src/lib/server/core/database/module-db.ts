@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { moduleSchemaName } from '../modules/types';
-import { getDb, type Db, type Tx } from './client';
+import { type Db, getDb, type Tx } from './client';
 
 export interface ModuleDatabase {
 	/** PostgreSQL-Schema des Moduls (`mod_<id>`) */

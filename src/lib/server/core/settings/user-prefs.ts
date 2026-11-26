@@ -1,12 +1,12 @@
 import { and, eq, inArray } from 'drizzle-orm';
+import { styleString, themeCssVars } from '$lib/appearance/css';
+import { resolveTheme } from '$lib/appearance/presets';
 import {
 	activeThemeSchema,
 	parseFavorites,
 	parseUserThemes,
 	type UserTheme
 } from '$lib/appearance/schema';
-import { styleString, themeCssVars } from '$lib/appearance/css';
-import { resolveTheme } from '$lib/appearance/presets';
 import { getDb, schema } from '../database/client';
 
 export type Density = 'comfortable' | 'compact';

@@ -1,6 +1,6 @@
-import type { PdfBlock, PdfFormat, PdfMargins, PdfOrientation, PdfTableCell } from '$lib/sdk/types';
-import { sanitizeDocumentHtml } from '$lib/sdk/server/html';
 import { hasMessage, t } from '$lib/i18n';
+import { sanitizeDocumentHtml } from '$lib/sdk/server/html';
+import type { PdfBlock, PdfFormat, PdfMargins, PdfOrientation, PdfTableCell } from '$lib/sdk/types';
 import { errors } from '../errors';
 
 export function escapeHtml(value: string): string {
@@ -222,7 +222,7 @@ export function placeRows(rows: PdfTableCell[][], n: number): PlacedCell[][] {
 				bold: spec.bold === true
 			});
 		}
-		for (col = 0; col < n;) {
+		for (col = 0; col < n; ) {
 			if (busy[col]! > 0) col++;
 			else push({ col, colspan: 1, rowspan: 1, text: '', bold: false });
 		}

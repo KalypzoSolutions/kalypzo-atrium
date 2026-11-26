@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
-	import { enhance } from '$app/forms';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
+	import { untrack } from 'svelte';
+	import { enhance } from '$app/forms';
+	import { FormField, NumberStepper } from '$lib/components/layout';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -12,10 +13,9 @@
 	import { Input } from '$lib/components/ui/input';
 	import { SelectField } from '$lib/components/ui/select-field';
 	import { Switch } from '$lib/components/ui/switch';
-	import { FormField, NumberStepper } from '$lib/components/layout';
 	import { LOCALE_LABELS, LOCALES, t } from '$lib/i18n';
 	import { formatNumber } from '$lib/i18n/intl';
-	import { theme, type ThemeChoice } from '$lib/theme.svelte';
+	import { type ThemeChoice, theme } from '$lib/theme.svelte';
 	import { cn } from '$lib/utils';
 	import { submitter } from './actions';
 	import ThemesCard from './ThemesCard.svelte';
@@ -92,7 +92,8 @@
 
 		<Card>
 			<CardHeader
-				><CardTitle class="font-semibold">{t('profile.appearance.colorScheme')}</CardTitle
+				><CardTitle class="font-semibold"
+					>{t('profile.appearance.colorScheme')}</CardTitle
 				></CardHeader
 			>
 			<CardContent class="max-w-2xl space-y-6">
@@ -124,7 +125,9 @@
 						{/each}
 					</div>
 				</fieldset>
-				{#if themeChanged}<input type="hidden" name="theme" value={picked} />{/if}
+				{#if themeChanged}
+					<input type="hidden" name="theme" value={picked} />
+				{/if}
 
 				<div class="grid gap-3">
 					<div class="flex flex-wrap items-center gap-3">
@@ -145,7 +148,8 @@
 							size="sm"
 							class="self-end"
 							disabled={accent === null}
-							onclick={() => (accent = null)}>{t('profile.appearance.reset')}</Button
+							onclick={() => (accent = null)}
+							>{t('profile.appearance.reset')}</Button
 						>
 					</div>
 					<input type="hidden" name="accentColor" value={accent ?? ''} />

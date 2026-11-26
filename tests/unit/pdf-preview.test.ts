@@ -10,8 +10,8 @@ vi.mock('$lib/server/core/storage', () => ({
 	readFileByIdUnchecked: async () => null
 }));
 
-import * as pdf from '$lib/server/core/pdf';
 import type { RenderOptions } from '$lib/server/core/pdf';
+import * as pdf from '$lib/server/core/pdf';
 
 let rendered: { html: string; options: RenderOptions } | undefined;
 let previewHtml: string | undefined;

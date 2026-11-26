@@ -11,9 +11,9 @@ vi.mock('$lib/server/core/storage', () => ({
 	readFileByIdUnchecked: async () => null
 }));
 
+import type { PdfBlock } from '$lib/sdk/types';
 import * as pdf from '$lib/server/core/pdf';
 import { getTemplate, renderBlocks } from '$lib/server/core/pdf/templates';
-import type { PdfBlock } from '$lib/sdk/types';
 
 async function makePdf(pages: number): Promise<Uint8Array> {
 	const d = await PDFDocument.create();

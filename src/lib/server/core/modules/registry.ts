@@ -1,16 +1,16 @@
-import { localized, t, type LocalizedText, type MessageParams } from '$lib/i18n';
+import { type LocalizedText, localized, type MessageParams, t } from '$lib/i18n';
 import type { ModuleManifest, ResolvedModuleManifest } from '$lib/sdk/types';
-import { PERMISSION_PATTERN } from '../permissions/catalog';
-import { errors } from '../errors';
-import { NOTIFICATION_KEY_PATTERN, allowedChannels } from '$lib/sdk/types/notifications';
-import { MODULE_ID_PATTERN, RESERVED_MODULE_IDS, type ModuleDefinition } from './types';
-import { CORE_VERSION } from '../version';
 import {
 	AGENDA_KIND_PATTERN,
 	CORE_AGENDA_KINDS,
 	DASHBOARD_AGENDA_STYLES
 } from '$lib/sdk/types/dashboard';
-import { parseModulePackage, versionSatisfies, type ModulePackage } from './package/schema';
+import { allowedChannels, NOTIFICATION_KEY_PATTERN } from '$lib/sdk/types/notifications';
+import { errors } from '../errors';
+import { PERMISSION_PATTERN } from '../permissions/catalog';
+import { CORE_VERSION } from '../version';
+import { type ModulePackage, parseModulePackage, versionSatisfies } from './package/schema';
+import { MODULE_ID_PATTERN, type ModuleDefinition, RESERVED_MODULE_IDS } from './types';
 
 /**
  * Build-Zeit-Registrierung. Hier wird nur bekannt gemacht, WELCHE Module im Build enthalten

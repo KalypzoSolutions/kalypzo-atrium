@@ -1,9 +1,4 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { page } from '$app/state';
-	import { toast } from 'svelte-sonner';
-	import type { SubmitFunction } from '@sveltejs/kit';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import DramaIcon from '@lucide/svelte/icons/drama';
@@ -11,6 +6,11 @@
 	import MonitorIcon from '@lucide/svelte/icons/monitor';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import SmartphoneIcon from '@lucide/svelte/icons/smartphone';
+	import type { SubmitFunction } from '@sveltejs/kit';
+	import { toast } from 'svelte-sonner';
+	import { enhance } from '$app/forms';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		ConfirmDialog,
 		DataTable,
@@ -40,8 +40,8 @@
 		formatRelative
 	} from '$lib/i18n/intl';
 	import { describeUserAgent } from '$lib/user-agent';
-	import ActivityChart from './ActivityChart.svelte';
 	import type { PageData } from './$types';
+	import ActivityChart from './ActivityChart.svelte';
 
 	let { data }: { data: PageData } = $props();
 	const u = $derived(data.user);
@@ -183,19 +183,26 @@
 	<div class="-mt-3 flex flex-wrap items-center gap-3">
 		<EntityAvatar name={u.name} src={u.image} size={40} />
 		<div class="flex flex-wrap gap-1">
-			{#if u.active}<Badge variant="success">{t('admin-users.active')}</Badge>{:else}<Badge
-					variant="destructive">{t('admin-users.inactive')}</Badge
-				>{/if}
-			{#if !u.emailVerified}<Badge variant="warning">{t('admin-users.emailUnverified')}</Badge>{/if}
+			{#if u.active}
+				<Badge variant="success">{t('admin-users.active')}</Badge>
+			{:else}
+				<Badge variant="destructive">{t('admin-users.inactive')}</Badge>
+			{/if}
+			{#if !u.emailVerified}
+				<Badge variant="warning">{t('admin-users.emailUnverified')}</Badge>
+			{/if}
 			<Badge variant="outline"
 				>{u.twoFactorEnabled ? t('admin-users.twoFactorOn') : t('admin-users.twoFactorOff')}</Badge
 			>
-			{#if u.mustChangePassword}<Badge variant="info">{t('admin-users.detail.mustChange')}</Badge
-				>{/if}
-			{#if data.targetIsAdmin}<Badge variant="outline"
-					>{t('admin-users.detail.administrator')}</Badge
-				>{/if}
-			{#each u.roles as r (r.id)}<Badge variant="secondary">{r.name}</Badge>{/each}
+			{#if u.mustChangePassword}
+				<Badge variant="info">{t('admin-users.detail.mustChange')}</Badge>
+			{/if}
+			{#if data.targetIsAdmin}
+				<Badge variant="outline">{t('admin-users.detail.administrator')}</Badge>
+			{/if}
+			{#each u.roles as r (r.id)}
+				<Badge variant="secondary">{r.name}</Badge>
+			{/each}
 		</div>
 	</div>
 
@@ -308,9 +315,11 @@
 									</span>
 									<span class="text-xs text-muted-foreground tabular-nums">
 										{formatDateTime(new Date(i.startedAt))}
-										{#if !i.endedAt}<Badge variant="warning"
+										{#if !i.endedAt}
+											<Badge variant="warning"
 												>{t('admin-users.detail.impersonationRunning')}</Badge
-											>{/if}
+											>
+										{/if}
 									</span>
 								</li>
 							{/each}
@@ -398,7 +407,8 @@
 											t('admin-users.detail.revokeAllDescription', { name: u.name }),
 											t('admin-users.detail.revokeAll'),
 											true
-										)}>{t('admin-users.detail.revokeAll')}</Button
+										)}
+									>{t('admin-users.detail.revokeAll')}</Button
 								>
 							</form>
 						</Card.Action>
@@ -475,7 +485,8 @@
 											t('admin-users.detail.sendResetTitle'),
 											t('admin-users.detail.sendResetDescription', { email: u.email }),
 											t('admin-users.detail.sendReset')
-										)}>{t('admin-users.detail.sendReset')}</Button
+										)}
+									>{t('admin-users.detail.sendReset')}</Button
 								>
 							</form>
 							<form
@@ -491,10 +502,9 @@
 								variant="outline"
 								disabled={busy}
 								onclick={() => (
-									(generated = null),
-									(passwordMode = 'generate'),
-									(passwordOpen = true)
-								)}><KeyRoundIcon />{t('admin-users.detail.setPassword')}</Button
+									(generated = null), (passwordMode = 'generate'), (passwordOpen = true)
+								)}
+								><KeyRoundIcon />{t('admin-users.detail.setPassword')}</Button
 							>
 							{#if data.can.invite && !s.lastLoginAt}
 								<form method="POST" action="?/invite" bind:this={inviteForm} use:enhance={submit()}>
@@ -520,7 +530,8 @@
 											variant="outline"
 											size="icon"
 											aria-label={t('admin-users.detail.copy')}
-											onclick={() => copy(resetLink!)}><CopyIcon /></Button
+											onclick={() => copy(resetLink!)}
+											><CopyIcon /></Button
 										>
 									</div>
 								</AlertDescription>
@@ -554,7 +565,8 @@
 											t('admin-users.detail.resetTwoFactorDescription', { name: u.name }),
 											t('admin-users.detail.resetTwoFactor'),
 											true
-										)}>{t('admin-users.detail.resetTwoFactor')}</Button
+										)}
+									>{t('admin-users.detail.resetTwoFactor')}</Button
 								>
 							</form>
 						{/if}
@@ -584,7 +596,8 @@
 											t('admin-users.detail.deactivateDescription', { name: u.name }),
 											t('admin-users.deactivate'),
 											true
-										)}>{t('admin-users.deactivate')}</Button
+										)}
+									>{t('admin-users.deactivate')}</Button
 								>
 							{:else}
 								<Button type="submit" variant="outline" disabled={busy}
@@ -608,7 +621,8 @@
 												t('admin-users.deleteDetails'),
 											t('admin-users.deleteConfirm'),
 											true
-										)}>{t('admin-users.delete')}</Button
+										)}
+									>{t('admin-users.delete')}</Button
 								>
 							</form>
 						{/if}
@@ -670,7 +684,9 @@
 	<div class="rounded-lg border bg-card p-4">
 		<dt class="text-xs text-muted-foreground">{label}</dt>
 		<dd class="mt-1 text-lg font-semibold tabular-nums">{value}</dd>
-		{#if sub}<dd class="text-xs text-muted-foreground">{sub}</dd>{/if}
+		{#if sub}
+			<dd class="text-xs text-muted-foreground">{sub}</dd>
+		{/if}
 	</div>
 {/snippet}
 
@@ -678,8 +694,8 @@
 	bind:open={
 		() => !!confirm,
 		(v) => {
-			if (!v) confirm = null;
-		}
+		if (!v) confirm = null;
+	}
 	}
 	title={confirm?.title ?? ''}
 	description={confirm?.description}
@@ -713,7 +729,8 @@
 							variant="outline"
 							size="icon"
 							aria-label={t('admin-users.detail.copy')}
-							onclick={() => copy(generated!)}><CopyIcon /></Button
+							onclick={() => copy(generated!)}
+							><CopyIcon /></Button
 						>
 					</div>
 				</AlertDescription>
@@ -741,7 +758,8 @@
 						{ value: 'manual', label: t('admin-users.detail.modeManual') }
 					]}
 					bind:value={
-						() => passwordMode, (v) => (passwordMode = v === 'manual' ? 'manual' : 'generate')
+						() => passwordMode,
+						(v) => (passwordMode = v === 'manual' ? 'manual' : 'generate')
 					}
 				/>
 				{#if passwordMode === 'manual'}

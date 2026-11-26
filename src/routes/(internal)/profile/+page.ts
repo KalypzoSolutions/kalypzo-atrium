@@ -1,6 +1,6 @@
+import { moduleUiLoader } from '$lib/sdk/client/module-ui-registry';
 import { selectProfileSections } from '$lib/sdk/client/profile-sections';
 import type { ProfileSection } from '$lib/sdk/types/module-ui';
-import { moduleUiLoader } from '$lib/sdk/client/module-ui-registry';
 import type { PageLoad } from './$types';
 
 /**

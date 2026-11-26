@@ -7,9 +7,9 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, rm, stat, statfs } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join, normalize } from 'node:path';
+import { t } from '$lib/i18n';
 import { errors } from '../errors';
 import { BACKUP_LIMITS } from './types';
-import { t } from '$lib/i18n';
 
 const EXT = /^\.[a-z0-9]{1,16}$/;
 

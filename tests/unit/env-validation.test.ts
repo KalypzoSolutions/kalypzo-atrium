@@ -1,7 +1,7 @@
-import { join } from 'node:path';
 import { describe, expect, it } from 'bun:test';
-import { BUILD_PLACEHOLDER_SECRET, parseEnv } from '../../src/lib/server/core/env';
+import { join } from 'node:path';
 import { resolveBackupTempDir } from '../../src/lib/server/core/backup/tempfiles';
+import { BUILD_PLACEHOLDER_SECRET, parseEnv } from '../../src/lib/server/core/env';
 
 const SECRET = 'Zk3r9-QpLw7xVb2NmT8yHc4JdF6sGa1E';
 

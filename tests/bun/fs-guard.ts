@@ -56,8 +56,7 @@ const real = {
 
 const rmSync: typeof fs.rmSync = (p, o) => (check('rmSync', p), real.rmSync(p, o));
 const rmdirSync: typeof fs.rmdirSync = (p, o?: fs.RmDirOptions) => (
-	check('rmdirSync', p),
-	(real.rmdirSync as (...a: unknown[]) => void)(p, o)
+	check('rmdirSync', p), (real.rmdirSync as (...a: unknown[]) => void)(p, o)
 );
 const rm = ((p: fs.PathLike, ...rest: unknown[]) => {
 	check('rm', p);
@@ -69,8 +68,7 @@ const rmdir = ((p: fs.PathLike, ...rest: unknown[]) => {
 }) as typeof fs.rmdir;
 const rmAsync: typeof fsp.rm = async (p, o) => (check('rm', p), real.rmAsync(p, o));
 const rmdirAsync: typeof fsp.rmdir = async (p, o?: fs.RmDirOptions) => (
-	check('rmdir', p),
-	(real.rmdirAsync as (...a: unknown[]) => Promise<void>)(p, o)
+	check('rmdir', p), (real.rmdirAsync as (...a: unknown[]) => Promise<void>)(p, o)
 );
 
 const promises = { ...real.fsp, rm: rmAsync, rmdir: rmdirAsync };

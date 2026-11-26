@@ -1,9 +1,9 @@
 <script lang="ts">
+	import ChartBar from '@lucide/svelte/icons/chart-bar';
+	import { onMount } from 'svelte';
+	import { DashboardCard } from '$lib/components/layout';
 	import { t } from '$lib/i18n';
 	import { formatNumber } from '$lib/i18n/intl';
-	import { onMount } from 'svelte';
-	import ChartBar from '@lucide/svelte/icons/chart-bar';
-	import { DashboardCard } from '$lib/components/layout';
 	import type { DashboardWidgetProps } from '$lib/sdk/types/module-ui';
 	import { loadCoreDashboard } from './core-data';
 

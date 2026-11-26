@@ -2,8 +2,9 @@
  * Gemeinsame Server-Loads der Seiten hinter dem Login: `(internal)`-Layout und schlanke Embed-Seiten
  * (`/embed/<modul>/…`) teilen Login-Pflicht, Theme-Abgleich und den Guard der Modul-Oberfläche.
  */
+
+import { type Cookies, error, redirect } from '@sveltejs/kit';
 import { localized, t } from '$lib/i18n';
-import { error, redirect, type Cookies } from '@sveltejs/kit';
 import type { RequestContext } from '$lib/sdk/types';
 import { getDefinition } from './modules/registry';
 import { isModuleEnabled } from './modules/service';

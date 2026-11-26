@@ -2,6 +2,8 @@
  * Prompt-Bau der Schreibhilfe (reine Funktionen). Inhalte der Person stehen zwischen `<<<` und `>>>`
  * und gelten als Daten, nicht als Anweisungen (Schutz vor Anweisungen in eingegangenen Mails).
  */
+
+import { getLocale, type Locale, tl } from '$lib/i18n';
 import {
 	ASSIST_LIST_TASKS,
 	ASSIST_VARIANT_TASKS,
@@ -9,7 +11,6 @@ import {
 	type AssistFormat,
 	type AssistTask
 } from '$lib/sdk/types/assist';
-import { getLocale, tl, type Locale } from '$lib/i18n';
 import type { ModuleAssistPurpose } from '../../modules/types';
 
 export interface AssistStyle {

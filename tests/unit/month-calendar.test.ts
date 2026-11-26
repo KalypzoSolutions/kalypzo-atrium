@@ -3,6 +3,7 @@ import {
 	addDays,
 	buildAgenda,
 	buildMonthGrid,
+	type CalendarItem,
 	calendarItemKey,
 	contrastTextColor,
 	describeItem,
@@ -12,8 +13,7 @@ import {
 	itemsOnDay,
 	layoutWeek,
 	shiftMonth,
-	weekdayIndex,
-	type CalendarItem
+	weekdayIndex
 } from '../../src/lib/components/layout/month-calendar';
 
 const item = (id: string, startsOn: string, endsOn?: string, extra: Partial<CalendarItem> = {}) =>

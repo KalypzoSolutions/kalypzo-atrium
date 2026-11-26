@@ -4,25 +4,25 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'bun:test';
 import { eq, sql } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
-import { contextForUser } from '$lib/server/core/auth/context';
-import { bootstrapAdmin } from '$lib/server/core/auth/users';
-import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
-import { enableModule, syncModules } from '$lib/server/core/modules/service';
+import { defineModule } from '$lib/sdk/server';
+import type { RequestContext } from '$lib/sdk/types';
 import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { handleApiRequest } from '$lib/server/core/api/router';
 import { createApiKey } from '$lib/server/core/api/keys';
 import { defineEndpoint } from '$lib/server/core/api/registry';
-import { createRole, updateRole } from '$lib/server/core/permissions/roles';
+import { handleApiRequest } from '$lib/server/core/api/router';
+import { contextForUser } from '$lib/server/core/auth/context';
+import { bootstrapAdmin } from '$lib/server/core/auth/users';
+import { getDb, schema } from '$lib/server/core/database/client';
 import {
 	LEGACY_JOB_MESSAGE,
 	listJobs,
 	neutralizeLegacyJobMessages,
 	runJobNow
 } from '$lib/server/core/jobs';
-import { defineModule } from '$lib/sdk/server';
-import type { RequestContext } from '$lib/sdk/types';
+import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
+import { enableModule, syncModules } from '$lib/server/core/modules/service';
+import { createRole, updateRole } from '$lib/server/core/permissions/roles';
+import { useTestDatabase } from '../helpers/db';
 
 /** Erkennbarer Parameterwert, der nirgends auftauchen darf */
 const MARKER = 'GEHEIM-Geburtsdatum-2014-03-07';

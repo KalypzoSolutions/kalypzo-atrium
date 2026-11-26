@@ -16,22 +16,24 @@
  */
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { sql, type SQL } from 'drizzle-orm';
+import { type SQL, sql } from 'drizzle-orm';
+import { localized, t } from '$lib/i18n';
 import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../audit/service';
 import { getAuth } from '../auth';
+import { systemContext } from '../auth/context';
 import { decryptSecret, keyedHash } from '../crypto';
 import { getDb, type Tx } from '../database/client';
-import { CoreError, errors, isCoreError } from '../errors';
+import { type Row, rowsOf } from '../database/rows';
+import { type CoreError, errors, isCoreError } from '../errors';
 import { pauseJobs, resumeJobs, runJobNow } from '../jobs';
-import { systemContext } from '../auth/context';
-import { allDefinitions, getDefinition, notifyModuleDataReplaced } from '../modules/registry';
 import {
 	acceptedMigrationChecksums,
 	coreMigrationIdentifiers,
 	migrationChecksum,
 	readCoreMigrationFiles
 } from '../modules/migration-checksum';
+import { allDefinitions, getDefinition, notifyModuleDataReplaced } from '../modules/registry';
 import { isModuleEnabled, runModuleMigrations } from '../modules/service';
 import { invalidateModuleStateCache } from '../modules/state';
 import { moduleSchemaName } from '../modules/types';
@@ -48,15 +50,15 @@ import { moduleDeleteOrder } from '../system/reset-areas';
 import { adminOnlyRestoreScopes, requireBackupUser } from './access';
 import {
 	ACCOUNT_GUARD_TABLES,
+	type AccountAssessment,
 	assessAccount,
 	collectAccountRow,
-	newAccountGuardData,
-	type AccountAssessment
+	newAccountGuardData
 } from './account-guard';
 import { readArchive } from './archive';
 import { checkCompat, tableScopes } from './compat';
 import { decryptEnvelope, deriveEnvelopeKey, readEnvelopeHeader } from './envelope';
-import { insertRows, type InsertRow } from './insert';
+import { type InsertRow, insertRows } from './insert';
 import {
 	IDENTIFIER,
 	isNullableForeignKey,
@@ -67,38 +69,36 @@ import {
 import { collect, hashingSource } from './io';
 import { listBackupScopes, moduleInsertOrder, planTables, resolveScopes } from './scopes';
 import { decodeRowSecrets, keyCheckMatches } from './secrets';
-import { dropUpload, holdUpload, uploadPath } from './uploads';
 import {
+	type AnalyzeInput,
+	type ArchiveEntry,
 	analyzeInput,
 	BACKUP_LIMITS,
 	BackupFormatError,
+	type BackupMeta,
+	type BackupScopeInfo,
+	type ByteSource,
 	backupMeta,
-	confirmWord,
-	isConfirmWord,
+	type Checksums,
 	checksums as checksumsSchema,
+	confirmWord,
 	dataEntryName,
 	ENTRY_CHECKSUMS,
 	ENTRY_DATA,
 	ENTRY_FILE,
 	ENTRY_META,
-	executeInput,
-	type AnalyzeInput,
-	type ArchiveEntry,
-	type BackupMeta,
-	type BackupScopeInfo,
-	type ByteSource,
-	type Checksums,
 	type EnvelopeHeader,
 	type ExecuteInput,
+	executeInput,
 	type ForeignKeyInfo,
+	isConfirmWord,
 	type PreviewScope,
 	type RestorePreview,
 	type RestoreResult,
 	type RunStatus,
 	type TableInfo
 } from './types';
-import { rowsOf, type Row } from '../database/rows';
-import { localized, t } from '$lib/i18n';
+import { dropUpload, holdUpload, uploadPath } from './uploads';
 
 export { appendUpload, createUpload } from './uploads';
 

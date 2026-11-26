@@ -10,15 +10,15 @@ import {
 	HeadObjectCommand,
 	PutObjectCommand
 } from '@aws-sdk/client-s3';
+import type { RequestContext } from '$lib/sdk/types';
 import { setSetting } from '$lib/server/core/settings/service';
 import {
-	setFileRepoForTests,
-	setS3ClientFactoryForTests,
 	type FileRepo,
 	type FileRow,
-	type S3Handle
+	type S3Handle,
+	setFileRepoForTests,
+	setS3ClientFactoryForTests
 } from '$lib/server/core/storage';
-import type { RequestContext } from '$lib/sdk/types';
 
 const objects = new Map<string, { body: Uint8Array; contentType?: string }>();
 const rows = new Map<string, FileRow>();

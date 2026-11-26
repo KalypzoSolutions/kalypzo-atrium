@@ -24,15 +24,15 @@ import { formatModuleSource } from '../package/schema';
 import { allDefinitions, getDefinition } from '../registry';
 import { invalidateModuleStateCache } from '../state';
 import { moduleSchemaName } from '../types';
-import { contentHash, readModuleArchive, type ArchiveFiles } from './archive';
+import { type ArchiveFiles, contentHash, readModuleArchive } from './archive';
 import { discoverModules } from './discover';
 import { downloadGithubArchive, resolveGithubSource } from './github';
 import { assertInstaller, installStatus, runtimeModulesDir } from './service';
 import {
 	cachedUpload,
+	type LockEntry,
 	requestSupervisorBuild,
-	supervisorDataDir,
-	type LockEntry
+	supervisorDataDir
 } from './supervisor-link';
 
 const MODULE_ID = /^[a-z][a-z0-9-]{1,30}$/;

@@ -1,8 +1,8 @@
 import { UPLOAD_CHUNK_BYTES } from '$lib/backup/contract';
+import { t } from '$lib/i18n';
 import { appendUpload } from '$lib/server/core/backup/restore';
 import { failure, guard, ok, problem } from '../../../http.server';
 import type { RequestHandler } from './$types';
-import { t } from '$lib/i18n';
 
 /**
  * Ein Stück der Sicherungsdatei anhängen: PUT `?offset=<n>` mit `application/octet-stream`

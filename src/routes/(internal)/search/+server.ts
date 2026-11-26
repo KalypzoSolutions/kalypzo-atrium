@@ -1,5 +1,5 @@
-import { t } from '$lib/i18n';
 import { json } from '@sveltejs/kit';
+import { t } from '$lib/i18n';
 import { searchEverything } from '$lib/server/core/search/service';
 import type { RequestHandler } from './$types';
 

@@ -9,11 +9,12 @@
  * Warum nicht per Laufzeit-Plugin? Bun ruft `onLoad` zur Laufzeit unter Windows nicht auf allen Laufwerken auf;
  * Bundler-Plugins sind davon nicht betroffen.
  */
-import { compile, compileModule } from 'svelte/compiler';
-import type { Component } from 'svelte';
+
 import { mkdirSync, readFileSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import type { Component } from 'svelte';
+import { compile, compileModule } from 'svelte/compiler';
 
 const ROOT = resolve(import.meta.dir, '..', '..');
 const OUT = join(ROOT, '.svelte-kit', 'bun-svelte');

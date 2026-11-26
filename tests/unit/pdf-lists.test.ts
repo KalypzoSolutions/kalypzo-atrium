@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'bun:test';
 import {
+	buildListBlocks,
+	buildSectionedListBlocks,
 	CUSTOM_PRESET_ID,
+	columnWidthsMm,
+	estimatePages,
 	LIST_MAX_COLUMNS,
 	LIST_PAGE_WIDTH_MM,
 	LIST_PRESET_KEYS,
-	buildListBlocks,
-	buildSectionedListBlocks,
-	columnWidthsMm,
-	estimatePages,
+	type ListColumn,
+	type ListPreset,
 	normalizeSelection,
 	presetColumns,
-	selectionHasSensitive,
 	selectedColumns,
-	visibleColumns,
-	type ListColumn,
-	type ListPreset
+	selectionHasSensitive,
+	visibleColumns
 } from '../../src/lib/pdf-lists';
 
 const col = (key: string, extra: Partial<ListColumn> = {}): ListColumn => ({

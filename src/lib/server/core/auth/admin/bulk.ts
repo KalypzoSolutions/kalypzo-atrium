@@ -2,19 +2,20 @@
  * Sammelaktionen und CSV-Export für die Benutzerliste. Jede Zeile läuft durch dieselben Funktionen wie die
  * Einzelaktion (Rechte, `assertCanManageUser`, Audit je Konto); Fehler einzelner Konten brechen nicht ab.
  */
-import type { RequestContext } from '$lib/sdk/types';
+
 import { t } from '$lib/i18n';
 import { csvDocument } from '$lib/sdk/csv';
+import type { RequestContext } from '$lib/sdk/types';
 import { auditFromContext } from '../../audit/service';
 import { errors, isCoreError } from '../../errors';
 import { requirePermission } from '../../permissions/service';
 import {
 	getUser,
 	listUsers,
-	updateUserFull,
 	USER_IDS_MAX,
 	type UserListFilter,
-	type UserSort
+	type UserSort,
+	updateUserFull
 } from '../users';
 import { sendPasswordReset } from './password';
 import { revokeUserSessions } from './sessions';

@@ -7,6 +7,16 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } fro
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { eq, sql } from 'drizzle-orm';
+import type { RequestContext } from '$lib/sdk/types';
+import { setGithubFetchForTests } from '$lib/server/core/modules/install/github';
+import {
+	checkUpdates,
+	installDrift,
+	restoreFromDatabase,
+	syncInstallsFromLock,
+	uninstallModule
+} from '$lib/server/core/modules/install/manage';
+import { resetInstallSessionsForTests } from '$lib/server/core/modules/install/service';
 import {
 	adminContext,
 	disableModule,
@@ -20,16 +30,6 @@ import {
 	syncModules,
 	useTestDatabase
 } from '$testing';
-import { setGithubFetchForTests } from '$lib/server/core/modules/install/github';
-import {
-	checkUpdates,
-	installDrift,
-	restoreFromDatabase,
-	syncInstallsFromLock,
-	uninstallModule
-} from '$lib/server/core/modules/install/manage';
-import { resetInstallSessionsForTests } from '$lib/server/core/modules/install/service';
-import type { RequestContext } from '$lib/sdk/types';
 import boardModule from '../fixtures/modules/fx-board/module';
 import peopleModule from '../fixtures/modules/fx-people/module';
 import { filesOf, makeZip } from '../helpers/module-zip';

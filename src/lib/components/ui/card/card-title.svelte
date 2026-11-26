@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { cn, type WithElementRef } from '$lib/utils.js';
 	import type { HTMLAttributes } from 'svelte/elements';
+	import { cn, type WithElementRef } from '$lib/utils.js';
 
 	/**
 	 * Kartentitel als echte Überschrift (#71, WCAG 1.3.1): Standard `h2`, Unterkarten/Karten in Dialogen `level={3}`,

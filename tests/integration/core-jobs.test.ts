@@ -1,9 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { useTestDatabase } from '../helpers/db';
-import { getDb, schema } from '$lib/server/core/database/client';
+import { defineModule } from '$lib/sdk/server';
+import type { RequestContext } from '$lib/sdk/types';
+import { registerCoreApi } from '$lib/server/core/api/endpoints';
 import { contextForUser } from '$lib/server/core/auth/context';
 import { bootstrapAdmin } from '$lib/server/core/auth/users';
+import { getDb, schema } from '$lib/server/core/database/client';
+import { listJobs, runDueJobs, runJobNow, setJobClockForTests } from '$lib/server/core/jobs';
 import { registerModule, unregisterModule } from '$lib/server/core/modules/registry';
 import {
 	disableModule,
@@ -11,10 +14,7 @@ import {
 	syncModules,
 	useOptionalModuleService
 } from '$lib/server/core/modules/service';
-import { registerCoreApi } from '$lib/server/core/api/endpoints';
-import { listJobs, runDueJobs, runJobNow, setJobClockForTests } from '$lib/server/core/jobs';
-import { defineModule } from '$lib/sdk/server';
-import type { RequestContext } from '$lib/sdk/types';
+import { useTestDatabase } from '../helpers/db';
 
 let admin: RequestContext;
 let adminId: string;
