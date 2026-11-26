@@ -3,7 +3,19 @@ import js from '@eslint/js';
 import svelte from 'eslint-plugin-svelte';
 import globals from 'globals';
 import ts from 'typescript-eslint';
+import { HOST_LIB_DIRS, HOST_LIB_FILES } from './tools/host-abi.js';
 import { CORE_ROOT, moduleIds, modulesDir } from './tools/modules-dir.js';
+
+/**
+ * Für Module freigegebene `$lib`-Bereiche – dieselbe Liste wie die Host-ABI (`tools/host-abi.js`), damit Lint-Regel
+ * und Modul-Compiler nicht auseinanderlaufen. Ergebnis z. B. `(sdk|forms|…|components/ui)(/|$)|utils([.](js|ts))?$`.
+ */
+const ALLOWED_LIB = [
+	`(${HOST_LIB_DIRS.map((d) => d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(/|$)`,
+	...HOST_LIB_FILES.map(
+		(f) => `${f.replace(/\.ts$/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([.](js|ts))?$`
+	)
+].join('|');
 
 /**
  * Offene Verstöße gegen die Modulgrenze (#44), je Datei die ausnahmsweise erlaubten Importpfade. Liegen in
@@ -115,8 +127,7 @@ function moduleRules(id, ids, allowed) {
 					},
 					{
 						// Alles unter $lib außer der freigegebenen Oberfläche ($modules regeln die Muster unten)
-						regex:
-							'^[$]lib/(?!(sdk|forms|pdf-lists|server|core)(/|$)|utils([.]js)?$|components/(ui|layout|forms)(/|$))',
+						regex: `^[$]lib/(?!(server|core)(/|$)|${ALLOWED_LIB})`,
 						message: `Nicht freigegebene $lib-Bibliothek für Module ${docs}.`
 					},
 					{

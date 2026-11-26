@@ -10,6 +10,8 @@ import { syncInstallsFromLock } from './modules/install/manage';
 import { seedSettingsFromEnv } from './settings/env-seed';
 import { installServerLocale, setSystemLocaleCache } from './i18n/locale';
 import { getSetting } from './settings/service';
+// Host-Registry für separat kompilierte Modul-Bundles (nur Lazy-Loader, lädt beim Import nichts)
+import 'virtual:atrium-host/server';
 
 let started: Promise<void> | undefined;
 let apiRegistered = false;

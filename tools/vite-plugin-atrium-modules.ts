@@ -2,8 +2,11 @@
  * Vite-Plugin: bindet die installierten Fachmodule aus `modulesDir()` ein (statt fester
  * `import.meta.glob`-Pfade unter `src/`).
  *
- * - `virtual:atrium-modules/server` – statische Importe aller `module.ts` (nur SSR), Export `entries`
- *   (`folder`, `definition`, `migrationFiles` = Namen der `migrations/*.sql` für die Konventionsprüfung)
+ * - `virtual:atrium-modules/server` – Lazy-Importe aller `module.ts` (nur SSR), Export `entries`
+ *   (`folder`, `load`, `migrationFiles` = Namen der `migrations/*.sql` für die Konventionsprüfung)
+ * - `virtual:atrium-host/{client,server}` – Host-Registry für separat kompilierte Modul-Bundles
+ *   (`tools/host-abi.js`, `$lib/host/registry.ts`): Lazy-Loader je geteiltem Paket bzw. freigegebener
+ *   `$lib`-Datei, Export `abi`
  * - `virtual:atrium-modules/ui` – Lazy-Loader aller `ui.ts`, Export `uiLoaders`, `moduleIds`
  * - `virtual:atrium-core/{messages,pdf-templates,fonts}` – Core-Texte und Briefvorlagen (`tools/core-virtual.ts`)
  * - `virtual:atrium-modules/messages` – Texte der Module (`messages/<sprache>.json`), Export default
@@ -23,6 +26,7 @@ import {
 	fontsSource,
 	pdfTemplatesSource
 } from './core-virtual.ts';
+import { LIB_DIR, hostAbiHash, hostGroupedEntries } from './host-abi.js';
 import { CORE_ROOT, moduleIds, modulesDir } from './modules-dir.js';
 
 const SERVER_ID = 'virtual:atrium-modules/server';
@@ -100,6 +104,63 @@ export function modulePackages(dir: string): string[] {
 	return [...out].sort();
 }
 
+type HostSide = 'client' | 'server';
+const hostMapId = (side: HostSide) => `virtual:atrium-host-map/${side}`;
+const hostGroupId = (side: HostSide, group: string) => `virtual:atrium-host-group/${side}/${group}`;
+
+/** Host-Registry einer Seite (klein, im Einstieg): Loader-Liste wird erst beim ersten `preload` geladen */
+export function hostSource(side: HostSide): string {
+	return [
+		`import { installHost } from ${JSON.stringify(`${LIB_DIR}/host/registry.ts`)};`,
+		`export const abi = ${JSON.stringify(hostAbiHash())};`,
+		`export const host = installHost(() => import(${JSON.stringify(hostMapId(side))}).then((m) => m.loaders), abi);`
+	].join('\n');
+}
+
+/** Loader-Liste: jeder Schlüssel lädt seine Gruppe (ein Chunk je Gruppe) und nimmt daraus seinen Namespace */
+export function hostMapSource(side: HostSide): string {
+	const lines: string[] = [];
+	for (const [group, entries] of hostGroupedEntries(side)) {
+		const id = JSON.stringify(hostGroupId(side, group));
+		entries.forEach(({ key }, i) =>
+			lines.push(`\t${JSON.stringify(key)}: () => import(${id}).then((g) => g.f${i})`)
+		);
+	}
+	return `export const loaders = {\n${lines.join(',\n')}\n};`;
+}
+
+/** Gruppenmodul: Namespaces aller Einträge der Gruppe (`export * as fN`, gleiche Instanzen wie im Core) */
+export function hostGroupSource(side: HostSide, group: string): string | null {
+	const entries = hostGroupedEntries(side).get(group);
+	if (!entries) return null;
+	return entries
+		.map(({ target }, i) => `export * as f${i} from ${JSON.stringify(target)};`)
+		.join('\n');
+}
+
+/** Alle virtuellen Host-Module (für den Bun-Testlauf, der Kennungen einzeln anmelden muss) */
+export function hostVirtualSources(): Record<string, () => string> {
+	const out: Record<string, () => string> = {};
+	for (const side of ['client', 'server'] as const) {
+		out[`virtual:atrium-host/${side}`] = () => hostSource(side);
+		out[hostMapId(side)] = () => hostMapSource(side);
+		for (const group of hostGroupedEntries(side).keys())
+			out[hostGroupId(side, group)] = () => hostGroupSource(side, group) ?? '';
+	}
+	return out;
+}
+
+/** Kennung eines virtuellen Host-Moduls → Quelltext (oder `undefined`, wenn keins) */
+function hostVirtualLoad(id: string, ssr: boolean): string | undefined {
+	const m = /^virtual:atrium-host(?:-(map|group))?\/(client|server)(?:\/(.+))?$/.exec(id);
+	if (!m) return undefined;
+	const [, kind, side, group] = m as unknown as [string, string | undefined, HostSide, string?];
+	if (side === 'server' && !ssr) throw new Error(`${id} ist nur auf dem Server verfügbar`);
+	if (kind === 'map') return hostMapSource(side);
+	if (kind === 'group') return hostGroupSource(side, group ?? '') ?? undefined;
+	return hostSource(side);
+}
+
 export function uiSource(dir: string): string {
 	const ids = moduleIds(dir).filter((id) => existsSync(join(dir, id, 'ui.ts')));
 	const entries = ids.map(
@@ -140,6 +201,7 @@ export function atriumModules(): Plugin {
 			if (id === SERVER_ID) return RESOLVED_SERVER;
 			if (id === UI_ID) return RESOLVED_UI;
 			if (id === MESSAGES_ID) return RESOLVED_MESSAGES;
+			if (id.startsWith('virtual:atrium-host')) return '\0' + id;
 			if (id === CORE_MESSAGES_ID || id === PDF_TEMPLATES_ID || id === FONTS_ID) return '\0' + id;
 		},
 		load(id, opts) {
@@ -148,6 +210,11 @@ export function atriumModules(): Plugin {
 				return serverSource(dir);
 			}
 			if (id === RESOLVED_UI) return uiSource(dir);
+			if (id.startsWith('\0virtual:atrium-host')) {
+				const source = hostVirtualLoad(id.slice(1), Boolean(opts?.ssr));
+				if (source === undefined) throw new Error(`Unbekanntes Host-Modul: ${id.slice(1)}`);
+				return source;
+			}
 			if (id === RESOLVED_MESSAGES) return messagesSource(dir);
 			if (id === '\0' + CORE_MESSAGES_ID) return coreMessagesSource();
 			if (id === '\0' + PDF_TEMPLATES_ID) return pdfTemplatesSource();

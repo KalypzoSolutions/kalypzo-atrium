@@ -26,7 +26,12 @@ import {
 	pdfTemplatesSource
 } from '../../tools/core-virtual.ts';
 import { CORE_ROOT, modulesDir } from '../../tools/modules-dir.js';
-import { messagesSource, serverSource, uiSource } from '../../tools/vite-plugin-atrium-modules.ts';
+import {
+	hostVirtualSources,
+	messagesSource,
+	serverSource,
+	uiSource
+} from '../../tools/vite-plugin-atrium-modules.ts';
 
 process.env.APP_SECRET = 'test-secret-test-secret-test-secret-1234';
 process.env.ORIGIN = 'http://localhost:5173';
@@ -48,6 +53,7 @@ plugin({
 			'virtual:atrium-modules/server': () => serverSource(MODULES),
 			'virtual:atrium-modules/ui': () => uiSource(MODULES),
 			'virtual:atrium-modules/messages': () => messagesSource(MODULES),
+			...hostVirtualSources(),
 			[CORE_MESSAGES_ID]: coreMessagesSource,
 			[PDF_TEMPLATES_ID]: pdfTemplatesSource,
 			[FONTS_ID]: fontsSource
