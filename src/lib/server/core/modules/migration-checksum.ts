@@ -76,19 +76,50 @@ export function readCoreMigrationFiles(folder: string): CoreMigrationFile[] {
 }
 
 /**
+ * Ersetzte Core-Migrationen: Fassungen, die auf einem früheren Entwicklungszweig unter demselben Journal-`when`
+ * ausgeliefert wurden und deren Schema eine spätere Migration (`coveredBy`) vollständig nachzieht. Sicherungen
+ * solcher Installationen tragen den alten Hash; er gilt als bekannt, sobald `coveredBy` angewendet ist.
+ */
+export const SUPERSEDED_CORE_MIGRATIONS: readonly {
+	tag: string;
+	when: number;
+	coveredBy: number;
+	/** kanonischer Hash (LF) und CRLF-Variante der ersetzten Datei */
+	hashes: readonly string[];
+}[] = [
+	{
+		// `extern`: 0014_module_updates (Commit 9c04849), auf `main` durch 0014_marketplace_cache ersetzt;
+		// 0015_module_updates_reconcile legt ihr Schema nach.
+		tag: '0014_module_updates',
+		when: 1793088000000,
+		coveredBy: 1793174400000,
+		hashes: [
+			'41ad0648ba3ffd14e556cf33e1ce600423eb175a6779ed4453975045ca210270',
+			'6b12ee611fe0bd8b4c4a524ade01554a0691076344fa8ea6144dcc42ccc0c195'
+		]
+	}
+];
+
+/**
  * Kennungen der angewendeten Core-Migrationen dieses Servers für den Abgleich mit einer Sicherung:
  * die gespeicherten Hashes plus alle gültigen Varianten (kanonisch, CRLF, roh) der lokalen Dateien,
  * deren `when` angewendet ist. So passt eine Sicherung aus einem CRLF-Build auch auf einen LF-Build.
+ * Dazu kommen ersetzte Fassungen (`SUPERSEDED_CORE_MIGRATIONS`), wenn ihre Nachfolge-Migration angewendet ist.
  */
 export function coreMigrationIdentifiers(
 	applied: { hash: string; createdAt: number | null }[],
-	files: CoreMigrationFile[]
+	files: CoreMigrationFile[],
+	superseded: typeof SUPERSEDED_CORE_MIGRATIONS = SUPERSEDED_CORE_MIGRATIONS
 ): string[] {
 	const ids = new Set(applied.map((a) => a.hash));
 	const times = new Set(applied.map((a) => a.createdAt).filter((t): t is number => t !== null));
 	for (const f of files) {
 		if (!times.has(f.when)) continue;
 		for (const h of acceptedMigrationChecksums(f.sql)) ids.add(h);
+	}
+	for (const s of superseded) {
+		if (!times.has(s.when) || !times.has(s.coveredBy)) continue;
+		for (const h of s.hashes) ids.add(h);
 	}
 	return [...ids];
 }
