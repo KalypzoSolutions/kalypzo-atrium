@@ -119,7 +119,8 @@ const SKIP = /\.(d|test|spec)\.ts$/;
 
 /**
  * Geteilte `$lib`-Dateien einer Seite, relativ zu `src/lib`, sortiert: Server alle freigegebenen Bereiche,
- * Browser nur `CLIENT_SHARED_LIB`.
+ * Browser nur `CLIENT_SHARED_LIB`. Gemessen (2026-11-26): zusätzlich `components/ui` zu teilen spart je Modul ~270 KB,
+ * macht aber **jede** Core-Seite schwerer (72 statt 17 Dateien, +110 KB) – deshalb nicht.
  * @param {HostSide} side
  * @param {string} [libDir]
  * @returns {string[]}

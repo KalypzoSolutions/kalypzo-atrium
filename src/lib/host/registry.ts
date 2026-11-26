@@ -18,8 +18,11 @@ export interface AtriumHost {
 	keys(): Promise<string[]>;
 	/** Lädt die Einträge (parallel); unbekannte Schlüssel → Fehler mit Liste */
 	preload(keys: readonly string[]): Promise<void>;
-	/** Vorgeladener Namespace; nicht vorgeladen oder unbekannt → Fehler */
-	get(key: string): Record<string, unknown>;
+	/**
+	 * Vorgeladener Namespace; nicht vorgeladen oder unbekannt → Fehler. `names`: Exporte, die das Bundle braucht –
+	 * fehlt einer (Core-Update hat ihn entfernt), gibt es sofort einen klaren Fehler statt später `undefined`.
+	 */
+	get(key: string, names?: readonly string[]): Record<string, unknown>;
 }
 
 declare global {
@@ -67,9 +70,14 @@ export function createHost(
 			if (unknown.length) throw new Error(`Nicht Teil der Host-ABI: ${unknown.join(', ')}`);
 			await Promise.all(keys.map((k) => load(m, k)));
 		},
-		get(key) {
+		get(key, names) {
 			const ns = loaded.get(key);
-			if (ns) return ns;
+			if (ns) {
+				const missing = (names ?? []).filter((n) => !(n in ns));
+				if (missing.length)
+					throw new Error(`Host-Modul „${key}“ hat keinen Export ${missing.join(', ')}`);
+				return ns;
+			}
 			throw new Error(
 				!map || Object.hasOwn(map, key)
 					? `Host-Modul „${key}“ wurde nicht vorgeladen`

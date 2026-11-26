@@ -111,6 +111,8 @@ describe('Registry', () => {
 		await h.preload(['a']);
 		expect(calls).toBe(1);
 		expect(h.get('a')).toEqual({ x: 1 });
+		expect(h.get('a', ['x'])).toEqual({ x: 1 });
+		expect(() => h.get('a', ['x', 'gone', 'weg'])).toThrow(/keinen Export gone, weg/);
 	});
 
 	it('Loader-Liste wird erst beim ersten Bedarf und nur einmal geladen', async () => {
