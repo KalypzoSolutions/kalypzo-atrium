@@ -64,10 +64,31 @@ export function bundlesRoot(): string | null {
 	return d ? resolve(d, 'bundles') : null;
 }
 
+/**
+ * Datei der aktiven Liste: `active.json`; im Probelauf des Supervisors die Kandidaten-Liste (`ATRIUM_BUNDLES_ACTIVE`,
+ * nur ein einfacher Dateiname)
+ */
+function activeFileName(): string {
+	const f = process.env.ATRIUM_BUNDLES_ACTIVE?.trim();
+	return f && /^[a-z0-9.-]+\.json$/.test(f) ? f : BUNDLE_ACTIVE_FILE;
+}
+
+/** Letzter Kompilierfehler je Modul (`failures.json` des Supervisors) */
+function readFailures(root: string): Record<string, { message?: string }> {
+	try {
+		return JSON.parse(readFileSync(join(root, 'failures.json'), 'utf8')) as Record<
+			string,
+			{ message?: string }
+		>;
+	} catch {
+		return {};
+	}
+}
+
 /** `active.json` lesen (fehlend/ungültig → keine Bundles) */
 export function readActiveBundles(root = bundlesRoot()): ActiveBundles {
 	if (!root) return { version: 1, modules: {} };
-	const file = join(root, BUNDLE_ACTIVE_FILE);
+	const file = join(root, activeFileName());
 	if (!existsSync(file)) return { version: 1, modules: {} };
 	try {
 		const data = JSON.parse(readFileSync(file, 'utf8')) as Partial<ActiveBundles>;
@@ -92,6 +113,7 @@ export function readActiveBundles(root = bundlesRoot()): ActiveBundles {
 export async function loadBundleModules(root = bundlesRoot()): Promise<string[]> {
 	if (!root) return [];
 	const out: string[] = [];
+	const failures = readFailures(root);
 	for (const [id, { dir }] of Object.entries(readActiveBundles(root).modules)) {
 		if (getDefinition(id) || loaded.has(id)) continue;
 		const bundleDir = join(root, dir);
@@ -112,7 +134,14 @@ export async function loadBundleModules(root = bundlesRoot()): Promise<string[]>
 			continue;
 		}
 		if (meta.abi !== hostAbi) {
-			broken({ key: 'modules.broken.bundleOutdated', params: {} }, meta.version);
+			// Neukompilieren für den neuen Core läuft (Supervisor) oder ist gescheitert – dann mit dessen Grund
+			const failed = failures[id]?.message;
+			broken(
+				failed
+					? { key: 'modules.broken.compileFailed', params: { error: failed.slice(0, 300) } }
+					: { key: 'modules.broken.bundleOutdated', params: {} },
+				meta.version
+			);
 			continue;
 		}
 		let definition: ModuleDefinition | undefined;

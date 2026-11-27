@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-// Modul-Installation mit echtem Neubau über den Supervisor (Kalypzo Atrium, Phase 6). Eigener Lauf, weil er zwei
-// Builds braucht (Basis + neue Generation): `bun run playwright test -c playwright.install.config.ts`.
+// Modul-Installation über den Supervisor: Modul kompilieren + Neustart, kein App-Neubau. Eigener Lauf, weil er einen
+// eigenen Basis-Build und den Supervisor braucht: `bun run playwright test -c playwright.install.config.ts`.
 process.env.TZ = 'Europe/Berlin';
 
 export default defineConfig({

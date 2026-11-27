@@ -1,5 +1,6 @@
 /**
- * Supervisor (Kalypzo Atrium, Phase 6) – reine Teile: Inhaltshash wie in der Vorschau, Lock-Datei, Modul-Pakete.
+ * Supervisor – reine Teile: Inhaltshash wie in der Vorschau, Planung der Bundle-Ablage (welche Module kompiliert,
+ * wiederverwendet, entfernt oder nach einem Core-Update neu kompiliert werden) und Verhalten bei Abstürzen.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -7,30 +8,51 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'bun:test';
 import { contentHash, readModuleArchive } from '$lib/server/core/modules/install/archive';
 import {
-	contentHashOfDir,
-	coreChanged,
-	crashDecision,
-	dedupeModulePackages,
-	mergeLock,
-	moduleFolders,
-	modulePackagesFor,
+	bundleBuildId,
+	planCompile,
+	readActive,
+	staleModules,
+	unreferencedBuilds,
+	writeJsonAtomic,
 	type LockEntry
-} from '../../scripts/supervisor/lib.mjs';
+} from '../../scripts/supervisor/bundles.mjs';
+import { contentHashOfDir, crashDecision, moduleFolders } from '../../scripts/supervisor/lib.mjs';
 import { filesOf, makeZip } from '../helpers/module-zip';
 
 const FIXTURES = join(__dirname, '..', 'fixtures', 'modules');
 const tmp = mkdtempSync(join(tmpdir(), 'atrium-sup-'));
-afterAll(() => rmSync(tmp, { recursive: true, force: true }));
+afterAll(() => {
+	if (tmp) rmSync(tmp, { recursive: true, force: true });
+});
 
-function moduleDir(id: string, npm: Record<string, string> = {}, version = '1.0.0') {
+const ABI = 'abi-0123456789abcdef';
+const NEW_ABI = 'abi-fedcba9876543210';
+const hash = (c: string) => `sha256-${c.repeat(64).slice(0, 64)}`;
+const entry = (c: string, version = '1.0.0'): LockEntry => ({
+	version,
+	sourceType: 'github',
+	source: {},
+	commit: 'x',
+	contentHash: hash(c)
+});
+
+function moduleDir(id: string) {
 	const dir = join(tmp, 'mods', id);
 	mkdirSync(dir, { recursive: true });
-	writeFileSync(
-		join(dir, 'atrium-module.json'),
-		JSON.stringify({ schema: 1, id, name: id, version, core: '*', npm })
-	);
+	writeFileSync(join(dir, 'atrium-module.json'), JSON.stringify({ schema: 1, id, name: id }));
 	writeFileSync(join(dir, 'module.ts'), 'export default {};');
 	return dir;
+}
+
+/** Bundle mit meta.json in eine Ablage legen */
+function bundle(root: string, id: string, c: string, abi: string) {
+	const build = bundleBuildId(hash(c), abi);
+	mkdirSync(join(root, id, build), { recursive: true });
+	writeFileSync(
+		join(root, id, build, 'meta.json'),
+		JSON.stringify({ id, abi, contentHash: hash(c) })
+	);
+	return `${id}/${build}`;
 }
 
 describe('contentHashOfDir', () => {
@@ -40,126 +62,161 @@ describe('contentHashOfDir', () => {
 		expect(contentHashOfDir(dir)).toBe(contentHash(files));
 	});
 
-	it('ignoriert node_modules', () => {
+	it('ignoriert node_modules; moduleFolders findet nur Ordner mit module.ts', () => {
 		const dir = moduleDir('hash-a');
 		const before = contentHashOfDir(dir);
 		mkdirSync(join(dir, 'node_modules', 'x'), { recursive: true });
 		writeFileSync(join(dir, 'node_modules', 'x', 'index.js'), 'x');
 		expect(contentHashOfDir(dir)).toBe(before);
+		mkdirSync(join(tmp, 'mods', 'ohne-module-ts'), { recursive: true });
+		expect(moduleFolders(join(tmp, 'mods'))).toEqual(['hash-a']);
 	});
 });
 
-describe('mergeLock', () => {
-	it('übernimmt den Auftrag, ergänzt fehlende Module als builtin und entfernt verschwundene', () => {
-		const mods = join(tmp, 'mods');
-		moduleDir('lock-a');
-		moduleDir('lock-b', {}, '2.0.0');
-		const prev: { modules: Record<string, LockEntry> } = {
-			modules: {
-				'lock-a': {
-					version: '0.9.0',
-					sourceType: 'github',
-					source: {},
-					commit: 'x',
-					contentHash: 'h'
-				},
-				gone: { version: '1.0.0', sourceType: 'github', source: {}, commit: 'y', contentHash: 'z' }
-			}
-		};
-		const req: { modules: Record<string, LockEntry>; remove: string[] } = {
-			modules: {
-				'lock-a': {
-					version: '1.0.0',
-					sourceType: 'upload',
-					source: { fileName: 'a.zip' },
-					commit: null,
-					contentHash: 'neu'
-				}
-			},
-			remove: []
-		};
-		const lock = mergeLock(prev, req, mods, '2.0.0-pre.1');
-		expect(lock.core).toBe('2.0.0-pre.1');
-		expect(lock.modules['lock-a']).toMatchObject({ version: '1.0.0', sourceType: 'upload' });
-		expect(lock.modules['lock-b']).toMatchObject({ version: '2.0.0', sourceType: 'builtin' });
-		expect(lock.modules['lock-b']!.contentHash).toMatch(/^sha256-/);
-		expect(lock.modules.gone).toBeUndefined();
+describe('bundleBuildId', () => {
+	it('aus Inhalt und ABI, gleiche Eingabe → gleicher Ordner', () => {
+		expect(bundleBuildId(hash('a'), ABI)).toBe('aaaaaaaaaaaa-01234567');
+		expect(bundleBuildId(hash('a'), ABI)).toBe(bundleBuildId(hash('a'), ABI));
+		expect(bundleBuildId(hash('a'), NEW_ABI)).not.toBe(bundleBuildId(hash('a'), ABI));
+	});
+	it('lehnt unbrauchbare Kennungen ab (nie ein leerer oder fremder Pfad)', () => {
+		expect(() => bundleBuildId('', ABI)).toThrow();
+		expect(() => bundleBuildId('sha256-../../x', ABI)).toThrow();
+		expect(() => bundleBuildId(hash('a'), 'abi-')).toThrow();
 	});
 });
 
-describe('modulePackagesFor', () => {
-	it('nur Pakete, die der Core nicht mitbringt; Versionskonflikt wirft', () => {
-		const dir = join(tmp, 'pk');
-		mkdirSync(dir, { recursive: true });
-		const add = (id: string, npm: Record<string, string>) => {
-			mkdirSync(join(dir, id), { recursive: true });
-			writeFileSync(join(dir, id, 'module.ts'), 'x');
-			writeFileSync(join(dir, id, 'atrium-module.json'), JSON.stringify({ id, npm }));
-		};
-		add('pa', { 'left-pad': '1.3.0', zod: '4.0.0' });
-		add('pb', { 'left-pad': '1.3.0', 'is-odd': '3.0.1' });
-		const core = { dependencies: { zod: '^4.0.0' } };
-		expect(moduleFolders(dir)).toEqual(['pa', 'pb']);
-		expect(modulePackagesFor(dir, core)).toEqual({ 'is-odd': '3.0.1', 'left-pad': '1.3.0' });
-		add('pc', { 'left-pad': '1.2.0' });
-		expect(() => modulePackagesFor(dir, core)).toThrow(/verschiedenen Versionen/);
-	});
-});
-
-describe('dedupeModulePackages', () => {
-	const pkg = (root: string, name: string, version: string) => {
-		const dir = join(root, 'node_modules', name);
-		mkdirSync(dir, { recursive: true });
-		writeFileSync(join(dir, 'package.json'), JSON.stringify({ name, version }));
+describe('planCompile', () => {
+	const root = join(tmp, 'plan');
+	mkdirSync(root, { recursive: true });
+	const aDir = bundle(root, 'mod-a', 'a', ABI);
+	const bDir = bundle(root, 'mod-b', 'b', ABI);
+	const active = {
+		version: 1 as const,
+		modules: { 'mod-a': { dir: aDir }, 'mod-b': { dir: bDir } }
+	};
+	const lock = {
+		lockVersion: 1 as const,
+		core: '2.0.0',
+		modules: { 'mod-a': entry('a'), 'mod-b': entry('b') }
 	};
 
-	it('entfernt Kopien, die der Core in derselben Hauptversion hat; verlangte und andere Hauptversionen bleiben', () => {
-		const core = join(tmp, 'dedupe-core');
-		const mods = join(tmp, 'dedupe-mods');
-		pkg(core, 'prosemirror-model', '1.25.1');
-		pkg(core, '@scope/lib', '2.0.0');
-		pkg(core, 'htmlparser2', '8.0.2');
-		pkg(core, 'yjs', '13.0.0');
-		pkg(mods, 'prosemirror-model', '1.24.0');
-		pkg(mods, '@scope/lib', '2.3.0');
-		pkg(mods, 'htmlparser2', '10.0.0');
-		pkg(mods, 'yjs', '13.6.33');
-		pkg(mods, 'nur-modul', '1.0.0');
-		expect(dedupeModulePackages(mods, core, { yjs: '13.6.33' })).toEqual([
-			'@scope/lib',
-			'prosemirror-model'
+	it('Installieren, Aktualisieren und Entfernen in einem Auftrag', () => {
+		const plan = planCompile({
+			bundlesDir: root,
+			active,
+			lock,
+			request: {
+				modules: { 'mod-a': entry('c', '1.1.0'), 'mod-new': entry('d') },
+				remove: ['mod-b']
+			},
+			abi: ABI,
+			stagingDir: join(tmp, 'staging', 'p1')
+		});
+		expect(Object.keys(plan.next.modules).sort()).toEqual(['mod-a', 'mod-new']);
+		expect(plan.next.modules['mod-a']!.dir).toBe(`mod-a/${bundleBuildId(hash('c'), ABI)}`);
+		expect(plan.nextLock.modules['mod-a']!.version).toBe('1.1.0');
+		expect(plan.nextLock.modules['mod-b']).toBeUndefined();
+		expect(plan.jobs.map((j) => [j.id, j.requested, j.reuse])).toEqual([
+			['mod-a', true, false],
+			['mod-new', true, false]
 		]);
-		expect(dedupeModulePackages(mods, core, { yjs: '13.6.33' })).toEqual([]);
+		expect(plan.jobs[0]!.source).toBe(join(tmp, 'staging', 'p1', 'modules', 'mod-a'));
+		// Ausgangszustand bleibt unverändert
+		expect(active.modules['mod-b']).toBeDefined();
+	});
+
+	it('gleicher Inhalt für dieselbe ABI wird wiederverwendet, nicht neu kompiliert', () => {
+		const plan = planCompile({
+			bundlesDir: root,
+			active,
+			lock,
+			request: { modules: { 'mod-a': entry('a') } },
+			abi: ABI,
+			stagingDir: join(tmp, 'staging', 'p2')
+		});
+		expect(plan.jobs).toEqual([expect.objectContaining({ id: 'mod-a', reuse: true })]);
+		expect(plan.next).toEqual(active);
+	});
+
+	it('Neukompilieren nach Core-Update nimmt die gespeicherte Quelle', () => {
+		expect(staleModules(root, active, NEW_ABI)).toEqual(['mod-a', 'mod-b']);
+		expect(staleModules(root, active, ABI)).toEqual([]);
+		const plan = planCompile({
+			bundlesDir: root,
+			active,
+			lock,
+			request: {},
+			recompile: ['mod-a', 'mod-unbekannt'],
+			abi: NEW_ABI,
+			stagingDir: null
+		});
+		expect(plan.jobs).toEqual([
+			expect.objectContaining({
+				id: 'mod-a',
+				requested: false,
+				reuse: false,
+				source: join(root, aDir, 'src')
+			})
+		]);
+		expect(plan.next.modules['mod-a']!.dir).toBe(`mod-a/${bundleBuildId(hash('a'), NEW_ABI)}`);
+		expect(plan.next.modules['mod-b']).toEqual(active.modules['mod-b']);
+	});
+
+	it('Auftrag mit Modulen, aber ohne Staging → Fehler', () => {
+		expect(() =>
+			planCompile({
+				bundlesDir: root,
+				active,
+				lock,
+				request: { modules: { 'mod-a': entry('z') } },
+				abi: ABI,
+				stagingDir: null
+			})
+		).toThrow(/Staging/);
 	});
 });
 
-describe('coreChanged (Neubau nach Image-Wechsel)', () => {
-	it('neue Version oder neuer Core-Build → Neubau', () => {
-		expect(coreChanged({ core: '2.0.0', coreBuild: 'a' }, '2.0.1', 'a')).toBe(true);
-		expect(coreChanged({ core: '2.0.0', coreBuild: 'a' }, '2.0.0', 'b')).toBe(true);
-		expect(coreChanged({ core: '2.0.0', coreBuild: 'a' }, '2.0.0', 'a')).toBe(false);
-	});
-	it('alte Generation ohne Build-Kennung wird neu gebaut, unbekannter Build nicht', () => {
-		expect(coreChanged({ core: '2.0.0' }, '2.0.0', 'b')).toBe(true);
-		expect(coreChanged({ core: '2.0.0' }, '2.0.0', null)).toBe(false);
-		expect(coreChanged(null, '2.0.0', 'b')).toBe(false);
+describe('Ablage lesen und aufräumen', () => {
+	it('fehlende/kaputte active.json → leer; unbenutzte Builds werden gefunden', () => {
+		const root = join(tmp, 'store');
+		mkdirSync(root, { recursive: true });
+		expect(readActive(root).modules).toEqual({});
+		writeFileSync(join(root, 'active.json'), '{kaputt');
+		expect(readActive(root).modules).toEqual({});
+		const keep = bundle(root, 'mod-a', 'a', ABI);
+		const old = bundle(root, 'mod-a', 'b', ABI);
+		const prev = bundle(root, 'mod-b', 'c', ABI);
+		mkdirSync(join(root, 'mod-a', `${bundleBuildId(hash('e'), ABI)}.tmp-abc123`), {
+			recursive: true
+		});
+		writeJsonAtomic(join(root, 'active.json'), { version: 1, modules: { 'mod-a': { dir: keep } } });
+		expect(readActive(root).modules['mod-a']!.dir).toBe(keep);
+		const unused = unreferencedBuilds(root, [
+			readActive(root),
+			{ version: 1, modules: { 'mod-b': { dir: prev } } }
+		]);
+		expect(unused).toContain(old);
+		expect(unused.some((d) => d.includes('.tmp-'))).toBe(true);
+		expect(unused).not.toContain(keep);
+		expect(unused).not.toContain(prev);
 	});
 });
 
 describe('crashDecision (Abstürze der App)', () => {
-	const base = { current: 'g2', previous: 'g1', busy: false };
+	const base = { current: 'active', previous: 'prev', busy: false };
 	it('bis zum Limit einfach neu starten', () => {
 		expect(crashDecision({ ...base, crashes: 1 })).toEqual({ action: 'restart', delayMs: 2000 });
 		expect(crashDecision({ ...base, crashes: 5 }).action).toBe('restart');
 	});
-	it('danach Rückfall auf die vorige bzw. mitgelieferte Version, zuletzt Beenden', () => {
+	it('danach Rückfall auf die vorige Liste bzw. ganz ohne installierte Module, zuletzt Beenden', () => {
 		expect(crashDecision({ ...base, crashes: 6 }).action).toBe('fallback');
 		expect(crashDecision({ ...base, previous: null, crashes: 6 }).action).toBe('fallback');
 		expect(crashDecision({ current: null, previous: null, busy: false, crashes: 6 }).action).toBe(
 			'exit'
 		);
 	});
-	it('läuft ein Neubau, kein Rückfall und kein Beenden – Neustart mit wachsender Pause (max. 30 s)', () => {
+	it('läuft ein Auftrag, kein Rückfall und kein Beenden – Neustart mit wachsender Pause (max. 30 s)', () => {
 		const at = (crashes: number) => crashDecision({ ...base, busy: true, crashes });
 		expect(at(6)).toEqual({ action: 'restart', delayMs: 4000, waiting: true });
 		expect(at(7).delayMs).toBe(8000);

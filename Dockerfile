@@ -23,9 +23,10 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     BODY_SIZE_LIMIT=110M
-# Kalypzo Atrium (Phase 6): Module lassen sich im Panel installieren; der Supervisor baut die App dann im Container
-# neu. Dafür braucht das Laufzeit-Image die Quellen und ALLE Abhängigkeiten (Vite, SvelteKit …). Der Ordner bleibt
-# schreibgeschützt: Generationen, Build-Ausgabe, Vite-Cache und Bun-Cache liegen im Volume /data/atrium.
+# Kalypzo Atrium: Module lassen sich im Panel installieren; der Supervisor kompiliert sie dann einzeln im Container
+# (scripts/module-compiler, kein App-Neubau) und startet die App kurz neu. Dafür braucht das Laufzeit-Image die
+# Quellen von src/lib (Host-ABI) und ALLE Abhängigkeiten (Vite, Svelte, Tailwind …). Der Ordner bleibt
+# schreibgeschützt: Bundles, Vite-Cache und Bun-Cache liegen im Volume /data/atrium.
 ENV ATRIUM_DATA_DIR=/data/atrium \
     ATRIUM_MODULE_INSTALL=supervisor \
     ATRIUM_VITE_CACHE=/data/atrium/cache/vite \
@@ -48,6 +49,7 @@ COPY --from=build /app/tools ./tools
 COPY --from=build /app/modules ./modules
 COPY --from=build /app/scripts/supervisor.mjs ./scripts/supervisor.mjs
 COPY --from=build /app/scripts/supervisor ./scripts/supervisor
+COPY --from=build /app/scripts/module-compiler ./scripts/module-compiler
 COPY --from=build /app/svelte.config.js /app/vite.config.ts /app/tsconfig.json /app/package.json /app/bun.lock /app/bunfig.toml ./
 # Vite legt die gebündelte Config in node_modules/.vite-temp ab (auch in SvelteKits zweitem Build):
 # Link ins Volume, weil /app schreibgeschützt ist (das Ziel legt der Supervisor beim Start an)
@@ -58,11 +60,11 @@ RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app 
 # Temp-Dateien der Datensicherung (Export/Upload bis BACKUP_MAX_BYTES) auf Platte statt im RAM-tmpfs /tmp
 # (Issue #38). Compose legt hier das Volume `backup-tmp` ein; ein neues Volume übernimmt Besitzer/Rechte.
 VOLUME ["/var/tmp/ep-backup"]
-# Generationen der App (Module, Builds), Lock-Dateien, Protokolle der Neubauten
+# Vorkompilierte Module (bundles/), Lock-Datei, Protokolle; alte Generationen (gen/) übernimmt der Supervisor einmal
 VOLUME ["/data/atrium"]
 USER app
 EXPOSE 3000
-# start-period großzügig: nach einem Core-Update baut der Supervisor die Module neu (mehrere Minuten)
+# start-period großzügig: nach einem Core-Update kompiliert der Supervisor die Module neu (je Modul Sekunden)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15m --retries=3 \
   CMD bun -e "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 # Supervisor beendet die App geordnet (IPC → adapter-node schließt den Server); Compose gibt stop_grace_period 45s

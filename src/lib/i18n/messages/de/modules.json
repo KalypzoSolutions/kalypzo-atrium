@@ -8,7 +8,8 @@
 		"missingPackage": "Paket „{name}“ fehlt – Modul aktualisieren (es muss das Paket in atrium-module.json unter npm angeben)",
 		"importFailed": "Modul ließ sich nicht laden: {error}",
 		"bundleMissing": "Kompiliertes Modul fehlt oder ist beschädigt ({dir})",
-		"bundleOutdated": "Für eine andere Core-Version kompiliert – wird neu kompiliert"
+		"bundleOutdated": "Für eine andere Core-Version kompiliert – wird neu kompiliert",
+		"compileFailed": "Lässt sich für diese Core-Version nicht kompilieren – Modul aktualisieren ({error})"
 	},
 	"convention": {
 		"noDefinition": "module.ts exportiert keine Moduldefinition",
@@ -65,6 +66,6 @@
 		"tooMany": "Höchstens {max} Module auf einmal",
 		"summary": "{ok, plural, =0 {Keine Änderung} one {# Modul geändert} other {# Module geändert}}{skipped, plural, =0 {} one {, # unverändert} other {, # unverändert}}{failed, plural, =0 {} one {, # fehlgeschlagen} other {, # fehlgeschlagen}}",
 		"uninstallSummary": "{count, plural, one {# Modul entfernt} other {# Module entfernt}}",
-		"uninstallRequested": "{count, plural, one {# Modul wird entfernt – Neubau angefordert} other {# Module werden entfernt – Neubau angefordert}}"
+		"uninstallRequested": "{count, plural, one {# Modul wird entfernt – Neustart angefordert} other {# Module werden entfernt – Neustart angefordert}}"
 	}
 }

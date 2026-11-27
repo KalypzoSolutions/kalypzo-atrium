@@ -177,6 +177,30 @@ describe('Quelle und Vorschau', () => {
 		]);
 	});
 
+	it('npm-Pakete: eigene werden gebündelt (auch wenn der Core sie hat), nur geteilte der Host-ABI können kollidieren', async () => {
+		const files = filesOf(join(FIXTURES, 'fx-consumer'));
+		const pkg = JSON.parse(new TextDecoder().decode(files['atrium-module.json']));
+		pkg.npm = { zod: '3.22.0', svelte: '5.57.2', 'left-pad': '1.3.0', '@tiptap/core': '2.0.0' };
+		files['atrium-module.json'] = new TextEncoder().encode(JSON.stringify(pkg));
+		const src = await inspectSource(admin, {
+			zip: makeZip(files, 'fx-consumer/'),
+			fileName: 'npm.zip'
+		});
+		const preview = await previewInstall(admin, {
+			sourceToken: src.token,
+			selected: ['fx-consumer']
+		});
+		const consumer = preview.entries.find((e) => e.id === 'fx-consumer')!;
+		expect(Object.fromEntries(consumer.npm.map((n) => [n.name, n.status]))).toEqual({
+			zod: 'conflict',
+			svelte: 'core',
+			'left-pad': 'new',
+			'@tiptap/core': 'new'
+		});
+		expect(preview.blockers.join(' ')).toContain('zod@3.22.0');
+		expect(preview.blockers.join(' ')).not.toContain('tiptap');
+	});
+
 	it('abgelaufene oder fremde Vorschau → 404', async () => {
 		await expect(
 			previewInstall(admin, { sourceToken: 'nope', selected: ['fx-board'] })
