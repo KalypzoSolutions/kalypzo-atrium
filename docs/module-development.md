@@ -70,7 +70,11 @@ Jedes Modul beschreibt sich in `atrium-module.json` (Schema `src/lib/server/core
   `https://github.com/owner/repo/tree/<ref>/<pfad>`), woher das Modul bei der Installation geholt wird. Ohne `source` wird im selben
   Repository/Katalog gesucht.
 - `permissions`: alle Rechte des Moduls (gleiche Menge wie im Manifest).
-- `npm`: nur modulspezifische Pakete mit **exakter** Version; alles andere liefert der Core.
+- `npm`: modulspezifische Pakete mit **exakter** Version. Sie werden beim Kompilieren installiert und **ins Modul gebündelt**
+  (eine Kopie je Paket, auch für Importe aus Core-Paketen heraus). **Jedes Paket, das das Modul direkt importiert und das nicht
+  zur Host-ABI gehört, hier angeben** – Pakete, die der Core zufällig selbst nutzt, können mit einem Core-Update wegfallen.
+  Geteilte Pakete der Host-ABI (`svelte`, `zod`, `drizzle-orm`, `svelte-sonner`) kommen immer vom Core; eine abweichende Version
+  dafür sperrt die Installation.
 - Katalog `atrium-modules.json` (im Modulverzeichnis bzw. Repository): `{ "schema": 1, "name": "…", "modules": [{ "id", "path" }] }`.
 
 **Prüfung beim Start** (`core/modules/load.ts`, `registry.ts`): Ordnername = Modul-ID, `package` vorhanden, `migrations` in
@@ -78,6 +82,36 @@ Jedes Modul beschreibt sich in `atrium-module.json` (Schema `src/lib/server/core
 oder zu alte harte Abhängigkeit, eine unpassende Core-Version oder ein Abhängigkeitszyklus **beendet den Start nicht**: das Modul wird
 nicht geladen und erscheint unter Administration → Module als „Defekt“ (Grund), seine Daten bleiben. Module mit Zustand in der
 Datenbank, die nicht mehr installiert sind, erscheinen dort als „Nicht installiert“. Test: `tests/unit/module-packages.test.ts`.
+Auch ein Modul, dessen `module.ts` sich nicht importieren lässt (z. B. fehlendes npm-Paket), wird nur selbst „Defekt“.
+
+### Vorkompilierte Bundles (Installation im Panel)
+
+Im Panel installierte Module werden **nicht** in die App hineingebaut, sondern einzeln vom Modul-Compiler übersetzt
+(`scripts/module-compiler`) und zur Laufzeit geladen; danach startet die App kurz neu. Was das für Module bedeutet:
+
+- **Host-ABI** (`tools/host-abi.js`): Svelte-Laufzeit, `$app/*`, `toast` aus `svelte-sonner` und auf dem Server das ganze
+  freigegebene SDK samt UI-Bausteinen bekommt das Bundle **vom Core** (gleiche Instanzen: Kontexte, Stores, i18n-Katalog,
+  ein `<Toaster>`). Im Browser bringt das Bundle Kopien der UI-Bausteine (`$lib/components/…`) und von `zod` selbst mit
+  (gemessene Abwägung: sie zu teilen, machte jede Seite des Core spürbar schwerer).
+- **Erlaubt** sind dieselben Importe wie oben; `$lib/server/*`, nicht freigegebene `$lib`-Bereiche und Svelte-Interna
+  (`svelte/compiler` …) bricht der Compiler mit klarer Meldung ab.
+- **npm-Pakete**: siehe `npm` oben – direkt genutzte Pakete angeben, sonst schlägt das Kompilieren mit
+  „Paket „x“ fehlt – im Modul unter npm angeben“ fehl.
+- **CSS**: Tailwind-Klassen aus dem Modulordner landen in einem gemeinsamen Utilities-CSS mit denen des Core (eine
+  Reihenfolge, Varianten wirken wie gewohnt); `<style>`-Blöcke der Komponenten funktionieren. Keine eigenen globalen
+  Stylesheets.
+- **Core-Update**: Bundles hängen an der ABI-Kennung. Nach einem Update kompiliert der Supervisor sie neu; bis dahin
+  zeigen die Seiten des Moduls „Gleich wieder da“ (503).
+
+Selbst prüfen (Core als Werkzeug, z. B. im Module-Repo über `.core`):
+
+```bash
+bun scripts/module-compiler/compile.mjs <modulordner> <ausgabeordner>
+# letzte Zeile: ATRIUM_COMPILE {"ok":true,"meta":{…}} bzw. {"ok":false,"error":{"kind":"missingPackage",…}}
+```
+
+Empfohlen als CI-Schritt im Module-Repo: jedes Modul gegen den gepinnten Core **und** `main` des Core kompilieren – so
+fallen fehlende `npm`-Angaben oder entfernte SDK-Exporte vor einem Release auf.
 
 ### Lizenz
 

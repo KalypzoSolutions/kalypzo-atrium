@@ -1,10 +1,16 @@
 {
 	"notInstalled": "Module \"{id}\" is not installed",
+	"preparing": "This module is being prepared for the new version of the system and will be back in about a minute.",
 	"broken": {
 		"coreVersion": "Requires core {range}, installed is {version}",
 		"missingDependency": "Required module “{dep}” is missing",
 		"dependencyVersion": "Requires “{dep}” {range}, available is {version}",
-		"cycle": "Circular dependency ({ids})"
+		"cycle": "Circular dependency ({ids})",
+		"missingPackage": "Package “{name}” is missing – update the module (it must list the package under npm in atrium-module.json)",
+		"importFailed": "Module could not be loaded: {error}",
+		"bundleMissing": "Compiled module is missing or damaged ({dir})",
+		"bundleOutdated": "Compiled for a different core version – will be recompiled",
+		"compileFailed": "Cannot be compiled for this core version – update the module ({error})"
 	},
 	"convention": {
 		"noDefinition": "module.ts does not export a module definition",
@@ -61,6 +67,6 @@
 		"tooMany": "At most {max} modules at once",
 		"summary": "{ok, plural, =0 {No change} one {# module changed} other {# modules changed}}{skipped, plural, =0 {} one {, # unchanged} other {, # unchanged}}{failed, plural, =0 {} one {, # failed} other {, # failed}}",
 		"uninstallSummary": "{count, plural, one {# module removed} other {# modules removed}}",
-		"uninstallRequested": "{count, plural, one {# module is being removed – rebuild requested} other {# modules are being removed – rebuild requested}}"
+		"uninstallRequested": "{count, plural, one {# module is being removed – restart requested} other {# modules are being removed – restart requested}}"
 	}
 }

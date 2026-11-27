@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { localized, t } from '$lib/i18n';
-import { getDefinition } from '$lib/server/core/modules/registry';
+import { getDefinition, isModulePreparing } from '$lib/server/core/modules/registry';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
 import { getSettings } from '$lib/server/core/settings/service';
 import type { PageServerLoad } from './$types';
@@ -11,6 +11,8 @@ import type { PageServerLoad } from './$types';
  */
 export const load: PageServerLoad = async ({ params }) => {
 	const def = getDefinition(params.moduleId);
+	// Nach einem Core-Update kompiliert der Supervisor das Modul gerade neu: kurz nicht da (kein 404)
+	if (!def && isModulePreparing(params.moduleId)) throw error(503, t('modules.preparing'));
 	if (!def || !(await isModuleEnabled(params.moduleId))) {
 		throw error(404, t('public.pageUnavailable'));
 	}

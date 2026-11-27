@@ -9,6 +9,7 @@ import { env } from '../env';
 import { isUniqueViolation, logError } from '../db-errors';
 import { errors, isCoreError } from '../errors';
 import { isModuleEnabled } from '../modules/service';
+import { isModulePreparing } from '../modules/registry';
 import { has } from '../permissions/service';
 import { hit } from '../rate-limit';
 import { newId } from '../util';
@@ -213,6 +214,9 @@ async function execute(
 		: url.pathname;
 	const { match, pathExists, allowed } = matchEndpoint(request.method, pathname);
 	if (!match) {
+		// Modul wird nach einem Core-Update gerade neu kompiliert: vorübergehend nicht da, kein 404
+		const moduleId = /^\/modules\/([a-z][a-z0-9-]*)(?:\/|$)/.exec(pathname)?.[1];
+		if (moduleId && isModulePreparing(moduleId)) throw errors.unavailable(t('modules.preparing'));
 		if (!pathExists) throw errors.notFound(t('api.endpointNotFound'));
 		const r = errorResponse(errors.methodNotAllowed(), requestId);
 		r.headers.set('allow', allowed.join(', '));

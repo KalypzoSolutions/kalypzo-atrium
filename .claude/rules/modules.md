@@ -31,6 +31,14 @@ modules/<id>/
 - `no-restricted-syntax`: `core.database.db`, `core.system.*`, `core.modules.enable|disable`, `core.auth.instance`, `forModule('<fremde-id>')` verboten.
 - Offene Ausnahmen: `OPEN_BOUNDARY_EXCEPTIONS` in `eslint.config.js` (mit Grund, beim Beheben löschen). Test: `tests/unit/module-boundaries.test.ts`.
 - Details: `docs/module-development.md` → „Erlaubte Importe“.
+- Die freigegebenen `$lib`-Bereiche kommen aus `tools/host-abi.js` (`HOST_LIB_DIRS`) – dieselbe Liste nutzt der Modul-Compiler.
+
+## Als vorkompiliertes Bundle (Installation im Panel, seit 2026-11-27)
+- **Jedes direkt importierte npm-Paket in `atrium-module.json` → `npm` angeben** (exakte Version), außer den geteilten (`svelte`, `zod`,
+  `drizzle-orm`, `svelte-sonner`). Pakete, die der Core zufällig selbst hat, können mit einem Core-Update wegfallen (PR #3).
+- Selbst prüfen: `bun scripts/module-compiler/compile.mjs <modulordner> <ausgabe>` → `ATRIUM_COMPILE {"ok":true,…}`.
+- Kein eigenes globales CSS; Tailwind-Klassen und `<style>` reichen. Kein Zustand über Modulgrenzen in eigenen Kopien von Core-Dateien erwarten
+  (geteilt im Browser sind nur Laufzeit, `$app/*`, `toast`, i18n-Katalog, Theme u. a. – `CLIENT_SHARED_LIB`).
 
 ## Paketbeschreibung `atrium-module.json` (seit 2026-11-01, Kalypzo Atrium Phase 2)
 - Pflicht je Modul: `schema`, `id`, `name`, `description?`, `version`, `core` (Bereich), `dependencies`/`optionalDependencies`

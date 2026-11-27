@@ -17,6 +17,7 @@ import {
 } from '$lib/server/core/modules/install/manage';
 import { installStatus, listInstalledSources } from '$lib/server/core/modules/install/service';
 import { isAdministrator } from '$lib/server/core/permissions/service';
+import { clientBundles } from '$lib/server/core/modules/bundles';
 import { failWithFields, invalid, requirePerm, toFail } from '../_shared/server-utils';
 import type { PageServerLoad } from './$types';
 
@@ -47,6 +48,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		),
 		/** Gewünscht, aber nicht im laufenden Stand (z. B. nach Verlust des Volumes) */
 		drift,
+		/** Module, die als vorkompiliertes Bundle laufen (Herkunft ohne Eintrag: „vorkompiliert“ statt „im Build“) */
+		bundled: clientBundles().map((b) => b.id),
 		canInstall: locals.ctx.permissions.has('core.modules.install') && isAdministrator(locals.ctx),
 		installStatus: installStatus(),
 		twoFactorEnabled: locals.user?.twoFactorEnabled ?? false,

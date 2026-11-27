@@ -55,7 +55,7 @@
 		"migrationChanged": "Bereits angewendete Migration {name} wurde verändert",
 		"migrationOrder": "Neue Migrationen müssen hinter den bereits angewendeten einsortiert sein",
 		"npmConflict": "npm-Paket {name}@{version} passt nicht zum Core ({range})",
-		"npmNew": "Bringt eigene npm-Pakete mit (werden beim Neubau installiert)",
+		"npmNew": "Bringt eigene npm-Pakete mit (werden beim Kompilieren des Moduls installiert)",
 		"scanHit": "{text} – z. B. {path}",
 		"scan": {
 			"serverImport": "importiert Core-Interna ($lib/server)",
@@ -78,8 +78,8 @@
 	},
 	"service": {
 		"off": "Installieren ist auf diesem Server ausgeschaltet (ATRIUM_MODULE_INSTALL). Die Vorschau funktioniert trotzdem.",
-		"noSupervisor": "Der Server läuft nicht unter dem Supervisor (scripts/supervisor.mjs) – Installieren mit Neubau ist nicht möglich. Die Vorschau funktioniert trotzdem.",
-		"busy": "Es läuft bereits ein Neubau – bitte warten.",
+		"noSupervisor": "Der Server läuft nicht unter dem Supervisor (scripts/supervisor.mjs) – Installieren ist nicht möglich. Die Vorschau funktioniert trotzdem.",
+		"busy": "Es läuft bereits eine Installation – bitte warten.",
 		"sessionOnly": "Module installieren nur angemeldete Personen (kein API-Key)",
 		"adminOnly": "Module installieren dürfen nur Administrator*innen",
 		"expired": "Vorschau abgelaufen – bitte die Quelle erneut laden",
@@ -119,7 +119,7 @@
 	},
 	"detail": {
 		"copied": "Dateien kopiert",
-		"buildRequested": "Neubau angefordert",
+		"buildRequested": "Installation angefordert",
 		"removedDataDeleted": "Entfernt, Daten gelöscht",
 		"removedDataKept": "Entfernt, Daten behalten"
 	}

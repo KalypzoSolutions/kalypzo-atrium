@@ -226,7 +226,7 @@ Dienst nicht) – die Standardwerte sind deshalb ≤ 1,0.
 
 | Dienst | `mem_limit` (Variable) | `cpus` | `pids_limit` | Begründung |
 |---|---|---|---|---|
-| `app` | 1536m (`APP_MEM_LIMIT`) | 1.0 (`APP_CPUS`) | 1024 | Bun + Chromium (PDF, 300–500 MB je Lauf) + sharp (Bilder bis 50 MP); tmpfs `/tmp` (256 MB) zählt mit; Chromium braucht viele Threads |
+| `app` | 2g (`APP_MEM_LIMIT`) | 1.0 (`APP_CPUS`) | 1024 | Modul kompilieren (Spitze ~1 GB inkl. App, 1 CPU) + Bun + Chromium (PDF, 300–500 MB je Lauf) + sharp (Bilder bis 50 MP); tmpfs `/tmp` (256 MB) zählt mit; Chromium braucht viele Threads |
 | `db` | 1g (`DB_MEM_LIMIT`) | 1.0 (`DB_CPUS`) | 256 | PostgreSQL mit Standard-`shared_buffers` (128 MB), ≤ 10 Verbindungen; `shm_size 256m` |
 | `storage` (Dokploy) | 512m (`STORAGE_MEM_LIMIT`) | 0.5 (`STORAGE_CPUS`) | 256 | MinIO Single-Node |
 | `website` | 256m (`WEBSITE_MEM_LIMIT`) | 0.5 (`WEBSITE_CPUS`) | 128 | SvelteKit-SSR mit 60-s-Cache |
@@ -506,33 +506,61 @@ ordnet jede Mail dem passenden Postfach zu (Oberfläche: Nachrichten → Postein
 - Nur **eine** Instanz darf abrufen (Sperre je Prozess; mehrere Instanzen würden über die Job-Sperre trotzdem nur einmal je Minute laufen).
 - Demo: `docker compose -f docker-compose.demo.yml up -d` (GreenMail auf `127.0.0.1:1143`), dann `bun scripts/seed-demo-inbox.mjs`.
 
-## Module installieren: Supervisor und Neubau im Container (Kalypzo Atrium)
+## Module installieren: Supervisor kompiliert Module einzeln (Kalypzo Atrium)
 
 Das Image startet `bun scripts/supervisor.mjs` statt `bun ./build/index.js`. Der Supervisor startet die App als Kindprozess
-und baut sie neu, wenn unter Administration → Module → Installieren Module eingespielt werden:
+– **immer aus dem mitgelieferten Build** – und kompiliert installierte Module **einzeln** zu vorkompilierten Bundles
+(`scripts/module-compiler`). Die App wird dabei **nicht** neu gebaut. Ablauf, wenn unter Administration → Module →
+Installieren Module eingespielt werden:
 
-1. Module der laufenden Generation kopieren, Auftrag einspielen (Inhalt muss zum Inhaltshash der Vorschau passen),
-   eigene npm-Pakete der Module mit `bun install --production --ignore-scripts` installieren,
-2. `svelte-kit sync` + `vite build` in eine neue **Generation** (`/data/atrium/gen/<id>`),
-3. **Probelauf** (`ATRIUM_VERIFY_ONLY=1`: Module laden und prüfen, ohne Datenbank),
-4. Tausch und Neustart (App wird per IPC geordnet beendet), **Health-Prüfung** (120 s) – sonst Rückkehr zur vorigen Generation.
+1. Auftrag einspielen (Inhalt muss zum Inhaltshash der Vorschau passen),
+2. je **geändertem** Modul kompilieren (eigene npm-Pakete per `bun install --production --ignore-scripts`, ins Bundle
+   gebündelt; gleicher Inhalt für dieselbe Core-Version wird wiederverwendet) – einige Sekunden je Modul,
+3. **Probelauf** mit der neuen Modul-Liste (`ATRIUM_VERIFY_ONLY=1`: Module laden und prüfen, ohne Datenbank),
+4. Tausch der aktiven Liste und **kurzer Neustart** (App wird per IPC geordnet beendet), **Health-Prüfung** (120 s) –
+   sonst Rückkehr zur vorigen Liste.
 
-Die Ausfallzeit entspricht dem Neustart (einige Sekunden). Ohne eigene Generation läuft der mitgelieferte Build.
-Kommt ein neues Image mit anderer Core-Version, baut der Supervisor die Module der laufenden Generation beim Start neu
-(bis dahin läuft der mitgelieferte Build; `HEALTHCHECK start-period` 15 min).
+Ein Modul, das sich nicht laden lässt (z. B. fehlendes npm-Paket), wird nur selbst „Defekt“ – die App startet ohne es.
+Stürzt die App trotzdem wiederholt ab, fällt der Supervisor auf die vorige Liste zurück, zuletzt ganz ohne installierte
+Module; solange ein Auftrag läuft, wartet er stattdessen mit wachsender Pause.
+
+**Core-Update** (neues Image): Bundles hängen an der „Host-ABI“ des Core (Core- und Svelte-Version, geteilte Bausteine,
+`tools/host-abi.js`). Passt sie nicht mehr, startet die App sofort mit allen übrigen Modulen, die betroffenen zeigen
+„Wird für die neue Version vorbereitet“ (Seiten/API antworten 503 mit Hinweis), der Supervisor kompiliert sie aus ihrer
+gespeicherten Quelle neu und startet einmal kurz neu. Scheitert das Kompilieren, zeigt das Modul den Grund
+(z. B. „Paket „x“ fehlt – Modul aktualisieren“).
 
 | Variable | Standard (Image) | Bedeutung |
 |---|---|---|
-| `ATRIUM_MODULE_INSTALL` | `supervisor` | `off` = nur Vorschau, `copy` = Entwicklung (`vite dev`), `supervisor` = Neubau |
-| `ATRIUM_DATA_DIR` | `/data/atrium` | Volume: `gen/`, `state.json`, `status.json`, `staging/`, `results/`, `logs/`, Caches |
+| `ATRIUM_MODULE_INSTALL` | `supervisor` | `off` = nur Vorschau, `copy` = Entwicklung (`vite dev`), `supervisor` = kompilieren + Neustart |
+| `ATRIUM_DATA_DIR` | `/data/atrium` | Volume: `bundles/`, `state.json`, `status.json`, `staging/`, `results/`, `logs/`, Caches |
+| `ATRIUM_BUNDLES_DIR` | – | Nur Tests/Sonderfälle: Bundle-Ablage ausdrücklich (sonst `ATRIUM_DATA_DIR/bundles`) |
 | `ATRIUM_VITE_CACHE`, `BUN_INSTALL_CACHE_DIR`, `TMPDIR` | unter `/data/atrium` | Schreibbare Orte, das Dateisystem bleibt `read_only` |
 
-Compose (`docker-compose.dokploy*.yml`): Volume `atrium-data:/data/atrium`, `mem_limit` Standard **4g** (Neubau),
-`stop_grace_period` 45 s. Ausgehend nötig: `api.github.com`, `codeload.github.com` (Quellen) und ggf. `registry.npmjs.org`
-(Module mit eigenen npm-Paketen). Das Image enthält dafür alle Abhängigkeiten und die Quellen (größer als vorher).
+Bundle-Ablage `/data/atrium/bundles/`: `active.json` (aktive Module), `active.prev.json` (Rückfall),
+`atrium-modules.lock.json` (Herkunft), `failures.json` (letzter Kompilierfehler je Modul), `<id>/<inhalt>-<abi>/` (Bundle +
+`src/` als Quelle für das Neukompilieren). Ältere Installationen mit Generationen (`gen/`) übernimmt der Supervisor beim
+ersten Start einmal und löscht sie danach.
 
-**Messwerte:** lokal (Windows, 8 Kerne) dauert ein Neubau mit allen 14 Fachmodulen etwa 40–60 s; im Container mit
-`--cpus 1 --memory 3g` noch nicht gemessen (Phase 0 offen).
+Compose (`docker-compose.dokploy*.yml`): Volume `atrium-data:/data/atrium`, `stop_grace_period` 45 s. Ausgehend nötig:
+`api.github.com`, `codeload.github.com` (Quellen) und ggf. `registry.npmjs.org` (Module mit eigenen npm-Paketen). Das
+Image enthält dafür alle Abhängigkeiten und `src/` (Host-ABI, Tailwind).
+
+**Messwerte** (lokal, Windows): Kompilieren je Modul 2–5 s (alle Module aus `atrium-basic-modules`, `notes` mit
+11 npm-Paketen), Installation eines kleinen Moduls im E2E bis „Fertig“ 4,5 s inkl. Probelauf und Neustart (früher voller App-Build 45–70 s).
+Docker-Probelauf (2026-11-27, Image `read_only`, `cap_drop ALL`, **1 CPU, 1 GB**, echtes PostgreSQL, Seed mit `events`, `notes`,
+`whiteboard` von GitHub inkl. npm-Installation im Container):
+
+| Vorgang | Dauer | Speicher-Spitze (Container) |
+|---|---|---|
+| Frischer Start bis Seed fertig (3 Module kompilieren, Probelauf, Neustart) | 39–41 s (Kompilieren 25 s) | 940 MiB |
+| Neustart des Containers ohne Änderung | 3 s bis gesund | – |
+| Core-Update (neue ABI): App erreichbar, Module „wird vorbereitet“ (503) | 10 s | – |
+| … alle drei neu kompiliert und wieder da | 34 s | 892 MiB |
+| Neustart durch den Supervisor (geordnet beenden → gesund) | 2 s | – |
+
+Das frühere `mem_limit` von 4 GB war nur für den App-Build nötig; Standard jetzt **2 GB** (Platz für Chromium/PDF neben
+einem Kompilierlauf). Ohne Modul-Installationen reichen weiterhin 1–1,5 GB.
 
 Lokal: `bun scripts/demo-server.mjs` startet ebenfalls über den Supervisor (Daten in `.data/atrium`, PGlite bleibt
 im Elternprozess offen); `.data/stop` beendet App und Datenbank geordnet.
@@ -556,7 +584,7 @@ Unter Administration → Module können bis zu 100 Module ausgewählt werden. Be
 zuerst, beim Deaktivieren abhängige Module; fehlende harte Abhängigkeiten können beim Aktivieren mit aktiviert werden.
 Fehler werden je Modul gemeldet. Die Updateprüfung lässt sich auf die Auswahl beschränken. Mehrere deaktivierte
 Module können gemeinsam entfernt werden, sofern keine Module außerhalb der Auswahl sie benötigen. Dabei genügen
-eine erneute Anmeldung und im Supervisor-Betrieb ein gemeinsamer Neubau; Daten können behalten oder gelöscht werden.
+eine erneute Anmeldung und im Supervisor-Betrieb ein gemeinsamer Neustart; Daten können behalten oder gelöscht werden.
 
 ### Frisches Deployment mit Modulen (Seed)
 
@@ -571,7 +599,7 @@ Ein neuer Server holt seine Module beim ersten Start selbst, wenn eine **Seed-Li
 ```
 
 Nur volle Commits (keine Branches), `modules` fehlt = alle Module der Quelle, `contentHashes` optional (Abweichung bricht ab).
-Der Supervisor lädt die Archive (Token optional `ATRIUM_GITHUB_TOKEN`/`GITHUB_TOKEN`), baut eine Generation und merkt sich den
+Der Supervisor lädt die Archive (Token optional `ATRIUM_GITHUB_TOKEN`/`GITHUB_TOKEN`), kompiliert die Module und merkt sich den
 Seed (`state.json` → `seed`); bis dahin läuft der mitgelieferte Build. Die App übernimmt die Module danach als installiert
 (`module_install`, Herkunft GitHub).
 
@@ -583,7 +611,7 @@ Seed (`state.json` → `seed`); bis dahin läuft der mitgelieferte Build. Die Ap
 - **Entfernen** (nur deaktivierte Module, die kein anderes braucht): Standard **Daten behalten** – Schema, Einstellungen, Rechte und
   Dateien bleiben und sind nach erneuter Installation wieder da. „Daten löschen“ (Bestätigung mit der Modul-ID) löscht Schema,
   Migrationsstand, Zustand, Rechte samt Rollen-/Einzelrechten, Rollen-Verleihungen, Einstellungen, Benachrichtigungs-Einstellungen,
-  Job-Läufe und Dateien. Danach Neubau ohne das Modul.
+  Job-Läufe und Dateien. Danach kurzer Neustart ohne das Modul.
 - **Wiederherstellen**: Die Herkunft der Module (`module_install`, Verlauf) gehört zum Sicherungsbereich „Einstellungen“; jede Sicherung
   enthält zudem je Modul Quelle, Commit und Inhaltshash. Fehlt ein Modul auf dem Zielserver, nennt der Import die Quelle mit Link zur
   Installation. Fehlen nach einer Wiederherstellung (oder nach Verlust des Volumes) installierte Module im laufenden Stand, bietet die

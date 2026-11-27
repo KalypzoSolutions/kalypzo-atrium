@@ -4,12 +4,15 @@ import { runCoreMigrations } from './database/migrate';
 import { getDb } from './database/client';
 import { env } from './env';
 import { loadBuiltInModules } from './modules/load';
+import { loadBundleModules } from './modules/bundles';
 import { syncModules } from './modules/service';
 import { reconcileInstallEvents } from './modules/install/supervisor-link';
 import { syncInstallsFromLock } from './modules/install/manage';
 import { seedSettingsFromEnv } from './settings/env-seed';
 import { installServerLocale, setSystemLocaleCache } from './i18n/locale';
 import { getSetting } from './settings/service';
+// Host-Registry für separat kompilierte Modul-Bundles (nur Lazy-Loader, lädt beim Import nichts)
+import 'virtual:atrium-host/server';
 
 let started: Promise<void> | undefined;
 let apiRegistered = false;
@@ -24,7 +27,9 @@ export function initCore(opts: { migrate?: boolean } = {}): Promise<void> {
 			registerCoreApi();
 			apiRegistered = true;
 		}
-		loadBuiltInModules();
+		await loadBuiltInModules();
+		// Vorkompilierte Bundles (ATRIUM_DATA_DIR/bundles) nach den eingebauten Modulen
+		await loadBundleModules();
 		await syncModules();
 		if (e.INITIAL_ADMIN_EMAIL && e.INITIAL_ADMIN_PASSWORD) {
 			const created = await bootstrapAdmin(e.INITIAL_ADMIN_EMAIL, e.INITIAL_ADMIN_PASSWORD);

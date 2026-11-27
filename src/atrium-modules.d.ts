@@ -1,12 +1,26 @@
 // Virtuelle Module aus `tools/vite-plugin-atrium-modules.ts`.
 
+declare module 'virtual:atrium-host/client' {
+	import type { AtriumHost } from '$lib/host/registry';
+	/** Kennung der Host-ABI (`tools/host-abi.js` `hostAbiHash`) */
+	export const abi: string;
+	/** Installierte Registry (`globalThis.__atriumHost`) */
+	export const host: AtriumHost;
+}
+
+declare module 'virtual:atrium-host/server' {
+	import type { AtriumHost } from '$lib/host/registry';
+	export const abi: string;
+	export const host: AtriumHost;
+}
+
 declare module 'virtual:atrium-modules/server' {
 	import type { ModuleDefinition } from '$lib/server/core/modules/types';
 	/** Alle installierten Module (Ordner `modules/<folder>`), sortiert nach Ordnername */
 	export const entries: {
 		folder: string;
-		/** Default-Export von `module.ts` */
-		definition: ModuleDefinition;
+		/** Lädt `module.ts` (eigener Chunk); Default-Export ist die Moduldefinition */
+		load: () => Promise<{ default?: ModuleDefinition }>;
 		/** Namen der Dateien `migrations/*.sql` ohne Endung, sortiert */
 		migrationFiles: string[];
 	}[];

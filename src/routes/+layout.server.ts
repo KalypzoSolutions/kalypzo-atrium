@@ -1,5 +1,6 @@
 import { brandingState, logoUrl } from '$lib/server/core/branding';
 import { navigationFor } from '$lib/server/core/modules/service';
+import { clientBundles } from '$lib/server/core/modules/bundles';
 import { navBadgeCounts } from '$lib/server/core/navigation/badges';
 import { getSetting, getSettings } from '$lib/server/core/settings/service';
 import { choiceItem, PRESET_PREFIX } from '$lib/appearance';
@@ -42,6 +43,10 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		themeVars: themeVarsFor(prefs?.activeTheme),
 		activeThemeId: prefs?.activeThemeId ?? '',
 		/** Schnellwahl in der Kopfzeile: nur mit Stern markierte Themes */
-		themeChoices: (prefs?.favorites ?? []).map((t) => choiceItem(t, t.id.startsWith(PRESET_PREFIX)))
+		themeChoices: (prefs?.favorites ?? []).map((t) =>
+			choiceItem(t, t.id.startsWith(PRESET_PREFIX))
+		),
+		/** Vorkompilierte Modul-Bundles: Oberfläche (Browser) und CSS (im `<head>` jeder Seite) */
+		moduleBundles: clientBundles()
 	};
 };

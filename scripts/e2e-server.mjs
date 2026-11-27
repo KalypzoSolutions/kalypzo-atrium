@@ -2,7 +2,33 @@
 // und die gebaute App dagegen. Es ist kein Docker nötig.
 // Mit E2E_DATABASE_URL kann stattdessen eine echte PostgreSQL-Datenbank verwendet werden.
 import { spawn } from 'node:child_process';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { compileModule } from './module-compiler/lib.mjs';
+
+// Vorkompiliertes Modul (tests/fixtures/bundle-modules/fx-bundle) – kommt OHNE App-Build dazu: erst jetzt, nach
+// `bun run build`, übersetzt der Modul-Compiler es in eine eigene Bundle-Ablage (tests/e2e/bundle-module.spec.ts)
+const bundlesDir = join(mkdtempSync(join(tmpdir(), 'atrium-e2e-bundles-')), 'bundles');
+{
+	const fixture = fileURLToPath(
+		new URL('../tests/fixtures/bundle-modules/fx-bundle', import.meta.url)
+	);
+	const started = Date.now();
+	await compileModule({
+		moduleDir: fixture,
+		outDir: join(bundlesDir, 'fx-bundle', 'e2e'),
+		installPackages: false
+	});
+	mkdirSync(bundlesDir, { recursive: true });
+	writeFileSync(
+		join(bundlesDir, 'active.json'),
+		JSON.stringify({ version: 1, modules: { 'fx-bundle': { dir: 'fx-bundle/e2e' } } })
+	);
+	console.log(`[e2e] fx-bundle vorkompiliert (${Date.now() - started} ms)`);
+}
 
 let databaseUrl = process.env.E2E_DATABASE_URL;
 let closeDb = async () => {};
@@ -37,6 +63,7 @@ const env = {
 	AUTH_RATE_LIMIT_FACTOR: '50',
 	// Kein Netzaufruf zum Modul-Marktplatz der Website (Job und Modulverwaltung zeigen „nicht erreichbar“)
 	ATRIUM_MARKETPLACE_OFFLINE: '1',
+	ATRIUM_BUNDLES_DIR: bundlesDir,
 	PORT: '4173',
 	HOST: '127.0.0.1'
 };

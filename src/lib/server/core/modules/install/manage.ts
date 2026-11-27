@@ -474,13 +474,15 @@ export async function uninstallModules(
 
 // --- Wunschzustand gegen laufenden Stand --------------------------------------------------------
 
-/** Lock-Datei der laufenden Generation (unter dem Supervisor), sonst `null` */
+/**
+ * Herkunft der installierten Module (Lock-Datei des Supervisors in der Bundle-Ablage `<data>/bundles`), sonst `null`.
+ * Ohne Supervisor (Entwicklung, Tests) gibt es keine.
+ */
 export function runningLock(): { modules: Record<string, LockEntry> } | null {
 	const data = supervisorDataDir();
-	const gen = process.env.ATRIUM_GENERATION;
-	if (!data || !gen || gen === 'base') return null;
+	if (!data || !process.env.ATRIUM_GENERATION) return null;
 	try {
-		return JSON.parse(readFileSync(join(data, 'gen', gen, 'atrium-modules.lock.json'), 'utf8'));
+		return JSON.parse(readFileSync(join(data, 'bundles', 'atrium-modules.lock.json'), 'utf8'));
 	} catch {
 		return null;
 	}

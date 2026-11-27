@@ -289,10 +289,11 @@ Daten, Secrets aus der Umgebung) – es gibt keine Sandbox. Schutzmaßnahmen:
 - Entpacken nur im Speicher über das zentrale ZIP-Verzeichnis: keine Symlinks/Sonderdateien, kein `..`/absoluter Pfad/Backslash,
   keine versteckten Dateien/`.git`/`node_modules`, keine Groß/Klein-Kollisionen, nur erlaubte Endungen, ≤ 5000 Dateien, ≤ 50 MB
   (je Datei ≤ 10 MB, Packrate ≤ 100).
-- Vorschau ohne Codeausführung: Rechte-Unterschied, neue Migrationen, npm-Pakete (Konflikt mit dem Core sperrt), Hinweise aus einem
+- Vorschau ohne Codeausführung: Rechte-Unterschied, neue Migrationen, npm-Pakete (Konflikt nur mit geteilten Paketen der Host-ABI – Svelte, zod … – sperrt; eigene werden ins Modul gebündelt), Hinweise aus einem
   Import-Scan (`$lib/server`, `child_process`, `process.env`, `eval` …). **Bereits angewendete, veränderte Migrationen sperren.**
 - Ausführen nur, wenn der Server es erlaubt (`ATRIUM_MODULE_INSTALL`: `off` Standard in Produktion, `copy` für `vite dev`,
-  `supervisor` = Neubau, folgt in Phase 6).
+  `supervisor` = Modul kompilieren + kurzer Neustart über den Supervisor). Kompiliert wird in einem eigenen Prozess; der Modul-Compiler
+  bündelt nur freigegebene `$lib`-Bereiche und lehnt `$lib/server`-Importe ab (`forbiddenImport`), installiert npm-Pakete mit `--ignore-scripts`.
 
 ## Externe Empfänger (Übermittlung an Dritte, #69)
 

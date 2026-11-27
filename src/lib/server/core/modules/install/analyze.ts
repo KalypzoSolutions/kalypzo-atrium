@@ -1,7 +1,7 @@
 /**
  * Analyse eines gefundenen Moduls gegen den installierten Stand – ohne Modulcode auszuführen:
  * Art der Änderung, Core-Version, Rechte, Migrationen (veränderte bereits angewendete Migration sperrt),
- * npm-Pakete (Überschneidung mit dem Core) und Hinweise aus einem Import-Scan.
+ * npm-Pakete (Konflikt nur mit geteilten Paketen der Host-ABI) und Hinweise aus einem Import-Scan.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -16,13 +16,24 @@ import { getDefinition, getModulePackage } from '../registry';
 import { RESERVED_MODULE_IDS } from '../types';
 import type { DiscoveredModule } from './discover';
 import { runtimeModulesDir } from './supervisor-link';
+import { HOST_PACKAGES } from '../../../../../../tools/host-abi.js';
+
+/** npm-Namen der geteilten Pakete der Host-ABI (`svelte/…` → `svelte`; ohne `$app/*`) */
+const SHARED_PACKAGES = new Set(
+	[...HOST_PACKAGES.client, ...HOST_PACKAGES.server]
+		.filter((p) => !p.startsWith('$'))
+		.map((p) => (p.startsWith('@') ? p.split('/').slice(0, 2).join('/') : p.split('/')[0]!))
+);
 
 export type InstallAction = 'install' | 'update' | 'reinstall' | 'unchanged' | 'downgrade';
 
 export interface NpmCheck {
 	name: string;
 	version: string;
-	/** `core`: liefert der Core in passender Version; `new`: wird mit installiert; `conflict`: passt nicht */
+	/**
+	 * `core`: geteiltes Paket der Host-ABI, der Core liefert es passend; `new`: wird beim Kompilieren mit ins Modul
+	 * gebündelt; `conflict`: geteiltes Paket in einer Version, die nicht zum Core passt
+	 */
 	status: 'core' | 'new' | 'conflict';
 	coreRange?: string;
 }
@@ -167,10 +178,11 @@ export async function analyzeModule(mod: DiscoveredModule): Promise<ModuleAnalys
 		blockers.push(t('install.analyze.migrationOrder'));
 	}
 
-	// npm-Pakete
+	// npm-Pakete: Ein Modul bündelt seine Pakete selbst (Modul-Compiler) – nur Pakete der Host-ABI (Svelte, zod, …)
+	// bekommt es immer vom Core; verlangt es davon eine andere Version, passt es nicht zu diesem Core.
 	const npm: NpmCheck[] = Object.entries(pkg.npm).map(([name, version]) => {
 		const coreRange = CORE_PACKAGES[name];
-		if (!coreRange) return { name, version, status: 'new' };
+		if (!SHARED_PACKAGES.has(name) || !coreRange) return { name, version, status: 'new' };
 		const ok = semver.validRange(coreRange) && semver.satisfies(version, coreRange);
 		return { name, version, status: ok ? 'core' : 'conflict', coreRange };
 	});

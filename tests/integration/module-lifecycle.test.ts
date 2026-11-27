@@ -157,9 +157,10 @@ describe('Wunschzustand und Lock-Datei', () => {
 
 	it('Module aus der Lock-Datei (Seed) werden übernommen, eingebaute nicht', async () => {
 		const data = mkdtempSync(join(tmpdir(), 'atrium-lock-'));
-		mkdirSync(join(data, 'gen', 'g1'), { recursive: true });
+		// Lock-Datei des Supervisors in der Bundle-Ablage (früher je Generation unter gen/<id>/)
+		mkdirSync(join(data, 'bundles'), { recursive: true });
 		writeFileSync(
-			join(data, 'gen', 'g1', 'atrium-modules.lock.json'),
+			join(data, 'bundles', 'atrium-modules.lock.json'),
 			JSON.stringify({
 				lockVersion: 1,
 				core: '2.0.0',
@@ -182,7 +183,7 @@ describe('Wunschzustand und Lock-Datei', () => {
 			})
 		);
 		process.env.ATRIUM_DATA_DIR = data;
-		process.env.ATRIUM_GENERATION = 'g1';
+		process.env.ATRIUM_GENERATION = 'bundles';
 		try {
 			expect(await syncInstallsFromLock()).toBe(1);
 			const rows = await getDb().select().from(schema.moduleInstall);

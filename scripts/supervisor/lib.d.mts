@@ -2,37 +2,16 @@
 
 export declare const VERIFY_PREFIX: string;
 
-export interface LockEntry {
-	version: string;
-	sourceType: 'github' | 'upload' | 'builtin';
-	source: Record<string, unknown>;
-	commit: string | null;
-	contentHash: string;
-}
-
-export interface ModuleLock {
-	lockVersion: 1;
-	core: string;
-	modules: Record<string, LockEntry>;
-}
+export type { LockEntry } from './bundles.mjs';
 
 export declare function contentHashOfDir(dir: string): string;
 export declare function moduleFolders(dir: string): string[];
-export declare function modulePackagesFor(
-	modulesDir: string,
-	corePkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> }
-): Record<string, string>;
-export declare function coreChanged(
-	info: { core?: string; coreBuild?: string | null } | null,
-	coreVersion: string,
-	coreBuild: string | null
-): boolean;
-export declare function mergeLock(
-	prev: { modules?: Record<string, LockEntry> } | null,
-	request: { modules?: Record<string, LockEntry>; remove?: string[] } | null,
-	modulesDir: string,
-	coreVersion: string
-): ModuleLock;
+export declare function crashDecision(opts: {
+	crashes: number;
+	current: string | null | undefined;
+	previous: string | null | undefined;
+	busy: boolean;
+}): { action: 'restart' | 'fallback' | 'exit'; delayMs: number; waiting?: boolean };
 
 export interface SupervisorOptions {
 	coreRoot: string;
@@ -42,6 +21,8 @@ export interface SupervisorOptions {
 	baseBuildDir?: string;
 	healthTimeoutMs?: number;
 	log?: (msg: string) => void;
+	/** ABI-Kennung vorgeben (sonst aus `tools/host-abi.js`) */
+	abi?: string;
 	/** GitHub-Archiv laden (Tests) */
 	download?: (
 		owner: string,
@@ -55,13 +36,6 @@ export declare class Supervisor {
 	constructor(opts: SupervisorOptions);
 	start(): Promise<void>;
 	stop(): Promise<void>;
-	/** Wartet, bis alle anstehenden Neubauten fertig sind */
+	/** Wartet, bis alle anstehenden Aufträge fertig sind */
 	readonly queue: Promise<void>;
 }
-
-/** Entfernt Modul-Pakete, die der Core in derselben Hauptversion mitbringt (außer `wanted`); liefert die Namen */
-export declare function dedupeModulePackages(
-	modulesDir: string,
-	coreRoot: string,
-	wanted?: Record<string, string>
-): string[];

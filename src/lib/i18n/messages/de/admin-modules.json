@@ -4,7 +4,7 @@
 	"headerDescription": "Module aktivieren und deaktivieren, aus GitHub oder einer ZIP-Datei installieren.",
 	"tabsLabel": "Bereiche der Module",
 	"title": "Module",
-	"intro": "Im Build enthaltene Module. Aktivierte Module erscheinen in der Navigation und der API.",
+	"intro": "Installierte Module. Aktivierte Module erscheinen in der Navigation und der API.",
 	"checking": "Prüft …",
 	"checkUpdates": "Nach Updates suchen",
 	"actionFailed": "Aktion fehlgeschlagen",
@@ -30,6 +30,10 @@
 		"restore": "Aus der Datenbank wiederherstellen"
 	},
 	"pleaseWait": "Bitte warten …",
+	"preparing": {
+		"title": "Module werden für die neue Version vorbereitet",
+		"text": "Nach dem Update des Systems werden diese Module neu kompiliert: {names}. Danach startet das System kurz neu, und sie sind wieder da – ihre Daten bleiben erhalten. Diese Seite aktualisiert sich selbst."
+	},
 	"problems": {
 		"title": "Nicht geladen",
 		"alertTitle": "Diese Module laufen nicht",
@@ -50,6 +54,7 @@
 	"permissions": "Berechtigungen",
 	"origin": "Herkunft",
 	"inBuild": "im Build enthalten",
+	"precompiled": "vorkompiliert",
 	"missingModules": "Fehlende Module: {list}",
 	"requiredByActive": "Benötigt von aktiven Modulen: {list}",
 	"deactivate": "Deaktivieren",
@@ -60,7 +65,7 @@
 		"titleCode": "{name} entfernen",
 		"titleData": "Daten von {name} löschen",
 		"descriptionCode": "Das Modul wird aus dem Server entfernt. Ohne „Daten löschen“ bleiben Tabellen, Einstellungen und Dateien erhalten und sind nach einer erneuten Installation wieder da.",
-		"descriptionCodeRebuild": "Das Modul wird aus dem Server entfernt (Neubau und Neustart). Ohne „Daten löschen“ bleiben Tabellen, Einstellungen und Dateien erhalten und sind nach einer erneuten Installation wieder da.",
+		"descriptionCodeRebuild": "Das Modul wird aus dem Server entfernt (kurzer Neustart). Ohne „Daten löschen“ bleiben Tabellen, Einstellungen und Dateien erhalten und sind nach einer erneuten Installation wieder da.",
 		"descriptionData": "Löscht alle Daten des nicht mehr installierten Moduls endgültig.",
 		"deleteData": "Daten löschen (Tabellen, Einstellungen, Rechte, Dateien) – nicht rückgängig zu machen",
 		"confirmLabel": "Zur Bestätigung die Modul-ID eingeben: {id}",
@@ -77,7 +82,7 @@
 		"disabled": "Modul deaktiviert",
 		"removing": "Modul wird entfernt – der Server baut neu und startet neu",
 		"removed": "Modul entfernt",
-		"buildRequested": "Neubau angefordert",
+		"buildRequested": "Installation angefordert",
 		"invalidInput": "Eingaben ungültig",
 		"saved": "Gespeichert",
 		"unknown": "Unbekannt"
@@ -183,7 +188,7 @@
 		"accept": "Ich habe die Quelle geprüft und vertraue ihr.",
 		"installing": "Installiert …",
 		"install": "Installieren",
-		"rebuild": "Neubau",
+		"rebuild": "Installation",
 		"restarting": "Der Server startet gerade neu …",
 		"waiting": "Wartet",
 		"progress": "{step} … Das kann einige Minuten dauern; die Seite aktualisiert sich selbst.",
@@ -218,7 +223,7 @@
 		"disableDescription": "Andere aktive Module sind betroffen: {list}. Die Deaktivierung kann fehlschlagen, solange diese aktiv sind.",
 		"removeTitle": "Mehrere Module entfernen",
 		"removeDescription": "Die Module werden vom Server entfernt. Ohne „Daten löschen“ bleiben ihre Daten erhalten.",
-		"removeRebuild": "Die Module werden entfernt; der Server wird neu gebaut und gestartet. Ohne „Daten löschen“ bleiben ihre Daten erhalten.",
+		"removeRebuild": "Die Module werden entfernt; der Server startet kurz neu. Ohne „Daten löschen“ bleiben ihre Daten erhalten.",
 		"confirmWord": "Zur Bestätigung {word} eingeben"
 	}
 }
