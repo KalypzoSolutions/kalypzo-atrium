@@ -1,6 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { error } from '@sveltejs/kit';
-import { bundleClientFile } from '$lib/server/core/modules/bundles';
+import {
+	UTILITIES_FILE,
+	UTILITIES_ID,
+	bundleClientFile,
+	bundleUtilities
+} from '$lib/server/core/modules/bundles';
 import type { RequestHandler } from './$types';
 
 const TYPES: Record<string, string> = {
@@ -27,15 +32,21 @@ const TYPES: Record<string, string> = {
  * cachebar wie `/_app/immutable`.
  */
 export const GET: RequestHandler = async ({ params }) => {
+	const headers = {
+		'cache-control': 'public, max-age=31536000, immutable',
+		'x-content-type-options': 'nosniff'
+	};
+	// Gemeinsames Utilities-CSS (Core + Bundles): nur unter seinem aktuellen Hash
+	if (params.id === UTILITIES_ID) {
+		const u = await bundleUtilities();
+		if (!u || params.build !== u.hash || params.file !== UTILITIES_FILE) throw error(404);
+		return new Response(u.css, { headers: { ...headers, 'content-type': TYPES.css! } });
+	}
 	const ext = /\.([a-z0-9]+)$/i.exec(params.file)?.[1]?.toLowerCase() ?? '';
 	const type = TYPES[ext];
 	const file = type ? bundleClientFile(params.id, params.build, params.file) : null;
 	if (!type || !file) throw error(404);
 	return new Response(new Uint8Array(await readFile(file)), {
-		headers: {
-			'content-type': type,
-			'cache-control': 'public, max-age=31536000, immutable',
-			'x-content-type-options': 'nosniff'
-		}
+		headers: { ...headers, 'content-type': type }
 	});
 };

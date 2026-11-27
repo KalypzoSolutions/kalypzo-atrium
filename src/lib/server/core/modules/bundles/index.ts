@@ -22,6 +22,7 @@ import type { ModuleBundleMeta } from '../../../../../../scripts/module-compiler
 import { getDefinition, markModuleBroken, registerModule } from '../registry';
 import type { ModuleDefinition } from '../types';
 import { conventionMessageFor, importProblem } from '../load';
+import { utilitiesCss } from './utilities';
 
 export const BUNDLE_ACTIVE_FILE = 'active.json';
 /** Öffentlicher Pfad der Browser-Dateien eines Bundles */
@@ -194,6 +195,28 @@ export function clientBundles(): ClientBundle[] {
 			host: b.meta.client.host
 		}))
 		.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/** Pfad-Teil des gemeinsamen Utilities-CSS (`/_atrium/modules/_utilities/<hash>/utilities.css`) */
+export const UTILITIES_ID = '_utilities';
+export const UTILITIES_FILE = 'utilities.css';
+
+/**
+ * Gemeinsames Utilities-CSS (Core + geladene Bundles, `utilities.ts`) mit seiner URL, oder `null` (keine Bundles
+ * bzw. Tailwind nicht verfügbar)
+ */
+export async function bundleUtilities(): Promise<{
+	url: string;
+	hash: string;
+	css: string;
+} | null> {
+	const candidates = [...loaded.values()]
+		.filter((b) => getDefinition(b.id))
+		.map((b) => b.meta.client.tailwind ?? []);
+	const u = await utilitiesCss(candidates);
+	return u
+		? { ...u, url: `${BUNDLE_URL_PREFIX}${UTILITIES_ID}/${u.hash}/${UTILITIES_FILE}` }
+		: null;
 }
 
 /**

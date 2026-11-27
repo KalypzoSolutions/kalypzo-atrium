@@ -19,6 +19,7 @@ import {
 } from '$testing';
 import {
 	bundleClientFile,
+	bundleUtilities,
 	clientBundles,
 	loadBundleModules,
 	loadedBundle,
@@ -130,8 +131,24 @@ describe('Bundle-Modul zur Laufzeit', () => {
 		expect(bundleClientFile('fx-bundle', 'b1', 'client/../../../active.json')).toBeNull();
 		expect(bundleClientFile('fx-bundle', 'other', 'client/ui.js')).toBeNull();
 		expect(bundleClientFile('fx-board', 'b1', 'client/ui.js')).toBeNull();
-		const css = readFileSync(bundleClientFile('fx-bundle', 'b1', 'client/module.css')!, 'utf8');
+	});
+
+	it('gemeinsames Utilities-CSS: Klassen von Core und Modul in einer Tailwind-Reihenfolge', async () => {
+		const u = await bundleUtilities();
+		expect(u).not.toBeNull();
+		expect(u!.url).toBe(`/_atrium/modules/_utilities/${u!.hash}/utilities.css`);
+		const css = u!.css;
+		// nur im Modul
 		expect(css).toContain('min-h-\\[13\\.37rem\\]');
+		// aus dem Core (Inhaltsbereich `<main>`)
+		expect(css).toContain('.lg\\:p-8');
+		// Mischfall: Basis-Klasse (auch im Core) VOR der Variante aus dem Modul – nur so gewinnt die Variante ab `sm`
+		const base = css.indexOf('.p-4 {');
+		const variant = css.indexOf('.sm\\:p-\\[1\\.37rem\\]');
+		expect(base).toBeGreaterThan(-1);
+		expect(variant).toBeGreaterThan(base);
+		// gleiche Eingabe → gleiches Ergebnis (zwischengespeichert)
+		expect((await bundleUtilities())!.hash).toBe(u!.hash);
 	});
 
 	it('SSR: moduleUiLoader liefert die Oberfläche aus dem Server-Bundle', async () => {

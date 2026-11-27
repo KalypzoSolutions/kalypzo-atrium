@@ -22,8 +22,11 @@ export interface ModuleBundleMeta {
 	client: {
 		/** Browser-Einstieg (Default-Export = `ModuleUi`) */
 		entry: string;
+		/** `<style>`-Blöcke der Svelte-Komponenten */
 		css: string[];
 		host: string[];
+		/** Tailwind-Kandidaten des Moduls (für das gemeinsame Utilities-CSS der App) */
+		tailwind: string[];
 	};
 	/** Namen der `migrations/*.sql` ohne Endung, sortiert */
 	migrations: string[];
@@ -46,6 +49,8 @@ export declare class CompileError extends Error {
 export declare function unresolvedPackage(message: string): string | null;
 export declare function coreFileIsPure(id: string): boolean;
 export declare function removeWorkDir(dir: string): void;
+export declare function installedPackageNames(nodeModules: string): string[];
+export declare function tailwindCandidates(dir: string): Promise<string[]>;
 export declare function compileModule(opts: {
 	moduleDir: string;
 	outDir: string;

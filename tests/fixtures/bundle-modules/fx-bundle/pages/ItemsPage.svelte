@@ -35,10 +35,12 @@
 
 <div class="space-y-6">
 	<PageHeader title={t('fx-bundle.title')} description={t('fx-bundle.greeting')} />
-	<!-- Eigene Tailwind-Klasse nur hier: beweist, dass das CSS des Bundles geladen wird -->
+	<!-- Eigene Tailwind-Klasse nur hier: beweist, dass die Klassen des Bundles im CSS landen -->
 	<Card.Root class="min-h-[13.37rem]" data-testid="fx-bundle-page" data-mounted={mounted}>
 		<Card.Content class="space-y-3">
-			<p data-testid="fx-bundle-greeting">{greeting}</p>
+			<!-- Mischfall: `p-4` hat auch der Core, `sm:p-[1.37rem]` nur das Modul – die Variante muss ab `sm` gewinnen
+			     (getrennte Teil-Stylesheets ließen sie gegen die Basis-Klasse des Core verlieren) -->
+			<p data-testid="fx-bundle-greeting" class="p-4 sm:p-[1.37rem]">{greeting}</p>
 			<Button onclick={add} data-testid="fx-bundle-add">{t('fx-bundle.add')}</Button>
 			<ul data-testid="fx-bundle-items">
 				{#each items as item (item)}

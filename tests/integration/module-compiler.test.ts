@@ -130,10 +130,12 @@ describe('Fixture-Module kompilieren', () => {
 		expect(meta.server.moduleHost.some((k: string) => k.startsWith('lib:components/'))).toBe(false);
 	});
 
-	it('CSS enthält die eigenen Tailwind-Klassen des Moduls', () => {
+	it('Tailwind-Klassen des Moduls stehen in meta.json, module.css enthält keine Utilities', () => {
+		// Utilities baut die App gemeinsam für Core + Module (richtige Reihenfolge), siehe module-bundles.test.ts
+		expect(results['fx-board']!.meta!.client.tailwind).toContain('min-h-[17.25rem]');
 		const css = readFileSync(join(root, 'fx-board', 'client', 'module.css'), 'utf8');
-		expect(css).toContain('min-h-\\[17\\.25rem\\]');
-		expect(css).toContain('@layer utilities');
+		expect(css).not.toContain('min-h-\\[17\\.25rem\\]');
+		expect(css).not.toContain('@layer utilities');
 	});
 
 	it('ungenutzte Teile des Core werden nicht mitgebündelt (Tree-Shaking der Sammel-Exporte)', () => {

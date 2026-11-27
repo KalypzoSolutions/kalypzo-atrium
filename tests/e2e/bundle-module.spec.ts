@@ -52,6 +52,12 @@ test('vorkompiliertes Modul: SSR, Browser-Bundle, CSS, Texte, Toast und API', as
 	expect(html).toContain('data-testid="fx-bundle-page"');
 	expect(html).toContain('Bundle-Seite');
 	expect(html).toMatch(/<link[^>]+href="\/_atrium\/modules\/fx-bundle\/e2e\/client\/module\.css"/);
+	// Gemeinsames Utilities-CSS (Core + Bundles) als LETZTES Stylesheet – nach dem CSS des Core
+	const sheets = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]*href="([^"]+)"/g)].map(
+		(m) => m[1]!
+	);
+	expect(sheets.at(-1)).toMatch(/^\/_atrium\/modules\/_utilities\/[0-9a-f]{16}\/utilities\.css$/);
+	expect(sheets.findIndex((s) => s.includes('/_app/immutable/'))).toBeLessThan(sheets.length - 1);
 
 	// Browser: Oberfläche lädt aus /_atrium/modules/…, hydriert (onMount) und holt Daten über die Modul-API
 	const bundleRequests: string[] = [];
@@ -63,8 +69,16 @@ test('vorkompiliertes Modul: SSR, Browser-Bundle, CSS, Texte, Toast und API', as
 	const card = page.getByTestId('fx-bundle-page');
 	await expect(card).toHaveAttribute('data-mounted', 'true');
 	await expect(page.getByTestId('fx-bundle-greeting')).toHaveText('Hallo aus dem Bundle');
-	// min-h-[13.37rem] steht nur im Bundle-CSS
+	// min-h-[13.37rem] steht nur im Modul
 	expect(await card.evaluate((el) => getComputedStyle(el).minHeight)).toBe(`${13.37 * 16}px`);
+	// Mischfall: `p-4` (auch im Core) + `sm:p-[1.37rem]` (nur im Modul) → ab `sm` gilt die Variante
+	expect(
+		await page.getByTestId('fx-bundle-greeting').evaluate((el) => getComputedStyle(el).paddingLeft)
+	).toBe(`${1.37 * 16}px`);
+	// Abstand des Inhaltsbereichs (Core) bleibt unberührt
+	expect(await page.locator('main').evaluate((el) => getComputedStyle(el).paddingLeft)).toBe(
+		'32px'
+	);
 	expect(bundleRequests.some((p) => p.endsWith('/client/ui.js'))).toBe(true);
 
 	// Toast über das `toast` des Core (ein <Toaster> im Root-Layout) und API des Moduls

@@ -16,6 +16,7 @@ import { installShutdownHandlers, runVerifyAndExit } from '$lib/server/core/life
 import { startJobRunner } from '$lib/server/core/jobs';
 import { brandVersion, brandingState } from '$lib/server/core/branding';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
+import { bundleUtilities } from '$lib/server/core/modules/bundles';
 import { getSetting } from '$lib/server/core/settings/service';
 import { LOCALE_COOKIE, resolveLocale, withLocale } from '$lib/server/core/i18n/locale';
 import { applyAppearance, loadUserPrefs } from '$lib/server/core/settings/user-prefs';
@@ -195,7 +196,14 @@ const headers: Handle = async ({ event, resolve }) => {
 	let appName: Promise<string> | undefined;
 	const response = await resolve(event, {
 		// Läuft beim Rendern (nach Session und Layout-Load): der Theme-Cookie ist dann bereits abgeglichen
-		transformPageChunk: async ({ html }) => {
+		transformPageChunk: async ({ html: chunk }) => {
+			let html = chunk;
+			// Gemeinsames Utilities-CSS der Modul-Bundles als LETZTES Stylesheet (nach dem CSS des Core), damit seine
+			// Reihenfolge gilt – siehe core/modules/bundles/utilities.ts
+			if (html.includes('</head>')) {
+				const u = await bundleUtilities();
+				if (u) html = html.replace('</head>', `<link rel="stylesheet" href="${u.url}">\n</head>`);
+			}
 			if (!html.includes('%app.')) return html;
 			appearance ??= appearanceFor(event);
 			brand ??= brandingState().then(brandVersion);

@@ -7,7 +7,8 @@
  *   server/module.js  – `module.ts` (Default-Export = Moduldefinition), SSR, alles außer der Host-ABI gebündelt
  *   server/ui.js      – `ui.ts` für das Server-Rendering der Modulseiten (falls vorhanden)
  *   client/ui.js      – `ui.ts` für den Browser (Seiten als eigene Chunks), registriert die Modultexte
- *   client/module.css – Tailwind-Klassen des Moduls + `<style>`-Blöcke seiner Svelte-Komponenten
+ *   client/module.css – `<style>`-Blöcke seiner Svelte-Komponenten (Tailwind-Klassen: `meta.client.tailwind`,
+ *                       daraus baut die App ein gemeinsames Utilities-CSS)
  *   meta.json         – Kennungen (Inhalt, ABI), Einstiege, vorzuladende Host-Schlüssel je Seite, Migrationen
  *
  * Geteilt (nicht gebündelt) wird die Host-ABI aus `tools/host-abi.js`; Importe darauf werden in Zugriffe auf
@@ -308,9 +309,30 @@ export function coreFileIsPure(id) {
 }
 
 /**
- * Gemeinsame Vite-Konfiguration einer Seite
+ * Paketnamen eines `node_modules`-Ordners (inkl. `@scope/name`), sortiert.
+ * @param {string} nodeModules
+ * @returns {string[]}
+ */
+export function installedPackageNames(nodeModules) {
+	if (!existsSync(nodeModules)) return [];
+	/** @type {string[]} */
+	const out = [];
+	for (const name of readdirSync(nodeModules)) {
+		if (name.startsWith('.')) continue;
+		if (name.startsWith('@')) {
+			for (const sub of readdirSync(join(nodeModules, name))) out.push(`${name}/${sub}`);
+		} else out.push(name);
+	}
+	return out.sort();
+}
+
+/**
+ * Gemeinsame Vite-Konfiguration einer Seite. `dedupe`: Pakete, die für das Modul installiert wurden – sie gelten im
+ * ganzen Bundle, auch für Importe aus Core-Paketen heraus. Sonst bündelt z. B. `notes` zwei ProseMirror-Kopien
+ * (`@tiptap/pm` als Peer der eigenen tiptap-Erweiterungen + die des Core über `@tiptap/starter-kit`) und der Editor
+ * scheitert mit „Adding different instances of a keyed plugin“.
  * @param {'client' | 'server'} side
- * @param {{ workModule: string, outDir: string, cacheDir: string, input: Record<string, string>, used: Map<string, Set<string>>, extra?: import('vite').Plugin[], keepOutDir?: boolean }} o
+ * @param {{ workModule: string, outDir: string, cacheDir: string, input: Record<string, string>, used: Map<string, Set<string>>, extra?: import('vite').Plugin[], keepOutDir?: boolean, dedupe?: string[] }} o
  * @returns {import('vite').InlineConfig}
  */
 function viteConfig(side, o) {
@@ -323,7 +345,10 @@ function viteConfig(side, o) {
 		publicDir: false,
 		clearScreen: false,
 		mode: 'production',
-		resolve: { alias: [{ find: /^\$lib(?=\/|$)/, replacement: LIB_DIR }] },
+		resolve: {
+			alias: [{ find: /^\$lib(?=\/|$)/, replacement: LIB_DIR }],
+			dedupe: o.dedupe ?? []
+		},
 		define: { 'import.meta.env.SSR': JSON.stringify(side === 'server') },
 		plugins: [
 			hostPlugin(side, { moduleDir: o.workModule, used: o.used }),
@@ -362,21 +387,21 @@ function viteConfig(side, o) {
 	};
 }
 
-/** Tailwind-Klassen des Moduls gegen das Theme des Core (nur Utilities, in `@layer utilities` wie im Core) */
-async function tailwindCss(/** @type {string} */ workModule) {
-	const { compile } = await import('@tailwindcss/node');
+/**
+ * Tailwind-Kandidaten (mögliche Klassennamen) eines Modulordners. Das Modul bringt **kein** eigenes Utilities-CSS
+ * mit: Kleine Teil-Stylesheets können die globale Reihenfolge von Tailwind nicht abbilden (gemessen: `sm:left-3` aus
+ * dem Modul verlor gegen `left-1/2` des Core, eine doppelte `.p-0` schlug `md:p-8` des Core). Die App baut daraus ein
+ * gemeinsames Utilities-CSS aus Core + allen aktiven Modulen (`core/modules/bundles/utilities.ts`).
+ * @param {string} dir
+ * @returns {Promise<string[]>}
+ */
+export async function tailwindCandidates(dir) {
 	const { Scanner } = await import('@tailwindcss/oxide');
-	const input = [
-		`@reference ${JSON.stringify(norm(join(CORE_ROOT, 'src', 'app.css')))};`,
-		'@layer utilities {',
-		'@tailwind utilities;',
-		'}'
-	].join('\n');
-	const compiler = await compile(input, { base: norm(CORE_ROOT), onDependency: () => {} });
-	const scanner = new Scanner({
-		sources: [{ base: norm(workModule), pattern: '**/*', negated: false }]
-	});
-	return compiler.build(scanner.scan());
+	return [
+		...new Set(
+			new Scanner({ sources: [{ base: norm(dir), pattern: '**/*', negated: false }] }).scan()
+		)
+	].sort();
 }
 
 /**
@@ -429,6 +454,17 @@ export async function compileModule(opts) {
 			);
 		}
 
+		// Für das Modul installierte Pakete gelten im ganzen Bundle (eine Kopie je Paket), außer geteilten der Host-ABI
+		const hostRoots = new Set(
+			[...HOST_PACKAGES.client, ...HOST_PACKAGES.server].map((p) =>
+				p.startsWith('@') ? p.split('/').slice(0, 2).join('/') : p.split('/')[0]
+			)
+		);
+		const dedupe = installedPackageNames(join(workModules, 'node_modules')).filter(
+			(n) => !hostRoots.has(n)
+		);
+		if (dedupe.length) log(`Eine Kopie je Paket: ${dedupe.length} Pakete aus dem Modul`);
+
 		const hasUi = existsSync(join(workModule, 'ui.ts'));
 		const cacheDir = join(work, '.vite');
 		/** @type {Record<'client' | 'serverModule' | 'serverUi', Map<string, Set<string>>>} */
@@ -441,6 +477,7 @@ export async function compileModule(opts) {
 				workModule,
 				outDir,
 				cacheDir,
+				dedupe,
 				used: used.serverModule,
 				input: { module: join(workModule, 'module.ts') }
 			})
@@ -451,6 +488,7 @@ export async function compileModule(opts) {
 					workModule,
 					outDir,
 					cacheDir,
+					dedupe,
 					used: used.serverUi,
 					input: { ui: join(workModule, 'ui.ts') },
 					keepOutDir: true
@@ -463,6 +501,7 @@ export async function compileModule(opts) {
 				workModule,
 				outDir,
 				cacheDir,
+				dedupe,
 				used: used.client,
 				input: { ui: '\0atrium-entry-client' },
 				extra: [clientEntryPlugin({ id, workModule, hasUi })]
@@ -480,10 +519,10 @@ export async function compileModule(opts) {
 			? readdirSync(join(clientDir, 'assets'))
 			: [])
 			if (f.endsWith('.css')) rmSync(join(clientDir, 'assets', f));
-		writeFileSync(
-			join(clientDir, 'module.css'),
-			[await tailwindCss(workModule), ...svelteCss].join('\n')
-		);
+		// nur die `<style>`-Blöcke der Svelte-Komponenten (eigene Klassen, ohne Ebenen); Utilities kommen aus dem
+		// gemeinsamen CSS der App (`tailwind` unten)
+		writeFileSync(join(clientDir, 'module.css'), svelteCss.join('\n'));
+		const tailwind = await tailwindCandidates(workModule);
 		removeUnreferencedAssets(clientDir);
 		removeUnreferencedAssets(join(outDir, 'server'));
 
@@ -511,7 +550,12 @@ export async function compileModule(opts) {
 				ui: hasUi ? 'server/ui.js' : null,
 				uiHost: keys(used.serverUi)
 			},
-			client: { entry: 'client/ui.js', css: ['client/module.css'], host: keys(used.client) },
+			client: {
+				entry: 'client/ui.js',
+				css: ['client/module.css'],
+				host: keys(used.client),
+				tailwind
+			},
 			migrations: existsSync(migrationsDir)
 				? readdirSync(migrationsDir)
 						.filter((f) => f.endsWith('.sql'))
