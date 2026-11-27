@@ -42,9 +42,13 @@ if (args.includes('--coverage')) {
 		process.exit(1);
 	}
 	const sum = { LF: 0, LH: 0, FNF: 0, FNH: 0 };
+	// Virtuelle Module (`virtual:…`) sind generierter Code – u. a. Hunderte Loader `() => import(…)` der Host-Registry
+	// (`virtual:atrium-host-map/*`), von denen Tests nur wenige aufrufen. Sie zählen nicht mit.
+	let skip = false;
 	for (const line of readFileSync(lcov, 'utf8').split(/\r?\n/)) {
+		if (line.startsWith('SF:')) skip = line.startsWith('SF:virtual:');
 		const m = /^(LF|LH|FNF|FNH):(\d+)$/.exec(line);
-		if (m) sum[m[1]] += Number(m[2]);
+		if (m && !skip) sum[m[1]] += Number(m[2]);
 	}
 	const pct = (hit, found) => (found ? (hit / found) * 100 : 100);
 	const actual = { lines: pct(sum.LH, sum.LF), functions: pct(sum.FNH, sum.FNF) };
