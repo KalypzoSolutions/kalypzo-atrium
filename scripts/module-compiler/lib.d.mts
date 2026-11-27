@@ -56,6 +56,8 @@ export declare function tailwindCandidates(dir: string): Promise<string[]>;
 export declare function compileModule(opts: {
 	moduleDir: string;
 	outDir: string;
+	/** Erwartete Modul-ID, wenn der Ordner anders heißt (Neukompilieren aus `<bundle>/src`) */
+	id?: string;
 	log?: (line: string) => void;
 	installPackages?: boolean;
 }): Promise<ModuleBundleMeta>;

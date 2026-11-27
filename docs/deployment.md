@@ -226,7 +226,7 @@ Dienst nicht) – die Standardwerte sind deshalb ≤ 1,0.
 
 | Dienst | `mem_limit` (Variable) | `cpus` | `pids_limit` | Begründung |
 |---|---|---|---|---|
-| `app` | 1536m (`APP_MEM_LIMIT`) | 1.0 (`APP_CPUS`) | 1024 | Bun + Chromium (PDF, 300–500 MB je Lauf) + sharp (Bilder bis 50 MP); tmpfs `/tmp` (256 MB) zählt mit; Chromium braucht viele Threads |
+| `app` | 2g (`APP_MEM_LIMIT`) | 1.0 (`APP_CPUS`) | 1024 | Modul kompilieren (Spitze ~1 GB inkl. App, 1 CPU) + Bun + Chromium (PDF, 300–500 MB je Lauf) + sharp (Bilder bis 50 MP); tmpfs `/tmp` (256 MB) zählt mit; Chromium braucht viele Threads |
 | `db` | 1g (`DB_MEM_LIMIT`) | 1.0 (`DB_CPUS`) | 256 | PostgreSQL mit Standard-`shared_buffers` (128 MB), ≤ 10 Verbindungen; `shm_size 256m` |
 | `storage` (Dokploy) | 512m (`STORAGE_MEM_LIMIT`) | 0.5 (`STORAGE_CPUS`) | 256 | MinIO Single-Node |
 | `website` | 256m (`WEBSITE_MEM_LIMIT`) | 0.5 (`WEBSITE_CPUS`) | 128 | SvelteKit-SSR mit 60-s-Cache |
@@ -547,9 +547,20 @@ Compose (`docker-compose.dokploy*.yml`): Volume `atrium-data:/data/atrium`, `sto
 Image enthält dafür alle Abhängigkeiten und `src/` (Host-ABI, Tailwind).
 
 **Messwerte** (lokal, Windows): Kompilieren je Modul 2–5 s (alle Module aus `atrium-basic-modules`, `notes` mit
-11 npm-Paketen), Installation im E2E bis „Fertig“ 34 s inkl. Probelauf und Neustart (früher voller App-Build 45–70 s).
-Im Container noch nicht neu gemessen – das frühere `mem_limit` von 4 GB war für den App-Build nötig und kann vermutlich
-sinken (offen).
+11 npm-Paketen), Installation eines kleinen Moduls im E2E bis „Fertig“ 4,5 s inkl. Probelauf und Neustart (früher voller App-Build 45–70 s).
+Docker-Probelauf (2026-11-27, Image `read_only`, `cap_drop ALL`, **1 CPU, 1 GB**, echtes PostgreSQL, Seed mit `events`, `notes`,
+`whiteboard` von GitHub inkl. npm-Installation im Container):
+
+| Vorgang | Dauer | Speicher-Spitze (Container) |
+|---|---|---|
+| Frischer Start bis Seed fertig (3 Module kompilieren, Probelauf, Neustart) | 39–41 s (Kompilieren 25 s) | 940 MiB |
+| Neustart des Containers ohne Änderung | 3 s bis gesund | – |
+| Core-Update (neue ABI): App erreichbar, Module „wird vorbereitet“ (503) | 10 s | – |
+| … alle drei neu kompiliert und wieder da | 34 s | 892 MiB |
+| Neustart durch den Supervisor (geordnet beenden → gesund) | 2 s | – |
+
+Das frühere `mem_limit` von 4 GB war nur für den App-Build nötig; Standard jetzt **2 GB** (Platz für Chromium/PDF neben
+einem Kompilierlauf). Ohne Modul-Installationen reichen weiterhin 1–1,5 GB.
 
 Lokal: `bun scripts/demo-server.mjs` startet ebenfalls über den Supervisor (Daten in `.data/atrium`, PGlite bleibt
 im Elternprozess offen); `.data/stop` beendet App und Datenbank geordnet.

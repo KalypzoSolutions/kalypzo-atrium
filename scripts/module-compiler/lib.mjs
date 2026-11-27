@@ -406,7 +406,9 @@ export async function tailwindCandidates(dir) {
 
 /**
  * Ein Modul kompilieren.
- * @param {{ moduleDir: string, outDir: string, log?: (line: string) => void, installPackages?: boolean }} opts
+ * `id`: erwartete Modul-ID, wenn der Ordner anders heißt (Neukompilieren aus `<bundle>/src`); sonst gilt der
+ * Ordnername als ID.
+ * @param {{ moduleDir: string, outDir: string, id?: string, log?: (line: string) => void, installPackages?: boolean }} opts
  * @returns {Promise<Record<string, any>>} Inhalt von `meta.json`
  */
 export async function compileModule(opts) {
@@ -420,10 +422,14 @@ export async function compileModule(opts) {
 		});
 	const pkg = JSON.parse(readFileSync(pkgFile, 'utf8'));
 	const id = String(pkg.id ?? '');
-	if (id !== basename(moduleDir))
-		throw new CompileError(`Ordner „${basename(moduleDir)}“ ≠ Modul-ID „${id}“`, {
-			kind: 'invalidModule'
-		});
+	const expected = opts.id ?? basename(moduleDir);
+	if (id !== expected)
+		throw new CompileError(
+			opts.id
+				? `Modul-ID „${id}“ ≠ erwartet „${expected}“`
+				: `Ordner „${expected}“ ≠ Modul-ID „${id}“`,
+			{ kind: 'invalidModule' }
+		);
 	const contentHash = contentHashOfDir(moduleDir);
 	const abi = hostAbiHash();
 

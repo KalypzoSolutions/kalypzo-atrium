@@ -205,8 +205,8 @@ services:
       internal:
         aliases: ['ep-intern-${DEPLOY_ENV:-prod}-app']
       dokploy-network: {}
-    # Neubau beim Installieren von Modulen braucht ~3 GB (Messwerte: docs/deployment.md)
-    mem_limit: ${APP_MEM_LIMIT:-4g}
+    # Modul-Installation kompiliert nur das Modul (Spitze ~1 GB inkl. App, docs/deployment.md); 2 GB lassen Platz für Chromium (PDF)
+    mem_limit: ${APP_MEM_LIMIT:-2g}
     cpus: ${APP_CPUS:-1.0}
     cpu_shares: 768
     pids_limit: 1024

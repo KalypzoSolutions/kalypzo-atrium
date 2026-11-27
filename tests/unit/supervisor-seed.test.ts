@@ -76,4 +76,25 @@ describe('extractSeedModules', () => {
 		const bad = zipSync({ 'top/../evil.ts': new TextEncoder().encode('x') });
 		expect(() => extractSeedModules(bad, '', null, ROOT)).toThrow(/unsicherer Pfad/);
 	});
+
+	it('versteckte Einträge und node_modules im Repo werden übersprungen (wie bei der Installation im Panel)', () => {
+		const enc = (s: string) => new TextEncoder().encode(s);
+		const repo = zipSync({
+			...Object.fromEntries(
+				Object.entries(filesOf(join(FIXTURES, 'fx-people'))).map(([k, v]) => [
+					`top/fx-people/${k}`,
+					v
+				])
+			),
+			'top/.claude/CLAUDE.md': enc('# Hinweise'),
+			'top/.github/workflows/ci.yml': enc('on: push'),
+			'top/fx-people/.env': enc('SECRET=1'),
+			'top/fx-people/node_modules/x/index.js': enc('x')
+		});
+		const mods = extractSeedModules(repo, '', null, ROOT);
+		expect(Object.keys(mods)).toEqual(['fx-people']);
+		const names = [...mods['fx-people']!.files.keys()];
+		expect(names.some((n) => n.startsWith('.') || n.includes('node_modules'))).toBe(false);
+		expect(names).toContain('module.ts');
+	});
 });

@@ -27,9 +27,15 @@ export function installShutdownHandlers(): void {
 	});
 	process.on('sveltekit:shutdown' as never, () => {
 		stopJobRunner();
-		void closeDb().catch((e) =>
-			console.error('[core] Datenbank beim Beenden nicht geschlossen:', e)
-		);
+		void closeDb()
+			.catch((e) => console.error('[core] Datenbank beim Beenden nicht geschlossen:', e))
+			.finally(() => {
+				// Server und Datenbank sind zu – jetzt beenden. Sonst hält der IPC-Kanal zum Supervisor (bzw. ein
+				// übriger Zeitgeber) den Prozess bis HARD_EXIT_MS am Leben: im Docker-Probelauf 30 s je Neustart.
+				// Kurze Frist ohne `ref`, damit laufende Log-Ausgaben noch abfließen.
+				if (process.connected) process.disconnect?.();
+				setTimeout(() => process.exit(0), 200).unref();
+			});
 	});
 }
 

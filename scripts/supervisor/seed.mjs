@@ -58,13 +58,23 @@ export function parseSeed(json) {
 	return { sources };
 }
 
-function safePath(p) {
+/** Pfad bricht aus oder ist ungültig → Abbruch */
+function unsafePath(p) {
 	return (
-		!p.includes('\\') &&
-		!p.startsWith('/') &&
-		!p.includes('\0') &&
-		p.split('/').every((s) => s !== '..' && s !== '.' && !s.startsWith('.') && s !== 'node_modules')
+		p.includes('\\') ||
+		p.startsWith('/') ||
+		/^[A-Za-z]:/.test(p) ||
+		p.includes('\0') ||
+		p.split('/').some((s) => s === '..' || s === '.')
 	);
+}
+
+/**
+ * Versteckte Einträge (`.git/`, `.github/`, `.claude/`, `.env` …) und `node_modules/` werden übersprungen – wie bei der
+ * Installation im Panel (`core/modules/install/archive.ts`). Vorher brach schon `.claude/CLAUDE.md` im Repo den Seed ab.
+ */
+function skippedPath(p) {
+	return p.split('/').some((s) => s.startsWith('.') || s === 'node_modules');
 }
 
 /**
@@ -80,7 +90,8 @@ export function extractSeedModules(zip, path, wanted, coreRoot) {
 	const files = new Map();
 	for (const n of names) {
 		const rel = strip ? n.slice(n.indexOf('/') + 1) : n;
-		if (!safePath(rel)) throw new Error(`Seed: unsicherer Pfad im Archiv: ${rel.slice(0, 120)}`);
+		if (unsafePath(rel)) throw new Error(`Seed: unsicherer Pfad im Archiv: ${rel.slice(0, 120)}`);
+		if (skippedPath(rel)) continue;
 		files.set(rel, all[n]);
 	}
 	const base = path ? `${path}/` : '';

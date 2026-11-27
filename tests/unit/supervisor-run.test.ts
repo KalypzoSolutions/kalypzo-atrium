@@ -139,3 +139,60 @@ describe('Rückfall nach wiederholten Abstürzen', () => {
 		expect(Object.keys(json(join(bundles, 'active.json')).modules)).toEqual(['neu']);
 	});
 });
+
+describe('Neukompilieren nach Core-Update scheitert', () => {
+	it('Fehlergrund landet in failures.json, die App startet einmal neu, Status „failed“ nennt das Modul', async () => {
+		const { s, dataDir, bundles } = supervisor('recompile-fail');
+		const sx = s as Internals & {
+			child: unknown;
+			compileOne: () => Promise<Record<string, unknown>>;
+			stopChild: () => Promise<void>;
+		};
+		writeFileSync(
+			join(bundles, 'active.json'),
+			JSON.stringify({ version: 1, modules: { neu: { dir: 'neu/b1' } } })
+		);
+		writeFileSync(
+			join(bundles, 'atrium-modules.lock.json'),
+			JSON.stringify({
+				modules: {
+					neu: {
+						version: '1.0.0',
+						sourceType: 'zip',
+						source: {},
+						commit: null,
+						contentHash: `sha256-${'a'.repeat(64)}`
+					}
+				}
+			})
+		);
+		let restarts = 0;
+		sx.child = {};
+		sx.stopChild = async () => {};
+		sx.startChild = () => {
+			restarts++;
+		};
+		sx.compileOne = async () => ({
+			ok: false,
+			kind: 'missingPackage',
+			message: 'Paket „x“ fehlt',
+			package: 'x'
+		});
+
+		await s.compile(null, { recompile: ['neu'] });
+		expect(json(join(bundles, 'failures.json')).neu).toMatchObject({
+			kind: 'missingPackage',
+			package: 'x'
+		});
+		expect(restarts).toBe(1);
+		const status = json(join(dataDir, 'status.json'));
+		expect(status.state).toBe('failed');
+		expect(status.message).toContain('neu');
+		// Stand bleibt der alte (zeigt den Grund), active.json unverändert
+		expect(json(join(bundles, 'active.json')).modules.neu.dir).toBe('neu/b1');
+
+		// Gleicher Fehler beim nächsten Start: kein weiterer Neustart nötig
+		await s.compile(null, { recompile: ['neu'] });
+		expect(restarts).toBe(1);
+	});
+});

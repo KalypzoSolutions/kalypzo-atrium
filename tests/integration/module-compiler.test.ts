@@ -19,7 +19,7 @@ import { host } from 'virtual:atrium-host/server';
 import type { ModuleDefinition } from '$lib/server/core/modules/types';
 import { hostAbiHash } from '../../tools/host-abi.js';
 import { CORE_ROOT } from '../../tools/modules-dir.js';
-import { contentHashOfDir } from '../../scripts/supervisor/lib.mjs';
+import { contentHashOfDir, Supervisor } from '../../scripts/supervisor/lib.mjs';
 import {
 	COMPILE_PREFIX,
 	removeWorkDir,
@@ -217,4 +217,64 @@ describe('Fehler beim Kompilieren', () => {
 		expect(r.ok).toBe(false);
 		expect(r.error?.kind).toBe('invalidModule');
 	}, 60_000);
+});
+
+describe('Neukompilieren aus der gespeicherten Quelle (Core-Update)', () => {
+	type Job = { id: string; source: string; dir: string; build: string };
+	type CompileOne = (
+		job: Job,
+		write: (l: string) => void
+	) => Promise<{ ok: boolean; message?: string }>;
+
+	it('Supervisor kompiliert aus <bundle>/src neu, obwohl der Ordner „src“ heißt (Docker-Probelauf 2026-11-27)', async () => {
+		const dataDir = join(root, 'sup-data');
+		const sup = new Supervisor({ coreRoot: CORE_ROOT, dataDir, log: () => {} }) as unknown as {
+			compileOne: CompileOne;
+		};
+		const log: string[] = [];
+		const write = (l: string) => log.push(l);
+		const first = await sup.compileOne(
+			{ id: 'fx-board', source: join(FIXTURES, 'fx-board'), dir: 'fx-board/alt', build: 'alt' },
+			write
+		);
+		expect(first).toEqual({ ok: true });
+		const stored = join(dataDir, 'bundles', 'fx-board', 'alt', 'src');
+		expect(existsSync(join(stored, 'module.ts'))).toBe(true);
+
+		const again = await sup.compileOne(
+			{ id: 'fx-board', source: stored, dir: 'fx-board/neu', build: 'neu' },
+			write
+		);
+		expect(again, log.join('\n')).toEqual({ ok: true });
+		const meta = JSON.parse(
+			readFileSync(join(dataDir, 'bundles', 'fx-board', 'neu', 'meta.json'), 'utf8')
+		) as ModuleBundleMeta;
+		expect(meta.id).toBe('fx-board');
+		expect(meta.contentHash).toBe(contentHashOfDir(join(FIXTURES, 'fx-board')));
+	}, 120_000);
+
+	it('ohne --id bleibt die Ordnerregel, mit falscher --id → invalidModule', async () => {
+		const plain = await compile(
+			join(root, 'sup-data', 'bundles', 'fx-board', 'alt', 'src'),
+			join(root, 'out-src')
+		);
+		expect(plain.error?.kind).toBe('invalidModule');
+		const p = Bun.spawn(
+			[
+				process.execPath,
+				COMPILER,
+				join(FIXTURES, 'fx-board'),
+				join(root, 'out-wrongid'),
+				'--no-install',
+				'--id=fx-other'
+			],
+			{ cwd: CORE_ROOT, stdout: 'pipe', stderr: 'pipe' }
+		);
+		const out = await new Response(p.stdout).text();
+		await p.exited;
+		const line = out.split(/\r?\n/).find((l) => l.startsWith(COMPILE_PREFIX))!;
+		const r = JSON.parse(line.slice(COMPILE_PREFIX.length)) as CompileResult;
+		expect(r.error?.kind).toBe('invalidModule');
+		expect(r.error?.message).toContain('fx-other');
+	}, 120_000);
 });

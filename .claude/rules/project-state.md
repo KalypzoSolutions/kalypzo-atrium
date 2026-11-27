@@ -449,11 +449,16 @@
 - **Module ohne App-Neubau (2026-11-26/27, Branch `feat/module-runtime-loading`; Sofort-Fix PR #5)**: Auslöser PR #3 – ein fehlendes Paket in einem
   Modul riss die ganze App mit, jede Installation brauchte einen vollen App-Build (45–70 s, bis 3,5 GB). Jetzt: Module einzeln laden (Importfehler →
   nur dieses Modul defekt), Host-ABI + Registry, Modul-Compiler (2–5 s je Modul), Bundles zur Laufzeit inkl. SSR, gemeinsames Utilities-CSS,
-  Supervisor kompiliert statt App-Build (E2E-Installation 34 s), Übernahme alter Generationen, Neukompilieren nach Core-Update mit „wird
+  Supervisor kompiliert statt App-Build (E2E-Installation 4,5 s), Übernahme alter Generationen, Neukompilieren nach Core-Update mit „wird
   vorbereitet“ (503 statt 404). Alle 5 Module aus `atrium-basic-modules` als Bundle im Browser geprüft (Notiz-Editor, Whiteboard live).
   Details `architecture.md` → „Module ohne App-Neubau“ und „Supervisor“, `docs/deployment.md`, `docs/module-development.md`.
-  Offen: Docker-Probelauf (`read_only`, Speicherlimit senken, npm-Installation im Container), Rebase auf Biome (#4: Modulregel nach
-  `tools/module-boundaries.ts`), CI-Schritt „Module kompilieren“ im Module-Repo, Gesamtgewicht je Modulseite (UI-Kopien ~200 KB, zod ~250 KB).
+  **Docker-Probelauf (2026-11-27)**: `read_only`, 1 CPU, **1 GB** reicht – Seed mit events/notes/whiteboard 40 s (Spitze 940 MiB),
+  Core-Update: App nach 10 s da (Module 503), nach 34 s neu kompiliert; `APP_MEM_LIMIT` Standard 4g → 2g. Dabei behoben: Seed brach an
+  `.claude/` im Modul-Repo ab (versteckte Einträge jetzt übersprungen wie im Panel), Neustart hing 30 s (IPC-Kanal hielt die App nach dem
+  Schließen am Leben → `lifecycle.ts` beendet selbst; E2E-Installation 34 → 4,5 s), Neukompilieren aus `<bundle>/src` scheiterte an der Ordnerregel (`--id`), neue
+  Kompilierfehler ohne Listenänderung → App-Neustart + Status „failed“.
+  Offen: Rebase auf Biome (#4: Modulregel nach `tools/module-boundaries.ts`), CI-Schritt „Module kompilieren“ im Module-Repo,
+  Gesamtgewicht je Modulseite (UI-Kopien ~200 KB, zod ~250 KB), Dokploy-Deploy.
 
 ## Entscheidungen des Nutzers (nicht ungefragt ändern)
 - Module ohne App-Neubau (2026-11-26): Module **im Server je Modul** kompilieren (nicht in der Modul-Repo-CI); nach Installation **kurzer Neustart

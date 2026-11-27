@@ -506,6 +506,9 @@ export class Supervisor {
 
 			step('Module kompilieren');
 			const failures = readJson(join(bundles, FAILURES_FILE), {});
+			const failuresBefore = JSON.stringify(failures);
+			/** @type {string[]} */
+			const failed = [];
 			for (const job of plan.jobs) {
 				delete failures[job.id];
 				if (job.reuse) {
@@ -515,6 +518,7 @@ export class Supervisor {
 				const r = await this.compileOne(job, write);
 				if (r.ok) continue;
 				failures[job.id] = { kind: r.kind, message: r.message, package: r.package ?? null };
+				failed.push(job.id);
 				if (job.requested && !opts.partial) throw new Error(`Modul ${job.id}: ${r.message}`);
 				// Nicht kompilierbar: alter Stand bleibt (zeigt „für andere Core-Version“ + Grund) bzw. fällt weg
 				if (active.modules[job.id]) {
@@ -530,7 +534,18 @@ export class Supervisor {
 			writeJsonAtomic(join(bundles, FAILURES_FILE), failures);
 			if (!changed) {
 				writeJsonAtomic(join(bundles, LOCK_FILE), plan.nextLock);
-				this.finish(planId, 'done', 'Keine Änderung', tail);
+				if (JSON.stringify(failures) !== failuresBefore && this.child) {
+					// Die App liest `failures.json` nur beim Start: neu starten, damit „wird vorbereitet“ zum Fehlergrund wird
+					step('Neustart');
+					await this.stopChild();
+					this.startChild();
+				}
+				this.finish(
+					planId,
+					failed.length ? 'failed' : 'done',
+					failed.length ? `Nicht kompilierbar: ${failed.join(', ')}` : 'Keine Änderung',
+					tail
+				);
 				return;
 			}
 
@@ -591,7 +606,7 @@ export class Supervisor {
 		const started = Date.now();
 		const result = await new Promise((ok) => {
 			let out = '';
-			const p = spawn(process.execPath, [this.compileScript, job.source, tmp], {
+			const p = spawn(process.execPath, [this.compileScript, job.source, tmp, `--id=${job.id}`], {
 				cwd: this.coreRoot,
 				env: { ...this.env, NODE_ENV: 'production', TMPDIR: join(this.dataDir, 'tmp') },
 				stdio: ['ignore', 'pipe', 'pipe']

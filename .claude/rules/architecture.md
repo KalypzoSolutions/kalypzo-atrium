@@ -213,7 +213,7 @@ kompiliert und zur Laufzeit geladen; eingebaute Module (`ATRIUM_MODULES_DIR`, De
   liest `bundles/atrium-modules.lock.json`. Panel fragt `/admin/modules/install/status` alle 2 s ab.
 - Tests: `tests/unit/{host-abi,module-load,module-compiler-rewrite,supervisor-lib,supervisor-run}.test.ts`,
   `tests/integration/{module-compiler,module-bundles}.test.ts`, E2E `tests/e2e/bundle-module.spec.ts` (Fixture `tests/fixtures/bundle-modules/fx-bundle`,
-  vom E2E-Server nach dem Build kompiliert), Installation `bun run playwright test -c playwright.install.config.ts` (`tests/e2e-install/`, Port 4174, ~34 s).
+  vom E2E-Server nach dem Build kompiliert), Installation `bun run playwright test -c playwright.install.config.ts` (`tests/e2e-install/`, Port 4174, Installation ~5 s).
 
 ## Lebenszyklus der Module (Kalypzo Atrium Phase 7, 2026-11-01)
 - `core/modules/install/manage.ts`: `checkUpdates` (GitHub-Kopf vs. gespeicherter Commit), `uninstallModule` (nur deaktiviert + kein Modul braucht es;
