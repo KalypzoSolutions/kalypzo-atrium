@@ -15,7 +15,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { abi as hostAbi, host } from 'virtual:atrium-host/server';
-import { addMessages, type Locale } from '$lib/i18n';
+import { addMessages, type Locale, type LocalizedText } from '$lib/i18n';
 import type { ModuleUi } from '$lib/sdk/types/module-ui';
 import { setServerUiResolver } from '$lib/sdk/client/module-ui-registry';
 import type { ModuleBundleMeta } from '../../../../../../scripts/module-compiler/lib.mjs';
@@ -118,10 +118,12 @@ export async function loadBundleModules(root = bundlesRoot()): Promise<string[]>
 	for (const [id, { dir }] of Object.entries(readActiveBundles(root).modules)) {
 		if (getDefinition(id) || loaded.has(id)) continue;
 		const bundleDir = join(root, dir);
+		// Anzeigename aus meta.json, sobald gelesen (sonst die ID)
+		let name: LocalizedText = id;
 		const broken = (
 			reason: Parameters<typeof markModuleBroken>[0]['reason'],
 			version: string | null = null
-		) => markModuleBroken({ id, name: id, version, reason });
+		) => markModuleBroken({ id, name, version, reason });
 		let meta: ModuleBundleMeta;
 		try {
 			meta = JSON.parse(readFileSync(join(bundleDir, 'meta.json'), 'utf8')) as ModuleBundleMeta;
@@ -134,6 +136,7 @@ export async function loadBundleModules(root = bundlesRoot()): Promise<string[]>
 			broken({ key: 'modules.broken.bundleMissing', params: { dir } }, meta.version ?? null);
 			continue;
 		}
+		if (meta.name) name = meta.name;
 		if (meta.abi !== hostAbi) {
 			// Neukompilieren für den neuen Core läuft (Supervisor) oder ist gescheitert – dann mit dessen Grund
 			const failed = failures[id]?.message;

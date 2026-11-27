@@ -540,6 +540,8 @@ export async function compileModule(opts) {
 		const meta = {
 			metaVersion: META_VERSION,
 			id,
+			/** Anzeigename (wie `atrium-module.json`), auch wenn das Modul nicht geladen werden kann */
+			name: pkg.name ?? id,
 			version: String(pkg.version ?? ''),
 			contentHash,
 			abi,

@@ -44,6 +44,15 @@
 	let bulkRemove = $state(false);
 	let confirmWord = $state('');
 	let bulkFailures = $state<{ id: string; name: string; message: string }[]>([]);
+	// Nach einem Core-Update: Module, die der Supervisor gerade neu kompiliert (kein Fehler, nur kurz weg)
+	const preparing = $derived(data.problems.filter((p) => p.preparing));
+	const problems = $derived(data.problems.filter((p) => !p.preparing));
+	// Solange vorbereitet wird, Stand alle 10 s neu laden (danach startet die App kurz neu, Module sind wieder da)
+	$effect(() => {
+		if (!preparing.length) return;
+		const timer = setInterval(() => void invalidateAll().catch(() => {}), 10_000);
+		return () => clearInterval(timer);
+	});
 	const selectedModules = $derived(data.modules.filter((m) => selected.includes(m.id)));
 	const allSelected = $derived(
 		data.modules.length > 0 && data.modules.every((m) => selected.includes(m.id))
@@ -289,7 +298,16 @@
 		</Alert.Root>
 	{/if}
 
-	{#if data.problems.length}
+	{#if preparing.length}
+		<Alert.Root variant="info" data-testid="modules-preparing">
+			<Alert.Title>{t('admin-modules.preparing.title')}</Alert.Title>
+			<Alert.Description>
+				{t('admin-modules.preparing.text', { names: preparing.map((p) => p.name).join(', ') })}
+			</Alert.Description>
+		</Alert.Root>
+	{/if}
+
+	{#if problems.length}
 		<section class="space-y-3" aria-labelledby="module-problems">
 			<h2 id="module-problems" class="text-section">{t('admin-modules.problems.title')}</h2>
 			<Alert.Root variant="warning">
@@ -299,7 +317,7 @@
 				</Alert.Description>
 			</Alert.Root>
 			<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-				{#each data.problems as p (p.id)}
+				{#each problems as p (p.id)}
 					<Card.Root>
 						<Card.Header>
 							<Card.Title level={3} class="flex flex-wrap items-center gap-2">
@@ -448,6 +466,8 @@
 									<code class="ml-1 text-xs text-muted-foreground"
 										>{data.origins[m.id]!.commit!.slice(0, 7)}</code
 									>{/if}
+							{:else if data.bundled.includes(m.id)}
+								{t('admin-modules.precompiled')}
 							{:else}
 								{t('admin-modules.inBuild')}
 							{/if}

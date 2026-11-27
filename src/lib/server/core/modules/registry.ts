@@ -24,7 +24,15 @@ export interface BrokenModule {
 	name: string;
 	version: string | null;
 	reason: string;
+	/**
+	 * Vorübergehend: vorkompiliertes Bundle passt nach einem Core-Update nicht mehr, der Supervisor kompiliert es gerade
+	 * neu (danach kurzer Neustart). Kein Fehler des Moduls.
+	 */
+	preparing: boolean;
 }
+
+/** Grund, der „wird vorbereitet“ bedeutet (siehe `core/modules/bundles`) */
+export const PREPARING_REASON = 'modules.broken.bundleOutdated';
 
 /** Grund als i18n-Schlüssel (beim Ausliefern übersetzt) oder fertiger Text (z. B. Fehlermeldung des Moduls) */
 export type BrokenReason = string | { key: string; params?: MessageParams };
@@ -254,8 +262,22 @@ export function markModuleBroken(entry: BrokenModuleEntry): void {
 /** Defekte Module mit Name und Grund in der Sprache des Requests */
 export function brokenModules(): BrokenModule[] {
 	return [...broken.values()]
-		.map((b) => ({ ...b, name: localized(b.name), reason: reasonText(b.reason) }))
+		.map((b) => ({
+			...b,
+			name: localized(b.name),
+			reason: reasonText(b.reason),
+			preparing: isPreparingReason(b.reason)
+		}))
 		.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+const isPreparingReason = (reason: BrokenReason) =>
+	typeof reason !== 'string' && reason.key === PREPARING_REASON;
+
+/** Wird das Modul gerade für den neuen Core neu kompiliert (Seiten/API: 503 mit Hinweis statt 404)? */
+export function isModulePreparing(id: string): boolean {
+	const b = broken.get(id);
+	return !!b && isPreparingReason(b.reason);
 }
 
 /**
@@ -269,7 +291,12 @@ export function excludeUnresolvableModules(): BrokenModule[] {
 		const entry = { id: d.manifest.id, name: d.manifest.name, version: d.manifest.version };
 		unregisterModule(d.manifest.id);
 		markModuleBroken({ ...entry, reason: { key, params } });
-		removed.push({ ...entry, name: localized(entry.name), reason: t(key, params) });
+		removed.push({
+			...entry,
+			name: localized(entry.name),
+			reason: t(key, params),
+			preparing: key === PREPARING_REASON
+		});
 	};
 	let changed = true;
 	while (changed) {
@@ -284,8 +311,11 @@ export function excludeUnresolvableModules(): BrokenModule[] {
 			for (const dep of d.manifest.dependencies) {
 				const target = definitions.get(dep);
 				const range = pkg?.dependencies[dep]?.version;
+				// Abhängigkeit wird gerade neu kompiliert (Core-Update) → dieses Modul ebenso nur vorübergehend weg
 				const reason: [string, MessageParams] | null = !target
-					? ['modules.broken.missingDependency', { dep }]
+					? isModulePreparing(dep)
+						? [PREPARING_REASON, {}]
+						: ['modules.broken.missingDependency', { dep }]
 					: range && !versionSatisfies(target.manifest.version, range)
 						? ['modules.broken.dependencyVersion', { dep, range, version: target.manifest.version }]
 						: null;

@@ -4,7 +4,7 @@
 	"headerDescription": "Module aktivieren und deaktivieren, aus GitHub oder einer ZIP-Datei installieren.",
 	"tabsLabel": "Bereiche der Module",
 	"title": "Module",
-	"intro": "Im Build enthaltene Module. Aktivierte Module erscheinen in der Navigation und der API.",
+	"intro": "Installierte Module. Aktivierte Module erscheinen in der Navigation und der API.",
 	"checking": "Prüft …",
 	"checkUpdates": "Nach Updates suchen",
 	"actionFailed": "Aktion fehlgeschlagen",
@@ -30,6 +30,10 @@
 		"restore": "Aus der Datenbank wiederherstellen"
 	},
 	"pleaseWait": "Bitte warten …",
+	"preparing": {
+		"title": "Module werden für die neue Version vorbereitet",
+		"text": "Nach dem Update des Systems werden diese Module neu kompiliert: {names}. Danach startet das System kurz neu, und sie sind wieder da – ihre Daten bleiben erhalten. Diese Seite aktualisiert sich selbst."
+	},
 	"problems": {
 		"title": "Nicht geladen",
 		"alertTitle": "Diese Module laufen nicht",
@@ -50,6 +54,7 @@
 	"permissions": "Berechtigungen",
 	"origin": "Herkunft",
 	"inBuild": "im Build enthalten",
+	"precompiled": "vorkompiliert",
 	"missingModules": "Fehlende Module: {list}",
 	"requiredByActive": "Benötigt von aktiven Modulen: {list}",
 	"deactivate": "Deaktivieren",

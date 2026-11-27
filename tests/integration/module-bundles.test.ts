@@ -29,9 +29,12 @@ import {
 import {
 	brokenModules,
 	getDefinition,
+	isModulePreparing,
 	resetBrokenModulesForTests,
 	unregisterModule
 } from '$lib/server/core/modules/registry';
+import { listModuleProblems } from '$lib/server/core/modules/service';
+import { guardModulePage } from '$lib/server/core/internal-pages';
 import { moduleUiLoader } from '$lib/sdk/client/module-ui-registry';
 import type { RequestContext } from '$lib/sdk/types';
 import { CORE_ROOT } from '../../tools/modules-dir.js';
@@ -202,6 +205,44 @@ describe('Fehlerfälle beim Laden', () => {
 		expect(getDefinition('fx-old')).toBeUndefined();
 		// das funktionierende Bundle bleibt unberührt
 		expect(getDefinition('fx-bundle')).toBeDefined();
+	});
+
+	it('nach Core-Update: „wird vorbereitet“ statt Defekt, Seiten und API antworten 503 mit Hinweis', async () => {
+		// fx-old aus dem Test davor: andere ABI, kein Kompilierfehler → wird gerade neu kompiliert
+		expect(isModulePreparing('fx-old')).toBe(true);
+		expect(isModulePreparing('fx-gone')).toBe(false);
+		const problems = await listModuleProblems();
+		expect(problems.find((p) => p.id === 'fx-old')).toMatchObject({
+			kind: 'broken',
+			preparing: true
+		});
+		expect(problems.find((p) => p.id === 'fx-gone')).toMatchObject({ preparing: false });
+
+		const api = await apiCall(key, 'GET', '/modules/fx-old/items');
+		expect(api.status).toBe(503);
+		expect(JSON.stringify(api.body)).toContain('vorbereitet');
+		expect((await apiCall(key, 'GET', '/modules/fx-gone/items')).status).toBe(404);
+
+		const ctx = await adminContext(ADMIN, PW);
+		await expect(
+			guardModulePage({ moduleId: 'fx-old' }, { user: { id: 'x' }, ctx })
+		).rejects.toMatchObject({ status: 503 });
+		await expect(
+			guardModulePage({ moduleId: 'fx-gone' }, { user: { id: 'x' }, ctx })
+		).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('Kompilierfehler aus failures.json: echter Defekt mit Grund, nicht „wird vorbereitet“', async () => {
+		writeFileSync(
+			join(fresh, 'failures.json'),
+			JSON.stringify({ 'fx-old': { kind: 'missingPackage', message: 'Paket „yjs“ fehlt' } })
+		);
+		resetBrokenModulesForTests();
+		await loadBundleModules(fresh);
+		expect(isModulePreparing('fx-old')).toBe(false);
+		const reason = brokenModules().find((b) => b.id === 'fx-old')?.reason ?? '';
+		expect(reason).toContain('nicht kompilieren');
+		expect(reason).toContain('yjs');
 	});
 
 	it('ohne Datenverzeichnis bzw. active.json: keine Bundles, kein Fehler', async () => {

@@ -4,7 +4,7 @@
 	"headerDescription": "Enable and disable modules, install them from GitHub or a ZIP file.",
 	"tabsLabel": "Module sections",
 	"title": "Modules",
-	"intro": "Modules included in the build. Enabled modules appear in the navigation and the API.",
+	"intro": "Installed modules. Enabled modules appear in the navigation and the API.",
 	"checking": "Checking …",
 	"checkUpdates": "Check for updates",
 	"actionFailed": "Action failed",
@@ -30,6 +30,10 @@
 		"restore": "Restore from the database"
 	},
 	"pleaseWait": "Please wait …",
+	"preparing": {
+		"title": "Modules are being prepared for the new version",
+		"text": "After the system update these modules are being recompiled: {names}. The system then restarts briefly and they are back – their data is kept. This page refreshes itself."
+	},
 	"problems": {
 		"title": "Not loaded",
 		"alertTitle": "These modules are not running",
@@ -50,6 +54,7 @@
 	"permissions": "Permissions",
 	"origin": "Origin",
 	"inBuild": "included in the build",
+	"precompiled": "precompiled",
 	"missingModules": "Missing modules: {list}",
 	"requiredByActive": "Required by active modules: {list}",
 	"deactivate": "Disable",

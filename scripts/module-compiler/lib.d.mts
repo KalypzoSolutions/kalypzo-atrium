@@ -4,6 +4,8 @@
 export interface ModuleBundleMeta {
 	metaVersion: 1;
 	id: string;
+	/** Anzeigename aus `atrium-module.json` (Text oder je Sprache) */
+	name?: string | { de: string; en?: string };
 	version: string;
 	/** Inhaltshash des Modulordners (gleiche Regel wie Installation/Supervisor) */
 	contentHash: string;

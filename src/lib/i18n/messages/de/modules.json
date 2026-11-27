@@ -1,5 +1,6 @@
 {
 	"notInstalled": "Modul \"{id}\" ist nicht installiert",
+	"preparing": "Dieses Modul wird gerade für die neue Version des Systems vorbereitet und ist in etwa einer Minute wieder da.",
 	"broken": {
 		"coreVersion": "Braucht Core {range}, installiert ist {version}",
 		"missingDependency": "Benötigtes Modul „{dep}“ fehlt",

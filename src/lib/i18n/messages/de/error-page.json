@@ -2,6 +2,7 @@
 	"title": "Fehler {status}",
 	"notFound": "Seite nicht gefunden",
 	"generic": "Es ist ein Fehler aufgetreten",
+	"unavailable": "Gleich wieder da",
 	"reference": "Referenz: {id}",
 	"toDashboard": "Zum Dashboard"
 }

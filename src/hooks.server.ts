@@ -17,6 +17,7 @@ import { startJobRunner } from '$lib/server/core/jobs';
 import { brandVersion, brandingState } from '$lib/server/core/branding';
 import { isModuleEnabled } from '$lib/server/core/modules/service';
 import { bundleUtilities } from '$lib/server/core/modules/bundles';
+import { isModulePreparing } from '$lib/server/core/modules/registry';
 import { getSetting } from '$lib/server/core/settings/service';
 import { LOCALE_COOKIE, resolveLocale, withLocale } from '$lib/server/core/i18n/locale';
 import { applyAppearance, loadUserPrefs } from '$lib/server/core/settings/user-prefs';
@@ -154,9 +155,10 @@ const guard: Handle = async ({ event, resolve }) => {
 		) {
 			throw redirect(303, '/profile?tab=security&mustChange=1');
 		}
-		// Moduloberfläche (auch eingebettet): deaktivierte Module sind nicht erreichbar
+		// Moduloberfläche (auch eingebettet): deaktivierte Module sind nicht erreichbar. Ausnahme: Module, die nach einem
+		// Core-Update gerade neu kompiliert werden – deren Seiten-Load antwortet 503 mit Hinweis (Fehlerseite im Layout)
 		const m = /^\/(?:modules|p|embed)\/([^/]+)/.exec(path);
-		if (m && !(await isModuleEnabled(m[1] as string))) {
+		if (m && !isModulePreparing(m[1] as string) && !(await isModuleEnabled(m[1] as string))) {
 			return new Response(t('core-server.moduleUnavailable'), { status: 404 });
 		}
 	}

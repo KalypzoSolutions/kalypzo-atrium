@@ -5,7 +5,7 @@
 import { localized, t } from '$lib/i18n';
 import { error, redirect, type Cookies } from '@sveltejs/kit';
 import type { RequestContext } from '$lib/sdk/types';
-import { getDefinition } from './modules/registry';
+import { getDefinition, isModulePreparing } from './modules/registry';
 import { isModuleEnabled } from './modules/service';
 import { loadUserPrefs } from './settings/user-prefs';
 
@@ -44,6 +44,8 @@ export async function guardModulePage(
 ) {
 	if (!locals.user) throw error(401, t('core-server.notSignedIn'));
 	const def = getDefinition(params.moduleId);
+	// Nach einem Core-Update kompiliert der Supervisor das Modul gerade neu: Hinweis statt „nicht verfügbar“
+	if (!def && isModulePreparing(params.moduleId)) throw error(503, t('modules.preparing'));
 	if (!def || !(await isModuleEnabled(params.moduleId)))
 		throw error(404, t('core-server.moduleUnavailable'));
 	const perms = def.manifest.permissions;

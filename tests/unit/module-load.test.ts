@@ -12,6 +12,9 @@ import {
 	brokenModules,
 	excludeUnresolvableModules,
 	getDefinition,
+	isModulePreparing,
+	markModuleBroken,
+	PREPARING_REASON,
 	resetBrokenModulesForTests,
 	unregisterModule
 } from '$lib/server/core/modules/registry';
@@ -117,5 +120,23 @@ describe('loadBuiltInModules', () => {
 		]);
 		expect(getDefinition('ml-good')).toBe(def);
 		expect(brokenModules().find((b) => b.id === 'ml-good')).toBeUndefined();
+	});
+});
+
+describe('Abhängigkeit wird nach einem Core-Update neu kompiliert', () => {
+	it('abhängiges Modul gilt ebenfalls als „wird vorbereitet“, nicht als defekt', async () => {
+		markModuleBroken({
+			id: 'ml-missing',
+			name: 'ml-missing',
+			version: null,
+			reason: { key: PREPARING_REASON }
+		});
+		await loadBuiltInModules([
+			entry('ml-user', async () => ({ default: definition('ml-user', ['ml-missing']) }))
+		]);
+		excludeUnresolvableModules();
+		expect(getDefinition('ml-user')).toBeUndefined();
+		expect(isModulePreparing('ml-user')).toBe(true);
+		expect(brokenModules().find((b) => b.id === 'ml-user')).toMatchObject({ preparing: true });
 	});
 });

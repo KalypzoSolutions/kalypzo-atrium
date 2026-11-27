@@ -151,6 +151,8 @@ export interface ModuleProblem {
 	reason: string;
 	/** War beim Ausfall aktiv (Daten bleiben erhalten, Funktionen fehlen) */
 	enabled: boolean;
+	/** Nur vorübergehend: wird nach einem Core-Update gerade neu kompiliert (kein Fehler des Moduls) */
+	preparing: boolean;
 }
 
 export async function listModuleProblems(): Promise<ModuleProblem[]> {
@@ -172,7 +174,8 @@ export async function listModuleProblems(): Promise<ModuleProblem[]> {
 			version: r.installedVersion,
 			kind: 'missing',
 			reason: t('modules.missingReason'),
-			enabled: r.enabled
+			enabled: r.enabled,
+			preparing: false
 		});
 	}
 	return problems.sort((a, b) => a.id.localeCompare(b.id));
