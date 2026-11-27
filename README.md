@@ -3,7 +3,7 @@
 Selbst gehostete, webbasierte Verwaltungsplattform als **modularer Monolith**: ein neutraler, zweisprachiger (de/en) **Core**
 (Authentifizierung mit 2FA, RBAC, Modulverwaltung, Einstellungen, REST-API mit API-Keys, PDF-, KI-, Bild- und S3-Storage-Service,
 Mail, Benachrichtigungen/Web Push, Hintergrundjobs, globale Suche, Dashboard, Audit-Log, Datensicherung, Admin-Reset, Datenauskunft)
-plus **Fachmodule**, die unter Administration → Module per **GitHub-Link oder ZIP** installiert werden (Neubau im Server über den
+plus **Fachmodule**, die unter Administration → Module per **GitHub-Link oder ZIP** installiert werden (einzeln kompiliert, kurzer Neustart über den
 Supervisor, siehe [Deployment](docs/deployment.md)).
 
 - Dieses Repo enthält **keine Fachmodule**. `modules/` ist leer (gitignored); Module kommen aus eigenen Repos, z. B.

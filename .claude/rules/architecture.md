@@ -177,18 +177,43 @@ Client-IP **nur** über `core/auth/client-ip.ts` (`clientAddress(event)`, `curre
   `admin-registry.ts` `modules.install`/`modules.history`). Tests `tests/unit/module-install.test.ts`, `tests/integration/module-install.test.ts`
   (GitHub-Ersatz + Fixture-Module), Helfer `tests/helpers/module-zip.ts`.
 
-## Supervisor und Neubau (Kalypzo Atrium Phase 6, 2026-11-01)
-- `scripts/supervisor/lib.mjs` (`Supervisor`, `contentHashOfDir` = gleiche Regel wie `archive.ts` `contentHash`, `mergeLock`, `modulePackagesFor`),
-  Startpunkt `scripts/supervisor.mjs` (Image-`CMD`), genutzt von `scripts/demo-server.mjs` und `scripts/e2e-install-server.mjs`.
-  Datenverzeichnis `ATRIUM_DATA_DIR`: `state.json` (current/previous), `gen/<id>/{modules,build,.svelte-kit,BUILD_INFO.json,atrium-modules.lock.json}`,
-  `gen/<id>/node_modules` = Junction auf den Core, `staging/<planId>`, `results/<planId>.json`, `status.json`, `logs/`.
-- Neubau ohne Schreibzugriff auf den Core: `ATRIUM_BUILD_OUT` (adapter-node `out`), `ATRIUM_KIT_OUT_DIR` (`kit.outDir`), `ATRIUM_VITE_CACHE`
-  (`svelte.config.js`, Vite-Plugin), Modul-npm-Pakete per `ssr.noExternal` (`modulePackages`).
-- App-Seite: `core/lifecycle.ts` (`installShutdownHandlers`: IPC `atrium:shutdown` → `SIGTERM` an adapter-node → `sveltekit:shutdown` → Jobs anhalten
-  (`stopJobRunner`), Pool schließen; `runVerifyAndExit` für `ATRIUM_VERIFY_ONLY=1`), `core/modules/install/supervisor-link.ts` (Staging, IPC
-  `atrium:build`, `readSupervisorStatus`, `reconcileInstallEvents` in `initCore`: `requested` → `done`/`failed`, erst dann `module_install`).
-  Panel fragt `/admin/modules/install/status` alle 2 s ab (Neustart = kurz offline).
-- Tests: `tests/unit/supervisor-lib.test.ts`; echter Neubau `bun run playwright test -c playwright.install.config.ts` (`tests/e2e-install/`, Port 4174).
+## Module ohne App-Neubau: Host-ABI, Modul-Compiler, Bundles (2026-11-27)
+Plan: `~/.claude/plans/abundant-cuddling-cloud-of-0da67b58-3f80-4a9e-9df0-1e5513c5fc90.md`. Im Panel installierte Module werden **einzeln**
+kompiliert und zur Laufzeit geladen; eingebaute Module (`ATRIUM_MODULES_DIR`, Dev/Tests) laufen weiter über das Vite-Plugin.
+- **Eingebaute Module einzeln laden**: `virtual:atrium-modules/server` liefert je Modul `load: () => import(…)`; `loadBuiltInModules` (async) →
+  Importfehler macht nur dieses Modul defekt (`missingPackageName` → `modules.broken.missingPackage`).
+- **Host-ABI** `tools/host-abi.js` (einzige Quelle, auch für die Modulgrenzen und die npm-Prüfung in `analyze.ts`): Server teilt alle freigegebenen
+  `$lib`-Bereiche + `svelte/*`, `$app/*`, `svelte-sonner`, `zod`, `drizzle-orm`; **Browser nur** Svelte-Laufzeit, `$app/*`, `toast` (`$lib/host/sonner.ts`)
+  und `CLIENT_SHARED_LIB` (Dateien mit Zustand: i18n-Katalog, Theme, Feld-Kontext …). Registry `$lib/host/registry.ts` (`globalThis.__atriumHost`,
+  `preload`/`get(key, names)`), Loader-Liste lazy über `virtual:atrium-host/{client,server}` (Gruppen statt Einzeldateien), eingebunden in
+  `initCore` und `src/hooks.client.ts`. **Gemessen, nicht ohne neue Messung ändern**: alles teilen = +50 % JS je Core-Seite, `components/ui` teilen
+  = 72 statt 17 Dateien je Seite, `zod` teilen = +278 KB je Seite; jetzt ≈ +4 %.
+- **Modul-Compiler** `scripts/module-compiler/` (`compile.mjs` als eigener Prozess, `lib.mjs`, `rewrite.mjs`): zwei Server-Builds (`module.ts`,
+  `ui.ts`) + Client-Build mit `@sveltejs/vite-plugin-svelte`, Host-Importe extern und per acorn auf `__atriumHost.get(…)` umgeschrieben, eigene
+  npm-Pakete installiert (`--ignore-scripts`) und per `resolve.dedupe` **eine** Kopie je Paket (sonst zwei ProseMirror in `notes`), Tree-Shaking
+  reiner Core-Dateien (`coreFileIsPure`), `meta.json` (`ModuleBundleMeta`: abi, contentHash, Host-Schlüssel je Einstieg, Migrationen, Texte, Name,
+  `client.tailwind` = Klassen). Fehlerarten `missingPackage|forbiddenImport|invalidModule|build`.
+- **Laufzeit** `core/modules/bundles/`: `loadBundleModules` nach den eingebauten (ABI prüfen → `failures.json` → preload → import), `moduleUiLoader`
+  (`$lib/sdk/client/module-ui-registry.ts`: Server über `setServerUiResolver`, Browser über Layout-Daten `moduleBundles`), Auslieferung
+  `/_atrium/modules/<id>/<build>/client/…` (öffentlich, immutable). **CSS**: `module.css` = nur `<style>` der Komponenten; Utilities als **ein**
+  gemeinsames CSS für Core + Bundles (`bundles/utilities.ts`, Tailwind zur Laufzeit über `process.cwd()`), per `transformPageChunk` als **letztes**
+  Stylesheet (Teil-Stylesheets brachen die Tailwind-Reihenfolge).
+- **Core-Update**: veraltete ABI ohne Kompilierfehler = „wird vorbereitet“ (`isModulePreparing`, auch harte Abhängige): Seiten/API 503 mit Hinweis,
+  Administration → Module mit Hinweis und Selbst-Neuladen.
+
+## Supervisor (kompiliert statt App-Build, 2026-11-27; vorher Generationen, Phase 6)
+- `scripts/supervisor/lib.mjs` (`Supervisor`, `contentHashOfDir`, `crashDecision`), Planung rein in `bundles.mjs` (`planCompile`, `staleModules`,
+  `bundleBuildId` = Inhalt + ABI, `unreferencedBuilds`). App läuft **immer** aus dem mitgelieferten Build. Ablage `ATRIUM_DATA_DIR/bundles/`:
+  `active.json`, `active.prev.json`, `active.next.json` (Probelauf, `ATRIUM_BUNDLES_ACTIVE`), `atrium-modules.lock.json`, `failures.json`,
+  `<id>/<build>/{meta.json,server,client,src}`; dazu `staging/<planId>`, `results/<planId>.json`, `status.json`, `logs/`, `state.json` (Seed).
+- Auftrag: zusammenstellen → geänderte Module kompilieren (gleicher Build wiederverwendet) → Probelauf → `active.json` tauschen → Neustart →
+  Health, sonst vorige Liste. Start: alte `gen/` einmal übernehmen (`migrateLegacy`), veraltete ABI neu kompilieren (`staleModules`), Seed.
+  Absturz-Rückfall: `active.prev.json` bzw. ohne Module; läuft ein Auftrag, nur Neustart mit Pause.
+- App-Seite unverändert: `core/lifecycle.ts`, `supervisor-link.ts` (Staging, IPC `atrium:build`, `reconcileInstallEvents`), `manage.ts` `runningLock`
+  liest `bundles/atrium-modules.lock.json`. Panel fragt `/admin/modules/install/status` alle 2 s ab.
+- Tests: `tests/unit/{host-abi,module-load,module-compiler-rewrite,supervisor-lib,supervisor-run}.test.ts`,
+  `tests/integration/{module-compiler,module-bundles}.test.ts`, E2E `tests/e2e/bundle-module.spec.ts` (Fixture `tests/fixtures/bundle-modules/fx-bundle`,
+  vom E2E-Server nach dem Build kompiliert), Installation `bun run playwright test -c playwright.install.config.ts` (`tests/e2e-install/`, Port 4174, ~34 s).
 
 ## Lebenszyklus der Module (Kalypzo Atrium Phase 7, 2026-11-01)
 - `core/modules/install/manage.ts`: `checkUpdates` (GitHub-Kopf vs. gespeicherter Commit), `uninstallModule` (nur deaktiviert + kein Modul braucht es;

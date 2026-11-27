@@ -15,8 +15,10 @@ bun scripts/demo-server.mjs        # Bash-Tool mit run_in_background: true; wart
 touch .data/stop                    # SAUBER beenden (Server räumt auf und beendet sich); Datei danach löschen
 ```
 - Der Demo-Server startet die App über den **Supervisor** (`scripts/supervisor/lib.mjs`, Daten `.data/atrium`): Module lassen sich im Panel
-  installieren (Neubau + Neustart, PGlite bleibt offen). Eine gebaute Generation in `.data/atrium/gen` hat Vorrang vor `build/` –
-  nach Code-Änderungen am Core `.data/atrium` löschen (oder `state.json`), sonst läuft der alte Generationen-Build.
+  installieren (Modul kompilieren + kurzer Neustart, PGlite bleibt offen). Die App läuft immer aus `build/`; installierte Module liegen als Bundles
+  in `.data/atrium/bundles`. Nach Core-Änderungen mit neuer ABI kompiliert der Supervisor sie beim Start neu (kein Löschen nötig).
+- Echte Module als Bundle von Hand prüfen: `bun scripts/module-compiler/compile.mjs <modulordner> <ausgabe>` bzw. eine Ablage mit `active.json`
+  bauen und die App mit `ATRIUM_BUNDLES_DIR=<ablage>` starten (Muster: `scripts/e2e-server.mjs`).
 - **Nie** mit `Stop-Process -Force`/`kill` beenden: das beschädigte die PGlite-Datenbank (`RuntimeError: Aborted()`;
   Sicherung `.data/pglite-corrupt-*`). Bei Datenbankschaden `.data/pglite` verschieben, Server startet frisch,
   Module in `/modules` bzw. per `POST /api/v1/modules/<id>/enable` neu aktivieren.
